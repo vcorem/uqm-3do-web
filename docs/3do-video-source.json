@@ -1,0 +1,18 @@
+{
+  "source_page": "https://uqm-mods.sourceforge.net/Download",
+  "download_url": "https://sourceforge.net/projects/uqm-mods/files/MegaMod/0.8.5/content/uqm-0.8.0-3dovideo.uqm/download",
+  "download_date": "2026-10-18",
+  "archive_sha256": "9c190d1fae862da741e8da9c0a7cba34060a9e175a87623391ba2296e417ecce",
+  "installed_files": 134,
+  "installed_bytes": 151047342,
+  "resource_map": "Existing UQM mapping preserved; victory -> ending, ships -> spins; logo/drumall not installed.",
+  "package_metadata": {
+    "name": "3DO Video Pack",
+    "author": "Crystal Dynamics",
+    "version": "2",
+    "description": "Video resources from the 3DO version of the game.",
+    "year": "1992",
+    "min_uqm_version": "0.7.0"
+  },
+  "license_record": "The downloaded package contains no separate license file. This provenance record does not assign a license to these media."
+}

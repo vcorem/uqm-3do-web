@@ -717,6 +717,7 @@ enum
 	ACCEL_OPT,
 	SAFEMODE_OPT,
 	RENDERER_OPT,
+	SUBTITLES_OPT,
 #ifdef NETPLAY
 	NETHOST1_OPT,
 	NETPORT1_OPT,
@@ -744,6 +745,7 @@ static struct option longOptions[] =
 	{"speechvol", 1, NULL, 'T'},
 	{"audioquality", 1, NULL, 'q'},
 	{"nosubtitles", 0, NULL, 'u'},
+	{"subtitles", 0, NULL, SUBTITLES_OPT},
 	{"gamma", 1, NULL, 'g'},
 	{"logfile", 1, NULL, 'l'},
 	{"intro", 1, NULL, 'i'},
@@ -962,6 +964,9 @@ parseOptions (int argc, char *argv[], struct options_struct *options)
 					InvalidArgument (optarg, "--audioquality or -q");
 					badArg = true;
 				}
+				break;
+			case SUBTITLES_OPT:
+				setBoolOption (&options->subtitles, true);
 				break;
 			case 'u':
 				setBoolOption (&options->subtitles, false);
@@ -1213,6 +1218,7 @@ usage (FILE *out, const struct options_struct *defaults)
 	log_add (log_User, "  -T, --speechvol=VOLUME (0-100, default 100)");
 	log_add (log_User, "  -q, --audioquality=QUALITY (high, medium or low, "
 			"default medium)");
+	log_add (log_User, "  --subtitles (enable dialogue text, overriding saved preferences)");
 	log_add (log_User, "  -u, --nosubtitles");
 	log_add (log_User, "  -l, --logfile=FILE (sends console output to "
 			"logfile FILE)");

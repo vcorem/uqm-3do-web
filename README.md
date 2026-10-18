@@ -1,90 +1,111 @@
-Star Control 2: The Ur-Quan Masters port to WebAssembly
--------------------------------------------------------
+# The Ur-Quan Masters — 3DO Web Edition
 
-[![Build status](https://github.com/intgr/uqm-wasm/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/intgr/uqm-wasm/actions?query=workflow:Build)
+A local WebAssembly port of UQM 0.8.0, based on
+[intgr/uqm-wasm](https://github.com/intgr/uqm-wasm), upstream commit
+`daadbb540a8c46f09dcdb0080b4212fb33e6cb94` (2023-12-10).
+The reference target is **Star Control II for the 3DO**.
 
-This is a fork of Star Control 2: The Ur-Quan Masters to WebAssembly
-for running in web browsers, using the Emscripten toolchain.
+The original C engine, ships, physics and game artwork remain in place.
+The browser launcher selects 3DO menus, fonts, scan icons, shields, scrolling
+and melee zoom. The checkout includes 3DO music and speech. Original 3DO
+videos are included in the repository content: intro, ending and all 25 ship
+presentations. Their package source and attribution are recorded separately.
+The launcher automatically enables the original videos when all required files
+are installed; see [3DO movies](docs/3do-videos.md).
+See [compatibility scope and remaining checks](docs/3do-compatibility.md).
 
-Save games and preferences are persisted on client-side using browser IndexedDB
-API (Emscripten IDBFS). Persistent storage will be requested when you save a
-game or change preferences. If persistent storage is unavailable, storage is on
-a best-effort basis; a warning message will be shown in this case.
-On Chrome and Safari, the website needs to be bookmarked enable persistent
-storage.
-[Read more about persistence](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria#does_browser-stored_data_persist)
+## Play the installed local game
 
+On macOS, double-click **Play UQM.command**. Keep the terminal window open,
+then click **Launch game** in the browser. Stop the server with Ctrl-C.
+The installed local build includes the full campaign, original music and
+speech with dialogue subtitles, and the 3DO intro, ending and 25 ship videos.
+Saves stay in this browser.
+In a ship selection menu, press **Alt / Option** for the ship video.
 
-Building in Docker
-------------------
-The easiest way to build and run UQM with Emscripten is via Docker.
-In the `sc2` directory, Simply run:
+## Build locally
 
-    docker build --tag=uqm-wasm -f wasm/Dockerfile .
-    docker run -it --rm -p9999:9999 uqm-wasm
+Requirements: Git, Python 3.10 or newer for the current SDK installer, a POSIX
+shell and Make. macOS needs the Xcode command-line tools. The compiler and
+its caches live inside `.tools/emsdk`; no shell startup changes are needed.
 
-Then open in your web browser: http://localhost:9999/uqm-debug.html
+```sh
+mkdir -p .tools
+git clone https://github.com/emscripten-core/emsdk.git .tools/emsdk
+.tools/emsdk/emsdk install 3.1.50
+.tools/emsdk/emsdk activate 3.1.50
+./scripts/build-web.sh
+python3 scripts/serve.py
+```
 
-Building locally
-----------------
-* Install Emscripten: https://emscripten.org/docs/getting_started/downloads.html
-* Make sure Emscripten binaries/wrappers are in PATH.
-  The command `emcc --show-ports` should work.
+If the default Python is older, set `EMSDK_PYTHON` to a Python 3.10+ executable
+when running the SDK installer. The SDK supplies its own runtime afterward.
+Use `JOBS=8 ./scripts/build-web.sh` to change build concurrency.
+Emscripten **3.1.50** is pinned in `.emscripten-version`; the build script
+rejects other versions. The first build downloads and compiles SDL2,
+libpng, Ogg/Vorbis and zlib.
 
-Run the configuration menu:
+Open **http://127.0.0.1:9999** and wait for **Launch game**. Clicking it enables
+the game and browser audio. Select Super Melee in the original menu.
+The preview server binds to loopback only. Stop it with Ctrl-C.
+Use `python3 scripts/serve.py --port 10000` for another port.
 
-    cd sc2
-    emconfigure ./build.sh uqm config
+The generated `dist/` contains the HTML launcher, JavaScript, Wasm, worker,
+content bundle and license notices. It can be hosted as static files with:
 
-The first time you run this, it takes a few minutes as Emscripten downloads
-and builds ports of required libraries.
+```text
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
 
-Nothing special needs to be done there, everything should be auto-detected.
-Just for reference, here is a tested working configuration:
+Serve `.wasm` as `application/wasm`. Use HTTPS outside localhost. Opening the
+HTML as a file, or using a server without the isolation headers, will not
+support the shared memory used by the game. The initial content bundle is
+large because it includes the complete campaign voice recordings.
 
-     1. Type of build                        Debugging build
-     2. Graphics Engine                      SDL2 with modern graphics support
-     3. Sound backend                        Include OpenAL support (experimental)
-     4. Tracker music support                Included libmikmod
-     5. Ogg Vorbis codec                     Xiph libogg + libvorbis
-     6. Network Supermelee support           disabled
-     7. Joystick support                     enabled
-     8. Supported file i/o methods           Direct & .zip file i/o
-     9. Graphics/Sound optimizations         Platform acceleration (asm, etc.)
-    10. Thread library                       Pthread thread library
+## Saving and controls
 
-Press <ENTER> to finish configuration and build it:
+Saves and preferences use IndexedDB on the current browser origin. Keep the
+same hostname and port to access the same saves. Clearing site data removes
+them. Browser persistence is requested on the first write; storage is still
+subject to the browser's policy. A storage failure is shown in the launcher;
+if initial loading fails, the game can run in memory without overwriting
+existing database saves. Writes are serialized to avoid overlapping flushes.
 
-    ./build.sh uqm -j16
+Menus: arrow keys, Enter, Esc. Default player-one combat: Up for thrust,
+Left/Right to turn, Right Ctrl or Enter to fire, Right Shift for the special.
+The in-game input settings allow other keyboard templates and controllers.
+Gamepad behavior still requires browser testing. Full screen is available
+from the launcher; click the game canvas to return keyboard focus.
 
-You should have an `uqm.html` file as output.
+## Checks and current scope
 
-Run it
-------
-You can use the included nginx configuration to serve up files for the web browser:
+```sh
+node --test sc2/wasm/tests/*.test.cjs
+bash -n scripts/build-web.sh
+python3 -m py_compile scripts/serve.py
+```
 
-    nginx -p $PWD -c wasm/nginx.conf
+Browser smoke checks and their limitations are recorded separately in
+[the validation record](docs/validation.md). A passing build or one playable
+battle does not establish exact 3DO fidelity or complete campaign coverage.
+The upstream fork lists missing Firefox audio samples and unsupported SDL
+mixing/threading paths; this build retains OpenAL and pthreads.
 
-Then open in your web browser: http://localhost:9999/uqm-debug.html
+Network SuperMelee is disabled in the browser build. A later milestone will
+adapt the existing UQM network simulation to browser transport and two-player
+rooms. No multiplayer service or public deployment is included yet.
 
-Known issues
-------------
-* Audio: Firefox doesn't play some samples (e.g. menu ping), but works in Chrome
-* Audio: MixSDL does not work (OpenAL works)
-* Threading: SDL threading does not work (pthreads work)
+## Credits and licenses
 
-Troubleshooting
----------------
-You can clean and force a re-build of emscripten-ports with:
+Original game by Fred Ford, Paul Reiche III and Toys for Bob. Modern port by
+the UQM team; original WebAssembly port by Marti Raudsepp. Preserve upstream
+history and [full credits](sc2/AUTHORS).
 
-    emcc --clear-cache
-    emcc -c -E - -s USE_ZLIB=1 -s USE_LIBPNG=1 -s USE_VORBIS=1 -s USE_SDL=2 -s ASYNCIFY -pthread </dev/null
+Code is GPL-2.0-or-later. UQM base content, music and speech are CC BY-NC-SA
+2.5, with additional UQM distribution language in [COPYING](sc2/COPYING).
+Documentation has its own license there. The separately sourced 3DO movie
+package has its [provenance and package attribution](docs/3do-video-source.json)
+recorded separately; it is not assigned the base-content license by this project.
 
-Credits
--------
-
-* Thanks to Fred Ford, Paul Reiche III and Toys for Bob for releasing the game as open source.
-* Thanks to The Ur-Quan Masters port team for their work on the open source project.
-* Thanks to Michael Martin for continuing to maintain the game for the last several years.
-* WebAssembly port was done by Marti Raudsepp.
-* [Detailed credits](./sc2/AUTHORS)
+[Original fork README](docs/upstream-readme.md)

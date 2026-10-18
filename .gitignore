@@ -12,3 +12,8 @@ sc2/*.map
 sc2/*.js
 sc2/*.html
 sc2/*.data
+
+# Local WebAssembly toolchain and packaged preview
+.tools/
+dist/
+__pycache__/
