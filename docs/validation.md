@@ -45,8 +45,9 @@ OpenAL, pthreads and Asyncify. This is an initial desktop browser smoke test.
 - Audible output quality and latency, speech synchronization and complete ending
   playback. Opening/ship video smoke checks are recorded below; an audible
   comparison was not performed.
-- Firefox, Safari, standalone Chrome, mobile browsers, gamepads, two humans on
-  one keyboard, full-screen transitions and background-tab behavior.
+- Native Safari, mobile browsers, gamepads, two humans on one keyboard,
+  full-screen transitions and background-tab behavior. Later standalone
+  Chrome, Playwright Firefox and WebKit results are recorded below.
 - Browser-storage quota failure in a real browser (covered with unit harnesses),
   long-running stability and performance/latency measurements.
 - Docker build; the local native SDK build is the validated path.
@@ -154,7 +155,8 @@ handling, all ship matchups or full-match stability across browsers.
   matchups, with zero unexpected checksum mismatches.
 - Foreground/background tab transitions, long sessions, focus loss and browser
   audio behavior during an online match.
-- Independent current Chrome, Firefox and Safari testing.
+- Native Safari application testing; Chrome, Playwright Firefox and WebKit
+  engine results are recorded below.
 - Public-host configuration and operational limits. The relay deliberately
   stops accepting fresh rooms after 10,000 distinct room IDs in one process;
   a reverse proxy also shares the per-IP limit unless deployment changes it.
@@ -208,3 +210,78 @@ including Shofixti's self-destruct special; no simulation state is patched.
 
 Clean Linux build and regression run:
 [GitHub Actions](https://github.com/vcorem/uqm-3do-web/actions/runs/39115897414).
+
+## Additional browser compatibility — 2026-10-18
+
+These checks used the same network-enabled package on macOS, in isolated
+profiles. Its Wasm SHA-256 is
+`acf1ddcf18b3eb73e3eba2766d29230a564b554adbed7b12d41084c274a4d177`.
+
+| Browser pair | Observed coverage | Result |
+| --- | --- | --- |
+| Playwright Firefox 153.0 ↔ Firefox 153.0 | Complete baseline and 80/120/30/60 ms jitter matches, next ship, rematch, setup/selection/combat disconnect, fleet settings after reload | 540 matching CRCs per peer at the end of each first match; zero mismatches |
+| Playwright Firefox 153.0 ↔ installed Chrome 155.0.8059.84 | Complete baseline match, next ship, rematch, combat disconnect, fleet settings after reload | 542 matching CRCs per peer; zero mismatches |
+| Installed Chrome 155.0.8059.84 ↔ Playwright WebKit 26.5 | Complete baseline and 80/120/30/60 ms jitter matches, next ship, rematch, setup/selection/combat disconnect, fleet settings after reload | 547 baseline / 546 jitter matching CRCs per peer at the end of the first match; zero mismatches |
+
+Local Melee also ran with genuine movement/fire input in Firefox (Syreen
+versus Mycon) and WebKit (Druuge versus Mycon). Firefox returned from combat
+to fleets and the main menu. No page errors or browser crashes were observed.
+Firefox emitted no warnings. WebKit warned that the enabled
+`WEBGL_polygon_mode` extension is non-portable; it did not prevent rendering.
+Chrome's resource warning in the mixed Firefox run was `/favicon.ico` only.
+
+Both audio contexts in the mixed Firefox/Chrome test were running at 48 kHz.
+This confirms initialization, not audible quality or complete sample coverage.
+Playwright Firefox and WebKit are automation builds; installed Safari 26.6.2
+was not tested. All clients ran on one computer, so two-computer Internet
+play remains a release check.
+
+The reusable browser harness now accepts `UQM_BROWSER` and
+`UQM_PEER_BROWSER`, records each peer's engine/version and retains the same
+full-match, synchronization, disconnect and persistence assertions. See
+[the test commands](../README.md#checks-and-current-scope).
+
+### Spoken dialogue verification
+
+In an isolated campaign, the Ur-Quan probe greeting displayed readable white
+subtitle text over the portrait while the seventh OpenAL source (speech) was
+playing with queued audio and positive gain. The engine opened
+`addons/3dovoice/urquan/urquan-027.ogg` and logged successive speech chunks.
+The saved `uqm.cfg` contained `subtitles = BOOLEAN:false`, while the launcher
+arguments included `--subtitles`. This verifies the old-preference override
+in actual dialogue, beyond the earlier Setup-menu check.
+
+The lower blue area is reserved for player responses and can be empty during
+NPC speech. No audible-quality or frame-perfect lip-sync comparison was made.
+
+![Ur-Quan spoken dialogue with subtitles](screenshots/urquan-spoken-subtitles.png)
+
+Commander Hayes's first greeting was also verified using a normal save
+created through the original game UI near the Earth starbase. A fresh Chrome
+runtime loaded the save with the old disabled preference and the default
+launcher arguments. Eighteen captures during `commander-003.ogg` playback
+contained nonzero decoded speech PCM, a running audio context and a playing
+speech source. The portrait region displayed three different subtitle glyph
+masks across 8.5 seconds, with no page errors. The screenshots were also
+visually checked for readable dialogue.
+
+![Hayes speaking with subtitles](screenshots/hayes-spoken-subtitles.png)
+
+The checked-in `npm run test:subtitles` regression then repeated the positive
+case and a control in separate fresh Chrome processes. Both runs loaded the
+same genuine save and `subtitles = BOOLEAN:false`; the control removed
+`--subtitles` rather than adding another disabling flag. Both recorded the
+game opening `uqm.cfg` before the diagnostic read.
+
+- Default launcher: 18 actual speech samples, 18 visibly subtitled frames,
+  three distinct text pages.
+- Saved preference without the override: 18 actual speech samples, zero
+  subtitle pixels.
+- No page errors; both browser processes and the test server closed normally.
+  Runtime and fixture hashes accompany the generated evidence.
+
+This demonstrates that the old preference is parsed and that the launcher
+override restores text while speech continues. The genuine save and its
+provenance are checked in under `tests/browser/fixtures/`. Navigation uses
+short timed key presses, so this is a local desktop regression rather than
+a CI gate; a missed station encounter fails instead of bypassing gameplay.

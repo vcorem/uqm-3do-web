@@ -137,6 +137,7 @@ npm test
 bash sc2/src/uqm/supermelee/netplay/tests/run.sh
 npx playwright install chromium
 npm run test:browser
+npm run test:subtitles
 bash -n scripts/build-web.sh
 python3 -m py_compile scripts/serve.py
 ```
@@ -154,15 +155,37 @@ pthread transport access, fragmented/coalesced protocol data, malformed setup
 packets and disconnects during setup/handshake/reset/battle transitions.
 
 `npm run test:browser` starts its own loopback relay and two independent
-Chromium processes against the built game. It exercises full fleet matches,
+browser processes against the built game (Chromium by default). It exercises
+full fleet matches,
 ship transitions, simulated delay/jitter, disconnects and preservation of local
 fleet settings. It writes diagnostics and screenshots to the ignored
 `test-results/browser/` directory. Use `UQM_DIST=/absolute/path/to/package` to
 test a separate build. These are automated regression scenarios; the
 validation record distinguishes completed runs from remaining checks.
 
-GitHub Actions runs these checks, including the real-browser scenarios, and
-a full pinned-toolchain game build.
+To exercise other engines or a mixed pair, install the matching Playwright
+browsers and choose the host and guest separately:
+
+```sh
+npx playwright install firefox webkit
+UQM_BROWSER=firefox UQM_TEST_OUTPUT=test-results/firefox npm run test:browser
+UQM_BROWSER=chromium UQM_PEER_BROWSER=webkit UQM_TEST_OUTPUT=test-results/mixed npm run test:browser
+```
+
+`UQM_PEER_BROWSER` defaults to `UQM_BROWSER`. `CHROME_BIN` can select an
+installed Chrome executable for Chromium peers. Each result records both
+engines and versions. Playwright WebKit tests the engine used by Safari; it
+does not test the installed Safari application.
+
+`npm run test:subtitles` loads a normal campaign save near the Earth starbase
+in fresh Chromium sessions. It checks actual voiced dialogue and changing
+subtitle pixels with the launcher override, then removes the override to verify
+that the saved disabled preference hides text while speech keeps playing.
+Use `UQM_DIST`, `UQM_TEST_OUTPUT` and `CHROME_BIN` as above. This local desktop
+regression uses timed navigation and is not part of CI.
+
+GitHub Actions runs the unit and network checks, including the real-browser
+Melee scenarios, and a full pinned-toolchain game build.
 The workflow has read-only repository permissions and does not publish a
 package, container or website. Remaining release checks are recorded in
 [the validation record](docs/validation.md).

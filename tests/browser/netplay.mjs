@@ -4,8 +4,28 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 import { createNetplayServer } from '../../server/netplay.mjs';
+
+const browserEngines = { chromium, firefox, webkit };
+const selectedEngines = [
+  process.env.UQM_BROWSER || 'chromium',
+  process.env.UQM_PEER_BROWSER || process.env.UQM_BROWSER || 'chromium',
+];
+for (const [index, engine] of selectedEngines.entries()) {
+  if (!Object.hasOwn(browserEngines, engine)) {
+    throw new Error(`${index === 0 ? 'UQM_BROWSER' : 'UQM_PEER_BROWSER'} must be chromium, firefox, or webkit; received ${JSON.stringify(engine)}`);
+  }
+}
+function browserLaunchOptions(engine) {
+  const options = { headless: process.env.HEADED !== '1' };
+  if (engine === 'chromium') {
+    if (process.env.CHROME_BIN) options.executablePath = process.env.CHROME_BIN;
+    options.args = ['--autoplay-policy=no-user-gesture-required', '--disable-renderer-backgrounding',
+      '--disable-backgrounding-occluded-windows', '--disable-background-timer-throttling'];
+  }
+  return options;
+}
 
 const distDir = path.resolve(process.env.UQM_DIST || 'dist');
 const output = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/browser');
@@ -16,12 +36,6 @@ const buildHashes = Object.fromEntries(await Promise.all(
   ['index.html', 'uqm-debug.wasm', 'uqm-debug.js', 'uqm-debug.worker.js', 'uqm-debug.data', 'netplay-client.js'].map(async file =>
     [file, createHash('sha256').update(await readFile(path.join(distDir, file))).digest('hex')])));
 await writeFile(path.join(output, 'build-hashes.json'), JSON.stringify(buildHashes, null, 2) + '\n');
-const launchOptions = {
-  headless: process.env.HEADED !== '1',
-  ...(process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : {}),
-  args: ['--autoplay-policy=no-user-gesture-required', '--disable-renderer-backgrounding',
-    '--disable-backgrounding-occluded-windows', '--disable-background-timer-throttling'],
-};
 
 async function readState(page) {
   return page.evaluate(() => ({ ...Module.webNet.stats, connection: Module.webNet.state }));
@@ -80,14 +94,21 @@ async function scenario(name, latencyPatternMs, disconnectAt) {
   const browsers = [];
   const pages = [];
   const failures = [];
-  const entry = { name, latencyPatternMs, passed: false };
+  const entry = {
+    name, latencyPatternMs, passed: false,
+    browsers: selectedEngines.map((engine, index) => ({
+      role: index === 0 ? 'host' : 'guest', engine, version: null,
+    })),
+  };
   results.push(entry);
   try {
     for (let i = 0; i < 2; i++) {
       // Separate browser processes also model the independent event loops of
       // two computers; neither test client's page is a background tab.
-      const browser = await chromium.launch(launchOptions);
+      const engine = selectedEngines[i];
+      const browser = await browserEngines[engine].launch(browserLaunchOptions(engine));
       browsers.push(browser);
+      entry.browsers[i].version = browser.version();
       const context = await browser.newContext({ viewport: { width: 1100, height: 1100 } });
       const page = await context.newPage();
       page.setDefaultTimeout(30000);
@@ -197,4 +218,4 @@ async function scenario(name, latencyPatternMs, disconnectAt) {
 await scenario('normal', [0], 'selection');
 await scenario('jitter', [80, 120, 30, 60], 'battle');
 await scenario('setup', [0], 'setup');
-console.log('All real-browser multiplayer scenarios passed. See test-results/browser/results.json.');
+console.log(`All real-browser multiplayer scenarios passed. See ${path.join(output, 'results.json')}.`);

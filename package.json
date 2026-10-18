@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node server/netplay.mjs",
     "test": "node --test sc2/wasm/tests/*.test.cjs tests/server/*.test.mjs",
-    "test:browser": "node tests/browser/netplay.mjs"
+    "test:browser": "node tests/browser/netplay.mjs",
+    "test:subtitles": "node tests/browser/subtitles.mjs"
   },
   "dependencies": {
     "ws": "8.22.0"
