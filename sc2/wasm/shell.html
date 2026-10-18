@@ -47,6 +47,7 @@
     kbd { color: #e1e6ee; font-family: inherit; }
     footer { margin-top: 24px; color: #778396; font-size: 12px; line-height: 1.7; }
     a { color: #c3aa78; }
+    a[aria-disabled="true"] { color: #a4adbc; cursor: wait; }
     details { margin-top: 18px; font-size: 12px; color: #778396; }
     pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow: auto; }
     @media (max-width: 640px) { main { padding: 16px 10px; } header { display: block; } .edition { display: block; margin-top: 6px; } .controls { grid-template-columns: 1fr; gap: 14px; } }
@@ -88,7 +89,7 @@
     </div>
   </section>
   <div class="controls">
-    <div><strong>Menus</strong><p><kbd>Arrow keys</kbd> to navigate · <kbd>Enter</kbd> to select<br><kbd>Esc</kbd> to go back</p></div>
+    <div><strong>Menus</strong><p><kbd>Arrow keys</kbd> to navigate · <kbd>Enter</kbd> to select<br><kbd>Esc</kbd> to go back<br><kbd>Shift + Tab</kbd>, then release Shift, for page controls</p></div>
     <div><strong>Player 1 · default arrows</strong><p><kbd>↑</kbd> thrust · <kbd>← →</kbd> turn<br><kbd>Right Ctrl / Enter</kbd> fire · <kbd>Right Shift</kbd> special</p></div>
     <div><strong>Player 2 · WASD template</strong><p><kbd>W</kbd> thrust · <kbd>A D</kbd> turn<br><kbd>V</kbd> fire · <kbd>B</kbd> special<br>Select this template in the in-game controls.</p></div>
   </div>
@@ -183,6 +184,7 @@
   var Module = {
     canvas: canvas,
     noInitialRun: true,
+    preRun: [function () { ENV.SDL_EMSCRIPTEN_KEYBOARD_ELEMENT = '#canvas'; }],
     arguments: ['--menu=3do', '--font=3do', '--cscan=3do', '--scroll=3do', '--shield=3do', '--meleezoom=3do', '--subtitles', '--intro=pc'],
     print: log,
     printErr: log,
@@ -196,6 +198,11 @@
       var storage = document.getElementById('storage');
       storage.textContent = event.message;
       storage.className = ['warning', 'memory'].includes(event.state) ? 'warning' : '';
+      var editionLink = document.getElementById('choose-edition');
+      if (editionLink) {
+        editionLink.setAttribute('aria-disabled', Module.storageState === 'saving' ? 'true' : 'false');
+        editionLink.textContent = Module.storageState === 'saving' ? 'Saving…' : 'Choose edition';
+      }
     },
     onRuntimeInitialized: function () {
       if (!window.crossOriginIsolated) {
@@ -278,19 +285,52 @@
     document.getElementById('join-room').disabled = true;
   }
   window.addEventListener('beforeunload', function () { if (room) room.close(); });
+  var editionLink = document.getElementById('choose-edition');
+  if (editionLink) editionLink.addEventListener('click', function (event) {
+    if (Module.storageState === 'saving') event.preventDefault();
+  });
   canvas.addEventListener('click', function () { canvas.focus(); });
   document.getElementById('fullscreen').addEventListener('click', function () {
     if (document.fullscreenElement) document.exitFullscreen();
     else document.getElementById('screen').requestFullscreen().catch(log);
     canvas.focus();
   });
+  // Keep SDL keyboard input on the canvas and release it after the modifier.
+  var escapePending = false;
   document.addEventListener('keydown', function (event) {
-    if (started && document.activeElement === canvas && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Tab'].includes(event.key)) event.preventDefault();
+    if (!started || document.activeElement !== canvas) return;
+    if (event.key === 'Tab' && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      escapePending = true;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Tab'].includes(event.key)) event.preventDefault();
+  }, true);
+  document.addEventListener('keyup', function (event) {
+    if (escapePending && event.key === 'Tab') {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
+  document.addEventListener('keyup', function (event) {
+    if (!escapePending || event.key !== 'Shift') return;
+    escapePending = false;
+    // SDL's canvas listener has already seen Shift-up. Move focus next turn.
+    var exitFullscreen = document.fullscreenElement ? document.exitFullscreen() : Promise.resolve();
+    exitFullscreen.then(function () {
+      setTimeout(function () {
+        var target = document.getElementById('choose-edition') || document.getElementById('fullscreen');
+        target.focus();
+      }, 0);
+    }).catch(log);
   });
   window.addEventListener('error', function (event) {
-    log(event.message);
-    if (!started) fail(window.crossOriginIsolated ? 'Loading failed. Reload to try again. ' + event.message : 'This server needs cross-origin isolation. Use python3 scripts/serve.py to preview the game.');
-  });
+    var message = event.message || (event.target && event.target.tagName === 'SCRIPT' ? 'Could not download the game script.' : '');
+    if (!message) return;
+    log(message);
+    if (!started) fail(window.crossOriginIsolated ? 'Loading failed. Reload to try again. ' + message : 'This server needs cross-origin isolation. Use python3 scripts/serve.py to preview the game.');
+  }, true);
   if (!window.crossOriginIsolated || typeof SharedArrayBuffer === 'undefined') {
     fail('This server needs cross-origin isolation. Use python3 scripts/serve.py to preview the game.');
   }

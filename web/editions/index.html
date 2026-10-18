@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080c13">
+  <meta name="description" content="Return to The Ur-Quan Masters. Choose the original 3DO presentation or redrawn HD artwork, and play in your browser.">
+  <title>The Ur-Quan Masters — Choose your edition</title>
+  <link rel="stylesheet" href="editions.css">
+  <script src="editions.js" defer></script>
+</head>
+<body>
+  <main class="launcher">
+    <header class="masthead">
+      <a class="wordmark" href="./" aria-label="The Ur-Quan Masters home">THE UR-QUAN MASTERS<span class="wordmark-dot" aria-hidden="true"></span></a>
+      <span class="platform">PLAY IN YOUR BROWSER</span>
+    </header>
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">A familiar universe. A new journey.</p>
+      <h1 id="page-title">Return to the stars.</h1>
+      <p class="intro-copy">The adventure you remember, in the edition you choose.</p>
+    </section>
+    <form id="edition-form">
+      <fieldset>
+        <legend>Choose your edition</legend>
+        <div class="editions">
+          <label class="edition-card" for="edition-original">
+            <input id="edition-original" type="radio" name="edition" value="original" checked aria-describedby="original-details">
+            <span class="card-content">
+              <span class="card-topline"><span class="edition-number" aria-hidden="true">01</span><span class="edition-tag">THE CLASSIC EXPERIENCE</span></span>
+              <span class="card-title">Original <span>3DO</span></span>
+              <span class="card-description" id="original-details">The original pixel artwork, voices and music. Just as you remember the stars.</span>
+              <span class="card-rule" aria-hidden="true"></span>
+              <span class="features"><span>Original pixel artwork</span><span>Campaign &amp; local Melee</span><span>Online Melee with a friend</span></span>
+            </span>
+          </label>
+          <label class="edition-card edition-hd" for="edition-hd">
+            <input id="edition-hd" type="radio" name="edition" value="hd" aria-describedby="hd-details">
+            <span class="card-content">
+              <span class="card-topline"><span class="edition-number" aria-hidden="true">02</span><span class="edition-tag">A CLOSER LOOK</span></span>
+              <span class="card-title">Redrawn <span>HD</span></span>
+              <span class="card-description" id="hd-details">Rediscover the universe with newly drawn, high-resolution artwork at 1280 × 960.</span>
+              <span class="card-rule" aria-hidden="true"></span>
+              <span class="features"><span>Redrawn high-resolution artwork</span><span>Campaign &amp; local Melee</span><span>Local play only · separate saves</span></span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+      <p id="invite-note" class="invite-note" role="status" hidden>An Original 3DO room invitation is ready. Open the game, then choose Join room to connect.</p>
+      <div class="launch-row">
+        <div class="selection-copy">
+          <p id="selection-note" aria-live="polite">Original artwork. Campaign, local and online Melee.</p>
+          <p id="preference-note" class="quiet">Your choice stays in this browser.</p>
+        </div>
+        <button id="launch-edition" type="submit"><span id="launch-label">Play Original 3DO</span><span class="launch-arrow" aria-hidden="true">↗</span></button>
+      </div>
+    </form>
+    <noscript><p class="noscript">Choose an edition: <a href="original/index.html">Original 3DO</a> or <a href="hd/index.html">Redrawn HD</a>. JavaScript is required to run the game.</p></noscript>
+    <footer>
+      <p>Desktop keyboard recommended. Each edition keeps its own browser saves.</p>
+      <p>Star Control II by Toys for Bob. Built on the work of the UQM and HD communities.</p>
+    </footer>
+  </main>
+</body>
+</html>

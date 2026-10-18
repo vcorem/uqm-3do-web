@@ -1,0 +1,357 @@
+{
+  "schema_version": 1,
+  "upstream": {
+    "name": "The Ur-Quan Masters HD MegaMod",
+    "release": "0.8.5",
+    "source_repository": "https://github.com/JHGuitarFreak/UQM-MegaMod",
+    "source_commit": "1eece12ff9a89d029a5d1f65ead7c75f9ab78acb",
+    "download_page": "https://uqm-mods.sourceforge.net/Download",
+    "installer_checksums": "https://github.com/JHGuitarFreak/UQM-MegaMod/blob/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/build/win32_install/packages.nsh",
+    "content_repository": "https://github.com/JHGuitarFreak/UQM-MegaMod-Content",
+    "content_commit": "45d34af0ca3c73c74a8e34d62e2636988d62e4f2",
+    "content_license": "The pinned content repository README declares CC BY-NC-SA 2.5 unless an addon LICENSE.txt states otherwise. Preserve the separate ATTRIBUTION.txt entries, including custom and unknown sources."
+  },
+  "scope": "Local opt-in HD runtime. Downloaded binary packages stay outside Git. Preserve notices; mixed/unclear third-party license entries are not resolved by this lock file.",
+  "packages": [
+    {
+      "name": "mm-0.8.5-content.uqm",
+      "url": "https://downloads.sourceforge.net/project/uqm-mods/MegaMod/0.8.5/content/mm-0.8.5-content.uqm",
+      "source_page": "https://sourceforge.net/projects/uqm-mods/files/MegaMod/0.8.5/content/mm-0.8.5-content.uqm/download",
+      "bytes": 26385603,
+      "sha256": "6af61f1c10dc317bf0a6b20471da9297f0d10e7a69f928eb6a91326986642686",
+      "upstream_installer_md5": "c0937dfad225347c172723dc0ce1aaea",
+      "install_path": "packages/mm-0.8.5-content.uqm",
+      "addon_names": [],
+      "required_entries": [
+        "uqm.rmp",
+        "uqm.key",
+        "base/comm/commander/commander-000.png"
+      ],
+      "preserve_metadata": [],
+      "license_record": "UQM base content is described in upstream COPYING-UQM as CC BY-NC-SA 2.5 with an additional UQM distribution clause. This MegaMod archive has no standalone license notice; preserve upstream notices and do not assume every MegaMod addition has a blanket license."
+    },
+    {
+      "name": "mm-0.8.5-hd-content.uqm",
+      "url": "https://downloads.sourceforge.net/project/uqm-mods/MegaMod/0.8.5/content/mm-0.8.5-hd-content.uqm",
+      "source_page": "https://sourceforge.net/projects/uqm-mods/files/MegaMod/0.8.5/content/mm-0.8.5-hd-content.uqm/download",
+      "bytes": 239462118,
+      "sha256": "7a434c7822d3f73e3f9febbd1ce7c59b1b17e8f91f0b2ca4ff5a7df4e899025a",
+      "upstream_installer_md5": "cfedebcdfd185ed7b9c9228cbc19eaa6",
+      "install_path": "addons/mm-0.8.5-hd-content.uqm",
+      "addon_names": [
+        "mm-hd"
+      ],
+      "required_entries": [
+        "mm-hd/mm-hd.rmp",
+        "mm-hd/ATTRIBUTION.txt",
+        "mm-hd/ui/mainmenu/newgame-000.png",
+        "mm-hd/comm/commander/commander-000.png"
+      ],
+      "preserve_metadata": [
+        "mm-hd/ATTRIBUTION.txt",
+        "mm-hd/uqmpack.nfo"
+      ],
+      "license_record": "Mixed attribution. The package ATTRIBUTION.txt lists CC BY 3.0/4.0, CC0, public-domain, custom, Unknown, and None? entries. These are preserved verbatim; this project does not assign one license to the complete HD archive."
+    },
+    {
+      "name": "mm-0.8.5-3domode.uqm",
+      "url": "https://downloads.sourceforge.net/project/uqm-mods/MegaMod/0.8.5/content/mm-0.8.5-3domode.uqm",
+      "source_page": "https://sourceforge.net/projects/uqm-mods/files/MegaMod/0.8.5/content/mm-0.8.5-3domode.uqm/download",
+      "bytes": 6188735,
+      "sha256": "9174daff69d9a10a45dbc657a53240f8de6b0c45de30e10b104716a47123adeb",
+      "upstream_installer_md5": "e11d0a8b533554b4eb33d96517b4156a",
+      "install_path": "addons/mm-0.8.5-3domode.uqm",
+      "addon_names": [
+        "3do-mode-hd",
+        "3do-mode-sd"
+      ],
+      "required_entries": [
+        "3do-mode-hd/3do-mode-hd.rmp",
+        "3do-mode-sd/3do-mode-sd.rmp"
+      ],
+      "preserve_metadata": [
+        "3do-mode-hd/uqmpack.nfo",
+        "3do-mode-sd/uqmpack.nfo"
+      ],
+      "license_record": "Package metadata credits Kohr-Ah Death 213. No standalone license notice is supplied in this archive; upstream content and font notices are preserved separately."
+    },
+    {
+      "name": "mm-0.8.4-3dovoice.uqm",
+      "url": "https://downloads.sourceforge.net/project/uqm-mods/MegaMod/0.8.5/content/mm-0.8.4-3dovoice.uqm",
+      "source_page": "https://sourceforge.net/projects/uqm-mods/files/MegaMod/0.8.5/content/mm-0.8.4-3dovoice.uqm/download",
+      "bytes": 150035097,
+      "sha256": "4ec51d96d2d14f091beba2e06d541e06aeb35e4df1b0334e0e4159eef68a1144",
+      "upstream_installer_md5": "49146821c01226f9a2d439cad61601d4",
+      "install_path": "addons/mm-0.8.4-3dovoice.uqm",
+      "addon_names": [
+        "mm-3dovoice"
+      ],
+      "required_entries": [
+        "mm-3dovoice/3dovoice.rmp",
+        "mm-3dovoice/commander/commander-003.ogg"
+      ],
+      "preserve_metadata": [
+        "mm-3dovoice/uqmpack.nfo"
+      ],
+      "license_record": "Package metadata credits Toys for Bob, 1992-2021. Upstream COPYING-UQM describes original voiceovers as CC BY-NC-SA 2.5 with its UQM distribution clause; preserve metadata for this MegaMod package."
+    },
+    {
+      "name": "uqm-0.8.0-3DOMusicRemastered.uqm",
+      "url": "https://downloads.sourceforge.net/project/uqm-mods/MegaMod/0.8.5/content/uqm-0.8.0-3DOMusicRemastered.uqm",
+      "source_page": "https://sourceforge.net/projects/uqm-mods/files/MegaMod/0.8.5/content/uqm-0.8.0-3DOMusicRemastered.uqm/download",
+      "bytes": 82174347,
+      "sha256": "adb0fa9aee118ed5d79d543647ba86ebe42a85f91361c8d695935a6e4379e4f6",
+      "upstream_installer_md5": "293a8b036746bcee3823f0b33c2a16a7",
+      "install_path": "addons/uqm-0.8.0-3DOMusicRemastered.uqm",
+      "addon_names": [
+        "3domusic"
+      ],
+      "required_entries": [
+        "3domusic/3domusic.rmp",
+        "3domusic/hyper.ogg"
+      ],
+      "preserve_metadata": [
+        "3domusic/uqmpack.nfo"
+      ],
+      "license_record": "Package metadata credits Toys For Bob/Serosis, 1992/2018, and identifies these as remastered 3DO tracks. No separate license is included; do not describe them as byte-identical original audio."
+    },
+    {
+      "name": "uqm-0.8.0-3dovideo.uqm",
+      "url": "https://downloads.sourceforge.net/project/uqm-mods/MegaMod/0.8.5/content/uqm-0.8.0-3dovideo.uqm",
+      "source_page": "https://sourceforge.net/projects/uqm-mods/files/MegaMod/0.8.5/content/uqm-0.8.0-3dovideo.uqm/download",
+      "bytes": 135563859,
+      "sha256": "9c190d1fae862da741e8da9c0a7cba34060a9e175a87623391ba2296e417ecce",
+      "upstream_installer_md5": "8412ced77245d2f6cac31feee6df05c6",
+      "install_path": "addons/uqm-0.8.0-3dovideo.uqm",
+      "addon_names": [
+        "3dovideo"
+      ],
+      "required_entries": [
+        "3dovideo/3dovideo.rmp",
+        "3dovideo/intro/intro.duk",
+        "3dovideo/victory/victory.duk",
+        "3dovideo/ships/ship00.duk"
+      ],
+      "preserve_metadata": [
+        "3dovideo/uqmpack.nfo"
+      ],
+      "license_record": "Package metadata credits Crystal Dynamics, 1992. No separate license file is included. This provenance record does not assign a license to the videos.",
+      "local_sources": [
+        ".tools/media/uqm-0.8.0-3dovideo.uqm"
+      ]
+    }
+  ],
+  "source_files": [
+    {
+      "name": "content/version",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/content/version",
+      "bytes": 20,
+      "sha256": "0131d9b6e28231d079958e76b5722c9a8e296a40db1151cbba06aff58270b59c",
+      "cache_path": "upstream/content/version",
+      "install_path": "version",
+      "local_sources": [
+        ".tools/hd-source/content/version"
+      ]
+    },
+    {
+      "name": "LICENSE",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/LICENSE",
+      "bytes": 18092,
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "cache_path": "upstream/LICENSE",
+      "install_path": "notices/upstream/LICENSE",
+      "local_sources": [
+        ".tools/hd-source/LICENSE"
+      ]
+    },
+    {
+      "name": "AUTHORS",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/AUTHORS",
+      "bytes": 5275,
+      "sha256": "d8b20287bfd937b672a426794cc6c232c777ce1fd425eb4d2cbe226a7ebaed11",
+      "cache_path": "upstream/AUTHORS",
+      "install_path": "notices/upstream/AUTHORS",
+      "local_sources": [
+        ".tools/hd-source/AUTHORS"
+      ]
+    },
+    {
+      "name": "README.md",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/README.md",
+      "bytes": 9927,
+      "sha256": "dfda354d2d4cd1f702c2f0b46b1d9a16d162bbb4e8d404cf7d95ec1024c5e925",
+      "cache_path": "upstream/README.md",
+      "install_path": "notices/upstream/README.md",
+      "local_sources": [
+        ".tools/hd-source/README.md"
+      ]
+    },
+    {
+      "name": "build/win32_install/packages.nsh",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/build/win32_install/packages.nsh",
+      "bytes": 2441,
+      "sha256": "3c240d7ea310a82c9402dd578341c36d80a44ea5307f383794ecf327028d141d",
+      "cache_path": "upstream/build/win32_install/packages.nsh",
+      "install_path": "notices/upstream/build/win32_install/packages.nsh",
+      "local_sources": [
+        ".tools/hd-source/build/win32_install/packages.nsh"
+      ]
+    },
+    {
+      "name": "licenses/COPYING-UQM",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/COPYING-UQM",
+      "bytes": 49649,
+      "sha256": "560aff43d87dd0a1c1281e48a72152d854001209f76962b2fbe47cc38b97c958",
+      "cache_path": "upstream/licenses/COPYING-UQM",
+      "install_path": "notices/upstream/licenses/COPYING-UQM",
+      "local_sources": [
+        ".tools/hd-source/licenses/COPYING-UQM"
+      ]
+    },
+    {
+      "name": "licenses/LICENSE-UQM",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/LICENSE-UQM",
+      "bytes": 18092,
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "cache_path": "upstream/licenses/LICENSE-UQM",
+      "install_path": "notices/upstream/licenses/LICENSE-UQM",
+      "local_sources": [
+        ".tools/hd-source/licenses/LICENSE-UQM"
+      ]
+    },
+    {
+      "name": "licenses/README-SDL.txt",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/README-SDL.txt",
+      "bytes": 420,
+      "sha256": "1f114357b2397256ab87faabad8b3b55ede711a52463c873140e44218c4fd012",
+      "cache_path": "upstream/licenses/README-SDL.txt",
+      "install_path": "notices/upstream/licenses/README-SDL.txt",
+      "local_sources": [
+        ".tools/hd-source/licenses/README-SDL.txt"
+      ]
+    },
+    {
+      "name": "licenses/fonts/Berenika Bold-license.txt",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/fonts/Berenika%20Bold-license.txt",
+      "bytes": 4195,
+      "sha256": "353cd5fa30e2c6a110b6af827bcbebac5524b71c559834671ce92faa2d8abc41",
+      "cache_path": "upstream/licenses/fonts/Berenika Bold-license.txt",
+      "install_path": "notices/upstream/licenses/fonts/Berenika Bold-license.txt",
+      "local_sources": [
+        ".tools/hd-source/licenses/fonts/Berenika Bold-license.txt"
+      ]
+    },
+    {
+      "name": "licenses/fonts/Nickainley-license.txt",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/fonts/Nickainley-license.txt",
+      "bytes": 19346,
+      "sha256": "3711f963c05d0be80d53e5923308a6dee31b203da23435c9cfb7c7b6e4dd5e19",
+      "cache_path": "upstream/licenses/fonts/Nickainley-license.txt",
+      "install_path": "notices/upstream/licenses/fonts/Nickainley-license.txt",
+      "local_sources": [
+        ".tools/hd-source/licenses/fonts/Nickainley-license.txt"
+      ]
+    },
+    {
+      "name": "licenses/fonts/NimbusRomNo9L-license.txt",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/fonts/NimbusRomNo9L-license.txt",
+      "bytes": 17985,
+      "sha256": "9c613d3aedc4f0c47693d2b0a679cb421fd65cfc7f36ff14c452523954c4e123",
+      "cache_path": "upstream/licenses/fonts/NimbusRomNo9L-license.txt",
+      "install_path": "notices/upstream/licenses/fonts/NimbusRomNo9L-license.txt",
+      "local_sources": [
+        ".tools/hd-source/licenses/fonts/NimbusRomNo9L-license.txt"
+      ]
+    },
+    {
+      "name": "licenses/fonts/Oleo Script Swash Caps-license.txt",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/fonts/Oleo%20Script%20Swash%20Caps-license.txt",
+      "bytes": 4419,
+      "sha256": "8fbe530adcbe30c658393c3f2b5a4785d6765afcefdfe47f594730131f3a0abd",
+      "cache_path": "upstream/licenses/fonts/Oleo Script Swash Caps-license.txt",
+      "install_path": "notices/upstream/licenses/fonts/Oleo Script Swash Caps-license.txt",
+      "local_sources": [
+        ".tools/hd-source/licenses/fonts/Oleo Script Swash Caps-license.txt"
+      ]
+    },
+    {
+      "name": "licenses/fonts/Orbitron Black-license.txt",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/fonts/Orbitron%20Black-license.txt",
+      "bytes": 4431,
+      "sha256": "e73aa29fbe81d5684e2375bb33a124149b238d90224f2ff7a69664dcfe928173",
+      "cache_path": "upstream/licenses/fonts/Orbitron Black-license.txt",
+      "install_path": "notices/upstream/licenses/fonts/Orbitron Black-license.txt",
+      "local_sources": [
+        ".tools/hd-source/licenses/fonts/Orbitron Black-license.txt"
+      ]
+    },
+    {
+      "name": "licenses/fonts/Oxanium-license.txt",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/fonts/Oxanium-license.txt",
+      "bytes": 4383,
+      "sha256": "062fa183baec494d989d5d848f78a5466a537033c40f1b7651c19ca5d140ab7c",
+      "cache_path": "upstream/licenses/fonts/Oxanium-license.txt",
+      "install_path": "notices/upstream/licenses/fonts/Oxanium-license.txt",
+      "local_sources": [
+        ".tools/hd-source/licenses/fonts/Oxanium-license.txt"
+      ]
+    },
+    {
+      "name": "licenses/fonts/Razor Keen-license.txt",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/fonts/Razor%20Keen-license.txt",
+      "bytes": 6527,
+      "sha256": "914491b603fd72ef0031829a123ee06a056a0012e4fce19b340ae339563540c1",
+      "cache_path": "upstream/licenses/fonts/Razor Keen-license.txt",
+      "install_path": "notices/upstream/licenses/fonts/Razor Keen-license.txt",
+      "local_sources": [
+        ".tools/hd-source/licenses/fonts/Razor Keen-license.txt"
+      ]
+    },
+    {
+      "name": "licenses/fonts/Reem Kufi-license.txt",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/fonts/Reem%20Kufi-license.txt",
+      "bytes": 4354,
+      "sha256": "66dec79a38397ac385e9e2aa88418dfc1561b03a0a55689a7eb846f17b8e5fe1",
+      "cache_path": "upstream/licenses/fonts/Reem Kufi-license.txt",
+      "install_path": "notices/upstream/licenses/fonts/Reem Kufi-license.txt",
+      "local_sources": [
+        ".tools/hd-source/licenses/fonts/Reem Kufi-license.txt"
+      ]
+    },
+    {
+      "name": "licenses/fonts/Times Old Attic-license.txt",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod/1eece12ff9a89d029a5d1f65ead7c75f9ab78acb/licenses/fonts/Times%20Old%20Attic-license.txt",
+      "bytes": 190,
+      "sha256": "4aa10e071b3f7a0e12a3cbf4ea485b5aec8a88ce9b170feb70b03d209c59173b",
+      "cache_path": "upstream/licenses/fonts/Times Old Attic-license.txt",
+      "install_path": "notices/upstream/licenses/fonts/Times Old Attic-license.txt",
+      "local_sources": [
+        ".tools/hd-source/licenses/fonts/Times Old Attic-license.txt"
+      ]
+    },
+    {
+      "name": "content-repository/README.md",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod-Content/45d34af0ca3c73c74a8e34d62e2636988d62e4f2/README.md",
+      "bytes": 477,
+      "sha256": "a119f932aa1b626084bfcae03255d395b8f32e34e7973f1e52868de451506908",
+      "cache_path": "content-repository/README.md",
+      "install_path": "notices/content-repository/README.md"
+    },
+    {
+      "name": "custom-bevel.ani",
+      "url": "https://raw.githubusercontent.com/JHGuitarFreak/UQM-MegaMod-Content/25aa099d14192f62a9904858ad5c6be434c86a94/addons/mm-hd/ui/custom-border/bevel/custom-bevel.ani",
+      "bytes": 1001,
+      "sha256": "c5f2b517f8e0828d245ed6c842357d6cd7618130b3f9bcbed32f4b771f208c0f",
+      "cache_path": "content-fixes/custom-bevel.ani",
+      "install_path": "addons/mm-hd/ui/custom-border/bevel/custom-bevel.ani",
+      "overlay": {
+        "upstream_commit": "https://github.com/JHGuitarFreak/UQM-MegaMod-Content/commit/25aa099d14192f62a9904858ad5c6be434c86a94",
+        "reason": "Official removal of an unused final frame referring to nonexistent bevel-067.png. The original archive stays unchanged; the loose file overrides its ANI through UQM mount precedence.",
+        "package": "mm-0.8.5-hd-content.uqm",
+        "member": "mm-hd/ui/custom-border/bevel/custom-bevel.ani",
+        "original_sha256": "e479a7abb1517081e62612043e4ce95dcefddb119058bdebc5ad8ed397ea0a1f",
+        "remove_final_line": "bevel-067.png -2 -1 0 0"
+      }
+    }
+  ]
+}

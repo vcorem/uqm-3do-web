@@ -285,3 +285,95 @@ override restores text while speech continues. The genuine save and its
 provenance are checked in under `tests/browser/fixtures/`. Navigation uses
 short timed key presses, so this is a local desktop regression rather than
 a CI gate; a missed station encounter fails instead of bypassing gameplay.
+
+## Optional Redrawn HD edition — 2026-10-18
+
+The new picker retains the existing Original 3DO engine and adds a separate
+UQM MegaMod 0.8.5 WebAssembly build with official redrawn assets. The native
+HD canvas is 1280×960. Its campaign saves use a separate IndexedDB mount;
+HD network play is disabled. See [HD build details](hd-edition.md).
+
+Completed local checks:
+
+- The picker downloads no game before selection. Original selection does not
+  download HD. Both engines boot in Chrome155 and Playwright Firefox153.
+- HD plays nonzero decoded PCM through an active OpenAL source with advancing
+  audio time, renders the main menu and detailed Melee fleet screen.
+- A genuine Original campaign save is byte-identical after visiting HD,
+  writing and reloading HD's own storage, and returning to Original.
+- A real HD campaign was created through New Game and Game → Save. A page
+  refresh followed by Load Game restored Zelnick/Vindicator at Sol. The
+  untouched 3,628-byte MMV4 save is the checked-in HD test fixture.
+- Two actual Chrome campaign regressions loaded that fixture through normal
+  controls, flew out of Sol, rendered Hyperspace and continued flying with
+  changing coordinates and fuel. Both completed without page/engine errors.
+- Actual Chrome local combat ran for over a minute with movement and firing,
+  then returned to ship selection after destruction and started combat with
+  another ship. Screenshots confirm the redrawn combat and captain portraits.
+- Chrome Back/Forward cache restoration was tested against the Python preview
+  headers: ordinary choices become usable again; invitation restoration keeps
+  HD disabled and retains the saved preference.
+
+Two native function-pointer casts caused WebAssembly return-type traps in
+HyperSpace and planet-gravity processing. Typed void wrappers now preserve
+those callbacks' original behavior; the failing Sol-exit baseline and passing
+fixed builds were recorded separately. The HD package also includes the
+pinned upstream fix removing a reference to an absent bevel frame.
+
+An intermittent proxy-call metadata corruption was also observed during
+HD startup in Firefox and after several minutes in Chrome's Melee setup.
+The pinned Emscripten runtime contained a known lifetime race: a synchronous
+proxy could release its caller's stack context before signaling completion.
+Both engines now include the exact upstream signal-before-unlock correction
+for completion and cancellation. The SDK/cache remain unchanged. Inspection
+of both final Wasm binaries confirms that the corrected local implementation
+is linked; each package includes the source hashes in `toolchain-fixes.json`.
+See [the upstream fix](https://github.com/emscripten-core/emscripten/pull/26582).
+
+The corrected HD binary loaded the genuine campaign fixture and reached moving
+Hyperspace in Chrome without errors. The combined package passed Chrome's full
+edition/audio/storage flow. All 62 unit tests and five actual-source Wasm
+programs passed; the pthread program also links the production proxy fix.
+A separate AddressSanitizer diagnostic build, run before the runtime fix,
+completed extended Melee idle and local combat without reporting an invalid access; it requires more memory
+than the shipped build and is not the runtime offered to players.
+
+The original intermittent failure was not deterministically reproduced, so
+passing bounded checks is not proof that every long-session issue is resolved.
+Full-campaign coverage, all ship abilities, native Safari, mobile performance
+and multi-hour play remain unverified. This remains a private alpha.
+
+The corrected Original build also passed the complete two-process Chrome
+network suite: full fleet matches and rematches, 30–120 ms simulated one-way
+jitter, disconnects during setup/ship selection/battle, return to the main
+menu and byte-identical persisted local fleet settings. No checksum mismatch
+or page error was recorded. The standalone game still supports its existing
+controls after restricting SDL keyboard input to the focused game canvas.
+
+Failed game-script requests were blocked deliberately in both launchers;
+each displayed a readable failure message instead of remaining on Loading.
+
+The final combined package also passed Playwright Firefox 153 after the
+keyboard-accessibility fix: both running engines switched editions through
+Shift+Tab and Enter, HD rendered at 1280×960 with playing decoded PCM and an
+advancing audio clock, its save marker survived reload, and the genuine
+Original campaign fixture remained byte-identical in its separate database.
+There were no JavaScript errors.
+
+The corrected HD runtime passed a five-minute idle in Firefox's rendered
+Melee setup, followed by 85.7 seconds of actual thrust/fire while 15 combat
+captures were collected. Every capture had changing playfield pixels, with
+no engine or page errors. This run's HTML preceded the keyboard-only launcher
+adjustment; its Wasm, worker and media were the same corrected runtime as the
+final package. The full final-shell Firefox check above covers the UI change.
+
+The final HTML and corrected HD runtime passed the same stability scenario in
+installed Chrome 155.0.8059.84: 300,016 ms idle, then 15,267 ms of live combat
+controls. All 15 sampled playfield frames changed; no runtime, assertion or
+proxy errors occurred. The final combat screenshot was visually checked.
+
+Both tested engines were installed behind the chooser on the existing local
+port 9999. Their shipped runtime/media bytes match the tested candidates.
+The old root-level runtime files were retained byte-for-byte so a game already
+open during the update can still save before the player refreshes. No browser
+was automatically refreshed and no public deployment was made.

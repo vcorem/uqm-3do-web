@@ -1,0 +1,155 @@
+Module.preRun ||= [];
+
+Module.preRun.push(function () {
+    const savePath = "/home/web_user/.uqm-hd";
+    const reportedWarnings = new Set();
+    let mounted = false;
+    let storageReady = false;
+    let persistRequested = false;
+    let syncing = false;
+    let pendingWrite = false;
+
+    // The page may present these messages without interrupting gameplay.
+    function report(state, message, error, warningKey) {
+        // Persistence-permission warnings can arrive during an active flush.
+        Module.storageState = syncing || pendingWrite ? "saving" : state;
+        const status = { state, message };
+        if (error) status.error = error.message || String(error);
+        if (typeof Module.onStorageStatus === "function") {
+            try {
+                Module.onStorageStatus(status);
+                return;
+            } catch (callbackError) {
+                console.warn("Storage status callback failed:", callbackError);
+            }
+        }
+        // The page must receive every state transition, including repeated
+        // failures after "saving". Only console fallback warnings are deduped.
+        if (warningKey) {
+            if (reportedWarnings.has(warningKey)) return;
+            reportedWarnings.add(warningKey);
+        }
+        const log = state === "warning" || state === "memory"
+            ? console.warn : console.log;
+        log.call(console, message, status.error || "");
+    }
+
+    function requestPersistentStorage() {
+        if (persistRequested) return;
+        persistRequested = true;
+        Promise.resolve().then(() => {
+            if (typeof navigator === "undefined" || !navigator.storage ||
+                    !navigator.storage.persist) {
+                throw new Error("Persistent storage is unavailable in this browser.");
+            }
+            return navigator.storage.persist();
+        }).then(isPersisted => {
+            if (!isPersisted) {
+                throw new Error("The browser did not grant persistent storage.");
+            }
+        }).catch(error => {
+            report("warning",
+                "Saves work, but the browser may remove them after inactivity.",
+                error, "persistence");
+        });
+    }
+
+    function flushWrites() {
+        if (syncing || !pendingWrite || !storageReady) return;
+        pendingWrite = false;
+        syncing = true;
+        report("saving", "Saving games and preferences to this browser.");
+        function finish(error) {
+            syncing = false;
+            if (error) {
+                report("warning",
+                    "Saving to browser storage failed. Keep this tab open to retain the current session.",
+                    error, "save-failed");
+            } else if (!pendingWrite) {
+                report("saved", "Games and preferences saved to this browser.");
+            }
+            // Changes made while a flush was running share one follow-up flush.
+            flushWrites();
+        }
+        try {
+            FS.syncfs(/* populate= */ false, finish);
+        } catch (error) {
+            finish(error);
+        }
+    }
+
+    // Called from C code: uio_fclose(). Never overlap IndexedDB transactions.
+    window.wasm_syncfs = () => {
+        if (!storageReady) return;
+        pendingWrite = true;
+        requestPersistentStorage();
+        flushWrites();
+    };
+
+    addRunDependency("syncfs");
+    report("loading", "Loading saved games and preferences.");
+    function finishLoading(error) {
+        try {
+            if (error) {
+                // Do not sync this session back into a database we could not read.
+                // The original IndexedDB saves remain untouched for a later visit.
+                if (mounted) {
+                    try {
+                        FS.unmount(savePath);
+                    } catch (unmountError) {
+                        console.warn("Could not detach browser storage:", unmountError);
+                    }
+                }
+                report("memory",
+                    "Browser storage is unavailable. Games and preferences will last only while this tab stays open.",
+                    error, "load-failed");
+            } else {
+                storageReady = true;
+                report("ready", "Saved games and preferences loaded.");
+            }
+        } finally {
+            // Edition selection means native HD every launch, even after an
+            // in-game resolution change. Keep unrelated preferences intact.
+            try { Module.prepareHDConfig(savePath); }
+            catch (configError) { Module.hdConfigError = String(configError); }
+            // A blocked or corrupt IndexedDB must never prevent the game starting.
+            removeRunDependency("syncfs");
+        }
+    }
+    try {
+        FS.mkdirTree(savePath);
+        FS.mount(IDBFS, {}, savePath);
+        mounted = true;
+        FS.syncfs(/* populate= */ true, finishLoading);
+    } catch (error) {
+        finishLoading(error);
+    }
+});
+
+// Configuration is applied after IDBFS has loaded and before the game reads it.
+Module.prepareHDConfig = function (savePath) {
+    const path = savePath + "/uqm.cfg";
+    let config = "";
+    try { config = FS.readFile(path, { encoding: "utf8" }); }
+    catch (error) { if (FS.analyzePath(path).exists) throw error; }
+    const settings = {
+        resolutionfactor: "INT32:2",
+        iconicscan: "INT32:1",
+        loresBlowupScale: "INT32:0",
+        keepaspectratio: "BOOLEAN:false",
+        subtitles: "BOOLEAN:true",
+        speech: "BOOLEAN:true",
+        "3domusic": "BOOLEAN:true",
+        remixmusic: "BOOLEAN:false"
+    };
+    config = config.split("\n").filter(line => {
+        const key = line.split("=", 1)[0].trim();
+        return !Object.hasOwn(settings, key);
+    }).join("\n").trimEnd();
+    for (const [key, value] of Object.entries(settings)) config += "\n" + key + " = " + value;
+    FS.writeFile(path, config.trimStart() + "\n");
+    const mmPath = savePath + "/megamod.cfg";
+    if (!FS.analyzePath(mmPath).exists) {
+        FS.writeFile(mmPath, "autoButtons = BOOLEAN:false\ndifficulty = INT32:0\nextended = BOOLEAN:false\n");
+    }
+};

@@ -17,6 +17,7 @@ if [[ "$version" != *" $required "* ]]; then
   exit 1
 fi
 cd "$root/sc2"
+python3 "$root/scripts/prepare-emscripten-proxy.py" wasm/compat
 emcc -c -E - -s USE_ZLIB=1 -s USE_LIBPNG=1 -s USE_VORBIS=1 -s USE_SDL=2 -pthread </dev/null >/dev/null
 cp wasm/config.state.expected config.state
 emconfigure ./build.sh uqm config </dev/null
@@ -31,6 +32,7 @@ rm -f uqm-debug.html
 output="${BUILD_OUTPUT:-$root/dist}"
 mkdir -p "$output"
 cp uqm-debug.html "$output/index.html"
+cp wasm/compat/toolchain-fixes.json "$output/toolchain-fixes.json"
 for artifact in uqm-debug.js uqm-debug.wasm uqm-debug.data uqm-debug.worker.js; do
   cp "$artifact" "$output/$artifact"
 done

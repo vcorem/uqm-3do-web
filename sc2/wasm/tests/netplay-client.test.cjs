@@ -161,7 +161,10 @@ function pageHarness(hash = '') {
     const html = fs.readFileSync(path.join(__dirname, '..', 'shell.html'), 'utf8');
     const elements = new Map();
     const document = { activeElement: null, fullscreenElement: null,
-        getElementById(id) { assert.ok(elements.has(id), 'page element exists: ' + id); return elements.get(id); },
+        getElementById(id) {
+            if (id === 'choose-edition' && !elements.has(id)) return null;
+            assert.ok(elements.has(id), 'page element exists: ' + id); return elements.get(id);
+        },
         addEventListener() {} };
     for (const match of html.matchAll(/<[^>]+\bid="([^"]+)"[^>]*>/g)) {
         const handlers = {};

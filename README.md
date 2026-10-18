@@ -22,10 +22,23 @@ The launcher automatically enables the original videos when all required files
 are installed; see [3DO movies](docs/3do-videos.md).
 See [compatibility scope and remaining checks](docs/3do-compatibility.md).
 
+## Choose Original or Redrawn HD
+
+An optional combined build opens with an edition picker: **Original 3DO** or
+**Redrawn HD**, using actual 1280×960 artwork from UQM MegaMod 0.8.5. Only the
+selected edition downloads. HD has its own campaign saves and local Melee;
+online Melee remains in Original 3DO.
+See [HD build, storage and attribution](docs/hd-edition.md).
+
+Build the selection screen and both editions with `./scripts/build-editions.sh`.
+The first HD download is about 640 MB; the original artwork and HD artwork
+use separate engines and save databases.
+
 ## Play the installed local game
 
 On macOS, double-click **Play UQM.command**. Keep the terminal window open,
-then click **Launch game** in the browser. Stop the server with Ctrl-C.
+then choose **Original 3DO** or **Redrawn HD** and launch the selected game.
+Stop the server with Ctrl-C.
 The installed local build includes the full campaign, original music and
 speech with dialogue subtitles, and the 3DO intro, ending and 25 ship videos.
 Saves stay in this browser.
@@ -140,6 +153,12 @@ npm run test:browser
 npm run test:subtitles
 bash -n scripts/build-web.sh
 python3 -m py_compile scripts/serve.py
+# Optional redrawn HD engine, campaign and edition-switch checks:
+./scripts/build-hd-web.sh
+UQM_DIST=.tools/hd-dist npm run test:hd-campaign
+UQM_DIST=.tools/hd-dist npm run test:hd-stability
+python3 scripts/package-editions.py --original dist --hd .tools/hd-dist --output .tools/editions-dist
+UQM_DIST=.tools/editions-dist npm run test:editions
 ```
 
 Browser smoke checks and their limitations are recorded separately in
@@ -185,7 +204,8 @@ Use `UQM_DIST`, `UQM_TEST_OUTPUT` and `CHROME_BIN` as above. This local desktop
 regression uses timed navigation and is not part of CI.
 
 GitHub Actions runs the unit and network checks, including the real-browser
-Melee scenarios, and a full pinned-toolchain game build.
+Melee scenarios, both pinned-toolchain engine builds, HD campaign travel,
+five-minute HD stability and edition/save-isolation checks.
 The workflow has read-only repository permissions and does not publish a
 package, container or website. Remaining release checks are recorded in
 [the validation record](docs/validation.md).

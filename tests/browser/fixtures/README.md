@@ -29,3 +29,14 @@ hashes. Navigation uses short wall-clock key presses and has been verified in
 Chrome locally; it may need timing calibration on heavily loaded CI runners.
 A missed station collision fails with a screenshot rather than bypassing
 normal gameplay.
+
+## hd-new-game.uqm
+
+A real MegaMod 0.8.5 MMV4 campaign save created through the HD browser game's
+normal keyboard UI: New Game, original 3DO introduction, captain Zelnick,
+flagship Vindicator, then Game → Save → slot 00. Normal difficulty, no cheats
+or extended campaign. It is at the beginning of Sol on February 17, 2155 before
+any thrust. The displayed save label is `HDtest`. No saved game fields were
+modified. The source save was 3,628 bytes and was reloaded successfully through
+the game menu after a browser refresh. It is deliberately incompatible with
+the classic engine and used only in HD campaign transition checks.

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080b12">
+<title>The Ur-Quan Masters — Redrawn HD</title>
+<style>
+:root { color-scheme:dark; font-family:system-ui,sans-serif; background:#080b12; color:#e1e6ee; }
+* { box-sizing:border-box; } body { margin:0; }
+main { max-width:1360px; margin:auto; padding:24px; }
+header { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:18px; }
+h1 { font-size:clamp(18px,3vw,26px); margin:0; font-weight:600; }
+a { color:#dfbd75; } a[aria-disabled="true"] { color:#a4adbc; cursor:wait; } .edition,.muted { color:#a4adbc; } .edition { font-size:13px; }
+.screen { width:min(100%,calc((100dvh - 175px) * 1.333333)); margin-inline:auto; position:relative; background:#000; border:1px solid #273142; box-shadow:0 15px 80px #0008; }
+canvas { display:block; width:100%; height:auto; aspect-ratio:4/3; image-rendering:auto; outline:none; }
+:focus-visible { outline:2px solid #dfbd75; outline-offset:4px; }
+.overlay { position:absolute; inset:0; display:grid; place-content:center; text-align:center; padding:30px; background:#080b12f5; }
+.overlay h2 { font-size:24px; margin:0 0 12px; } p { line-height:1.6; }
+[hidden] { display:none!important; }
+button { color:#080b12; background:#dfbd75; border:0; border-radius:4px; padding:12px 24px; font:inherit; font-weight:650; cursor:pointer; }
+button:disabled { opacity:.55; cursor:wait; } progress { width:100%; margin:10px 0 24px; accent-color:#dfbd75; }
+.bar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:20px; margin:16px 0; min-height:38px; font-size:13px; }
+.bar button { background:#182232; color:#e1e6ee; padding:8px 16px; font-size:13px; }
+#storage { color:#a4adbc; } #storage.warning { color:#f3cc86; }
+.controls { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; border-top:1px solid #273142; padding-top:18px; }
+.controls strong { display:block; font-size:13px; margin-bottom:8px; } .controls p { color:#a4adbc; font-size:13px; margin:0; }
+kbd { color:#e1e6ee; font-family:inherit; } footer { margin-top:24px; color:#778396; font-size:12px; line-height:1.7; }
+details { margin-top:18px; font-size:12px; color:#778396; } pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:200px; overflow:auto; }
+@media(max-width:640px) { main { padding:16px 10px; } .controls { grid-template-columns:1fr; gap:14px; } .overlay { padding:14px; } .overlay p { font-size:13px; } }
+.screen:fullscreen { width:100%; display:grid; place-items:center; border:0; }
+.screen:fullscreen canvas { width:min(100vw,133.333vh); height:min(100vh,75vw); }
+</style>
+</head>
+<body>
+<main>
+<header><h1>The Ur-Quan Masters</h1><span class="edition">Redrawn HD · 1280 × 960</span><a id="choose-edition" href="../index.html">Choose edition</a></header>
+<div class="screen" id="screen">
+<canvas id="canvas" width="1280" height="960" tabindex="0" aria-label="The Ur-Quan Masters HD game. Use keyboard controls listed below." oncontextmenu="event.preventDefault()"></canvas>
+<div class="overlay" id="overlay">
+<h2>A familiar universe. Redrawn.</h2>
+<p id="status" class="muted" role="status">Loading HD artwork, music and voices…</p>
+<progress id="progress" max="1"></progress><button id="start" disabled>Loading…</button>
+<p class="muted">The first download is large. Desktop keyboard recommended.</p>
+</div></div>
+<div class="bar"><span id="storage" role="status">Preparing HD saves…</span><button id="fullscreen" disabled>Full screen</button></div>
+<div class="controls">
+<div><strong>Menus</strong><p><kbd>Arrow keys</kbd> to navigate · <kbd>Enter</kbd> to select<br><kbd>Esc</kbd> to go back<br><kbd>Shift + Tab</kbd>, then release Shift, for page controls</p></div>
+<div><strong>Player 1 · default arrows</strong><p><kbd>↑</kbd> thrust · <kbd>← →</kbd> turn<br><kbd>Right Ctrl / Enter</kbd> fire · <kbd>Right Shift</kbd> special</p></div>
+<div><strong>Player 2 · WASD template</strong><p><kbd>W</kbd> thrust · <kbd>A D</kbd> turn<br><kbd>V</kbd> fire · <kbd>B</kbd> special<br>Select this template in the in-game controls.</p></div>
+</div>
+<footer>
+HD artwork and engine from <a href="https://github.com/JHGuitarFreak/UQM-MegaMod">UQM MegaMod 0.8.5</a>, based on The Ur-Quan Masters and Star Control II.<br>
+Campaign and local Melee. Online Melee is available in Original 3DO.<br>
+HD saves are separate from Original 3DO and are not interchangeable. Save in-game before switching editions.<br>
+Saves stay in this browser; clearing site data removes them. <a href="COPYING.txt">Code license</a> · <a href="content-licenses.txt">Artwork and media credits</a>
+</footer>
+<details><summary>Diagnostics</summary><pre id="log"></pre></details>
+</main>
+<script>
+var canvas = document.getElementById('canvas');
+var startButton = document.getElementById('start');
+var statusText = document.getElementById('status');
+var progress = document.getElementById('progress');
+var runtimeReady = false, started = false, logLines = [];
+function log(message) {
+  logLines.push(String(message)); if (logLines.length > 160) logLines.shift();
+  document.getElementById('log').textContent = logLines.join('\n');
+}
+function fail(message) {
+  statusText.textContent = message; document.getElementById('overlay').hidden = false;
+  progress.hidden = true; startButton.disabled = true; startButton.textContent = 'Unable to start'; log(message);
+}
+var Module = {
+  canvas:canvas, noInitialRun:true,
+  preRun:[function() { ENV.SDL_EMSCRIPTEN_KEYBOARD_ELEMENT='#canvas'; }],
+  arguments:['--configdir=/home/web_user/.uqm-hd', '--contentdir=/content', '--windowed', '--nogl', '--scale=none', '--sound=openal', '--windowtype=1', '--menu=3do', '--font=3do', '--cscan=1', '--scroll=3do', '--shield=3do', '--meleezoom=3do', '--intro=3do'],
+  print:log, printErr:log,
+  setStatus:function(text) { if(text && !started) statusText.textContent=text; },
+  monitorRunDependencies:function(remaining) {
+    this.totalDependencies=Math.max(this.totalDependencies||0,remaining);
+    progress.max=this.totalDependencies||1; progress.value=this.totalDependencies-remaining;
+  },
+  onStorageStatus:function(event) {
+    var storage=document.getElementById('storage'); storage.textContent=event.message;
+    storage.className=['warning','memory'].includes(event.state)?'warning':'';
+    var editionLink=document.getElementById('choose-edition');
+    if(editionLink) {
+      editionLink.setAttribute('aria-disabled',Module.storageState==='saving'?'true':'false');
+      editionLink.textContent=Module.storageState==='saving'?'Saving…':'Choose edition';
+    }
+  },
+  onRuntimeInitialized:function() {
+    if(!window.crossOriginIsolated) return fail('Use the included preview server to run the game.');
+    if(Module.hdConfigError) return fail('Could not prepare HD settings: '+Module.hdConfigError);
+    runtimeReady=true; progress.hidden=true;
+    statusText.textContent='HD is ready. Launch to enable sound and keyboard controls.';
+    startButton.disabled=false; startButton.textContent='Launch HD game';
+  },
+  onAbort:function(reason) { fail('The game could not start: '+reason); },
+  onExit:function(status) {
+    Module.exitStatus=status;
+    if(status!==0) { fail('The game closed with an error. See Diagnostics below.'); return; }
+    statusText.textContent='Game closed. Reload this page to play again.';
+    document.getElementById('overlay').hidden=false; startButton.hidden=true;
+  }
+};
+startButton.addEventListener('click',function() {
+  if(started||!runtimeReady) return;
+  started=true; document.getElementById('overlay').hidden=true;
+  document.getElementById('fullscreen').disabled=false; canvas.focus();
+  try { Module.callMain(Module.arguments.slice()); } catch(error) { fail(String(error)); }
+});
+var editionLink=document.getElementById('choose-edition');
+if(editionLink) editionLink.addEventListener('click',function(event) {
+  if(Module.storageState==='saving') event.preventDefault();
+});
+canvas.addEventListener('click',function() { canvas.focus(); });
+document.getElementById('fullscreen').addEventListener('click',function() {
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.getElementById('screen').requestFullscreen().catch(log);
+  canvas.focus();
+});
+// Keep SDL keyboard input on the canvas and release it after the modifier.
+var escapePending = false;
+document.addEventListener('keydown', function (event) {
+  if (!started || document.activeElement !== canvas) return;
+  if (event.key === 'Tab' && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    escapePending = true;
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Tab'].includes(event.key)) event.preventDefault();
+}, true);
+document.addEventListener('keyup', function (event) {
+  if (escapePending && event.key === 'Tab') {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+}, true);
+document.addEventListener('keyup', function (event) {
+  if (!escapePending || event.key !== 'Shift') return;
+  escapePending = false;
+  // SDL's canvas listener has already seen Shift-up. Move focus next turn.
+  var exitFullscreen = document.fullscreenElement ? document.exitFullscreen() : Promise.resolve();
+  exitFullscreen.then(function () {
+    setTimeout(function () {
+      var target = document.getElementById('choose-edition') || document.getElementById('fullscreen');
+      target.focus();
+    }, 0);
+  }).catch(log);
+});
+window.addEventListener('error',function(event) {
+  var message=event.message || (event.target && event.target.tagName==='SCRIPT' ? 'Could not download the game script.' : '');
+  if(!message) return;
+  log(message); if(!started) fail('Loading failed. Reload to try again. '+message);
+},true);
+if(!window.crossOriginIsolated||typeof SharedArrayBuffer==='undefined') fail('Use the included preview server to run the game.');
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>
