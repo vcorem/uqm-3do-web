@@ -17,3 +17,8 @@ sc2/*.data
 .tools/
 dist/
 __pycache__/
+
+# Node relay dependencies and browser test artifacts
+node_modules/
+test-results/
+playwright-report/

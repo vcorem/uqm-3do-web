@@ -658,7 +658,11 @@ MeleeGameOver (void)
 	
 
 #ifdef NETPLAY
-	negotiateReadyConnections(true, NetState_inSetup);
+	if (!negotiateReadyConnections(true, NetState_inSetup))
+	{
+		GLOBAL (CurrentActivity) |= CHECK_ABORT;
+		return;
+	}
 #endif
 
 	TimeOut = GetTimeCounter () + (ONE_SECOND * 4);
@@ -795,7 +799,10 @@ GetMeleeStarShips (COUNT playerMask, HSTARSHIP *ships)
 	SetContext (OffScreenContext);
 
 
-	DoInput (&gmstate, FALSE);
+	// A failed negotiation must leave through the cleanup below without
+	// entering ship selection for a match whose peer has disconnected.
+	if (ok)
+		DoInput (&gmstate, FALSE);
 	WaitForSoundEnd (0);
 
 

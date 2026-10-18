@@ -4,7 +4,7 @@ if [ -n "$uqm_USE_INTERNAL_MIKMOD" ]; then
 	uqm_SUBDIRS="$uqm_SUBDIRS mikmod"
 fi
 
-if [ -n "$uqm_NETPLAY" ]; then
+if [ -n "$uqm_NETPLAY" ] && [ "$uqm_NETPLAY" != WEB ]; then
 	uqm_SUBDIRS="$uqm_SUBDIRS network"
 fi
 

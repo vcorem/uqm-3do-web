@@ -1,30 +1,57 @@
-name: Build
+name: Build and test
+
 on:
   push:
-    branches: [main, proposed]
+    branches: [main, proposed, 'codex/**']
   pull_request:
+  workflow_dispatch:
   schedule:
-    # 16:38 UTC on Tuesdays
     - cron: "38 16 * * TUE"
-  repository_dispatch:
-    types: [tests]
 
-env:
-  DOCKER_BUILDKIT: 1
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v1
-      - name: Log into registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - name: Build with Emscripten
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked Node dependencies
+        run: npm ci
+      - name: Test browser helpers and real WebSocket relay
+        run: npm test
+      - name: Install pinned Emscripten SDK
         run: |
-          cd sc2
-          docker build --tag=uqm-wasm -f wasm/Dockerfile .
-      - name: Compare detected configuration
+          mkdir -p .tools
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git .tools/emsdk
+          .tools/emsdk/emsdk install "$(cat .emscripten-version)"
+          .tools/emsdk/emsdk activate "$(cat .emscripten-version)"
+      - name: Build the complete browser game
+        env:
+          JOBS: '4'
+        run: ./scripts/build-web.sh
+      - name: Run actual-source Wasm transport and disconnect regressions
+        run: bash sc2/src/uqm/supermelee/netplay/tests/run.sh
+      - name: Install Chromium for game integration tests
+        run: npx playwright install --with-deps chromium
+      - name: Test real two-browser matches and disconnects
+        run: npm run test:browser
+      - name: Check the browser package and script syntax
         run: |
-          cd sc2
-          docker run --rm uqm-wasm grep CHOICE config.state \
-            |diff -us --color=always wasm/config.state.expected -
+          for artifact in index.html uqm-debug.js uqm-debug.wasm uqm-debug.data uqm-debug.worker.js netplay-client.js COPYING.txt; do
+            test -s "dist/$artifact"
+          done
+          bash -n scripts/build-web.sh
+          python3 -m py_compile scripts/serve.py
+          git diff --check

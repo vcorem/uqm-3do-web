@@ -50,7 +50,8 @@ OpenAL, pthreads and Asyncify. This is an initial desktop browser smoke test.
 - Browser-storage quota failure in a real browser (covered with unit harnesses),
   long-running stability and performance/latency measurements.
 - Docker build; the local native SDK build is the validated path.
-- Online multiplayer and public hosting are future milestones.
+- Two-computer online play and public hosting remain unverified. Local online
+  alpha checks are recorded below.
 
 ## Optional video activation update
 
@@ -97,3 +98,92 @@ disabled preference. The existing disabling flag remains available.
   Setup, avoiding a saved-preference write from the test.
 - The user's active campaign was not refreshed or modified. They must save
   before reloading to use the updated launch setting.
+
+
+## Online Melee private alpha — 2026-10-18
+
+The browser build now includes UQM's existing network simulation and protocol,
+connected through a private two-player WebSocket relay. This is a private
+alpha; no public release or deployment has been performed.
+
+### Observed browser result
+
+Two independently launched browser pages on one computer connected to the
+local Node relay, entered the original Melee flow and reached `inBattle`.
+Combat continued with thousands of matching simulation CRC checks and zero
+observed checksum mismatches. The launcher identifies the host's bottom fleet
+and guest's top fleet, with separate user clicks required to join and launch.
+
+This is evidence of local browser-to-browser synchronization. It does not
+establish successful play between two physical computers, internet latency
+handling, all ship matchups or full-match stability across browsers.
+
+### Repeatable checks
+
+- `npm test` covers storage/video initialization, browser room URLs and bounded
+  queues, launch gating, role assignment, disconnects, relay pairing and room
+  isolation, malformed/oversized data, rate limits and static file isolation.
+- The relay tests use real WebSocket connections on ephemeral loopback ports.
+  A 40,000-ping paused-reader regression verifies that control frames cannot
+  bypass the server's outgoing memory bound. Ordinary ping replies and browser
+  heartbeat pongs continue to work.
+- `bash sc2/src/uqm/supermelee/netplay/tests/run.sh` compiles the actual transport
+  and receive logic to Wasm in direct and pthread modes. It also compiles the
+  actual variable-length setup packet handlers and blocking disconnect waits.
+  These regressions cover fragmented/coalesced input, invalid packet lengths
+  and types, truncated fleet/name data, invalid sides, send/receive disconnects
+  and failure propagation during setup/handshake/reset/battle-end transitions.
+- `npm run test:browser` runs the packaged game in two independent Chromium
+  processes with real keyboard input. Its assertions cover full fleet matches,
+  ship replacement, simulated delay/jitter, disconnects during setup/selection/
+  battle, zero checksum mismatches and local fleet persistence after reload.
+  Screenshots and a JSON result record are written to `test-results/browser/`.
+  This describes the automated coverage; completed runs are recorded below
+  when available.
+- The normal build selects `CHOICE_netplay_VALUE='web'`, refreshes the source
+  dependency list and relinks the launcher before packaging. The CI workflow
+  runs the full build, source harness and real-browser scenarios rather than
+  checking configuration text alone. Its hosted run is pending until the changes are pushed.
+
+### Remaining online release checks
+
+- Two physical computers through a shared HTTPS origin and WebSocket reverse
+  proxy, followed by realistic latency/jitter and interrupted connections.
+- Complete matches, rematches and ship transitions across representative
+  matchups, with zero unexpected checksum mismatches.
+- Foreground/background tab transitions, long sessions, focus loss and browser
+  audio behavior during an online match.
+- Independent current Chrome, Firefox and Safari testing.
+- Public-host configuration and operational limits. The relay deliberately
+  stops accepting fresh rooms after 10,000 distinct room IDs in one process;
+  a reverse proxy also shares the per-IP limit unless deployment changes it.
+
+### Completed automated browser run
+
+The 2026-10-18 final local run used two independent Chrome 155.0.8059.84
+processes on macOS with the rebuilt WebAssembly package:
+
+- Baseline: a full two-ship fleet match, replacement ship and a rematch reaching
+  ship selection; 547 matching simulation checks per side, zero mismatches.
+- Injected one-way delay pattern 80/120/30/60 ms: a full two-ship fleet match
+  and a rematch reaching combat; 549 matching checks per side at the end of
+  the first match, zero mismatches. Each ship had to produce fresh matching
+  frames; cumulative counters alone could not satisfy the check.
+- Closing the opponent's real browser during setup, ship selection and combat
+  displayed a disconnect and returned the surviving C engine to the drawn
+  main menu after acknowledgement. No captured page crash or JavaScript error.
+- The saved local fleet/control file remained byte-identical in memory and
+  after reloading from IndexedDB in all three scenarios.
+- All 43 JavaScript/real-WebSocket tests and five actual-source Wasm harness
+  programs passed. The source harness includes direct and pthread execution.
+
+The browser run records SHA-256 hashes of every tested runtime artifact in
+`test-results/browser/build-hashes.json` alongside per-scenario results and
+screenshots. These generated files stay local; the checked-in evidence below
+shows the next-ship screen and successful return to the main menu. This test
+uses a normal saved two-ship fleet fixture and genuine keyboard commands,
+including Shofixti's self-destruct special; no simulation state is patched.
+
+![Online replacement-ship selection](screenshots/online-next-ship.png)
+
+![Return to main menu after opponent disconnect](screenshots/online-returned-menu.png)

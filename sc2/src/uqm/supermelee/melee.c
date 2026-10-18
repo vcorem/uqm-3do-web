@@ -1027,6 +1027,10 @@ TeamNameFrameCallback (TEXTENTRY_STATE *pTES)
 	// The team name itself isn't modified visually due to remote changes
 	// while it is being edited.
 	netInput ();
+#ifdef __EMSCRIPTEN__
+	if (webNetplayRole >= 0 && (GLOBAL (CurrentActivity) & CHECK_ABORT))
+		return FALSE;
+#endif
 #endif
 
 	(void) pTES;
@@ -1089,6 +1093,10 @@ DoEdit (MELEE_STATE *pMS)
 
 #ifdef NETPLAY
 	netInput ();
+#ifdef __EMSCRIPTEN__
+	if (webNetplayRole >= 0 && (GLOBAL (CurrentActivity) & CHECK_ABORT))
+		return FALSE;
+#endif
 #endif
 	if ((pMS->row < NUM_MELEE_ROWS || pMS->currentShip == MELEE_NONE)
 			&& (PulsedInputState.menu[KEY_MENU_CANCEL]
@@ -1323,6 +1331,10 @@ DoConfirmSettings (MELEE_STATE *pMS)
 #else
 	closeDisconnectedConnections ();
 	netInput ();
+#ifdef __EMSCRIPTEN__
+	if (webNetplayRole >= 0 && (GLOBAL (CurrentActivity) & CHECK_ABORT))
+		return FALSE;
+#endif
 	SleepThread (ONE_SECOND / 120);
 
 	numDone = numPlayersReady ();
@@ -1711,6 +1723,14 @@ check_for_disconnects (MELEE_STATE *pMS)
 		conn = netConnections[player];
 		if (conn == NULL || !NetConnection_isConnected (conn))
 		{
+#ifdef __EMSCRIPTEN__
+			if (webNetplayRole >= 0)
+			{
+				// A browser room cannot turn into a local two-player game.
+				GLOBAL (CurrentActivity) |= CHECK_ABORT;
+				return;
+			}
+#endif
 			PlayerControl[player] = HUMAN_CONTROL | STANDARD_RATING;
 			DrawControls (player, FALSE);
 			log_add (log_User, "Player %d has disconnected; shifting "
@@ -1806,6 +1826,10 @@ MeleeOptionSelect (MELEE_STATE *pMS)
 			COUNT which_side;
 			BOOLEAN confirmed;
 
+#ifdef __EMSCRIPTEN__
+			DrawMeleeStatusMessage ("Open an Online Melee room in the browser launcher.");
+			break;
+#endif
 			which_side = pMS->MeleeOption == NET_TOP ? 1 : 0;
 			confirmed = MeleeConnectDialog (which_side);
 			RedrawMeleeFrame ();
@@ -1822,6 +1846,12 @@ MeleeOptionSelect (MELEE_STATE *pMS)
 		case CONTROLS_BOT:
 		{
 			COUNT which_side = (pMS->MeleeOption == CONTROLS_TOP) ? 1 : 0;
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+			if (webNetplayRole >= 0) {
+				DrawMeleeStatusMessage ("Player sides are assigned by the online room.");
+				break;
+			}
+#endif
 			nextControlType (which_side);
 			break;
 		}
@@ -1855,6 +1885,10 @@ DoMelee (MELEE_STATE *pMS)
 		pMS->MeleeOption = START_MELEE;
 		PlayMusic (pMS->hMusic, TRUE, 1);
 		InitMelee (pMS);
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+		if (webNetplayRole >= 0 && netConnections[1 - webNetplayRole] == NULL)
+			openPlayerNetworkConnection (1 - webNetplayRole, pMS);
+#endif
 
 		FadeScreen (FadeAllToColor, ONE_SECOND / 2);
 		pMS->LastInputTime = GetTimeCounter ();
@@ -1863,6 +1897,10 @@ DoMelee (MELEE_STATE *pMS)
 
 #ifdef NETPLAY
 	netInput ();
+#ifdef __EMSCRIPTEN__
+	if (webNetplayRole >= 0 && (GLOBAL (CurrentActivity) & CHECK_ABORT))
+		return FALSE;
+#endif
 #endif
 	
 	if (PulsedInputState.menu[KEY_MENU_CANCEL] ||
@@ -2035,6 +2073,11 @@ err:
 void
 Melee (void)
 {
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+	BYTE savedControl[NUM_PLAYERS];
+	CONTROL_TEMPLATE savedTemplates[NUM_PLAYERS];
+	BOOLEAN webSession = webNetplayRole >= 0;
+#endif
 	InitGlobData ();
 	{
 		MELEE_STATE MenuState;
@@ -2079,6 +2122,15 @@ Melee (void)
 					MenuState.load.preBuiltList[1]);
 		}
 
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+		memcpy (savedControl, PlayerControl, sizeof savedControl);
+		memcpy (savedTemplates, PlayerControls, sizeof savedTemplates);
+		if (webSession) {
+			PlayerControl[webNetplayRole] = HUMAN_CONTROL | STANDARD_RATING;
+			PlayerControl[1 - webNetplayRole] = NETWORK_CONTROL | STANDARD_RATING;
+			PlayerControls[webNetplayRole] = CONTROL_TEMPLATE_KB_1;
+		}
+#endif
 		MenuState.side = 0;
 		SetMenuSounds (MENU_SOUND_ARROWS, MENU_SOUND_SELECT);
 		DoInput (&MenuState, TRUE);
@@ -2086,8 +2138,18 @@ Melee (void)
 		StopMusic ();
 		WaitForSoundEnd (TFBSOUND_WAIT_ALL);
 
-		WriteMeleeConfig (&MenuState);
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+		// A room must not replace the user's local fleet/control preferences.
+		if (!webSession)
+#endif
+			WriteMeleeConfig (&MenuState);
 		FreeMeleeInfo (&MenuState);
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+		if (webSession) {
+			memcpy (PlayerControl, savedControl, sizeof savedControl);
+			memcpy (PlayerControls, savedTemplates, sizeof savedTemplates);
+		}
+#endif
 		DestroySound (ReleaseSound (GameSounds));
 		GameSounds = 0;
 
@@ -2249,17 +2311,35 @@ errorFeedback (NetConnection *conn)
 				// "Top player: connection failed."
 }
 
+#ifdef __EMSCRIPTEN__
+static bool
+closeWebMeleeRoom (const char *message)
+{
+	if (webNetplayRole < 0)
+		return false;
+
+	// Show the reason before aborting: the popup itself exits on CHECK_ABORT.
+	// An intentional quit is already aborting and needs no second popup.
+	if (!(GLOBAL (CurrentActivity) & CHECK_ABORT))
+	{
+		DoPopupWindow (message);
+		GLOBAL (CurrentActivity) |= CHECK_ABORT;
+	}
+	return true;
+}
+#endif
+
 void
 closeFeedback (NetConnection *conn)
 {
-	if (NetConnection_getPlayerNr (conn) == 0)
-		connectionFeedback (conn, GAME_STRING (NETMELEE_STRING_BASE + 12),
-				false);
-				// "Bottom player: connection closed."
-	else
-		connectionFeedback (conn, GAME_STRING (NETMELEE_STRING_BASE + 13),
-				false);
-				// "Top player: connection closed."
+	const char *message = GAME_STRING (NETMELEE_STRING_BASE +
+			(NetConnection_getPlayerNr (conn) == 0 ? 12 : 13));
+			// "Bottom/Top player: connection closed."
+#ifdef __EMSCRIPTEN__
+	if (closeWebMeleeRoom (message))
+		return;
+#endif
+	connectionFeedback (conn, message, false);
 }
 
 #endif  /* NETPLAY */

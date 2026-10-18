@@ -37,3 +37,7 @@ NetplayOptions netplayOptions = {
 };
 
 
+
+#ifdef __EMSCRIPTEN__
+int webNetplayRole = -1;
+#endif

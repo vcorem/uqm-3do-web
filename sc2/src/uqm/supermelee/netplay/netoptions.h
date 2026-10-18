@@ -47,6 +47,10 @@ typedef struct {
 	size_t inputDelay;
 } NetplayOptions;
 extern NetplayOptions netplayOptions;
+#ifdef __EMSCRIPTEN__
+// -1 offline, 0 room host, 1 invited player.
+extern int webNetplayRole;
+#endif
 
 
 #if defined(__cplusplus)

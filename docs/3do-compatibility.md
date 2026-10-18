@@ -37,8 +37,8 @@ them disabled. This differs from the upstream
 [Mimic 3DO preset](../sc2/build/win32_install/uqm-3do.cfg). Music and speech should be enabled and the later Precursors remix packs
 disabled. Current engine defaults already select those audio settings.
 
-`--intro=pc` is an explicit interim fallback for the missing original video
-assets, not a 3DO-equivalent presentation. `--intro=3do` is supported when those
+`--intro=pc` is the fallback for a missing or incomplete original video
+installation, not a 3DO-equivalent presentation. `--intro=3do` is supported when those
 assets are available: the launcher detects a complete 134-file set at startup
 and selects this option automatically. See [installation and source status](3do-videos.md).
 The older manual mentions `--music`/`-m`, but the current
@@ -64,6 +64,15 @@ music settings instead.
   was last edited in 2011, so treat it as an audit checklist, not current
   implementation evidence. Its statement that ship videos are unsupported is
   already contradicted by the source in this checkout.
+
+## Online Melee extension
+
+Online rooms are an optional addition to the original game. The port reuses
+UQM's ship simulation, random-seed exchange, input-delay protocol and combat
+checksums; it replaces native sockets with the browser relay transport. The
+3DO presentation settings still apply. Successful network checksums establish
+agreement between the two UQM instances, not independent parity with 3DO
+hardware. See [online validation](validation.md#online-melee-private-alpha--2026-10-18).
 
 ## Required parity validation
 

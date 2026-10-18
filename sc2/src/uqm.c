@@ -412,7 +412,7 @@ main (int argc, char *argv[])
 	Alarm_init ();
 	Callback_init ();
 
-#ifdef NETPLAY
+#if defined(NETPLAY) && !defined(__EMSCRIPTEN__)
 	Network_init ();
 	NetManager_init ();
 #endif
@@ -480,7 +480,7 @@ main (int argc, char *argv[])
 		UninitColorMaps ();
 		TFB_UninitGraphics ();
 
-#ifdef NETPLAY
+#if defined(NETPLAY) && !defined(__EMSCRIPTEN__)
 		NetManager_uninit ();
 		Network_uninit ();
 #endif
@@ -724,6 +724,9 @@ enum
 	NETHOST2_OPT,
 	NETPORT2_OPT,
 	NETDELAY_OPT,
+#ifdef __EMSCRIPTEN__
+	WEB_NETPLAY_OPT,
+#endif
 #endif
 };
 
@@ -773,6 +776,9 @@ static struct option longOptions[] =
 	{"nethost2", 1, NULL, NETHOST2_OPT},
 	{"netport2", 1, NULL, NETPORT2_OPT},
 	{"netdelay", 1, NULL, NETDELAY_OPT},
+#ifdef __EMSCRIPTEN__
+	{"web-netplay", 1, NULL, WEB_NETPLAY_OPT},
+#endif
 #endif
 	{0, 0, 0, 0}
 };
@@ -1068,6 +1074,19 @@ parseOptions (int argc, char *argv[], struct options_struct *options)
 				options->graphicsBackend = optarg;
 				break;
 #ifdef NETPLAY
+#ifdef __EMSCRIPTEN__
+			case WEB_NETPLAY_OPT:
+				if (strcmp (optarg, "host") == 0)
+					webNetplayRole = 0;
+				else if (strcmp (optarg, "guest") == 0)
+					webNetplayRole = 1;
+				else {
+					saveError ("Invalid web-netplay role; use host or guest.");
+					badArg = true;
+				}
+				netplayOptions.inputDelay = 3;
+				break;
+#endif
 			case NETHOST1_OPT:
 				netplayOptions.peer[0].isServer = false;
 				netplayOptions.peer[0].host = optarg;

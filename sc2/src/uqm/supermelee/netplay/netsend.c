@@ -26,6 +26,7 @@
 #include "packet.h"
 #include "libs/log.h"
 #include "libs/net.h"
+#include "webtransport.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -34,9 +35,11 @@
 
 int
 sendPacket(NetConnection *conn, Packet *packet) {
+#ifndef __EMSCRIPTEN__
 	ssize_t sendResult;
 	size_t len;
 	Socket *socket;
+#endif
 		
 	assert(NetConnection_isConnected(conn));
 
@@ -57,6 +60,15 @@ sendPacket(NetConnection *conn, Packet *packet) {
 #endif  /* NETPLAY_DEBUG_FILE */
 #endif  /* NETPLAY_DEBUG */
 
+#ifdef __EMSCRIPTEN__
+	{
+		int result = WebTransport_send(packet, packetLength(packet));
+		if (result != 1) {
+			errno = result == 0 ? EAGAIN : ECONNRESET;
+			return -1;
+		}
+	}
+#else
 	socket = NetDescriptor_getSocket(conn->nd);
 
 	len = packetLength(packet);
@@ -83,6 +95,8 @@ sendPacket(NetConnection *conn, Packet *packet) {
 			}
 		}
 	}
+
+#endif  /* __EMSCRIPTEN__ */
 
 #ifdef NETPLAY_STATISTICS
 	NetConnection_getStatistics(conn)->packetsSent++;

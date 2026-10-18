@@ -210,6 +210,10 @@ NetConnection *NetConnection_open(int player,
 		NetConnection_ErrorCallback errorCallback,
 		NetConnection_DeleteCallback deleteCallback, void *extra);
 void NetConnection_close(NetConnection *conn);
+#ifdef __EMSCRIPTEN__
+void NetConnection_webPoll(NetConnection *conn);
+void NetConnection_webDisconnect(NetConnection *conn, int err);
+#endif
 bool NetConnection_isConnected(const NetConnection *conn);
 
 void NetConnection_doErrorCallback(NetConnection *nd, int err);

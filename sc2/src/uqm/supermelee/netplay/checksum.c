@@ -20,6 +20,7 @@
 
 #include "checksum.h"
 #include "netoptions.h"
+#include "webtransport.h"
 
 #ifdef NETPLAY_CHECKSUM
 
@@ -288,10 +289,18 @@ verifyChecksums(BattleFrameCounter frameNr) {
 
 		if (localChecksum != remoteChecksum) {
 			log_add(log_Error, "Network connections have gone out of "
-					"sync.\n");
+					"sync at frame %u (local %08x, remote %08x).\n",
+					(unsigned) frameNr, (unsigned) localChecksum,
+					(unsigned) remoteChecksum);
+#ifdef __EMSCRIPTEN__
+			WebTransport_checksum(frameNr, 0);
+#endif
 			return false;
 		}
 	}
+#ifdef __EMSCRIPTEN__
+	WebTransport_checksum(frameNr, 1);
+#endif
 	return true;
 }
 

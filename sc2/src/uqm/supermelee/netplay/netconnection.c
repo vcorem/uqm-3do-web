@@ -21,8 +21,9 @@
 #include "netconnection.h"
 
 #include "netrcv.h"
+#include "webtransport.h"
 
-#if defined(DEBUG) || defined(NETPLAY_DEBUG)
+#if defined(DEBUG) || defined(NETPLAY_DEBUG) || defined(__EMSCRIPTEN__)
 #	include "libs/log.h"
 #endif
 #if defined(NETPLAY_DEBUG) && defined(NETPLAY_DEBUG_FILE)
@@ -38,11 +39,15 @@
 #endif
 
 
+#ifndef __EMSCRIPTEN__
 static void closeCallback(NetDescriptor *nd);
+#endif
 static void NetConnection_doClose(NetConnection *conn);
 
 
+#ifndef __EMSCRIPTEN__
 #include "nc_connect.ci"
+#endif
 
 #if defined(NETPLAY_DEBUG) && defined(NETPLAY_DEBUG_FILE)
 uio_Stream *netplayDebugFile;
@@ -157,7 +162,12 @@ NetConnection_open(int player, const NetplayPeerOptions *options,
 	}
 #endif
 
+#ifdef __EMSCRIPTEN__
+	// Connect on the next normal input poll, after addNetConnection().
+	NetConnection_setState(conn, NetState_connecting);
+#else
 	NetConnection_go(conn);
+#endif
 
 	return conn;
 }
@@ -219,6 +229,7 @@ NetConnection_doClose(NetConnection *conn) {
 	NetConnection_setState(conn, NetState_unconnected);
 }
 
+#ifndef __EMSCRIPTEN__
 // Called when the NetDescriptor is shut down.
 static void
 closeCallback(NetDescriptor *nd) {
@@ -229,9 +240,48 @@ closeCallback(NetDescriptor *nd) {
 	NetConnection_doClose(conn);
 }
 
+#else
+// Keep the object alive until the caller leaves any blocking protocol wait.
+// Those waits retain NetConnection pointers across netInput().
+void
+NetConnection_webDisconnect(NetConnection *conn, int err) {
+	if (conn->stateFlags.disconnected)
+		return;
+	WebTransport_close();
+	if (err != 0)
+		log_add(log_Error, "Web netplay transport failed (error %d).", err);
+	NetConnection_doClose(conn);
+}
+
+void
+NetConnection_webPoll(NetConnection *conn) {
+	int status;
+	if (conn->stateFlags.disconnected)
+		return;
+	status = WebTransport_status();
+	if (status < 0) {
+		NetConnection_webDisconnect(conn, 0);
+		return;
+	}
+	if (status == 0)
+		return;
+	if (!conn->stateFlags.connected) {
+		conn->stateFlags.discriminant = status == 1;
+		conn->stateFlags.connected = true;
+		NetConnection_setState(conn, NetState_init);
+		if (conn->connectCallback != NULL)
+			conn->connectCallback(conn);
+	}
+	webDataReady(conn);
+}
+#endif
+
 // Close and release a NetConnection.
 void
 NetConnection_close(NetConnection *conn) {
+#ifdef __EMSCRIPTEN__
+	WebTransport_close();
+#else
 	if (conn->nd != NULL) {
 		NetDescriptor_setCloseCallback(conn->nd, NULL);
 				// We're not interested in the close callback of the
@@ -240,6 +290,8 @@ NetConnection_close(NetConnection *conn) {
 				// This would queue the close callback.
 		conn->nd = NULL;
 	}
+
+#endif
 	if (!conn->stateFlags.disconnected)
 		NetConnection_doClose(conn);
 	NetConnection_delete(conn);
@@ -252,8 +304,9 @@ NetConnection_doErrorCallback(NetConnection *nd, int err) {
 	if (nd->errorCallback != NULL) {
 		error.state = nd->state;
 		error.err = err;
+		error.extra.connectError = NULL;
+		(*nd->errorCallback)(nd, &error);
 	}
-	(*nd->errorCallback)(nd, &error);
 }
 
 void
@@ -325,6 +378,9 @@ NetConnection_setState(NetConnection *conn, NetState state) {
 	}
 #endif
 	conn->state = state;
+#ifdef __EMSCRIPTEN__
+	WebTransport_engineState(netStateData[state].name, conn->player);
+#endif
 }
 
 NetState
