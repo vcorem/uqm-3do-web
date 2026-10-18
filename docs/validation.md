@@ -143,7 +143,8 @@ handling, all ship matchups or full-match stability across browsers.
 - The normal build selects `CHOICE_netplay_VALUE='web'`, refreshes the source
   dependency list and relinks the launcher before packaging. The CI workflow
   runs the full build, source harness and real-browser scenarios rather than
-  checking configuration text alone. Its hosted run is pending until the changes are pushed.
+  checking configuration text alone. The hosted workflow runs on the development branch and pull request; the
+  linked run below records the clean Linux validation.
 
 ### Remaining online release checks
 
@@ -187,3 +188,23 @@ including Shofixti's self-destruct special; no simulation state is patched.
 ![Online replacement-ship selection](screenshots/online-next-ship.png)
 
 ![Return to main menu after opponent disconnect](screenshots/online-returned-menu.png)
+
+### Local play regression on the network-enabled build
+
+- Fresh isolated Chrome: local HUMAN versus WEAK CYBORG Melee, Chmmr/Kohr-Ah
+  combat and a later Pkunk combat, then confirmed exit to fleets and main menu.
+  No captured browser errors or Wasm aborts.
+- A new campaign reached Sol, saved through the original menus into empty
+  slot 00 as `netplay-test`, and reloaded the same save after a full page
+  refresh. The save bytes were identical after IndexedDB restoration, and
+  selecting the slot returned to Sol with the saved date and state.
+- In an independent test, an online setup disconnect returned to the main
+  menu, then New Game started the campaign in the same engine instance.
+  Saving worked and a full page reload preserved all 3,333 save bytes.
+- These checks used isolated test profiles at port 10000. The user's active
+  campaign on port 9999 and its saved games were not modified.
+
+![Campaign restored on the network-enabled build](screenshots/netplay-build-campaign-restored.png)
+
+Clean Linux build and regression run:
+[GitHub Actions](https://github.com/vcorem/uqm-3do-web/actions/runs/39115897414).
