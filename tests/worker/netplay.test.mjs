@@ -63,20 +63,26 @@ async function startWorker(t, vars = {}) {
   const child = spawn('npx', ['--yes', WRANGLER, 'dev', '--config', configPath, '--ip', '127.0.0.1',
     '--port', String(port), '--inspector-port', String(inspectorPort), '--persist-to', path.join(temp, 'state'),
     '--show-interactive-dev-session=false', '--log-level', 'warn'],
-  { cwd: temp, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  // Own process group: npx does not always pass SIGTERM on to wrangler and workerd,
+  // and their open pipes would keep this test file running.
+  { cwd: temp, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   let log = '';
   child.stdout.on('data', chunk => { log += chunk; });
   child.stderr.on('data', chunk => { log += chunk; });
   const exited = new Promise(resolve => child.once('exit', resolve));
   t.after(async () => {
-    child.kill('SIGTERM');
+    const signal = name => { try { process.kill(-child.pid, name); } catch { /* Already gone. */ } };
+    signal('SIGTERM');
     await Promise.race([exited, pause(5000)]);
+    signal('SIGKILL');
+    child.stdout.destroy();
+    child.stderr.destroy();
     await rm(temp, { recursive: true, force: true });
   });
   for (let attempt = 0; ; attempt++) {
     if (child.exitCode !== null) throw new Error(`wrangler dev exited:\n${log}`);
     try {
-      const response = await fetch(origin + '/');
+      const response = await fetch(origin + '/', { signal: AbortSignal.timeout(2000) });
       if (response.ok) break;
     } catch { /* Not listening yet. */ }
     if (attempt > 600) throw new Error(`wrangler dev did not start:\n${log}`);

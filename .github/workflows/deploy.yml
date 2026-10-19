@@ -29,6 +29,7 @@ jobs:
       - name: Test browser helpers and real WebSocket relay
         run: npm test
       - name: Test the Cloudflare relay under wrangler dev
+        timeout-minutes: 10
         run: npm run test:worker
       - name: Install pinned Emscripten SDK
         run: |
