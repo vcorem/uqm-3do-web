@@ -1,6 +1,10 @@
 // Cloudflare Worker for urquanmasters.org: static game files with the
-// cross-origin isolation headers, and the large data files joined from parts.
+// cross-origin isolation headers, the large data files joined from parts, and
+// the private Online Melee relay (deploy/netplay.js).
 import dataFiles from './data-parts.json';
+import { handleNetplay } from './netplay.js';
+
+export { NetplayRoom, NetplayGate } from './netplay.js';
 
 const CANONICAL_HOST = 'urquanmasters.org';
 const ISOLATION = {
@@ -21,11 +25,11 @@ export default {
       url.hostname = CANONICAL_HOST;
       return Response.redirect(url.toString(), 301);
     }
+    // The relay answers with the room object's own response: a 101 upgrade
+    // cannot be copied into a new Response without losing its WebSocket.
+    if (url.pathname.startsWith('/netplay/')) return handleNetplay(request, env);
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return isolated(new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }));
-    }
-    if (url.pathname.startsWith('/netplay/')) {
-      return isolated(new Response('Online Melee is not available on this server yet.', { status: 503 }));
     }
     if (PART.test(url.pathname)) return isolated(new Response('Not found', { status: 404 }));
     const entry = dataFiles[url.pathname];

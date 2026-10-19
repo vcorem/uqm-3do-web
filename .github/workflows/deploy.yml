@@ -28,6 +28,8 @@ jobs:
         run: npm ci
       - name: Test browser helpers and real WebSocket relay
         run: npm test
+      - name: Test the Cloudflare relay under wrangler dev
+        run: npm run test:worker
       - name: Install pinned Emscripten SDK
         run: |
           mkdir -p .tools
@@ -67,3 +69,19 @@ jobs:
             echo "$edition data: $actual"
             test "$actual" = "$expected"
           done
+      - name: Check the live Online Melee relay
+        run: |
+          node --input-type=module -e "
+            import { WebSocket } from 'ws';
+            import { randomBytes } from 'node:crypto';
+            const ws = new WebSocket('wss://urquanmasters.org/netplay/' + randomBytes(16).toString('hex') + '?role=host',
+              { origin: 'https://urquanmasters.org' });
+            const timer = setTimeout(() => { console.error('No relay answer'); process.exit(1); }, 15000);
+            ws.on('error', error => { console.error(error.message); process.exit(1); });
+            ws.on('message', data => {
+              console.log('relay:', data.toString());
+              clearTimeout(timer);
+              ws.close();
+              process.exit(JSON.parse(data).type === 'waiting' ? 0 : 1);
+            });
+          "

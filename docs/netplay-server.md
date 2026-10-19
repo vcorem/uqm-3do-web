@@ -1,7 +1,8 @@
 # Private Melee relay
 
 Status: private alpha. Two browser pages have completed local online-combat
-checks; two physical computers and public hosting have not been validated.
+checks. The public relay at https://urquanmasters.org is the Cloudflare port
+described below; two physical computers have not been validated.
 See [the validation record](validation.md) for the scope of the evidence.
 
 The Node server serves the built game and connects exactly two players in each private room. It relays ordered binary game data; the original UQM engine validates its own protocol and synchronizes the match. It does not proxy TCP connections or connect to arbitrary destinations.
@@ -66,7 +67,52 @@ npm start -- --host 127.0.0.1 --port 9999 --origin https://game.example
 
 `--dist /absolute/path/to/built-game` selects a different static document root. Only GET and HEAD requests for regular files inside that root are served. Hidden paths, directory listings, traversal and symlinks escaping the root are rejected.
 
-No public deployment or release has been performed as part of adding this server.
+## Cloudflare relay (urquanmasters.org)
+
+The public site runs the same relay contract as a Cloudflare Durable Object
+([deploy/netplay.js](../deploy/netplay.js)). The Worker sends `/netplay/*` to it
+with the full path and query. The browser client is the same.
+
+- The Worker checks the upgrade, the exact Origin (`https://urquanmasters.org`;
+  the `NETPLAY_ORIGINS` var changes it for tests), subprotocols and the room URL
+  before a room object is involved. These failures give the same responses as
+  the Node server.
+- Each room ID has one `NetplayRoom` object. It holds both WebSockets with the
+  hibernation API, so a quiet room costs nothing between messages. One alarm
+  covers the waiting expiry (2 min), the idle limit (15 min) and the total
+  lifetime (4 h).
+- An ended room keeps a retired marker for 7 days, then deletes its storage.
+  Within that time the room ID cannot be used again. A deploy restarts all
+  objects and closes all open rooms.
+- One `NetplayGate` object holds a lease for each open connection. It enforces
+  16 connections per client IP, 256 connections and 128 active rooms in total.
+  The client IP is `CF-Connecting-IP`, which the Cloudflare edge sets. If a
+  connection ended without a close event, the gate asks its room before it
+  refuses a client, and every lease expires after the room lifetime.
+- The game-data rules (pairing first, nonempty binary only, 64 KiB per message
+  with close code 1009, 1,000 messages or 1 MiB per second) are the same.
+
+Differences from the Node server, from the Workers runtime:
+
+- The runtime answers ping frames itself and gives the object no control
+  frames. Thus there is no control-frame quota and no server heartbeat. Dead
+  connections end with the TCP connection, the idle limit or the lifetime.
+- Workers WebSockets do not show the outgoing buffer size. The runtime buffers
+  outgoing data; the per-player rate limit bounds it. The queue bound applies
+  to the test-only delay queue.
+- The 10,000-room-ID process bound does not apply; the retired markers delete
+  themselves.
+
+`npm run test:worker` runs the relay under `wrangler dev` (version pinned in the
+test, same as the deploy job) with real WebSocket clients. The deploy workflow
+runs it before the build. To play a full match on a deployed site:
+
+```sh
+UQM_ORIGIN=https://urquanmasters.org/original/ npm run test:browser
+```
+
+With `UQM_ORIGIN` the browser test starts no local relay and skips the jitter
+scenario, which needs a relay with test delays.
 
 ## Integration-test API
 

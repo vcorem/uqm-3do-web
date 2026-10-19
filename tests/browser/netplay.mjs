@@ -28,14 +28,20 @@ function browserLaunchOptions(engine) {
 }
 
 const distDir = path.resolve(process.env.UQM_DIST || 'dist');
+// UQM_ORIGIN plays on a deployed game page (for example
+// https://urquanmasters.org/original/) through that site's own relay.
+// No local relay starts, so server-side delay scenarios are skipped.
+const remoteOrigin = process.env.UQM_ORIGIN || null;
 const output = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/browser');
 await mkdir(output, { recursive: true });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const results = [];
-const buildHashes = Object.fromEntries(await Promise.all(
-  ['index.html', 'uqm-debug.wasm', 'uqm-debug.js', 'uqm-debug.worker.js', 'uqm-debug.data', 'netplay-client.js'].map(async file =>
-    [file, createHash('sha256').update(await readFile(path.join(distDir, file))).digest('hex')])));
-await writeFile(path.join(output, 'build-hashes.json'), JSON.stringify(buildHashes, null, 2) + '\n');
+if (!remoteOrigin) {
+  const buildHashes = Object.fromEntries(await Promise.all(
+    ['index.html', 'uqm-debug.wasm', 'uqm-debug.js', 'uqm-debug.worker.js', 'uqm-debug.data', 'netplay-client.js'].map(async file =>
+      [file, createHash('sha256').update(await readFile(path.join(distDir, file))).digest('hex')])));
+  await writeFile(path.join(output, 'build-hashes.json'), JSON.stringify(buildHashes, null, 2) + '\n');
+}
 
 async function readState(page) {
   return page.evaluate(() => ({ ...Module.webNet.stats, connection: Module.webNet.state }));
@@ -88,9 +94,8 @@ function seedFleet() {
 }
 
 async function scenario(name, latencyPatternMs, disconnectAt) {
-  const app = createNetplayServer({ distDir, latencyPatternMs });
-  const address = await app.listen(0);
-  const origin = `http://127.0.0.1:${address.port}`;
+  const app = remoteOrigin ? null : createNetplayServer({ distDir, latencyPatternMs });
+  const origin = remoteOrigin ?? `http://127.0.0.1:${(await app.listen(0)).port}`;
   const browsers = [];
   const pages = [];
   const failures = [];
@@ -210,12 +215,12 @@ async function scenario(name, latencyPatternMs, disconnectAt) {
     throw error;
   } finally {
     await Promise.allSettled(browsers.map(browser => browser.close()));
-    await app.close();
+    await app?.close();
     await writeFile(path.join(output, 'results.json'), JSON.stringify(results, null, 2) + '\n');
   }
 }
 
 await scenario('normal', [0], 'selection');
-await scenario('jitter', [80, 120, 30, 60], 'battle');
+if (!remoteOrigin) await scenario('jitter', [80, 120, 30, 60], 'battle');
 await scenario('setup', [0], 'setup');
 console.log(`All real-browser multiplayer scenarios passed. See ${path.join(output, 'results.json')}.`);
