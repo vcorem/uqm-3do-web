@@ -14,10 +14,14 @@ automatic combat helpers by default. Cheats and extended campaign content are
 off by upstream default. It does not claim exact original-game parity. Choose
 Original 3DO for the original reference implementation.
 
-HD supports campaign and local Melee. Its build has network play disabled.
-HD changes combat coordinate calculations and its save format; it must not
-join Original 3DO rooms. The picker routes existing room invitations to Original
-3DO. There is no HD room client or relay connection in the HD page.
+HD supports campaign, local Melee and Online Melee between two HD players.
+`hd/patches/0002-web-netplay.patch` ports the browser relay transport of the
+Original edition into MegaMod (`CHOICE_netplay_VALUE='web'`), and the HD page
+uses the same `netplay-client.js` with its own room path, `/netplay/hd/<token>`.
+HD changes combat coordinate calculations and its save format, so it must not
+join Original 3DO rooms: both relays name a room by edition and token, and an
+Original player cannot enter an HD room with the same token. HD invites open the
+HD page; invitations that reach the picker still open Original 3DO.
 
 ## Build and preview
 

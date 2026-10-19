@@ -4,7 +4,10 @@
 // connection leases for the per-IP and global bounds.
 import { DurableObject } from 'cloudflare:workers';
 
-const ROOM_URL = /^\/netplay\/([0-9a-f]{32})\?role=(host|guest)$/;
+// /netplay/<token> is an Original room and /netplay/hd/<token> an HD room. The two
+// engines cannot stay in sync, so the edition is part of the room name.
+const ROOM_URL = /^\/netplay\/(?:(hd)\/)?([0-9a-f]{32})\?role=(host|guest)$/;
+const roomName = (edition, token) => (edition ? edition + ':' : '') + token;
 const DEFAULT_ORIGINS = 'https://urquanmasters.org';
 
 function integer(raw, fallback, min, max) {
@@ -68,7 +71,7 @@ export async function handleNetplay(request, env) {
   // Cloudflare sets CF-Connecting-IP at the edge; a client cannot choose it in production.
   const headers = new Headers(request.headers);
   headers.set('X-Netplay-IP', request.headers.get('CF-Connecting-IP') || 'unknown');
-  const room = env.NETPLAY_ROOMS.get(env.NETPLAY_ROOMS.idFromName(match[1]));
+  const room = env.NETPLAY_ROOMS.get(env.NETPLAY_ROOMS.idFromName(roomName(match[1], match[2])));
   return room.fetch(new Request(request.url, { method: 'GET', headers }));
 }
 
@@ -98,7 +101,8 @@ export class NetplayRoom extends DurableObject {
     const url = new URL(request.url);
     const match = ROOM_URL.exec(url.pathname + url.search);
     if (!match) return rejectedSocket('Invalid room URL or role.');
-    const [, id, role] = match;
+    const [, edition, token, role] = match;
+    const id = roomName(edition, token);
     const ip = request.headers.get('X-Netplay-IP') || 'unknown';
     const room = this.room;
     if (role === 'host') {

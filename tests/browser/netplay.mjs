@@ -33,6 +33,11 @@ const distDir = path.resolve(process.env.UQM_DIST || 'dist');
 // No local relay starts, so server-side delay scenarios are skipped.
 const remoteOrigin = process.env.UQM_ORIGIN || null;
 const output = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/browser');
+// UQM_EDITION=hd plays the Redrawn HD engine (UQM_DIST=.tools/hd-dist). Its settings
+// live in their own folder; the melee.cfg format and ship numbers are the same.
+const edition = process.env.UQM_EDITION || 'original';
+if (!['original', 'hd'].includes(edition)) throw new Error('UQM_EDITION must be original or hd');
+const meleeConfig = (edition === 'hd' ? '/home/web_user/.uqm-hd' : '/home/web_user/.uqm') + '/melee.cfg';
 await mkdir(output, { recursive: true });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const results = [];
@@ -80,7 +85,7 @@ async function checkSynchronization(pages, minimum) {
 // A normal saved Melee configuration: two Earthlings at top, two Shofixti
 // at bottom. Shofixti's original special lets us finish a fleet deterministically
 // using keyboard input, without cheating or waiting for an AI combat outcome.
-function seedFleet() {
+function seedFleet(file) {
   const bytes = new Uint8Array(140);
   for (let side = 0; side < 2; side++) {
     const offset = side * 70;
@@ -89,7 +94,7 @@ function seedFleet() {
     bytes[offset + 1] = bytes[offset + 2] = side === 1 ? 13 : 5;
     bytes.set(new TextEncoder().encode(side ? 'Test host' : 'Test guest'), offset + 15);
   }
-  FS.writeFile('/home/web_user/.uqm/melee.cfg', bytes);
+  FS.writeFile(file, bytes);
   return Array.from(bytes);
 }
 
@@ -100,7 +105,7 @@ async function scenario(name, latencyPatternMs, disconnectAt) {
   const pages = [];
   const failures = [];
   const entry = {
-    name, latencyPatternMs, passed: false,
+    name, edition, latencyPatternMs, passed: false,
     browsers: selectedEngines.map((engine, index) => ({
       role: index === 0 ? 'host' : 'guest', engine, version: null,
     })),
@@ -124,8 +129,8 @@ async function scenario(name, latencyPatternMs, disconnectAt) {
     await Promise.all(pages.map(page => page.goto(origin)));
     await Promise.all(pages.map(page => page.waitForFunction(() => runtimeReady,
       null, { polling: 100, timeout: 90000 })));
-    const expectedFleet = await pages[0].evaluate(seedFleet);
-    await pages[1].evaluate(seedFleet);
+    const expectedFleet = await pages[0].evaluate(seedFleet, meleeConfig);
+    await pages[1].evaluate(seedFleet, meleeConfig);
     // Persist the baseline before launching so reload can detect accidental
     // replacement of local fleet/control settings by the online session.
     await Promise.all(pages.map(page => page.evaluate(() => new Promise((resolve, reject) =>
@@ -192,13 +197,13 @@ async function scenario(name, latencyPatternMs, disconnectAt) {
     }
     entry.returnedToMainMenu = true;
     await pages[0].screenshot({ path: path.join(output, `${name}-returned-menu.png`) });
-    assert.deepEqual(await pages[0].evaluate(() => Array.from(FS.readFile('/home/web_user/.uqm/melee.cfg'))), expectedFleet);
+    assert.deepEqual(await pages[0].evaluate(file => Array.from(FS.readFile(file)), meleeConfig), expectedFleet);
     const logs = await pages[0].locator('#log').textContent();
     assert.doesNotMatch(logs, /Aborted\(|Assertion failed|memory access out of bounds|Uncaught RuntimeError/);
     assert.deepEqual(failures, []);
     await pages[0].reload();
     await pages[0].waitForFunction(() => runtimeReady, null, { polling: 100, timeout: 90000 });
-    assert.deepEqual(await pages[0].evaluate(() => Array.from(FS.readFile('/home/web_user/.uqm/melee.cfg'))), expectedFleet);
+    assert.deepEqual(await pages[0].evaluate(file => Array.from(FS.readFile(file)), meleeConfig), expectedFleet);
     entry.localFleetPreservedAfterReload = true;
     entry.passed = true;
     console.log(`${name}: ${disconnectAt} disconnect and persisted local settings passed`);

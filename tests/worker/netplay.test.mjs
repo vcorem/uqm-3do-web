@@ -181,6 +181,28 @@ test('plain HTTP requests to the relay do not reach a room', async t => {
   assert.equal(response.status, 426);
 });
 
+test('HD rooms are separate from Original rooms with the same token', async t => {
+  const { client } = await defaultWorker(t);
+  const id = roomId();
+  const hd = role => `/netplay/hd/${id}?role=${role}`;
+  const host = client(id, 'host', {}, hd('host'));
+  assert.deepEqual(await host.next(), { type: 'waiting' });
+  // An Original guest with the same token finds no room: the editions cannot play each other.
+  const original = client(id, 'guest');
+  assert.equal((await original.next()).type, 'error');
+  await original.closure;
+  const guest = client(id, 'guest', {}, hd('guest'));
+  assert.deepEqual(await guest.next(), { type: 'waiting' });
+  assert.deepEqual(await host.next(), { type: 'ready', role: 'host' });
+  assert.deepEqual(await guest.next(), { type: 'ready', role: 'guest' });
+  host.ws.send(Buffer.from([1, 2, 3]));
+  assert.deepEqual(await guest.next(), Buffer.from([1, 2, 3]));
+  for (const url of [`/netplay/3do/${roomId()}?role=host`, `/netplay/hd/hd/${roomId()}?role=host`, `/netplay/hd/${roomId()}`]) {
+    const invalid = client(null, null, {}, url);
+    assert.equal((await invalid.next()).type, 'error', url);
+  }
+});
+
 test('guests cannot create rooms; duplicate roles and third players cannot displace either player', async t => {
   const { client, pair } = await defaultWorker(t);
   const missing = client(roomId(), 'guest');

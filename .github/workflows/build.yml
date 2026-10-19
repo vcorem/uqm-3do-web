@@ -55,6 +55,8 @@ jobs:
         run: UQM_DIST=.tools/hd-dist npm run test:hd-campaign
       - name: Test HD idle stability and actual local combat
         run: UQM_DIST=.tools/hd-dist npm run test:hd-stability
+      - name: Test real two-browser HD Online Melee matches and disconnects
+        run: UQM_EDITION=hd UQM_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/hd-netplay npm run test:browser
       - name: Package and test the edition picker with both real engines
         run: |
           python3 scripts/package-editions.py --original dist --hd .tools/hd-dist --output .tools/editions-dist

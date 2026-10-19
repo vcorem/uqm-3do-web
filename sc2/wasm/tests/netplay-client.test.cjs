@@ -37,6 +37,9 @@ test('only same-origin relay URLs are built, ignoring arbitrary query servers', 
     assert.throws(() => netplay.parseRoom('https://other.example/#room=' + token, location), /this game server/);
     assert.throws(() => netplay.parseRoom('?room=' + token, location), /valid room/);
     assert.throws(() => netplay.relayURL(token, 'admin', location), /role/);
+    assert.equal(netplay.relayURL(token, 'host', location, 'hd'), 'wss://game.example/netplay/hd/' + token + '?role=host');
+    assert.equal(netplay.relayURL(token, 'host', location, 'original'), netplay.relayURL(token, 'host', location));
+    assert.throws(() => netplay.relayURL(token, 'host', location, '../x'), /edition/);
     assert.throws(() => netplay.relayURL('../escape', 'host', location), /valid room/);
     assert.throws(() => netplay.relayURL(token, 'host', { href: 'file:///tmp/game.html' }), /preview server/);
 });

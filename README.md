@@ -26,8 +26,8 @@ See [compatibility scope and remaining checks](docs/3do-compatibility.md).
 
 An optional combined build opens with an edition picker: **Original 3DO** or
 **Redrawn HD**, using actual 1280×960 artwork from UQM MegaMod 0.8.5. Only the
-selected edition downloads. HD has its own campaign saves and local Melee;
-online Melee remains in Original 3DO.
+selected edition downloads. HD has its own campaign saves, local Melee and
+Online Melee against other HD players; HD and Original rooms are separate.
 See [HD build, storage and attribution](docs/hd-edition.md).
 
 Build the selection screen and both editions with `./scripts/build-editions.sh`.

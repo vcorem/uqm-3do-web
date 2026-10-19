@@ -47,6 +47,8 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           UQM_DIST=.tools/release-web npm run test:editions
+      - name: Test real two-browser HD Online Melee matches and disconnects
+        run: UQM_EDITION=hd UQM_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/hd-netplay npm run test:browser
       - name: Split data files into Cloudflare asset parts
         run: python3 deploy/split-data.py --site .tools/release-web --output .tools/site --manifest deploy/data-parts.json
       - name: Deploy the Worker and static assets
