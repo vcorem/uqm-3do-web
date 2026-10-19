@@ -33,7 +33,7 @@ def check(edition, archive, nm=None, ar=None):
     expected = {name: item['source'] for item in records for name in item['symbols']}
     missing = {name: source for name, source in expected.items() if name not in actual}
     allowed = set(snapshot['allowed_missing'])
-    if allowed != ({'__main_argc_argv', 'crcTable'} if edition == 'original' else {'__main_argc_argv'}):
+    if allowed != {'__main_argc_argv', 'crcTable'}:
         raise ValueError('Export snapshot contains an unreviewed missing-symbol exception')
     unexpected = {name: source for name, source in missing.items() if name not in allowed}
     result = {'edition': edition, 'source_units': len(records), 'expected_public_symbols': len(expected),

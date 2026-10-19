@@ -36,8 +36,9 @@ function request(origin, pathname, cookie, method = 'GET') {
   });
 }
 
-function client(t, origin, id, role, cookie) {
-  const socket = new WebSocket(`${origin.replace('http:', 'ws:')}/netplay/${id}?role=${role}`, {
+function client(t, origin, id, role, cookie, edition = 'original') {
+  const prefix = edition === 'hd' ? 'hd/' : '';
+  const socket = new WebSocket(`${origin.replace('http:', 'ws:')}/netplay/${prefix}${id}?role=${role}`, {
     origin, headers: cookie ? { Cookie: cookie } : {},
   });
   t.after(() => socket.terminate());
@@ -75,7 +76,7 @@ async function withTimeout(promise, milliseconds, message) {
   } finally { clearTimeout(timer); }
 }
 
-test('differential backend serves distinct engine assets on one origin and relays both cookies through Rust', async t => {
+test('differential backend serves distinct engines and routes both editions and cookies through one Rust relay', async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'uqm-differential-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const primary = path.join(root, 'rust');
@@ -118,22 +119,27 @@ test('differential backend serves distinct engine assets on one origin and relay
   }
 
   const id = randomBytes(16).toString('hex');
-  const host = client(t, origin, id, 'host');
-  assert.deepEqual(await host.next(), { type: 'waiting' });
-  const guest = client(t, origin, id, 'guest', 'uqm_test_peer=1');
-  assert.deepEqual(await guest.next(), { type: 'waiting' });
-  assert.deepEqual(await host.next(), { type: 'ready', role: 'host' });
-  assert.deepEqual(await guest.next(), { type: 'ready', role: 'guest' });
-  // If guest upgrades followed its static cookie, the oracle would reject the
-  // room as nonexistent. Pairing and exact bytes prove one shared Rust relay.
-  const packet = randomBytes(65536);
-  host.socket.send(packet);
-  guest.socket.send(Buffer.from([0, 255, 128, 1]));
-  assert.deepEqual(await guest.next(), packet);
-  assert.deepEqual(await host.next(), Buffer.from([0, 255, 128, 1]));
+  const peers = [];
+  for (const edition of ['original', 'hd']) {
+    const host = client(t, origin, id, 'host', undefined, edition);
+    peers.push(host);
+    assert.deepEqual(await host.next(), { type: 'waiting' });
+    const guest = client(t, origin, id, 'guest', 'uqm_test_peer=1', edition);
+    peers.push(guest);
+    assert.deepEqual(await guest.next(), { type: 'waiting' });
+    assert.deepEqual(await host.next(), { type: 'ready', role: 'host' });
+    assert.deepEqual(await guest.next(), { type: 'ready', role: 'guest' });
+    // If guest upgrades followed its static cookie, the oracle would reject
+    // the room. Identical tokens also prove edition isolation through the proxy.
+    const packet = randomBytes(65536);
+    host.socket.send(packet);
+    guest.socket.send(Buffer.from([0, 255, 128, 1]));
+    assert.deepEqual(await guest.next(), packet);
+    assert.deepEqual(await host.next(), Buffer.from([0, 255, 128, 1]));
+  }
 
   await withTimeout(backend.close(), 5000, 'Differential backend did not stop');
-  await withTimeout(Promise.all([host.closed, guest.closed]), 1000, 'Proxy left WebSocket clients connected');
+  await withTimeout(Promise.all(peers.map(peer => peer.closed)), 1000, 'Proxy left WebSocket clients connected');
   await assert.rejects(new Promise((resolve, reject) => {
     const socket = net.connect(address.port, '127.0.0.1');
     socket.once('connect', () => { socket.destroy(); resolve(); });

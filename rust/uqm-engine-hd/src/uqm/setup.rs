@@ -92,10 +92,11 @@ extern "C" {
     fn InitSpace() -> BOOLEAN;
     fn ComputerInputContext_new(playerNr: COUNT) -> *mut ComputerInputContext;
     fn HumanInputContext_new(playerNr: COUNT) -> *mut HumanInputContext;
+    fn NetworkInputContext_new(playerNr: COUNT) -> *mut NetworkInputContext;
     static mut PlayerInput: [*mut InputContext; 0];
-    static mut MenuSounds: SOUND;
-    fn AdvanceLoadProgress();
     fn InitStatusOffsets();
+    fn AdvanceLoadProgress();
+    static mut MenuSounds: SOUND;
     fn InitVideoPlayer(UseCDROM: BOOLEAN) -> BOOLEAN;
     fn log_add(_: log_Level, fmt: *const ::core::ffi::c_char, ...);
 }
@@ -634,6 +635,12 @@ pub type GETMELEE_STATE = getmelee_struct;
 pub type BattleFrameInputFunction = Option<
     unsafe extern "C" fn(*mut InputContext, *mut STARSHIP) -> BATTLE_INPUT_STATE,
 >;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetworkInputContext {
+    pub handlers: *mut BattleInputHandlers,
+    pub playerNr: COUNT,
+}
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct ComputerInputContext {
@@ -1209,6 +1216,11 @@ pub unsafe extern "C" fn SetPlayerInput(mut playerI: COUNT) -> bool {
         }
         6 | 2 => {
             *(&raw mut PlayerInput as *mut *mut InputContext).offset(playerI as isize) = ComputerInputContext_new(
+                playerI,
+            ) as *mut InputContext;
+        }
+        8 => {
+            *(&raw mut PlayerInput as *mut *mut InputContext).offset(playerI as isize) = NetworkInputContext_new(
                 playerI,
             ) as *mut InputContext;
         }

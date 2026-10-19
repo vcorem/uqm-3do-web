@@ -44,11 +44,13 @@
         url.hash = 'room=' + checkedToken(token);
         return url.href;
     }
-    function relayURL(token, role, location) {
+    function relayURL(token, role, location, edition) {
         if (role !== 'host' && role !== 'guest') throw new Error('Invalid room role.');
+        if (edition !== undefined && edition !== 'original' && edition !== 'hd') throw new Error('Invalid edition.');
         const url = pageURL(location || root.location);
         url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-        url.pathname = '/netplay/' + checkedToken(token);
+        // HD rooms have their own path: the two engines cannot play each other.
+        url.pathname = '/netplay/' + (edition === 'hd' ? 'hd/' : '') + checkedToken(token);
         url.search = '?role=' + role;
         url.hash = '';
         return url.href;
@@ -56,7 +58,7 @@
 
     function connect(options) {
         const role = options.role;
-        const url = relayURL(options.token, role, options.location || root.location);
+        const url = relayURL(options.token, role, options.location || root.location, options.edition);
         const Socket = options.WebSocket || root.WebSocket;
         const schedule = options.setTimeout || root.setTimeout.bind(root);
         const cancel = options.clearTimeout || root.clearTimeout.bind(root);

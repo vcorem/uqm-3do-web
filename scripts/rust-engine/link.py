@@ -68,6 +68,7 @@ else:
     shutil.copy2(source / 'content/notices/upstream/licenses/COPYING-UQM', output / 'COPYING.txt')
     shutil.copy2(source / 'content/content-licenses.txt', output / 'content-licenses.txt')
     shutil.copy2(root / 'hd/content-lock.json', output / 'content-lock.json')
+    shutil.copy2(root / 'sc2/wasm/netplay-client.js', output / 'netplay-client.js')
 (output / 'engine-language.json').write_text(json.dumps({
     'core': 'rust', 'edition': args.edition,
     'game_engine': 'rust', 'implementation': 'translated unsafe Rust plus verified Rust core',

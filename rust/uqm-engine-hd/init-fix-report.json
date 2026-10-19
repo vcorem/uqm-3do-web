@@ -1,6 +1,10 @@
 {
-  "initializer_count": 7,
+  "initializer_count": 8,
   "initializers": [
+    {
+      "path": "src/uqm/cnctdlg.rs",
+      "symbol": "uqm_c2rust_init_d335382ca1ccd2fd"
+    },
     {
       "path": "src/uqm/comm/melnorm/melnorm.rs",
       "symbol": "uqm_c2rust_init_c0a05c6c2fe9d518"

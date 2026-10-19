@@ -8,6 +8,7 @@ use core::sync::atomic::{AtomicU8, Ordering};
 static INITIALIZATION: AtomicU8 = AtomicU8::new(0);
 
 extern "C" {
+    fn uqm_c2rust_init_d335382ca1ccd2fd();
     fn uqm_c2rust_init_c0a05c6c2fe9d518();
     fn uqm_c2rust_init_cc8c9db2fa0eecb9();
     fn uqm_c2rust_init_b155651a38e88e34();
@@ -30,6 +31,7 @@ pub unsafe extern "C" fn uqm_rust_engine_init() {
             // SAFETY: The once state gives this caller exclusive initialization
             // access; these functions only materialize C static expressions.
             unsafe {
+            uqm_c2rust_init_d335382ca1ccd2fd();
             uqm_c2rust_init_c0a05c6c2fe9d518();
             uqm_c2rust_init_cc8c9db2fa0eecb9();
             uqm_c2rust_init_b155651a38e88e34();

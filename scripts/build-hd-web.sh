@@ -46,13 +46,7 @@ if [[ "$(git -C "$source_dir" rev-parse HEAD)" != "$revision" ]]; then
   echo "HD source must be pinned to $revision; refusing to reset the existing checkout." >&2
   exit 1
 fi
-for patch_file in "$root"/hd/patches/*.patch; do
-  if git -C "$source_dir" apply --reverse --check "$patch_file" 2>/dev/null; then
-    continue
-  fi
-  git -C "$source_dir" apply --check "$patch_file"
-  git -C "$source_dir" apply "$patch_file"
-done
+python3 "$root/scripts/apply-hd-patches.py" "$source_dir"
 mkdir -p "$source_dir/wasm"
 cp "$root/hd/wasm/shell.html" "$source_dir/wasm/shell.html"
 cp "$root/hd/wasm/pre.js" "$source_dir/wasm/pre.js"
@@ -121,6 +115,7 @@ done
 cp content/notices/upstream/licenses/COPYING-UQM "$output/COPYING.txt"
 cp content/content-licenses.txt "$output/content-licenses.txt"
 cp "$root/hd/content-lock.json" "$output/content-lock.json"
+cp "$root/sc2/wasm/netplay-client.js" "$output/netplay-client.js"
 python3 - "$output/engine-language.json" "${UQM_CORE:-rust}" <<'PY'
 import json, sys
 with open(sys.argv[1], 'w') as stream:

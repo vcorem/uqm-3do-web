@@ -11,7 +11,8 @@
 #![feature(c_variadic)]
 #![feature(extern_types)]
 
-
+#[macro_use]
+extern crate c2rust_bitfields;
 
 #[cfg(not(target_os = "emscripten"))]
 compile_error!("Build this engine for wasm32-unknown-emscripten using scripts/rust-engine/build.sh.");
@@ -543,6 +544,30 @@ pub mod buildpick;
 pub mod loadmele;
 pub mod melee;
 pub mod meleesetup;
+pub mod netplay {
+pub mod checkbuf;
+pub mod checksum;
+// crc: supplied by the independently tested uqm-core crate.
+pub mod netconnection;
+pub mod netinput;
+pub mod netmelee;
+pub mod netmisc;
+pub mod netoptions;
+pub mod netrcv;
+pub mod netsend;
+pub mod netstate;
+pub mod notify;
+pub mod notifyall;
+pub mod packet;
+pub mod packethandlers;
+pub mod packetq;
+pub mod packetsenders;
+pub mod proto {
+pub mod npconfirm;
+pub mod ready;
+pub mod reset;
+} // mod proto
+} // mod netplay
 pub mod pickmele;
 } // mod supermelee
 pub mod tactrans;

@@ -77,6 +77,11 @@ extern "C" {
     fn square_root(value: DWORD) -> COUNT;
     fn ProcessSound(Sound: SOUND, PositionalObject: *mut ELEMENT);
     fn DeltaEnergy(ElementPtr: *mut ELEMENT, energy_delta: SIZE) -> BOOLEAN;
+    fn ship_intelligence(
+        ShipPtr: *mut ELEMENT,
+        ObjectsOfConcern: *mut EVALUATE_DESC,
+        ConcernCounter: COUNT,
+    );
     fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
     fn weapon_collision(
         ElementPtr0: *mut ELEMENT,
@@ -85,11 +90,6 @@ extern "C" {
         pPt1: *mut POINT,
     ) -> HELEMENT;
     fn TrackShip(Tracker: *mut ELEMENT, pfacing: *mut COUNT) -> SIZE;
-    fn ship_intelligence(
-        ShipPtr: *mut ELEMENT,
-        ObjectsOfConcern: *mut EVALUATE_DESC,
-        ConcernCounter: COUNT,
-    );
 }
 pub type size_t = usize;
 pub type uint8 = ::core::ffi::c_uchar;

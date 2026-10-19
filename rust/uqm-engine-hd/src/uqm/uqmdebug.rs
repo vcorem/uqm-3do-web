@@ -138,6 +138,11 @@ extern "C" {
     fn DeltaEnergy(ElementPtr: *mut ELEMENT, energy_delta: SIZE) -> BOOLEAN;
     fn DeltaCrew(ElementPtr: *mut ELEMENT, crew_delta: SIZE) -> BOOLEAN;
     static mut GameStrings: STRING;
+    static mut Screen: FRAME;
+    static mut ScreenContext: CONTEXT;
+    static mut StatusContext: CONTEXT;
+    static mut TinyFont: FONT;
+    static mut PlayerControl: [BYTE; 0];
     fn callGenerateForScanType(
         _: *const SOLARSYS_STATE,
         world: *const PLANET_DESC,
@@ -146,11 +151,6 @@ extern "C" {
         _: *mut NODE_INFO,
     ) -> COUNT;
     fn GetPlanetTitle(buf: *mut UNICODE, bufsize: COUNT);
-    static mut Screen: FRAME;
-    static mut ScreenContext: CONTEXT;
-    static mut StatusContext: CONTEXT;
-    static mut TinyFont: FONT;
-    static mut PlayerControl: [BYTE; 0];
     fn luaUqm_debug_run();
     fn ship_death(ShipPtr: *mut ELEMENT);
     fn __errno_location() -> *mut ::core::ffi::c_int;

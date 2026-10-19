@@ -65,11 +65,11 @@ extern "C" {
     fn UninitGameStructures();
     fn InitCommunication(which_comm: CONVERSATION) -> COUNT;
     fn RaceCommunication();
+    fn Battle(_: Option<BattleFrameCallback>) -> BOOLEAN;
     fn SplashScreen(DoProcessing: Option<unsafe extern "C" fn(DWORD) -> ()>);
     fn GameOver(DeathType: BYTE);
     fn Logo();
     fn InitMenuMusic();
-    fn Battle(_: Option<BattleFrameCallback>) -> BOOLEAN;
     fn initEventSystem();
     fn uninitEventSystem();
     fn AddInitialGameEvents();

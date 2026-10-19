@@ -50,13 +50,13 @@ extern "C" {
     static mut GlobData: GLOBDATA;
     fn ProcessSound(Sound: SOUND, PositionalObject: *mut ELEMENT);
     fn DeltaEnergy(ElementPtr: *mut ELEMENT, energy_delta: SIZE) -> BOOLEAN;
-    fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
-    fn inertial_thrust(ElementPtr: *mut ELEMENT) -> STATUS_FLAGS;
     fn ship_intelligence(
         ShipPtr: *mut ELEMENT,
         ObjectsOfConcern: *mut EVALUATE_DESC,
         ConcernCounter: COUNT,
     );
+    fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
+    fn inertial_thrust(ElementPtr: *mut ELEMENT) -> STATUS_FLAGS;
 }
 pub type size_t = usize;
 pub type uint8 = ::core::ffi::c_uchar;

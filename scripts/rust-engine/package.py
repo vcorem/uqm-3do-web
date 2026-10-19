@@ -94,9 +94,7 @@ def package(generated, source, output, edition):
 
     lib = output / 'lib.rs'
     text = lib.read_text()
-    migrated = ['random', 'random2', 'sqrt', 'trans', 'velocity', 'displist', 'boxint', 'clipline', 'bbox']
-    if edition == 'original':
-        migrated.append('crc')
+    migrated = ['random', 'random2', 'sqrt', 'trans', 'velocity', 'displist', 'boxint', 'clipline', 'bbox', 'crc']
     for module in migrated:
         declaration = f'pub mod {module};'
         if text.count(declaration) != 1:

@@ -20,6 +20,7 @@
 extern "C" {
     pub type string_table_entry;
     pub type frame_desc;
+    pub type NetConnection;
     pub type tfb_soundsample;
     pub type getmelee_struct;
     fn __assert_fail(
@@ -66,20 +67,53 @@ extern "C" {
     fn inHyperSpace() -> BOOLEAN;
     fn inQuasiSpace() -> BOOLEAN;
     fn TFB_SeedRandom(seed: DWORD) -> DWORD;
+    fn NetConnection_getDiscriminant(conn: *const NetConnection) -> bool;
+    fn crc_processState(state: *mut crc_State);
+    fn initChecksumBuffers();
+    fn uninitChecksumBuffers();
+    fn addLocalChecksum(frameNr: BattleFrameCounter, checksum: Checksum);
+    fn verifyChecksums(frameNr: BattleFrameCounter) -> bool;
+    fn crc_init(state: *mut crc_State);
+    fn crc_finish(state: *const crc_State) -> uint32;
     fn GetNextStarShip(LastStarShipPtr: *mut STARSHIP, which_side: COUNT) -> BOOLEAN;
     fn GetInitialStarShips() -> BOOLEAN;
+    fn RedrawQueue(clear: BOOLEAN);
     static mut race_q: [QUEUE; 0];
     static mut PlayerControl: [BYTE; 0];
     fn flee_preprocess(ElementPtr: *mut ELEMENT);
     fn StopDitty();
+    fn ResetWinnerStarShip();
+    fn getBattleInputDelay() -> size_t;
+    fn initBattleInputBuffers();
+    fn uninitBattleInputBuffers();
+    fn BattleInputBuffer_push(
+        bib: *mut BattleInputBuffer,
+        input: BATTLE_INPUT_STATE,
+    ) -> bool;
+    fn BattleInputBuffer_pop(
+        bib: *mut BattleInputBuffer,
+        input: *mut BATTLE_INPUT_STATE,
+    ) -> bool;
+    fn getBattleInputBuffer(player: size_t) -> *mut BattleInputBuffer;
+    fn Netplay_NotifyAll_checksum(frameNr: BattleFrameCounter, checksum: Checksum);
+    fn Netplay_NotifyAll_battleInput(input: BATTLE_INPUT_STATE);
     fn StopMusic();
     fn PlayMusicResume(hMusic: MUSIC_REF, Volume: BYTE);
-    fn RedrawQueue(clear: BOOLEAN);
+    static mut netConnections: [*mut NetConnection; 0];
+    fn getNumNetConnections() -> size_t;
+    fn netInput();
+    fn flushPacketQueues();
+    fn initBattleStateDataConnections();
+    fn setBattleStateConnections(bs: *mut battlestate_struct);
+    fn resetConnections(reason: NetplayResetReason) -> bool;
+    fn negotiateReadyConnections(notifyRemote: bool, nextState: NetState) -> bool;
+    fn waitResetConnections(nextState: NetState) -> bool;
+    fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
     fn Async_process();
     fn SetGraphicScaleMode(mode: ::core::ffi::c_int) -> ::core::ffi::c_int;
     fn SetTransitionSource(pRect: *const RECT);
     fn ScreenTransition(transition: ::core::ffi::c_int, pRect: *const RECT);
-    fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
+    fn log_add(_: log_Level, fmt: *const ::core::ffi::c_char, ...);
     fn EraseRadar();
     fn SleepThreadUntil(wakeTime: TimeCount);
     fn TaskSwitch();
@@ -224,6 +258,7 @@ impl C2Rust_Unnamed {
     pub const OPTVAL_NOM_EASY: Self = Self(1);
     pub const OPTVAL_NOM_NORM: Self = Self(2);
 }
+pub type BattleFrameCounter = DWORD;
 pub type BattleFrameCallback = unsafe extern "C" fn() -> ();
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -325,6 +360,29 @@ pub struct SIS_STATE {
     pub ShipSeed: BYTE,
     pub Seed: SDWORD,
     pub SaveVersion: BYTE,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct NetState(pub ::core::ffi::c_uint);
+impl NetState {
+    pub const NetState_unconnected: Self = Self(0);
+    pub const NetState_connecting: Self = Self(1);
+    pub const NetState_init: Self = Self(2);
+    pub const NetState_inSetup: Self = Self(3);
+    pub const NetState_preBattle: Self = Self(4);
+    pub const NetState_interBattle: Self = Self(5);
+    pub const NetState_selectShip: Self = Self(6);
+    pub const NetState_inBattle: Self = Self(7);
+    pub const NetState_endingBattle: Self = Self(8);
+    pub const NetState_endingBattle2: Self = Self(9);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct NetplayResetReason(pub ::core::ffi::c_uint);
+impl NetplayResetReason {
+    pub const ResetReason_unspecified: Self = Self(0);
+    pub const ResetReason_syncLoss: Self = Self(1);
+    pub const ResetReason_manualReset: Self = Self(2);
 }
 pub type HSTARSHIP = HLINK;
 #[derive(Copy, Clone)]
@@ -601,6 +659,14 @@ pub struct link {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
+pub struct BattleInputBuffer {
+    pub buf: *mut BATTLE_INPUT_STATE,
+    pub maxSize: size_t,
+    pub first: size_t,
+    pub size: size_t,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
 pub struct InputContext {
     pub handlers: *mut BattleInputHandlers,
     pub playerNr: COUNT,
@@ -626,7 +692,26 @@ pub type GETMELEE_STATE = getmelee_struct;
 pub type BattleFrameInputFunction = Option<
     unsafe extern "C" fn(*mut InputContext, *mut STARSHIP) -> BATTLE_INPUT_STATE,
 >;
+pub type Checksum = uint32;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct crc_State {
+    pub crc: uint32,
+}
 pub type MENU_SOUND_FLAGS = UWORD;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct log_Level(pub ::core::ffi::c_uint);
+impl log_Level {
+    pub const log_Nothing: Self = Self(0);
+    pub const log_User: Self = Self(1);
+    pub const log_Fatal: Self = Self(1);
+    pub const log_Error: Self = Self(2);
+    pub const log_Warning: Self = Self(3);
+    pub const log_Info: Self = Self(4);
+    pub const log_Debug: Self = Self(5);
+    pub const log_All: Self = Self(6);
+}
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct HumanInputContext {
@@ -681,6 +766,8 @@ pub static mut battle_counter: [BYTE; 2] = [0; 2];
 pub static mut instantVictory: BOOLEAN = BOOLEAN::FALSE;
 #[no_mangle]
 pub static mut battleInputOrder: [size_t; 2] = [0; 2];
+#[no_mangle]
+pub static mut battleFrameCount: BattleFrameCounter = 0;
 #[no_mangle]
 pub unsafe extern "C" fn RunAwayAllowed() -> BOOLEAN {
     return BOOLEAN(
@@ -758,10 +845,31 @@ unsafe extern "C" fn DoRunAway(mut StarShipPtr: *mut STARSHIP) {
 }
 unsafe extern "C" fn setupBattleInputOrder() {
     let mut i: size_t = 0;
+    let mut j: ::core::ffi::c_int = 0;
     i = 0 as size_t;
-    while i < 2 as size_t {
-        battleInputOrder[i] = i;
-        i = i.wrapping_add(1);
+    j = 0 as ::core::ffi::c_int;
+    while j < 2 as ::core::ffi::c_int {
+        if *(&raw mut PlayerControl as *mut BYTE).offset(j as isize)
+            as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int == 0
+        {
+            battleInputOrder[i] = j as size_t;
+            i = i.wrapping_add(1);
+        }
+        j += 1;
+    }
+    j = 0 as ::core::ffi::c_int;
+    while j < 2 as ::core::ffi::c_int {
+        if *(&raw mut PlayerControl as *mut BYTE).offset(j as isize)
+            as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int != 0
+        {
+            battleInputOrder[i] = j as size_t;
+            i = i.wrapping_add(1);
+        }
+        j += 1;
     }
 }
 #[no_mangle]
@@ -781,6 +889,7 @@ pub unsafe extern "C" fn frameInputHuman(
 unsafe extern "C" fn ProcessInput() {
     let mut CanRunAway: BOOLEAN = BOOLEAN::FALSE;
     let mut sideI: size_t = 0;
+    uqm_lua_checked!(netInput(), ());
     CanRunAway = uqm_lua_checked!(RunAwayAllowed(), ());
     sideI = 0 as size_t;
     while sideI < 2 as size_t {
@@ -811,6 +920,19 @@ unsafe extern "C" fn ProcessInput() {
                         .offset(cur_player as isize),
                     StarShipPtr,
                 ), ());
+                if *(&raw mut PlayerControl as *mut BYTE).offset(cur_player as isize)
+                    as ::core::ffi::c_int
+                    & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                        as ::core::ffi::c_int == 0
+                {
+                    let mut bib: *mut BattleInputBuffer = getBattleInputBuffer(
+                        cur_player,
+                    );
+                    Netplay_NotifyAll_battleInput(InputState);
+                    uqm_lua_checked!(flushPacketQueues(), ());
+                    BattleInputBuffer_push(bib, InputState);
+                    BattleInputBuffer_pop(bib, &raw mut InputState);
+                }
                 (*StarShipPtr).ship_input_state = 0 as BYTE;
                 if (*(*StarShipPtr).RaceDescPtr).ship_info.crew_level != 0 {
                     if InputState as ::core::ffi::c_int
@@ -885,6 +1007,7 @@ unsafe extern "C" fn ProcessInput() {
         }
         sideI = sideI.wrapping_add(1);
     }
+    uqm_lua_checked!(flushPacketQueues(), ());
     if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
         & (C2Rust_Unnamed_6::CHECK_LOAD.0 as ::core::ffi::c_int
             | C2Rust_Unnamed_6::CHECK_ABORT.0 as ::core::ffi::c_int) != 0
@@ -946,7 +1069,43 @@ unsafe extern "C" fn DoBattle(mut bs: *mut BATTLE_STATE) -> BOOLEAN {
         0 as ::core::ffi::c_int as MENU_SOUND_FLAGS,
         0 as ::core::ffi::c_int as MENU_SOUND_FLAGS,
     );
+    if getNumNetConnections() > 0 as size_t
+        && battleFrameCount.wrapping_rem(1 as BattleFrameCounter)
+            == 0 as BattleFrameCounter
+    {
+        let mut state: crc_State = crc_State { crc: 0 };
+        let mut checksum: Checksum = 0;
+        crc_init(&raw mut state);
+        crc_processState(&raw mut state);
+        checksum = crc_finish(&raw mut state);
+        Netplay_NotifyAll_checksum(battleFrameCount, checksum);
+        uqm_lua_checked!(flushPacketQueues(), BOOLEAN(0));
+        addLocalChecksum(battleFrameCount, checksum);
+    }
     uqm_lua_checked!(ProcessInput(), BOOLEAN(0));
+    if getNumNetConnections() > 0 as size_t {
+        let mut delay: size_t = getBattleInputDelay();
+        if battleFrameCount as size_t >= delay
+            && (battleFrameCount as size_t).wrapping_sub(delay).wrapping_rem(1 as size_t)
+                == 0 as size_t
+        {
+            if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+                & C2Rust_Unnamed_6::CHECK_ABORT.0 as ::core::ffi::c_int == 0
+            {
+                if !verifyChecksums(
+                    (battleFrameCount as size_t).wrapping_sub(delay)
+                        as BattleFrameCounter,
+                ) {
+                    GlobData.Game_state.CurrentActivity = (GlobData
+                        .Game_state
+                        .CurrentActivity as ::core::ffi::c_int
+                        | C2Rust_Unnamed_6::CHECK_ABORT.0 as ::core::ffi::c_int)
+                        as ACTIVITY;
+                    uqm_lua_checked!(resetConnections(NetplayResetReason::ResetReason_syncLoss), BOOLEAN(0));
+                }
+            }
+        }
+    }
     if (*bs).first_time.0 != 0 {
         r.corner.x = (((6 as ::core::ffi::c_int) << resolutionFactor)
             + if if optWindowType == 1 as DWORD {
@@ -1065,11 +1224,46 @@ unsafe extern "C" fn DoBattle(mut bs: *mut BATTLE_STATE) -> BOOLEAN {
     {
         return BOOLEAN::FALSE;
     }
+    battleFrameCount = battleFrameCount.wrapping_add(1);
     return BOOLEAN::TRUE;
+}
+#[no_mangle]
+pub unsafe extern "C" fn GetPlayerOrder(mut i: COUNT) -> COUNT {
+    if *(&raw mut PlayerControl as *mut BYTE).offset(0isize) as ::core::ffi::c_int
+        & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+            as ::core::ffi::c_int != 0
+        && !NetConnection_getDiscriminant(
+            *(&raw mut netConnections as *mut *mut NetConnection).offset(0isize),
+        )
+        || *(&raw mut PlayerControl as *mut BYTE).offset(1isize) as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int != 0
+            && NetConnection_getDiscriminant(
+                *(&raw mut netConnections as *mut *mut NetConnection).offset(1isize),
+            ) as ::core::ffi::c_int != 0
+    {
+        return i
+    } else {
+        return (1 as ::core::ffi::c_int - i as ::core::ffi::c_int) as COUNT
+    };
 }
 unsafe extern "C" fn selectAllShips(mut num_ships: SIZE) -> BOOLEAN {
     if num_ships as ::core::ffi::c_int == 1 as ::core::ffi::c_int {
         return uqm_lua_checked!(GetNextStarShip(::core::ptr::null_mut::<STARSHIP>(), 0 as COUNT), BOOLEAN(0));
+    }
+    if *(&raw mut PlayerControl as *mut BYTE).offset(0isize) as ::core::ffi::c_int
+        & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+            as ::core::ffi::c_int != 0
+        && *(&raw mut PlayerControl as *mut BYTE).offset(1isize) as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int != 0
+    {
+        log_add(
+            log_Level::log_Error,
+            b"Only one side at a time can be network controlled.\n\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+        return BOOLEAN::FALSE;
     }
     return uqm_lua_checked!(GetInitialStarShips(), BOOLEAN(0));
 }
@@ -1109,6 +1303,11 @@ pub unsafe extern "C" fn Battle(mut callback: Option<BattleFrameCallback>) -> BO
             SetGraphicScaleMode(optMeleeScale);
         }
         setupBattleInputOrder();
+        initBattleInputBuffers();
+        initChecksumBuffers();
+        battleFrameCount = 0 as BattleFrameCounter;
+        ResetWinnerStarShip();
+        setBattleStateConnections(&raw mut bs);
         if uqm_lua_checked!(selectAllShips(num_ships), BOOLEAN(0)).0 == 0 {
             GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
                 as ::core::ffi::c_int
@@ -1117,15 +1316,27 @@ pub unsafe extern "C" fn Battle(mut callback: Option<BattleFrameCallback>) -> BO
             uqm_lua_checked!(BattleSong(BOOLEAN::TRUE), BOOLEAN(0));
             DirJoyActive = BOOLEAN::TRUE;
             bs.NextTime = 0 as DWORD;
-            bs.InputFunc = Some(
-                DoBattle as unsafe extern "C" fn(*mut BATTLE_STATE) -> BOOLEAN,
-            ) as Option<unsafe extern "C" fn(*mut battlestate_struct) -> BOOLEAN>;
-            bs.frame_cb = callback;
-            bs.first_time = inHQSpace();
-            if bs.first_time.0 != 0 {
-                uqm_lua_checked!(EraseRadar(), BOOLEAN(0));
+            initBattleStateDataConnections();
+            let mut allOk: bool = uqm_lua_checked!(negotiateReadyConnections(
+                true,
+                NetState::NetState_inBattle,
+            ), BOOLEAN(0));
+            if !allOk {
+                GlobData.Game_state.CurrentActivity = (GlobData
+                    .Game_state
+                    .CurrentActivity as ::core::ffi::c_int
+                    | C2Rust_Unnamed_6::CHECK_ABORT.0 as ::core::ffi::c_int) as ACTIVITY;
+            } else {
+                bs.InputFunc = Some(
+                    DoBattle as unsafe extern "C" fn(*mut BATTLE_STATE) -> BOOLEAN,
+                ) as Option<unsafe extern "C" fn(*mut battlestate_struct) -> BOOLEAN>;
+                bs.frame_cb = callback;
+                bs.first_time = inHQSpace();
+                if bs.first_time.0 != 0 {
+                    uqm_lua_checked!(EraseRadar(), BOOLEAN(0));
+                }
+                uqm_lua_checked!(DoInput(&raw mut bs as *mut ::core::ffi::c_void, BOOLEAN::FALSE), BOOLEAN(0));
             }
-            uqm_lua_checked!(DoInput(&raw mut bs as *mut ::core::ffi::c_void, BOOLEAN::FALSE), BOOLEAN(0));
         }
         if GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
             == C2Rust_Unnamed_6::SUPER_MELEE.0 as ::core::ffi::c_int
@@ -1133,6 +1344,7 @@ pub unsafe extern "C" fn Battle(mut callback: Option<BattleFrameCallback>) -> BO
             if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
                 & C2Rust_Unnamed_6::CHECK_ABORT.0 as ::core::ffi::c_int != 0
             {
+                uqm_lua_checked!(waitResetConnections(NetState::NetState_inSetup), BOOLEAN(0));
                 GlobData.Game_state.CurrentActivity = (GlobData
                     .Game_state
                     .CurrentActivity as ::core::ffi::c_int
@@ -1143,6 +1355,9 @@ pub unsafe extern "C" fn Battle(mut callback: Option<BattleFrameCallback>) -> BO
             }
         }
         DirJoyActive = BOOLEAN::FALSE;
+        uninitBattleInputBuffers();
+        uninitChecksumBuffers();
+        setBattleStateConnections(::core::ptr::null_mut::<battlestate_struct>());
         uqm_lua_checked!(SetMusicPosition(), BOOLEAN(0));
         uqm_lua_checked!(StopDitty(), BOOLEAN(0));
         uqm_lua_checked!(StopMusic(), BOOLEAN(0));

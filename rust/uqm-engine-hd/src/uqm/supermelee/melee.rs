@@ -30,6 +30,7 @@ extern "C" {
     pub type joy_char;
     pub type tfb_soundsample;
     pub type RandomContext;
+    pub type NetConnection;
     pub type MeleeTeam;
     pub type MeleeSetup;
     fn SetContext(Context: CONTEXT) -> CONTEXT;
@@ -111,6 +112,11 @@ extern "C" {
     fn AlignText(str: *const UNICODE, loc_x: *mut sint16) -> *mut UNICODE;
     fn AddPadd(str: *const UNICODE, padding: *mut sint16) -> *mut UNICODE;
     fn GetTimeCounter() -> TimeCount;
+    fn memcpy(
+        _: *mut ::core::ffi::c_void,
+        _: *const ::core::ffi::c_void,
+        _: size_t,
+    ) -> *mut ::core::ffi::c_void;
     fn memset(
         _: *mut ::core::ffi::c_void,
         _: ::core::ffi::c_int,
@@ -121,6 +127,10 @@ extern "C" {
         _: *const ::core::ffi::c_char,
         _: size_t,
     ) -> *mut ::core::ffi::c_char;
+    fn strcmp(
+        _: *const ::core::ffi::c_char,
+        _: *const ::core::ffi::c_char,
+    ) -> ::core::ffi::c_int;
     fn strtok(
         _: *mut ::core::ffi::c_char,
         _: *const ::core::ffi::c_char,
@@ -128,7 +138,9 @@ extern "C" {
     fn strlen(_: *const ::core::ffi::c_char) -> size_t;
     fn ControlAtlas(menu_index: ::core::ffi::c_int, atlas_array: *mut FRAME) -> FRAME;
     static mut PulsedInputState: CONTROLLER_INPUT_STATE;
+    static mut PlayerControls: [CONTROL_TEMPLATE; 0];
     fn FlushInput();
+    fn DoPopupWindow(msg: *const ::core::ffi::c_char);
     fn DoInput(pInputState: *mut ::core::ffi::c_void, resetInput: BOOLEAN);
     static mut GamePaused: BOOLEAN;
     fn DoTextEntry(pTES: *mut TEXTENTRY_STATE) -> BOOLEAN;
@@ -143,6 +155,7 @@ extern "C" {
     static mut CanvasHeight: ::core::ffi::c_int;
     fn InitSpace() -> BOOLEAN;
     fn UninitSpace();
+    fn SleepThread(timePeriod: TimePeriod);
     fn SleepThreadUntil(wakeTime: TimeCount);
     fn LoadSoundInstance(res: RESOURCE) -> SOUND_REF;
     fn LoadMusicInstance(res: RESOURCE) -> MUSIC_REF;
@@ -154,13 +167,44 @@ extern "C" {
     static mut GlobData: GLOBDATA;
     fn InitGlobData();
     fn is3DO(optWhich: ::core::ffi::c_int) -> OPT_CONSOLETYPE;
+    fn TFB_SeedRandom(seed: DWORD) -> DWORD;
     fn TFB_Random() -> DWORD;
     fn RandomContext_New() -> *mut RandomContext;
     fn RandomContext_Delete(context: *mut RandomContext);
     fn RandomContext_SeedRandom(context: *mut RandomContext, new_seed: DWORD) -> DWORD;
+    fn NetConnection_isConnected(conn: *const NetConnection) -> bool;
+    fn NetConnection_getState(conn: *const NetConnection) -> NetState;
+    fn NetConnection_getDiscriminant(conn: *const NetConnection) -> bool;
+    fn NetConnection_getPeerOptions(
+        conn: *const NetConnection,
+    ) -> *const NetplayPeerOptions;
+    fn NetConnection_getPlayerNr(conn: *const NetConnection) -> ::core::ffi::c_int;
+    static mut netplayOptions: NetplayOptions;
+    static mut webNetplayRole: ::core::ffi::c_int;
+    fn Battle(_: Option<BattleFrameCallback>) -> BOOLEAN;
     static MeleeTeam_serialSize: size_t;
     fn MeleeTeam_getFleet(team: *const MeleeTeam) -> *const MeleeShip;
     fn MeleeTeam_getTeamName(team: *const MeleeTeam) -> *const ::core::ffi::c_char;
+    fn MeleeSetup_getSentShip(
+        setup: *const MeleeSetup,
+        teamNr: size_t,
+        slotNr: FleetShipIndex,
+    ) -> MeleeShip;
+    fn MeleeSetup_getSentTeamName(
+        setup: *const MeleeSetup,
+        teamNr: size_t,
+    ) -> *const ::core::ffi::c_char;
+    fn MeleeSetup_setSentShip(
+        setup: *mut MeleeSetup,
+        teamNr: size_t,
+        slotNr: FleetShipIndex,
+        ship: MeleeShip,
+    ) -> bool;
+    fn MeleeSetup_setSentTeamName(
+        setup: *mut MeleeSetup,
+        teamNr: size_t,
+        name: *const ::core::ffi::c_char,
+    ) -> bool;
     fn MeleeSetup_new() -> *mut MeleeSetup;
     fn MeleeSetup_delete(setup: *mut MeleeSetup);
     fn MeleeSetup_setShip(
@@ -207,8 +251,6 @@ extern "C" {
     fn DrawPickFrame(pMS: *mut MELEE_STATE);
     fn DrawPickIcon(ship: MeleeShip, DrawErase: bool);
     fn DrawTooltip(SIPtr: *mut SHIP_INFO);
-    fn Battle(_: Option<BattleFrameCallback>) -> BOOLEAN;
-    fn GetStarShipFromIndex(pShipQ: *mut QUEUE, Index: COUNT) -> HLINK;
     fn ClearShipStatus(y: COORD);
     fn InitShipStatus(
         ShipInfoPtr: *mut SHIP_INFO,
@@ -218,6 +260,12 @@ extern "C" {
     );
     fn load_gravity_well(selector: BYTE);
     fn free_gravity_well();
+    fn getLineWithinWidth(
+        pText: *mut TEXT,
+        startNext: *mut *const ::core::ffi::c_char,
+        maxWidth: SIZE,
+        maxChars: COUNT,
+    ) -> BOOLEAN;
     static mut GameStrings: STRING;
     fn SetCursorRect(r: *mut RECT, context: CONTEXT);
     fn SetCursorFlashBlock(state: BOOLEAN);
@@ -237,6 +285,28 @@ extern "C" {
     static mut master_q: QUEUE;
     fn GetShipCostFromIndex(Index: ::core::ffi::c_uint) -> COUNT;
     fn GetShipMeleeIconsFromIndex(Index: ::core::ffi::c_uint) -> FRAME;
+    static mut netConnections: [*mut NetConnection; 0];
+    fn closeAllConnections();
+    fn closeDisconnectedConnections();
+    fn NetMelee_getBattleState(conn: *mut NetConnection) -> *mut battlestate_struct;
+    fn netInput();
+    fn flushPacketQueues();
+    fn confirmConnections();
+    fn cancelConfirmations();
+    fn openPlayerNetworkConnection(
+        player: COUNT,
+        extra: *mut ::core::ffi::c_void,
+    ) -> *mut NetConnection;
+    fn closePlayerNetworkConnection(player: COUNT);
+    fn setupInputDelay(localInputDelay: size_t) -> bool;
+    fn negotiateReadyConnections(notifyRemote: bool, nextState: NetState) -> bool;
+    fn Netplay_Notify_seedRandom(conn: *mut NetConnection, seed: uint32);
+    fn Netplay_NotifyAll_setTeamName(pMS: *mut MELEE_STATE, playerNr: size_t);
+    fn Netplay_NotifyAll_setFleet(pMS: *mut MELEE_STATE, playerNr: size_t);
+    fn Netplay_NotifyAll_setShip(pMS: *mut MELEE_STATE, playerNr: size_t, index: size_t);
+    fn Netplay_NotifyAll_inputDelay(delay: size_t) -> bool;
+    fn MeleeConnectDialog(side: ::core::ffi::c_int) -> BOOLEAN;
+    fn DrawShadowedBox(r: *mut RECT, bg: Color, dark: Color, medium: Color);
     fn StopMusic();
     fn PlayMusicResume(hMusic: MUSIC_REF, Volume: BYTE);
     static mut GameSounds: SOUND;
@@ -255,8 +325,10 @@ extern "C" {
     fn DrawBorderPadding(videoWidth: DWORD);
     fn SeedRandomNumbers() -> DWORD;
     fn log_add(_: log_Level, fmt: *const ::core::ffi::c_char, ...);
+    fn GetStarShipFromIndex(pShipQ: *mut QUEUE, Index: COUNT) -> HLINK;
 }
 pub type size_t = usize;
+pub type ssize_t = isize;
 pub type off_t = ::core::ffi::c_longlong;
 pub type uid_t = ::core::ffi::c_uint;
 pub type gid_t = ::core::ffi::c_uint;
@@ -426,6 +498,7 @@ impl ScreenFadeType {
     pub const FadeSomeToColor: Self = Self(255);
 }
 pub type TimeCount = DWORD;
+pub type TimePeriod = DWORD;
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct C2Rust_Unnamed(pub ::core::ffi::c_uint);
@@ -462,6 +535,14 @@ impl C2Rust_Unnamed {
     pub const KEY_DEBUG_4: Self = Self(29);
     pub const KEY_MENU_ANY: Self = Self(30);
     pub const NUM_MENU_KEYS: Self = Self(31);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct CONTROL_TEMPLATE(pub ::core::ffi::c_uint);
+impl CONTROL_TEMPLATE {
+    pub const CONTROL_TEMPLATE_PL_1: Self = Self(0);
+    pub const CONTROL_TEMPLATE_PL_2: Self = Self(1);
+    pub const NUM_TEMPLATES: Self = Self(2);
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -632,6 +713,142 @@ pub struct GLOBDATA {
     pub SIS_state: SIS_STATE,
     pub Game_state: GAME_STATE,
 }
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct NetplayAbortReason(pub ::core::ffi::c_uint);
+impl NetplayAbortReason {
+    pub const AbortReason_unspecified: Self = Self(0);
+    pub const AbortReason_versionMismatch: Self = Self(1);
+    pub const AbortReason_invalidHash: Self = Self(2);
+    pub const AbortReason_protocolError: Self = Self(3);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct NetplayResetReason(pub ::core::ffi::c_uint);
+impl NetplayResetReason {
+    pub const ResetReason_unspecified: Self = Self(0);
+    pub const ResetReason_syncLoss: Self = Self(1);
+    pub const ResetReason_manualReset: Self = Self(2);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct NetState(pub ::core::ffi::c_uint);
+impl NetState {
+    pub const NetState_unconnected: Self = Self(0);
+    pub const NetState_connecting: Self = Self(1);
+    pub const NetState_init: Self = Self(2);
+    pub const NetState_inSetup: Self = Self(3);
+    pub const NetState_preBattle: Self = Self(4);
+    pub const NetState_interBattle: Self = Self(5);
+    pub const NetState_selectShip: Self = Self(6);
+    pub const NetState_inBattle: Self = Self(7);
+    pub const NetState_endingBattle: Self = Self(8);
+    pub const NetState_endingBattle2: Self = Self(9);
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetplayPeerOptions {
+    pub isServer: bool,
+    pub host: *const ::core::ffi::c_char,
+    pub port: *const ::core::ffi::c_char,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetplayOptions {
+    pub metaServer: *const ::core::ffi::c_char,
+    pub metaPort: *const ::core::ffi::c_char,
+    pub peer: [NetplayPeerOptions; 2],
+    pub inputDelay: size_t,
+}
+pub type BattleFrameCallback = unsafe extern "C" fn() -> ();
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct battlestate_struct {
+    pub InputFunc: Option<unsafe extern "C" fn(*mut battlestate_struct) -> BOOLEAN>,
+    pub first_time: BOOLEAN,
+    pub NextTime: DWORD,
+    pub frame_cb: Option<BattleFrameCallback>,
+}
+pub type HELEMENT = HLINK;
+pub type ELEMENT_FLAGS = UWORD;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct state {
+    pub location: POINT,
+    pub image: C2Rust_Unnamed_1,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct C2Rust_Unnamed_1 {
+    pub frame: FRAME,
+    pub farray: *mut FRAME,
+}
+pub type STATE = state;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct element {
+    pub pred: HELEMENT,
+    pub succ: HELEMENT,
+    pub preprocess_func: Option<ElementProcessFunc>,
+    pub postprocess_func: Option<ElementProcessFunc>,
+    pub collision_func: Option<ElementCollisionFunc>,
+    pub death_func: Option<ElementProcessFunc>,
+    pub playerNr: SIZE,
+    pub state_flags: ELEMENT_FLAGS,
+    pub c2rust_unnamed: C2Rust_Unnamed_6,
+    pub c2rust_unnamed_0: C2Rust_Unnamed_5,
+    pub c2rust_unnamed_1: C2Rust_Unnamed_4,
+    pub c2rust_unnamed_2: C2Rust_Unnamed_3,
+    pub c2rust_unnamed_3: C2Rust_Unnamed_2,
+    pub colorCycleIndex: BYTE,
+    pub velocity: VELOCITY_DESC,
+    pub IntersectControl: INTERSECT_CONTROL,
+    pub PrimIndex: COUNT,
+    pub current: STATE,
+    pub next: STATE,
+    pub pParent: *mut ::core::ffi::c_void,
+    pub hTarget: HELEMENT,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union C2Rust_Unnamed_2 {
+    pub thrust_wait: BYTE,
+    pub blast_offset: BYTE,
+    pub next_turn: BYTE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union C2Rust_Unnamed_3 {
+    pub turn_wait: BYTE,
+    pub sys_loc: BYTE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union C2Rust_Unnamed_4 {
+    pub mass_points: BYTE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union C2Rust_Unnamed_5 {
+    pub crew_level: COUNT,
+    pub hit_points: COUNT,
+    pub facing: COUNT,
+    pub cycle: COUNT,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union C2Rust_Unnamed_6 {
+    pub life_span: COUNT,
+    pub scan_node: COUNT,
+}
+pub type ElementProcessFunc = unsafe extern "C" fn(*mut ELEMENT) -> ();
+pub type ELEMENT = element;
+pub type ElementCollisionFunc = unsafe extern "C" fn(
+    *mut ELEMENT,
+    *mut POINT,
+    *mut ELEMENT,
+    *mut POINT,
+) -> ();
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct melee_state {
@@ -795,7 +1012,6 @@ pub struct STARSHIP {
     pub playerNr: SIZE,
     pub control: BYTE,
 }
-pub type HELEMENT = HLINK;
 pub type STATUS_FLAGS = UWORD;
 pub type RACE_DESC = race_desc;
 #[derive(Copy, Clone)]
@@ -818,85 +1034,6 @@ pub struct race_desc {
     pub CodeRef: *mut ::core::ffi::c_void,
 }
 pub type INIT_WEAPON_FUNC = unsafe extern "C" fn(*mut ELEMENT, *mut HELEMENT) -> COUNT;
-pub type ELEMENT = element;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct element {
-    pub pred: HELEMENT,
-    pub succ: HELEMENT,
-    pub preprocess_func: Option<ElementProcessFunc>,
-    pub postprocess_func: Option<ElementProcessFunc>,
-    pub collision_func: Option<ElementCollisionFunc>,
-    pub death_func: Option<ElementProcessFunc>,
-    pub playerNr: SIZE,
-    pub state_flags: ELEMENT_FLAGS,
-    pub c2rust_unnamed: C2Rust_Unnamed_6,
-    pub c2rust_unnamed_0: C2Rust_Unnamed_5,
-    pub c2rust_unnamed_1: C2Rust_Unnamed_4,
-    pub c2rust_unnamed_2: C2Rust_Unnamed_3,
-    pub c2rust_unnamed_3: C2Rust_Unnamed_2,
-    pub colorCycleIndex: BYTE,
-    pub velocity: VELOCITY_DESC,
-    pub IntersectControl: INTERSECT_CONTROL,
-    pub PrimIndex: COUNT,
-    pub current: STATE,
-    pub next: STATE,
-    pub pParent: *mut ::core::ffi::c_void,
-    pub hTarget: HELEMENT,
-}
-pub type STATE = state;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct state {
-    pub location: POINT,
-    pub image: C2Rust_Unnamed_1,
-}
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct C2Rust_Unnamed_1 {
-    pub frame: FRAME,
-    pub farray: *mut FRAME,
-}
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub union C2Rust_Unnamed_2 {
-    pub thrust_wait: BYTE,
-    pub blast_offset: BYTE,
-    pub next_turn: BYTE,
-}
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub union C2Rust_Unnamed_3 {
-    pub turn_wait: BYTE,
-    pub sys_loc: BYTE,
-}
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub union C2Rust_Unnamed_4 {
-    pub mass_points: BYTE,
-}
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub union C2Rust_Unnamed_5 {
-    pub crew_level: COUNT,
-    pub hit_points: COUNT,
-    pub facing: COUNT,
-    pub cycle: COUNT,
-}
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub union C2Rust_Unnamed_6 {
-    pub life_span: COUNT,
-    pub scan_node: COUNT,
-}
-pub type ELEMENT_FLAGS = UWORD;
-pub type ElementProcessFunc = unsafe extern "C" fn(*mut ELEMENT) -> ();
-pub type ElementCollisionFunc = unsafe extern "C" fn(
-    *mut ELEMENT,
-    *mut POINT,
-    *mut ELEMENT,
-    *mut POINT,
-) -> ();
 pub type POSTPROCESS_FUNC = unsafe extern "C" fn(*mut ELEMENT) -> ();
 pub type PREPROCESS_FUNC = unsafe extern "C" fn(*mut ELEMENT) -> ();
 pub type UNINIT_FUNC = unsafe extern "C" fn(*mut RACE_DESC) -> ();
@@ -999,7 +1136,6 @@ impl MENU_SOUND_EFFECT {
     pub const MENU_SOUND_BUBBLEWARP: Self = Self(4);
     pub const MENU_SOUND_TEXT: Self = Self(5);
 }
-pub type BattleFrameCallback = unsafe extern "C" fn() -> ();
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct C2Rust_Unnamed_7(pub ::core::ffi::c_uint);
@@ -1159,16 +1295,17 @@ impl C2Rust_Unnamed_9 {
 #[repr(transparent)]
 pub struct C2Rust_Unnamed_10(pub ::core::ffi::c_uint);
 impl C2Rust_Unnamed_10 {
-    pub const CONTROLS_TOP: Self = Self(0);
-    pub const SAVE_TOP: Self = Self(1);
-    pub const LOAD_TOP: Self = Self(2);
-    pub const START_MELEE: Self = Self(3);
-    pub const LOAD_BOT: Self = Self(4);
-    pub const SAVE_BOT: Self = Self(5);
-    pub const CONTROLS_BOT: Self = Self(6);
-    pub const QUIT_BOT: Self = Self(7);
-    pub const EDIT_MELEE: Self = Self(8);
-    pub const BUILD_PICK: Self = Self(9);
+    pub const NET_TOP: Self = Self(0);
+    pub const CONTROLS_TOP: Self = Self(1);
+    pub const SAVE_TOP: Self = Self(2);
+    pub const LOAD_TOP: Self = Self(3);
+    pub const START_MELEE: Self = Self(4);
+    pub const LOAD_BOT: Self = Self(5);
+    pub const SAVE_BOT: Self = Self(6);
+    pub const CONTROLS_BOT: Self = Self(7);
+    pub const QUIT_BOT: Self = Self(8);
+    pub const EDIT_MELEE: Self = Self(9);
+    pub const BUILD_PICK: Self = Self(10);
 }
 #[inline]
 unsafe extern "C" fn colorFromRgb15(mut r: BYTE, mut g: BYTE, mut b: BYTE) -> Color {
@@ -2270,6 +2407,10 @@ pub unsafe extern "C" fn RepairMeleeFrame(mut pRect: *const RECT) {
             BOOLEAN::FALSE,
         ), ());
         uqm_lua_checked!(DrawMeleeIcon(
+            C2Rust_Unnamed_7::NET_BUTTON_TOP.0 as ::core::ffi::c_int as COUNT,
+            BOOLEAN::FALSE,
+        ), ());
+        uqm_lua_checked!(DrawMeleeIcon(
             C2Rust_Unnamed_7::BATTLE_BUTTON_HL.0 as ::core::ffi::c_int as COUNT,
             BOOLEAN::TRUE,
         ), ());
@@ -2655,45 +2796,218 @@ unsafe extern "C" fn DrawTeamString(
     UnbatchGraphics();
     return BOOLEAN::TRUE;
 }
+unsafe extern "C" fn multiLineDrawText(mut textIn: *mut TEXT, mut clipRect: *mut RECT) {
+    let mut oldRect: RECT = RECT {
+        corner: POINT { x: 0, y: 0 },
+        extent: EXTENT { width: 0, height: 0 },
+    };
+    let mut leading: SIZE = 0;
+    let mut text: TEXT = TEXT {
+        baseline: POINT { x: 0, y: 0 },
+        pStr: ::core::ptr::null::<UNICODE>(),
+        align: TEXT_ALIGN::ALIGN_LEFT,
+        CharCount: 0,
+    };
+    let mut lineWidth: SIZE = 0;
+    GetContextClipRect(&raw mut oldRect);
+    SetContextClipRect(clipRect);
+    GetContextFontLeading(&raw mut leading);
+    text = *textIn;
+    text.baseline.x = ((1 as ::core::ffi::c_int) << resolutionFactor) as COORD;
+    text.baseline.y = 0 as COORD;
+    if (*clipRect).extent.width as ::core::ffi::c_int
+        > text.baseline.x as ::core::ffi::c_int
+    {
+        lineWidth = ((*clipRect).extent.width as ::core::ffi::c_int
+            - text.baseline.x as ::core::ffi::c_int) as SIZE;
+        while *text.pStr as ::core::ffi::c_int != '\0' as ::core::ffi::c_int {
+            let mut nextLine: *const ::core::ffi::c_char = ::core::ptr::null::<
+                ::core::ffi::c_char,
+            >();
+            text.baseline.y = (text.baseline.y as ::core::ffi::c_int
+                + leading as ::core::ffi::c_int) as COORD;
+            text.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+            getLineWithinWidth(
+                &raw mut text,
+                &raw mut nextLine,
+                lineWidth,
+                text.CharCount,
+            );
+            uqm_lua_checked!(font_DrawText(&raw mut text), ());
+            text.pStr = nextLine as *const UNICODE;
+        }
+    }
+    SetContextClipRect(&raw mut oldRect);
+}
+unsafe extern "C" fn DrawMeleeStatusMessage(mut message: *const ::core::ffi::c_char) {
+    let mut oldContext: CONTEXT = ::core::ptr::null_mut::<CONTEXT_DESC>();
+    let mut r: RECT = RECT {
+        corner: POINT { x: 0, y: 0 },
+        extent: EXTENT { width: 0, height: 0 },
+    };
+    oldContext = SetContext(SpaceContext);
+    r.corner.x = ((1 as ::core::ffi::c_int) << resolutionFactor) as COORD;
+    r.corner.y = ((201 as ::core::ffi::c_int) << resolutionFactor) as COORD;
+    r.extent.width = (if if optWindowType == 1 as DWORD {
+        BOOLEAN::TRUE.0 as ::core::ffi::c_int
+    } else {
+        BOOLEAN::FALSE.0 as ::core::ffi::c_int
+    } != 0
+    {
+        6 as ::core::ffi::c_int
+    } else {
+        7 as ::core::ffi::c_int
+    }
+        * (((34 as ::core::ffi::c_int) << resolutionFactor)
+            + ((1 as ::core::ffi::c_int) << resolutionFactor))) as COORD;
+    r.extent.height = ((38 as ::core::ffi::c_int) << resolutionFactor) as COORD;
+    uqm_lua_checked!(RepairMeleeFrame(&raw mut r), ());
+    if *message.offset(0isize) as ::core::ffi::c_int != '\0' as ::core::ffi::c_int {
+        let mut lfText: TEXT = TEXT {
+            baseline: POINT { x: 0, y: 0 },
+            pStr: ::core::ptr::null::<UNICODE>(),
+            align: TEXT_ALIGN::ALIGN_LEFT,
+            CharCount: 0,
+        };
+        lfText.pStr = message as *const UNICODE;
+        lfText.align = TEXT_ALIGN::ALIGN_LEFT;
+        lfText.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+        SetContextFont(MicroFont);
+        SetContextForeGroundColor(colorFromRgb15(0 as BYTE, 0x14 as BYTE, 0 as BYTE));
+        BatchGraphics();
+        uqm_lua_checked!(multiLineDrawText(&raw mut lfText, &raw mut r), ());
+        UnbatchGraphics();
+    }
+    SetContext(oldContext);
+}
+unsafe extern "C" fn UpdateMeleeStatusMessage(mut player: ssize_t) {
+    let mut conn: *mut NetConnection = ::core::ptr::null_mut::<NetConnection>();
+    (player == -1 as ssize_t || player >= 0 as ssize_t && player < 2 as ssize_t
+        || {
+            __assert_fail(
+                b"player == -1 || (player >= 0 && player < NUM_PLAYERS)\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+                b"src/uqm/supermelee/melee.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                1278 as ::core::ffi::c_int,
+                b"UpdateMeleeStatusMessage\0".as_ptr() as *const ::core::ffi::c_char,
+            );
+            0 as ::core::ffi::c_int != 0
+        }) as ::core::ffi::c_int;
+    if player == -1 as ssize_t {
+        uqm_lua_checked!(DrawMeleeStatusMessage(b"\0".as_ptr() as *const ::core::ffi::c_char), ());
+        return;
+    }
+    conn = *(&raw mut netConnections as *mut *mut NetConnection).offset(player as isize)
+        as *mut NetConnection;
+    if conn.is_null() {
+        uqm_lua_checked!(DrawMeleeStatusMessage(
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 0 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+        ), ());
+        return;
+    }
+    match NetConnection_getState(conn) {
+        NetState::NetState_unconnected => {
+            uqm_lua_checked!(DrawMeleeStatusMessage(
+                GetStringAddress(
+                    SetAbsStringTableIndex(
+                        GameStrings,
+                        (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                            + 0 as ::core::ffi::c_int) as COUNT,
+                    ),
+                ),
+            ), ());
+        }
+        NetState::NetState_connecting => {
+            if (*NetConnection_getPeerOptions(conn)).isServer {
+                uqm_lua_checked!(DrawMeleeStatusMessage(
+                    GetStringAddress(
+                        SetAbsStringTableIndex(
+                            GameStrings,
+                            (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0
+                                as ::core::ffi::c_int + 1 as ::core::ffi::c_int) as COUNT,
+                        ),
+                    ),
+                ), ());
+            } else {
+                uqm_lua_checked!(DrawMeleeStatusMessage(
+                    GetStringAddress(
+                        SetAbsStringTableIndex(
+                            GameStrings,
+                            (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0
+                                as ::core::ffi::c_int + 2 as ::core::ffi::c_int) as COUNT,
+                        ),
+                    ),
+                ), ());
+            }
+        }
+        NetState::NetState_init | NetState::NetState_inSetup => {
+            uqm_lua_checked!(DrawMeleeStatusMessage(
+                GetStringAddress(
+                    SetAbsStringTableIndex(
+                        GameStrings,
+                        (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                            + 3 as ::core::ffi::c_int) as COUNT,
+                    ),
+                ),
+            ), ());
+        }
+        _ => {
+            uqm_lua_checked!(DrawMeleeStatusMessage(b"\0".as_ptr() as *const ::core::ffi::c_char), ());
+        }
+    };
+}
 unsafe extern "C" fn Deselect(mut opt: BYTE) {
     match opt as ::core::ffi::c_int {
-        3 => {
+        4 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::BATTLE_BUTTON.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::FALSE,
             ), ());
         }
-        2 => {
+        3 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::LOAD_BUTTON_TOP.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::FALSE,
             ), ());
         }
-        4 => {
+        5 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::LOAD_BUTTON_BOTT.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::FALSE,
             ), ());
         }
-        1 => {
+        2 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::SAVE_BUTTON_TOP.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::FALSE,
             ), ());
         }
-        5 => {
+        6 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::SAVE_BUTTON_BOTT.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::FALSE,
             ), ());
         }
-        7 => {
+        0 => {
+            uqm_lua_checked!(DrawMeleeIcon(
+                C2Rust_Unnamed_7::NET_BUTTON_TOP.0 as ::core::ffi::c_int as COUNT,
+                BOOLEAN::FALSE,
+            ), ());
+        }
+        8 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::QUIT_BUTTON.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::FALSE,
             ), ());
         }
-        0 | 6 => {
+        1 | 7 => {
             let mut which_side: COUNT = 0;
             which_side = (if opt as ::core::ffi::c_int
                 == C2Rust_Unnamed_10::CONTROLS_TOP.0 as ::core::ffi::c_int
@@ -2704,7 +3018,7 @@ unsafe extern "C" fn Deselect(mut opt: BYTE) {
             }) as COUNT;
             uqm_lua_checked!(DrawControls(which_side, BOOLEAN::FALSE), ());
         }
-        8 => {
+        9 => {
             if (*pMeleeState).InputFunc
                 == Some(DoEdit as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN)
             {
@@ -2731,7 +3045,7 @@ unsafe extern "C" fn Deselect(mut opt: BYTE) {
                 }
             }
         }
-        9 => {
+        10 => {
             uqm_lua_checked!(DrawPickIcon((*pMeleeState).currentShip, false), ());
         }
         _ => {}
@@ -2739,43 +3053,49 @@ unsafe extern "C" fn Deselect(mut opt: BYTE) {
 }
 unsafe extern "C" fn Select(mut opt: BYTE) {
     match opt as ::core::ffi::c_int {
-        3 => {
+        4 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::BATTLE_BUTTON_HL.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::TRUE,
             ), ());
         }
-        2 => {
+        3 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::LOAD_BUTTON_TOP_HL.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::TRUE,
             ), ());
         }
-        4 => {
+        5 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::LOAD_BUTTON_BOTT_HL.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::TRUE,
             ), ());
         }
-        1 => {
+        2 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::SAVE_BUTTON_TOP_HL.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::TRUE,
             ), ());
         }
-        5 => {
+        6 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::SAVE_BUTTON_BOTT_HL.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::TRUE,
             ), ());
         }
-        7 => {
+        0 => {
+            uqm_lua_checked!(DrawMeleeIcon(
+                C2Rust_Unnamed_7::NET_BUTTON_TOP_HL.0 as ::core::ffi::c_int as COUNT,
+                BOOLEAN::TRUE,
+            ), ());
+        }
+        8 => {
             uqm_lua_checked!(DrawMeleeIcon(
                 C2Rust_Unnamed_7::QUIT_BUTTON_HL.0 as ::core::ffi::c_int as COUNT,
                 BOOLEAN::TRUE,
             ), ());
         }
-        0 | 6 => {
+        1 | 7 => {
             let mut which_side: COUNT = 0;
             which_side = (if opt as ::core::ffi::c_int
                 == C2Rust_Unnamed_10::CONTROLS_TOP.0 as ::core::ffi::c_int
@@ -2786,7 +3106,7 @@ unsafe extern "C" fn Select(mut opt: BYTE) {
             }) as COUNT;
             uqm_lua_checked!(DrawControls(which_side, BOOLEAN::TRUE), ());
         }
-        8 => {
+        9 => {
             if (*pMeleeState).InputFunc
                 == Some(DoEdit as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN)
             {
@@ -2813,7 +3133,7 @@ unsafe extern "C" fn Select(mut opt: BYTE) {
                 }
             }
         }
-        9 => {
+        10 => {
             uqm_lua_checked!(DrawPickIcon(
                 (*pMeleeState).currentShip,
                 1 as ::core::ffi::c_uint & is3DO(optWhichMenu).0 != 0,
@@ -3131,6 +3451,13 @@ unsafe extern "C" fn OnTeamNameChange(mut pTES: *mut TEXTENTRY_STATE) -> BOOLEAN
     return ret;
 }
 unsafe extern "C" fn TeamNameFrameCallback(mut pTES: *mut TEXTENTRY_STATE) -> BOOLEAN {
+    uqm_lua_checked!(netInput(), BOOLEAN(0));
+    if webNetplayRole >= 0 as ::core::ffi::c_int
+        && GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+            & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int != 0
+    {
+        return BOOLEAN::FALSE;
+    }
     return BOOLEAN::TRUE;
 }
 unsafe extern "C" fn BuildPickShipPopup(mut pMS: *mut MELEE_STATE) {
@@ -3191,6 +3518,13 @@ unsafe extern "C" fn DoEdit(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
             DoEdit as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN,
         ) as Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>;
         return BOOLEAN::TRUE;
+    }
+    uqm_lua_checked!(netInput(), BOOLEAN(0));
+    if webNetplayRole >= 0 as ::core::ffi::c_int
+        && GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+            & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int != 0
+    {
+        return BOOLEAN::FALSE;
     }
     if (((*pMS).row as ::core::ffi::c_int) < 2 as ::core::ffi::c_int
         || (*pMS).currentShip.0 == MeleeShip::MELEE_NONE.0)
@@ -3374,6 +3708,7 @@ unsafe extern "C" fn DoEdit(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
             uqm_lua_checked!(UpdateCurrentShip(pMS), BOOLEAN(0));
         }
     }
+    uqm_lua_checked!(flushPacketQueues(), BOOLEAN(0));
     uqm_lua_checked!(Melee_flashSelection(pMS), BOOLEAN(0));
     uqm_lua_checked!(SleepThreadUntil(
         TimeIn
@@ -3383,7 +3718,35 @@ unsafe extern "C" fn DoEdit(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
     ), BOOLEAN(0));
     return BOOLEAN::TRUE;
 }
+unsafe extern "C" fn numPlayersReady() -> ssize_t {
+    let mut player: size_t = 0;
+    let mut numDone: size_t = 0;
+    numDone = 0 as size_t;
+    player = 0 as size_t;
+    while player < 2 as size_t {
+        if *(&raw mut PlayerControl as *mut BYTE).offset(player as isize)
+            as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int == 0
+        {
+            numDone = numDone.wrapping_add(1);
+        } else {
+            let mut conn: *mut NetConnection = ::core::ptr::null_mut::<NetConnection>();
+            conn = *(&raw mut netConnections as *mut *mut NetConnection)
+                .offset(player as isize) as *mut NetConnection;
+            if conn.is_null() || !NetConnection_isConnected(conn) {
+                return -1 as ssize_t;
+            }
+            if NetConnection_getState(conn).0 > NetState::NetState_inSetup.0 {
+                numDone = numDone.wrapping_add(1);
+            }
+        }
+        player = player.wrapping_add(1);
+    }
+    return numDone as ssize_t;
+}
 unsafe extern "C" fn DoConfirmSettings(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
+    let mut numDone: ssize_t = 0;
     ::core::ptr::write_volatile(&raw mut GamePaused, BOOLEAN::FALSE);
     if PulsedInputState
         .menu[C2Rust_Unnamed::KEY_MENU_CANCEL.0 as ::core::ffi::c_int as usize] != 0
@@ -3391,6 +3754,16 @@ unsafe extern "C" fn DoConfirmSettings(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
         (*pMS).InputFunc = Some(
             DoMelee as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN,
         ) as Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>;
+        cancelConfirmations();
+        uqm_lua_checked!(DrawMeleeStatusMessage(
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 4 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+        ), BOOLEAN(0));
         return BOOLEAN::TRUE;
     }
     if PulsedInputState
@@ -3403,14 +3776,76 @@ unsafe extern "C" fn DoConfirmSettings(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
         (*pMS).InputFunc = Some(
             DoMelee as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN,
         ) as Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>;
+        cancelConfirmations();
+        uqm_lua_checked!(DrawMeleeStatusMessage(b"\0".as_ptr() as *const ::core::ffi::c_char), BOOLEAN(0));
         return uqm_lua_checked!(DoMelee(pMS), BOOLEAN(0));
+    }
+    uqm_lua_checked!(closeDisconnectedConnections(), BOOLEAN(0));
+    uqm_lua_checked!(netInput(), BOOLEAN(0));
+    if webNetplayRole >= 0 as ::core::ffi::c_int
+        && GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+            & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int != 0
+    {
+        return BOOLEAN::FALSE;
+    }
+    uqm_lua_checked!(SleepThread((840 as ::core::ffi::c_int / 120 as ::core::ffi::c_int) as TimePeriod), BOOLEAN(0));
+    numDone = numPlayersReady();
+    if numDone == -1 as ssize_t {
+        cancelConfirmations();
+        uqm_lua_checked!(flushPacketQueues(), BOOLEAN(0));
+        (*pMS).InputFunc = Some(
+            DoMelee as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN,
+        ) as Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>;
+        return BOOLEAN::TRUE;
+    } else if numDone != 2 as ssize_t {
+        return BOOLEAN::TRUE
+    }
+    uqm_lua_checked!(Netplay_NotifyAll_inputDelay(netplayOptions.inputDelay), BOOLEAN(0));
+    let mut player: COUNT = 0;
+    player = 0 as COUNT;
+    while (player as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
+        let mut conn: *mut NetConnection = ::core::ptr::null_mut::<NetConnection>();
+        if *(&raw mut PlayerControl as *mut BYTE).offset(player as isize)
+            as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int != 0
+        {
+            conn = *(&raw mut netConnections as *mut *mut NetConnection)
+                .offset(player as isize) as *mut NetConnection;
+            (!conn.is_null()
+                || {
+                    __assert_fail(
+                        b"conn != NULL\0".as_ptr() as *const ::core::ffi::c_char,
+                        b"src/uqm/supermelee/melee.c\0"
+                            .as_ptr() as *const ::core::ffi::c_char,
+                        2034 as ::core::ffi::c_int,
+                        b"DoConfirmSettings\0".as_ptr() as *const ::core::ffi::c_char,
+                    );
+                    0 as ::core::ffi::c_int != 0
+                }) as ::core::ffi::c_int;
+            if NetConnection_isConnected(conn) {
+                if NetConnection_getDiscriminant(conn) {
+                    Netplay_Notify_seedRandom(conn, SeedRandomNumbers());
+                }
+            }
+        }
+        player = player.wrapping_add(1);
+    }
+    uqm_lua_checked!(flushPacketQueues(), BOOLEAN(0));
+    let mut allOk: bool = uqm_lua_checked!(negotiateReadyConnections(
+        true,
+        NetState::NetState_interBattle,
+    ), BOOLEAN(0));
+    if !allOk {
+        return BOOLEAN::FALSE;
+    }
+    let mut ok: bool = setupInputDelay(netplayOptions.inputDelay);
+    if !ok {
+        return BOOLEAN::FALSE;
     }
     (*pMS).InputFunc = Some(DoMelee as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN)
         as Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>;
-    SeedRandomNumbers();
-    (*pMS).meleeStarted = BOOLEAN::TRUE;
     uqm_lua_checked!(StartMelee(pMS), BOOLEAN(0));
-    (*pMS).meleeStarted = BOOLEAN::FALSE;
     if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
         & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int != 0
     {
@@ -3468,6 +3903,8 @@ unsafe extern "C" fn FreeMeleeInfo(mut pMS: *mut MELEE_STATE) {
     DestroyFont(ButtonFont);
     DestroyDrawable(ReleaseDrawable(FontGradFrame));
     FontGradFrame = ::core::ptr::null_mut::<FRAME_DESC>();
+    uqm_lua_checked!(closeAllConnections(), ());
+    setupInputDelay(0 as size_t);
 }
 unsafe extern "C" fn BuildAndDrawShipList(mut pMS: *mut MELEE_STATE) {
     uqm_lua_checked!(FillPickMeleeFrame((*pMS).meleeSetup), ());
@@ -3531,9 +3968,322 @@ unsafe extern "C" fn StartMeleeButtonPressed(mut pMS: *mut MELEE_STATE) {
         uqm_lua_checked!(PlayMenuSound(MENU_SOUND_EFFECT::MENU_SOUND_FAILURE), ());
         return;
     }
+    if *(&raw mut PlayerControl as *mut BYTE).offset(0isize) as ::core::ffi::c_int
+        & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+            as ::core::ffi::c_int != 0
+        && *(&raw mut PlayerControl as *mut BYTE).offset(1isize) as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int != 0
+    {
+        uqm_lua_checked!(DrawMeleeStatusMessage(
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 32 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+        ), ());
+        return;
+    }
+    if *(&raw mut PlayerControl as *mut BYTE).offset(0isize) as ::core::ffi::c_int
+        & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+            as ::core::ffi::c_int != 0
+        && *(&raw mut PlayerControl as *mut BYTE).offset(1isize) as ::core::ffi::c_int
+            & (((1 as ::core::ffi::c_int) << 1 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int
+                | ((1 as ::core::ffi::c_int) << 2 as ::core::ffi::c_int) as BYTE
+                    as ::core::ffi::c_int) != 0
+        || *(&raw mut PlayerControl as *mut BYTE).offset(0isize) as ::core::ffi::c_int
+            & (((1 as ::core::ffi::c_int) << 1 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int
+                | ((1 as ::core::ffi::c_int) << 2 as ::core::ffi::c_int) as BYTE
+                    as ::core::ffi::c_int) != 0
+            && *(&raw mut PlayerControl as *mut BYTE).offset(1isize)
+                as ::core::ffi::c_int
+                & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                    as ::core::ffi::c_int != 0
+    {
+        uqm_lua_checked!(DrawMeleeStatusMessage(
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 33 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+        ), ());
+        return;
+    }
+    let mut player: COUNT = 0;
+    let mut netReady: bool = true;
+    player = 0 as COUNT;
+    while (player as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
+        let mut conn: *mut NetConnection = ::core::ptr::null_mut::<NetConnection>();
+        if *(&raw mut PlayerControl as *mut BYTE).offset(player as isize)
+            as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int != 0
+        {
+            conn = *(&raw mut netConnections as *mut *mut NetConnection)
+                .offset(player as isize) as *mut NetConnection;
+            if conn.is_null() || !NetConnection_isConnected(conn) {
+                netReady = false;
+                if player as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+                    uqm_lua_checked!(DrawMeleeStatusMessage(
+                        GetStringAddress(
+                            SetAbsStringTableIndex(
+                                GameStrings,
+                                (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0
+                                    as ::core::ffi::c_int + 5 as ::core::ffi::c_int) as COUNT,
+                            ),
+                        ),
+                    ), ());
+                } else {
+                    uqm_lua_checked!(DrawMeleeStatusMessage(
+                        GetStringAddress(
+                            SetAbsStringTableIndex(
+                                GameStrings,
+                                (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0
+                                    as ::core::ffi::c_int + 6 as ::core::ffi::c_int) as COUNT,
+                            ),
+                        ),
+                    ), ());
+                }
+            } else if NetConnection_getState(conn).0 != NetState::NetState_inSetup.0 {
+                netReady = false;
+                if player as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+                    uqm_lua_checked!(DrawMeleeStatusMessage(
+                        GetStringAddress(
+                            SetAbsStringTableIndex(
+                                GameStrings,
+                                (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0
+                                    as ::core::ffi::c_int + 14 as ::core::ffi::c_int) as COUNT,
+                            ),
+                        ),
+                    ), ());
+                } else {
+                    uqm_lua_checked!(DrawMeleeStatusMessage(
+                        GetStringAddress(
+                            SetAbsStringTableIndex(
+                                GameStrings,
+                                (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0
+                                    as ::core::ffi::c_int + 15 as ::core::ffi::c_int) as COUNT,
+                            ),
+                        ),
+                    ), ());
+                }
+            }
+        }
+        player = player.wrapping_add(1);
+    }
+    if !netReady {
+        uqm_lua_checked!(PlayMenuSound(MENU_SOUND_EFFECT::MENU_SOUND_FAILURE), ());
+        return;
+    }
+    if numPlayersReady() != 2 as ssize_t {
+        uqm_lua_checked!(DrawMeleeStatusMessage(
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 7 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+        ), ());
+    }
+    confirmConnections();
     (*pMS).InputFunc = Some(
         DoConfirmSettings as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN,
     ) as Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>;
+}
+unsafe extern "C" fn DoConnectingDialog(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
+    let mut TimeIn: DWORD = GetTimeCounter();
+    let mut which_side: COUNT = (if (*pMS).MeleeOption as ::core::ffi::c_int
+        == C2Rust_Unnamed_10::NET_TOP.0 as ::core::ffi::c_int
+    {
+        1 as ::core::ffi::c_int
+    } else {
+        0 as ::core::ffi::c_int
+    }) as COUNT;
+    let mut conn: *mut NetConnection = ::core::ptr::null_mut::<NetConnection>();
+    ::core::ptr::write_volatile(&raw mut GamePaused, BOOLEAN::FALSE);
+    if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+        & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int != 0
+    {
+        return BOOLEAN::FALSE;
+    }
+    SetMenuSounds(
+        0 as ::core::ffi::c_int as MENU_SOUND_FLAGS,
+        0 as ::core::ffi::c_int as MENU_SOUND_FLAGS,
+    );
+    if (*pMS).Initialized.0 == 0 {
+        let mut r: RECT = RECT {
+            corner: POINT { x: 0, y: 0 },
+            extent: EXTENT { width: 0, height: 0 },
+        };
+        let mut oldfont: FONT = ::core::ptr::null_mut::<FONT_DESC>();
+        let mut oldcolor: Color = Color { r: 0, g: 0, b: 0, a: 0 };
+        let mut t: TEXT = TEXT {
+            baseline: POINT { x: 0, y: 0 },
+            pStr: ::core::ptr::null::<UNICODE>(),
+            align: TEXT_ALIGN::ALIGN_LEFT,
+            CharCount: 0,
+        };
+        if !(*(&raw mut netConnections as *mut *mut NetConnection)
+            .offset(which_side as isize))
+            .is_null()
+        {
+            uqm_lua_checked!(closePlayerNetworkConnection(which_side), BOOLEAN(0));
+        }
+        (*pMS).Initialized = BOOLEAN::TRUE;
+        conn = openPlayerNetworkConnection(which_side, pMS as *mut ::core::ffi::c_void);
+        (*pMS).InputFunc = Some(
+            DoConnectingDialog as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN,
+        ) as Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>;
+        oldfont = SetContextFont(StarConFont);
+        oldcolor = SetContextForeGroundColor(
+            colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE),
+        );
+        BatchGraphics();
+        r.extent.width = ((200 as ::core::ffi::c_int) << resolutionFactor) as COORD;
+        r.extent.height = ((30 as ::core::ffi::c_int) << resolutionFactor) as COORD;
+        r.corner.x = (CanvasWidth - r.extent.width as ::core::ffi::c_int
+            >> 1 as ::core::ffi::c_int) as COORD;
+        r.corner.y = (CanvasHeight - r.extent.height as ::core::ffi::c_int
+            >> 1 as ::core::ffi::c_int) as COORD;
+        uqm_lua_checked!(DrawShadowedBox(
+            &raw mut r,
+            colorFromRgb15(0x14 as BYTE, 0x14 as BYTE, 0x14 as BYTE),
+            colorFromRgb15(0x8 as BYTE, 0x8 as BYTE, 0x8 as BYTE),
+            colorFromRgb15(0x10 as BYTE, 0x10 as BYTE, 0x10 as BYTE),
+        ), BOOLEAN(0));
+        if (*NetConnection_getPeerOptions(conn)).isServer {
+            t.pStr = GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 1 as ::core::ffi::c_int) as COUNT,
+                ),
+            );
+        } else {
+            t.pStr = GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 2 as ::core::ffi::c_int) as COUNT,
+                ),
+            );
+        }
+        t.baseline.y = (r.corner.y as ::core::ffi::c_int
+            + ((10 as ::core::ffi::c_int) << resolutionFactor)) as COORD;
+        t.baseline.x = (CanvasWidth >> 1 as ::core::ffi::c_int) as COORD;
+        t.align = TEXT_ALIGN::ALIGN_CENTER;
+        t.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+        uqm_lua_checked!(font_DrawText(&raw mut t), BOOLEAN(0));
+        t.pStr = GetStringAddress(
+            SetAbsStringTableIndex(
+                GameStrings,
+                (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                    + 18 as ::core::ffi::c_int) as COUNT,
+            ),
+        );
+        t.baseline.y = (t.baseline.y as ::core::ffi::c_int
+            + ((16 as ::core::ffi::c_int) << resolutionFactor)) as COORD;
+        uqm_lua_checked!(font_DrawText(&raw mut t), BOOLEAN(0));
+        SetContextFont(oldfont);
+        SetContextForeGroundColor(oldcolor);
+        UnbatchGraphics();
+    }
+    uqm_lua_checked!(netInput(), BOOLEAN(0));
+    if PulsedInputState
+        .menu[C2Rust_Unnamed::KEY_MENU_CANCEL.0 as ::core::ffi::c_int as usize] != 0
+    {
+        if !(*(&raw mut netConnections as *mut *mut NetConnection)
+            .offset(which_side as isize))
+            .is_null()
+        {
+            uqm_lua_checked!(closePlayerNetworkConnection(which_side), BOOLEAN(0));
+            uqm_lua_checked!(UpdateMeleeStatusMessage(which_side as ssize_t), BOOLEAN(0));
+        }
+        uqm_lua_checked!(RedrawMeleeFrame(), BOOLEAN(0));
+        (*pMS).InputFunc = Some(
+            DoMelee as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN,
+        ) as Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>;
+        (*pMS).LastInputTime = GetTimeCounter();
+        uqm_lua_checked!(flushPacketQueues(), BOOLEAN(0));
+        return BOOLEAN::TRUE;
+    }
+    conn = *(&raw mut netConnections as *mut *mut NetConnection)
+        .offset(which_side as isize) as *mut NetConnection;
+    if !conn.is_null() {
+        let mut status: NetState = NetConnection_getState(conn);
+        if status.0 == NetState::NetState_init.0
+            || status.0 == NetState::NetState_inSetup.0
+        {
+            *(&raw mut PlayerControl as *mut BYTE).offset(which_side as isize) = (((1
+                as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int
+                | ((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int) as BYTE
+                    as ::core::ffi::c_int) as BYTE;
+            uqm_lua_checked!(DrawControls(which_side, BOOLEAN::TRUE), BOOLEAN(0));
+            uqm_lua_checked!(RedrawMeleeFrame(), BOOLEAN(0));
+            uqm_lua_checked!(UpdateMeleeStatusMessage(which_side as ssize_t), BOOLEAN(0));
+            (*pMS).InputFunc = Some(
+                DoMelee as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN,
+            ) as Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>;
+            (*pMS).LastInputTime = GetTimeCounter();
+            uqm_lua_checked!(Deselect((*pMS).MeleeOption), BOOLEAN(0));
+            (*pMS).MeleeOption = C2Rust_Unnamed_10::START_MELEE.0 as ::core::ffi::c_int
+                as MELEE_OPTIONS;
+        }
+    }
+    uqm_lua_checked!(flushPacketQueues(), BOOLEAN(0));
+    uqm_lua_checked!(SleepThreadUntil(
+        TimeIn
+            .wrapping_add(
+                (840 as ::core::ffi::c_int / 30 as ::core::ffi::c_int) as TimeCount,
+            ),
+    ), BOOLEAN(0));
+    return BOOLEAN::TRUE;
+}
+unsafe extern "C" fn check_for_disconnects(mut pMS: *mut MELEE_STATE) {
+    let mut player: COUNT = 0;
+    player = 0 as COUNT;
+    while (player as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
+        let mut conn: *mut NetConnection = ::core::ptr::null_mut::<NetConnection>();
+        if *(&raw mut PlayerControl as *mut BYTE).offset(player as isize)
+            as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int != 0
+        {
+            conn = *(&raw mut netConnections as *mut *mut NetConnection)
+                .offset(player as isize) as *mut NetConnection;
+            if conn.is_null() || !NetConnection_isConnected(conn) {
+                if webNetplayRole >= 0 as ::core::ffi::c_int {
+                    GlobData.Game_state.CurrentActivity = (GlobData
+                        .Game_state
+                        .CurrentActivity as ::core::ffi::c_int
+                        | C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int)
+                        as ACTIVITY;
+                    return;
+                }
+                *(&raw mut PlayerControl as *mut BYTE).offset(player as isize) = (((1
+                    as ::core::ffi::c_int) << 0 as ::core::ffi::c_int) as BYTE
+                    as ::core::ffi::c_int
+                    | ((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int) as BYTE
+                        as ::core::ffi::c_int) as BYTE;
+                uqm_lua_checked!(DrawControls(player, BOOLEAN::FALSE), ());
+                log_add(
+                    log_Level::log_User,
+                    b"Player %d has disconnected; shifting controls\n\0".as_ptr()
+                        as *const ::core::ffi::c_char,
+                    player as ::core::ffi::c_int,
+                );
+            }
+        }
+        player = player.wrapping_add(1);
+    }
 }
 unsafe extern "C" fn nextControlType(mut which_side: COUNT) {
     match *(&raw mut PlayerControl as *mut BYTE).offset(which_side as isize)
@@ -3573,6 +4323,20 @@ unsafe extern "C" fn nextControlType(mut which_side: COUNT) {
                 | ((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int) as BYTE
                     as ::core::ffi::c_int) as BYTE;
         }
+        24 => {
+            if !(*(&raw mut netConnections as *mut *mut NetConnection)
+                .offset(which_side as isize))
+                .is_null()
+            {
+                uqm_lua_checked!(closePlayerNetworkConnection(which_side), ());
+            }
+            uqm_lua_checked!(UpdateMeleeStatusMessage(-1 as ssize_t), ());
+            *(&raw mut PlayerControl as *mut BYTE).offset(which_side as isize) = (((1
+                as ::core::ffi::c_int) << 0 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int
+                | ((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int) as BYTE
+                    as ::core::ffi::c_int) as BYTE;
+        }
         _ => {
             log_add(
                 log_Level::log_Error,
@@ -3594,13 +4358,13 @@ unsafe extern "C" fn MeleeOptionDown(mut current: MELEE_OPTIONS) -> MELEE_OPTION
     if current as ::core::ffi::c_int
         == C2Rust_Unnamed_10::QUIT_BOT.0 as ::core::ffi::c_int
     {
-        return C2Rust_Unnamed_10::CONTROLS_TOP.0 as ::core::ffi::c_int as MELEE_OPTIONS;
+        return C2Rust_Unnamed_10::NET_TOP.0 as ::core::ffi::c_int as MELEE_OPTIONS;
     }
     return (current as ::core::ffi::c_int + 1 as ::core::ffi::c_int) as MELEE_OPTIONS;
 }
 unsafe extern "C" fn MeleeOptionUp(mut current: MELEE_OPTIONS) -> MELEE_OPTIONS {
     if current as ::core::ffi::c_int
-        == C2Rust_Unnamed_10::CONTROLS_TOP.0 as ::core::ffi::c_int
+        == C2Rust_Unnamed_10::NET_TOP.0 as ::core::ffi::c_int
     {
         return C2Rust_Unnamed_10::QUIT_BOT.0 as ::core::ffi::c_int as MELEE_OPTIONS;
     }
@@ -3608,10 +4372,10 @@ unsafe extern "C" fn MeleeOptionUp(mut current: MELEE_OPTIONS) -> MELEE_OPTIONS 
 }
 unsafe extern "C" fn MeleeOptionSelect(mut pMS: *mut MELEE_STATE) {
     match (*pMS).MeleeOption as ::core::ffi::c_int {
-        3 => {
+        4 => {
             uqm_lua_checked!(StartMeleeButtonPressed(pMS), ());
         }
-        2 | 4 => {
+        3 | 5 => {
             (*pMS).Initialized = BOOLEAN::FALSE;
             (*pMS).side = (if (*pMS).MeleeOption as ::core::ffi::c_int
                 == C2Rust_Unnamed_10::LOAD_TOP.0 as ::core::ffi::c_int
@@ -3622,7 +4386,7 @@ unsafe extern "C" fn MeleeOptionSelect(mut pMS: *mut MELEE_STATE) {
             }) as COUNT;
             uqm_lua_checked!(DoLoadTeam(pMS), ());
         }
-        1 | 5 => {
+        2 | 6 => {
             (*pMS).side = (if (*pMS).MeleeOption as ::core::ffi::c_int
                 == C2Rust_Unnamed_10::SAVE_TOP.0 as ::core::ffi::c_int
             {
@@ -3638,20 +4402,35 @@ unsafe extern "C" fn MeleeOptionSelect(mut pMS: *mut MELEE_STATE) {
                 uqm_lua_checked!(PlayMenuSound(MENU_SOUND_EFFECT::MENU_SOUND_FAILURE), ());
             }
         }
-        7 => {
+        8 => {
             GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
                 as ::core::ffi::c_int
                 | C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int) as ACTIVITY;
         }
-        0 | 6 => {
-            let mut which_side: COUNT = (if (*pMS).MeleeOption as ::core::ffi::c_int
+        0 => {
+            let mut which_side: COUNT = 0;
+            let mut confirmed: BOOLEAN = BOOLEAN::FALSE;
+            uqm_lua_checked!(DrawMeleeStatusMessage(
+                b"Open an Online Melee room in the browser launcher.\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+            ), ());
+        }
+        1 | 7 => {
+            let mut which_side_0: COUNT = (if (*pMS).MeleeOption as ::core::ffi::c_int
                 == C2Rust_Unnamed_10::CONTROLS_TOP.0 as ::core::ffi::c_int
             {
                 1 as ::core::ffi::c_int
             } else {
                 0 as ::core::ffi::c_int
             }) as COUNT;
-            uqm_lua_checked!(nextControlType(which_side), ());
+            if webNetplayRole >= 0 as ::core::ffi::c_int {
+                uqm_lua_checked!(DrawMeleeStatusMessage(
+                    b"Player sides are assigned by the online room.\0".as_ptr()
+                        as *const ::core::ffi::c_char,
+                ), ());
+            } else {
+                uqm_lua_checked!(nextControlType(which_side_0), ());
+            }
         }
         _ => {}
     };
@@ -3692,12 +4471,29 @@ pub unsafe extern "C" fn DoMelee(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
             uqm_lua_checked!(PlayMusicResume((*pMS).hMusic, 160 as BYTE), BOOLEAN(0));
         }
         uqm_lua_checked!(InitMelee(pMS), BOOLEAN(0));
+        if webNetplayRole >= 0 as ::core::ffi::c_int
+            && (*(&raw mut netConnections as *mut *mut NetConnection)
+                .offset((1 as ::core::ffi::c_int - webNetplayRole) as isize))
+                .is_null()
+        {
+            openPlayerNetworkConnection(
+                (1 as ::core::ffi::c_int - webNetplayRole) as COUNT,
+                pMS as *mut ::core::ffi::c_void,
+            );
+        }
         FadeScreen(
             ScreenFadeType::FadeAllToColor,
             (840 as ::core::ffi::c_int / 2 as ::core::ffi::c_int) as SIZE,
         );
         (*pMS).LastInputTime = GetTimeCounter();
         return BOOLEAN::TRUE;
+    }
+    uqm_lua_checked!(netInput(), BOOLEAN(0));
+    if webNetplayRole >= 0 as ::core::ffi::c_int
+        && GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+            & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int != 0
+    {
+        return BOOLEAN::FALSE;
     }
     if PulsedInputState
         .menu[C2Rust_Unnamed::KEY_MENU_CANCEL.0 as ::core::ffi::c_int as usize] != 0
@@ -3758,9 +4554,38 @@ pub unsafe extern "C" fn DoMelee(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
         if NewMeleeOption as ::core::ffi::c_int
             != (*pMS).MeleeOption as ::core::ffi::c_int
         {
+            if (*pMS).MeleeOption as ::core::ffi::c_int
+                == C2Rust_Unnamed_10::CONTROLS_TOP.0 as ::core::ffi::c_int
+                || (*pMS).MeleeOption as ::core::ffi::c_int
+                    == C2Rust_Unnamed_10::CONTROLS_BOT.0 as ::core::ffi::c_int
+            {
+                uqm_lua_checked!(UpdateMeleeStatusMessage(-1 as ssize_t), BOOLEAN(0));
+            }
             uqm_lua_checked!(Deselect((*pMS).MeleeOption), BOOLEAN(0));
             (*pMS).MeleeOption = NewMeleeOption;
             uqm_lua_checked!(Select((*pMS).MeleeOption), BOOLEAN(0));
+            if NewMeleeOption as ::core::ffi::c_int
+                == C2Rust_Unnamed_10::CONTROLS_TOP.0 as ::core::ffi::c_int
+                || NewMeleeOption as ::core::ffi::c_int
+                    == C2Rust_Unnamed_10::CONTROLS_BOT.0 as ::core::ffi::c_int
+            {
+                let mut side: COUNT = (if NewMeleeOption as ::core::ffi::c_int
+                    == C2Rust_Unnamed_10::CONTROLS_TOP.0 as ::core::ffi::c_int
+                {
+                    1 as ::core::ffi::c_int
+                } else {
+                    0 as ::core::ffi::c_int
+                }) as COUNT;
+                if *(&raw mut PlayerControl as *mut BYTE).offset(side as isize)
+                    as ::core::ffi::c_int
+                    & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                        as ::core::ffi::c_int != 0
+                {
+                    uqm_lua_checked!(UpdateMeleeStatusMessage(side as ssize_t), BOOLEAN(0));
+                } else {
+                    uqm_lua_checked!(UpdateMeleeStatusMessage(-1 as ssize_t), BOOLEAN(0));
+                }
+            }
         }
         if PulsedInputState
             .menu[C2Rust_Unnamed::KEY_MENU_SELECT.0 as ::core::ffi::c_int as usize] != 0
@@ -3774,6 +4599,8 @@ pub unsafe extern "C" fn DoMelee(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
             }
         }
     }
+    uqm_lua_checked!(flushPacketQueues(), BOOLEAN(0));
+    uqm_lua_checked!(check_for_disconnects(pMS), BOOLEAN(0));
     uqm_lua_checked!(Melee_flashSelection(pMS), BOOLEAN(0));
     uqm_lua_checked!(SleepThreadUntil(
         TimeIn
@@ -3897,6 +4724,12 @@ unsafe extern "C" fn WriteMeleeConfig(mut pMS: *mut MELEE_STATE) -> ::core::ffi:
 }
 #[no_mangle]
 pub unsafe extern "C" fn Melee() {
+    let mut savedControl: [BYTE; 2] = [0; 2];
+    let mut savedTemplates: [CONTROL_TEMPLATE; 2] = [CONTROL_TEMPLATE::CONTROL_TEMPLATE_PL_1; 2];
+    let mut webSession: BOOLEAN = BOOLEAN(
+        (webNetplayRole >= 0 as ::core::ffi::c_int) as ::core::ffi::c_int
+            as ::core::ffi::c_uint,
+    );
     InitGlobData();
     let mut MenuState: MELEE_STATE = MELEE_STATE {
         InputFunc: None,
@@ -3939,6 +4772,14 @@ pub unsafe extern "C" fn Melee() {
     MenuState.meleeSetup = MeleeSetup_new();
     MenuState.randomContext = RandomContext_New();
     RandomContext_SeedRandom(MenuState.randomContext, GetTimeCounter());
+    let mut player: COUNT = 0;
+    player = 0 as COUNT;
+    while (player as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
+        *(&raw mut netConnections as *mut *mut NetConnection).offset(player as isize) = ::core::ptr::null_mut::<
+            NetConnection,
+        >();
+        player = player.wrapping_add(1);
+    }
     MenuState.currentShip = MeleeShip::MELEE_NONE;
     MenuState.CurIndex = -1 as ::core::ffi::c_int as COUNT;
     InitMeleeLoadState(&raw mut MenuState);
@@ -3972,6 +4813,31 @@ pub unsafe extern "C" fn Melee() {
             *MenuState.load.preBuiltList.offset(1isize),
         ), ());
     }
+    memcpy(
+        &raw mut savedControl as *mut BYTE as *mut ::core::ffi::c_void,
+        &raw mut PlayerControl as *mut BYTE as *const ::core::ffi::c_void,
+        ::core::mem::size_of::<[BYTE; 2]>(),
+    );
+    memcpy(
+        &raw mut savedTemplates as *mut CONTROL_TEMPLATE as *mut ::core::ffi::c_void,
+        &raw mut PlayerControls as *mut CONTROL_TEMPLATE as *const ::core::ffi::c_void,
+        ::core::mem::size_of::<[CONTROL_TEMPLATE; 2]>(),
+    );
+    if webSession.0 != 0 {
+        *(&raw mut PlayerControl as *mut BYTE).offset(webNetplayRole as isize) = (((1
+            as ::core::ffi::c_int) << 0 as ::core::ffi::c_int) as BYTE
+            as ::core::ffi::c_int
+            | ((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int) as BYTE;
+        *(&raw mut PlayerControl as *mut BYTE)
+            .offset((1 as ::core::ffi::c_int - webNetplayRole) as isize) = (((1
+            as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+            as ::core::ffi::c_int
+            | ((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int) as BYTE;
+        *(&raw mut PlayerControls as *mut CONTROL_TEMPLATE)
+            .offset(webNetplayRole as isize) = CONTROL_TEMPLATE::CONTROL_TEMPLATE_PL_1;
+    }
     MenuState.side = 0 as COUNT;
     SetMenuSounds(
         (((1 as ::core::ffi::c_int) << 0 as ::core::ffi::c_int) as MENU_SOUND_FLAGS
@@ -3987,14 +4853,281 @@ pub unsafe extern "C" fn Melee() {
     uqm_lua_checked!(DoInput(&raw mut MenuState as *mut ::core::ffi::c_void, BOOLEAN::TRUE), ());
     uqm_lua_checked!(StopMusic(), ());
     uqm_lua_checked!(WaitForSoundEnd(!(0 as ::core::ffi::c_int) as COUNT), ());
-    uqm_lua_checked!(WriteMeleeConfig(&raw mut MenuState), ());
+    if webSession.0 == 0 {
+        uqm_lua_checked!(WriteMeleeConfig(&raw mut MenuState), ());
+    }
     uqm_lua_checked!(FreeMeleeInfo(&raw mut MenuState), ());
+    if webSession.0 != 0 {
+        memcpy(
+            &raw mut PlayerControl as *mut BYTE as *mut ::core::ffi::c_void,
+            &raw mut savedControl as *mut BYTE as *const ::core::ffi::c_void,
+            ::core::mem::size_of::<[BYTE; 2]>(),
+        );
+        memcpy(
+            &raw mut PlayerControls as *mut CONTROL_TEMPLATE as *mut ::core::ffi::c_void,
+            &raw mut savedTemplates as *mut CONTROL_TEMPLATE
+                as *const ::core::ffi::c_void,
+            ::core::mem::size_of::<[CONTROL_TEMPLATE; 2]>(),
+        );
+    }
     uqm_lua_checked!(DestroySound(ReleaseStringTable(GameSounds)), ());
     GameSounds = ::core::ptr::null_mut::<STRING_TABLE_ENTRY_DESC>();
     UninitMeleeLoadState(&raw mut MenuState);
     RandomContext_Delete(MenuState.randomContext);
     MeleeSetup_delete(MenuState.meleeSetup);
     FlushInput();
+}
+#[no_mangle]
+pub unsafe extern "C" fn updateRandomSeed(
+    mut pMS: *mut MELEE_STATE,
+    mut side: COUNT,
+    mut seed: DWORD,
+) {
+    TFB_SeedRandom(seed);
+}
+#[no_mangle]
+pub unsafe extern "C" fn confirmationCancelled(
+    mut pMS: *mut MELEE_STATE,
+    mut side: COUNT,
+) {
+    if side as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+        uqm_lua_checked!(DrawMeleeStatusMessage(
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 16 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+        ), ());
+    } else {
+        uqm_lua_checked!(DrawMeleeStatusMessage(
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 17 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+        ), ());
+    }
+    if (*pMS).InputFunc
+        == Some(DoConfirmSettings as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN)
+    {
+        (*pMS).InputFunc = Some(
+            DoMelee as unsafe extern "C" fn(*mut MELEE_STATE) -> BOOLEAN,
+        ) as Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>;
+    }
+}
+unsafe extern "C" fn connectionFeedback(
+    mut conn: *mut NetConnection,
+    mut str: *const ::core::ffi::c_char,
+    mut forcePopup: bool,
+) {
+    let mut bs: *mut battlestate_struct = NetMelee_getBattleState(conn);
+    if bs.is_null() && !forcePopup {
+        uqm_lua_checked!(DrawMeleeStatusMessage(str), ());
+    } else {
+        uqm_lua_checked!(DoPopupWindow(str), ());
+    };
+}
+#[no_mangle]
+pub unsafe extern "C" fn connectedFeedback(mut conn: *mut NetConnection) {
+    if NetConnection_getPlayerNr(conn) == 0 as ::core::ffi::c_int {
+        uqm_lua_checked!(connectionFeedback(
+            conn,
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 8 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+            false,
+        ), ());
+    } else {
+        uqm_lua_checked!(connectionFeedback(
+            conn,
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 9 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+            false,
+        ), ());
+    }
+    uqm_lua_checked!(PlayMenuSound(MENU_SOUND_EFFECT::MENU_SOUND_INVOKED), ());
+}
+unsafe extern "C" fn abortReasonString(
+    mut reason: NetplayAbortReason,
+) -> *const ::core::ffi::c_char {
+    match reason {
+        NetplayAbortReason::AbortReason_unspecified => {
+            return GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 25 as ::core::ffi::c_int) as COUNT,
+                ),
+            );
+        }
+        NetplayAbortReason::AbortReason_versionMismatch => {
+            return GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 26 as ::core::ffi::c_int) as COUNT,
+                ),
+            );
+        }
+        NetplayAbortReason::AbortReason_invalidHash => {
+            return GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 27 as ::core::ffi::c_int) as COUNT,
+                ),
+            );
+        }
+        NetplayAbortReason::AbortReason_protocolError => {
+            return GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 28 as ::core::ffi::c_int) as COUNT,
+                ),
+            );
+        }
+        _ => {}
+    }
+    return ::core::ptr::null::<::core::ffi::c_char>();
+}
+#[no_mangle]
+pub unsafe extern "C" fn abortFeedback(
+    mut conn: *mut NetConnection,
+    mut reason: NetplayAbortReason,
+) {
+    let mut msg: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    msg = abortReasonString(reason);
+    if !msg.is_null() {
+        uqm_lua_checked!(connectionFeedback(conn, msg, true), ());
+    }
+}
+unsafe extern "C" fn resetReasonString(
+    mut reason: NetplayResetReason,
+) -> *const ::core::ffi::c_char {
+    match reason {
+        NetplayResetReason::ResetReason_unspecified => {
+            return GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 29 as ::core::ffi::c_int) as COUNT,
+                ),
+            );
+        }
+        NetplayResetReason::ResetReason_syncLoss => {
+            return GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 30 as ::core::ffi::c_int) as COUNT,
+                ),
+            );
+        }
+        NetplayResetReason::ResetReason_manualReset => {
+            return GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 31 as ::core::ffi::c_int) as COUNT,
+                ),
+            );
+        }
+        _ => {}
+    }
+    return ::core::ptr::null::<::core::ffi::c_char>();
+}
+#[no_mangle]
+pub unsafe extern "C" fn resetFeedback(
+    mut conn: *mut NetConnection,
+    mut reason: NetplayResetReason,
+    mut byRemote: bool,
+) {
+    let mut msg: *const ::core::ffi::c_char = ::core::ptr::null::<::core::ffi::c_char>();
+    uqm_lua_checked!(flushPacketQueues(), ());
+    if reason.0 == NetplayResetReason::ResetReason_manualReset.0 && !byRemote {
+        return;
+    }
+    msg = resetReasonString(reason);
+    if !msg.is_null() {
+        uqm_lua_checked!(connectionFeedback(conn, msg, false), ());
+    }
+    GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
+        as ::core::ffi::c_int | C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int)
+        as ACTIVITY;
+}
+#[no_mangle]
+pub unsafe extern "C" fn errorFeedback(mut conn: *mut NetConnection) {
+    if NetConnection_getPlayerNr(conn) == 0 as ::core::ffi::c_int {
+        uqm_lua_checked!(connectionFeedback(
+            conn,
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 10 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+            false,
+        ), ());
+    } else {
+        uqm_lua_checked!(connectionFeedback(
+            conn,
+            GetStringAddress(
+                SetAbsStringTableIndex(
+                    GameStrings,
+                    (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                        + 11 as ::core::ffi::c_int) as COUNT,
+                ),
+            ),
+            false,
+        ), ());
+    };
+}
+unsafe extern "C" fn closeWebMeleeRoom(mut message: *const ::core::ffi::c_char) -> bool {
+    if webNetplayRole < 0 as ::core::ffi::c_int {
+        return false;
+    }
+    if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+        & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int == 0
+    {
+        uqm_lua_checked!(DoPopupWindow(message), false);
+        GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
+            as ::core::ffi::c_int
+            | C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int) as ACTIVITY;
+    }
+    return true;
+}
+#[no_mangle]
+pub unsafe extern "C" fn closeFeedback(mut conn: *mut NetConnection) {
+    let mut message: *const ::core::ffi::c_char = GetStringAddress(
+        SetAbsStringTableIndex(
+            GameStrings,
+            (C2Rust_Unnamed_9::NETMELEE_STRING_BASE.0 as ::core::ffi::c_int
+                + if NetConnection_getPlayerNr(conn) == 0 as ::core::ffi::c_int {
+                    12 as ::core::ffi::c_int
+                } else {
+                    13 as ::core::ffi::c_int
+                }) as COUNT,
+        ),
+    );
+    if uqm_lua_checked!(closeWebMeleeRoom(message), ()) {
+        return;
+    }
+    uqm_lua_checked!(connectionFeedback(conn, message, false), ());
 }
 unsafe extern "C" fn Melee_UpdateView_fleetValue(
     mut pMS: *mut MELEE_STATE,
@@ -4076,6 +5209,12 @@ pub unsafe extern "C" fn Melee_LocalChange_ship(
     if !uqm_lua_checked!(Melee_Change_ship(pMS, side, index, ship), false) {
         return false;
     }
+    let mut setup: *mut MeleeSetup = (*pMS).meleeSetup;
+    let mut sentShip: MeleeShip = MeleeSetup_getSentShip(setup, side as size_t, index);
+    if sentShip.0 == MeleeShip::MELEE_UNSET.0 {
+        Netplay_NotifyAll_setShip(pMS, side as size_t, index as size_t);
+        MeleeSetup_setSentShip(setup, side as size_t, index, ship);
+    }
     return true;
 }
 #[no_mangle]
@@ -4086,6 +5225,15 @@ pub unsafe extern "C" fn Melee_LocalChange_teamName(
 ) -> bool {
     if !uqm_lua_checked!(Melee_Change_teamName(pMS, side, name), false) {
         return false;
+    }
+    let mut setup: *mut MeleeSetup = (*pMS).meleeSetup;
+    let mut sentName: *const ::core::ffi::c_char = MeleeSetup_getSentTeamName(
+        setup,
+        side as size_t,
+    );
+    if sentName.is_null() {
+        Netplay_NotifyAll_setTeamName(pMS, side as size_t);
+        MeleeSetup_setSentTeamName(setup, side as size_t, name);
     }
     return true;
 }
@@ -4127,6 +5275,111 @@ pub unsafe extern "C" fn Melee_LocalChange_team(
         changed = true;
     }
     return changed;
+}
+#[no_mangle]
+pub unsafe extern "C" fn Melee_bootstrapSyncTeam(
+    mut meleeState: *mut MELEE_STATE,
+    mut teamNr: size_t,
+) {
+    let mut setup: *mut MeleeSetup = (*meleeState).meleeSetup;
+    let mut slotI: FleetShipIndex = 0;
+    let mut teamName: *const ::core::ffi::c_char = ::core::ptr::null::<
+        ::core::ffi::c_char,
+    >();
+    Netplay_NotifyAll_setFleet(meleeState, teamNr);
+    slotI = 0 as FleetShipIndex;
+    while (slotI as ::core::ffi::c_int) < 14 as ::core::ffi::c_int {
+        let mut ship: MeleeShip = MeleeSetup_getShip(setup, teamNr, slotI);
+        (MeleeSetup_getSentShip(setup, teamNr, slotI).0 == MeleeShip::MELEE_UNSET.0
+            || {
+                __assert_fail(
+                    b"MeleeSetup_getSentShip (setup, teamNr, slotI) == MELEE_UNSET\0"
+                        .as_ptr() as *const ::core::ffi::c_char,
+                    b"src/uqm/supermelee/melee.c\0"
+                        .as_ptr() as *const ::core::ffi::c_char,
+                    3250 as ::core::ffi::c_int,
+                    b"Melee_bootstrapSyncTeam\0".as_ptr() as *const ::core::ffi::c_char,
+                );
+                0 as ::core::ffi::c_int != 0
+            }) as ::core::ffi::c_int;
+        MeleeSetup_setSentShip(setup, teamNr, slotI, ship);
+        slotI = slotI.wrapping_add(1);
+    }
+    Netplay_NotifyAll_setTeamName(meleeState, teamNr);
+    teamName = MeleeSetup_getTeamName(setup, teamNr);
+    MeleeSetup_setSentTeamName(setup, teamNr, teamName);
+}
+#[no_mangle]
+pub unsafe extern "C" fn Melee_RemoteChange_ship(
+    mut pMS: *mut MELEE_STATE,
+    mut conn: *mut NetConnection,
+    mut side: COUNT,
+    mut index: FleetShipIndex,
+    mut ship: MeleeShip,
+) {
+    let mut setup: *mut MeleeSetup = (*pMS).meleeSetup;
+    let mut sentShip: MeleeShip = MeleeSetup_getSentShip(setup, side as size_t, index);
+    let mut currentShip: MeleeShip = MeleeShip::MELEE_ANDROSYNTH;
+    if sentShip.0 == MeleeShip::MELEE_UNSET.0 {
+        uqm_lua_checked!(Melee_Change_ship(pMS, side, index, ship), ());
+        Netplay_NotifyAll_setShip(pMS, side as size_t, index as size_t);
+        return;
+    }
+    MeleeSetup_setSentShip(setup, side as size_t, index, MeleeShip::MELEE_UNSET);
+    if ship.0 != sentShip.0 {
+        if NetConnection_getPlayerNr(conn) != side as ::core::ffi::c_int {} else {
+            uqm_lua_checked!(Melee_Change_ship(pMS, side, index, ship), ());
+            return;
+        }
+    }
+    currentShip = MeleeSetup_getShip(setup, side as size_t, index);
+    if currentShip.0 != sentShip.0 {
+        Netplay_NotifyAll_setShip(pMS, side as size_t, index as size_t);
+        MeleeSetup_setSentShip(setup, side as size_t, index, ship);
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn Melee_RemoteChange_teamName(
+    mut pMS: *mut MELEE_STATE,
+    mut conn: *mut NetConnection,
+    mut side: COUNT,
+    mut newName: *const ::core::ffi::c_char,
+) {
+    let mut setup: *mut MeleeSetup = (*pMS).meleeSetup;
+    let mut sentName: *const ::core::ffi::c_char = MeleeSetup_getSentTeamName(
+        setup,
+        side as size_t,
+    );
+    let mut currentName: *const ::core::ffi::c_char = ::core::ptr::null::<
+        ::core::ffi::c_char,
+    >();
+    if sentName.is_null() {
+        uqm_lua_checked!(Melee_Change_teamName(pMS, side, newName), ());
+        Netplay_NotifyAll_setTeamName(pMS, side as size_t);
+        return;
+    }
+    if strcmp(newName, sentName) == 0 as ::core::ffi::c_int {
+        if NetConnection_getPlayerNr(conn) != side as ::core::ffi::c_int {} else {
+            uqm_lua_checked!(Melee_Change_teamName(pMS, side, newName), ());
+            MeleeSetup_setSentTeamName(
+                setup,
+                side as size_t,
+                ::core::ptr::null::<::core::ffi::c_char>(),
+            );
+            return;
+        }
+    }
+    currentName = MeleeSetup_getTeamName(setup, side as size_t);
+    if strcmp(currentName, sentName) != 0 as ::core::ffi::c_int {
+        Netplay_NotifyAll_setTeamName(pMS, side as size_t);
+        MeleeSetup_setSentTeamName(setup, side as size_t, newName);
+    } else {
+        MeleeSetup_setSentTeamName(
+            setup,
+            side as size_t,
+            ::core::ptr::null::<::core::ffi::c_char>(),
+        );
+    };
 }
 #[inline]
 unsafe extern "C" fn LockMasterShip(

@@ -200,9 +200,12 @@ export function createNetplayServer(options = {}) {
         endRoom(ws.room, ws);
       });
       ws.on('message', (data, isBinary) => receive(ws, data, isBinary));
-      const match = /^\/netplay\/([0-9a-f]{32})\?role=(host|guest)$/.exec(req.url);
+      // HD and Original engines cannot stay in sync. Namespace active and
+      // retired rooms by edition, even when their random token is identical.
+      const match = /^\/netplay\/(?:(hd)\/)?([0-9a-f]{32})\?role=(host|guest)$/.exec(req.url);
       if (!match) return reject(ws, 'Invalid room URL or role.');
-      const [, id, role] = match;
+      const [, edition, token, role] = match;
+      const id = (edition ? edition + ':' : '') + token;
       let room = rooms.get(id);
       if (role === 'host') {
         if (usedRoomIds.has(id)) return reject(ws, 'Room already exists or has expired. Create a new room.');

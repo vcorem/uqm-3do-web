@@ -140,7 +140,7 @@
     },
     {
       "source": "src/uqm.c",
-      "source_sha256": "6cb9314ccc8a55365f940a64150e5702d541bad082cda489973bca5ae328c5a6",
+      "source_sha256": "04cc733b400dbec892ada8167a89fec40dd0ae84fbd67aedf6b60a8334586233",
       "symbols": {
         "__main_argc_argv": "T",
         "restartGame": "D"
@@ -946,6 +946,38 @@
         "List_deleteList": "T",
         "List_newList": "T",
         "List_remove": "T"
+      }
+    },
+    {
+      "source": "src/libs/math/random.c",
+      "source_sha256": "69fa6b5227738f318dc35dbd855c3cf065e49aafa6839b2ebc36409b1745fc7d",
+      "symbols": {
+        "TFB_Random": "T",
+        "TFB_SeedRandom": "T",
+        "printBits": "T"
+      }
+    },
+    {
+      "source": "src/libs/math/random2.c",
+      "source_sha256": "90776d5112ca7319c945dd1498c5a29560eab0bf7bcced0f6a0d7f9f45a76387",
+      "symbols": {
+        "RandomContext_Copy": "T",
+        "RandomContext_Delete": "T",
+        "RandomContext_FastRandom": "T",
+        "RandomContext_GetSeed": "T",
+        "RandomContext_New": "T",
+        "RandomContext_Random": "T",
+        "RandomContext_SeedRandom": "T",
+        "RandomContext_Set": "T",
+        "RangeMinMax": "T"
+      }
+    },
+    {
+      "source": "src/libs/math/sqrt.c",
+      "source_sha256": "9231283bdfd0e51c5dce3e95ea51ed24e704211f12c2cd75035fa4abad86ce7e",
+      "symbols": {
+        "crc32b": "T",
+        "square_root": "T"
       }
     },
     {
@@ -2551,7 +2583,9 @@
         "Battle": "T",
         "BattleSong": "T",
         "FreeBattleSong": "T",
+        "GetPlayerOrder": "T",
         "RunAwayAllowed": "T",
+        "battleFrameCount": "D",
         "battleInputOrder": "D",
         "battle_counter": "D",
         "frameInputHuman": "T",
@@ -2569,6 +2603,8 @@
         "HumanInputHandlers": "D",
         "InputContext_delete": "T",
         "InputContext_init": "T",
+        "NetworkInputContext_new": "T",
+        "NetworkInputHandlers": "D",
         "PlayerInput": "D"
       }
     },
@@ -2649,7 +2685,9 @@
     {
       "source": "src/uqm/cnctdlg.c",
       "source_sha256": "842beb1be767ebfc66a641db0e4e34a9129f41e3afc080fc6baa551ab4b2ba84",
-      "symbols": {}
+      "symbols": {
+        "MeleeConnectDialog": "T"
+      }
     },
     {
       "source": "src/uqm/collide.c",
@@ -3220,7 +3258,7 @@
     },
     {
       "source": "src/uqm/restart.c",
-      "source_sha256": "31f2df265de0786a3b611ff9852c2dff9cf63988551d554338dfa3e3743fbdd8",
+      "source_sha256": "c2d2b4c0af707754285fdc752a99e955aa53c23d52744cf6d6c6d979c37d49e7",
       "symbols": {
         "DrawToolTips": "T",
         "InitMenuMusic": "T",
@@ -3524,7 +3562,7 @@
     },
     {
       "source": "src/uqm/tactrans.c",
-      "source_sha256": "a07a1415f932544ad8374298cc2f923fa0117c4f1db7396b0a10e3f87f74bceb",
+      "source_sha256": "261a65082e09fa3dee79ccd126852d88b62e41993abce51d66dc2c200a3fc541",
       "symbols": {
         "FindAliveStarShip": "T",
         "GetWinnerStarShip": "T",
@@ -3537,11 +3575,20 @@
         "StopDitty": "T",
         "battleEndReadyComputer": "T",
         "battleEndReadyHuman": "T",
+        "battleEndReadyNetwork": "T",
         "flee_preprocess": "T",
         "new_ship": "T",
         "ship_death": "T",
         "ship_transition": "T",
         "spawn_ion_trail": "T"
+      }
+    },
+    {
+      "source": "src/uqm/trans.c",
+      "source_sha256": "ab68cb0187bb32edafb743d2efec74ba9c4d16031eb246307067f1b9284a8a92",
+      "symbols": {
+        "ARCTAN": "T",
+        "sinetab": "D"
       }
     },
     {
@@ -3628,6 +3675,19 @@
         "WaitForNoInputUntil": "T",
         "WholeFuelValue": "T",
         "get_fuel_to_sol": "T"
+      }
+    },
+    {
+      "source": "src/uqm/velocity.c",
+      "source_sha256": "9662585170acec94af7f81d5083be5a8b8e575f34b42210042de37ad9d2aea78",
+      "symbols": {
+        "DeltaVelocityComponents": "T",
+        "GetCurrentVelocityComponents": "T",
+        "GetCurrentVelocityComponentsSdword": "T",
+        "GetNextVelocityComponents": "T",
+        "GetNextVelocityComponentsSdword": "T",
+        "SetVelocityComponents": "T",
+        "SetVelocityVector": "T"
       }
     },
     {
@@ -4651,7 +4711,7 @@
     },
     {
       "source": "src/uqm/supermelee/melee.c",
-      "source_sha256": "6f9fbd386f044c6b4fc91d074cbf9719b084d38291164fd8833671438c071333",
+      "source_sha256": "c3991d24a606ceb95b4ab12b6b4e8790192e82d4522af4eaa840b1176bb55637",
       "symbols": {
         "AtlasArray": "D",
         "ButtonFont": "D",
@@ -4667,12 +4727,22 @@
         "Melee_LocalChange_ship": "T",
         "Melee_LocalChange_team": "T",
         "Melee_LocalChange_teamName": "T",
+        "Melee_RemoteChange_ship": "T",
+        "Melee_RemoteChange_teamName": "T",
+        "Melee_bootstrapSyncTeam": "T",
         "Melee_flashSelection": "T",
         "MicroThinFont": "D",
         "QuickRepair": "T",
         "RepairMeleeFrame": "T",
         "SpecialAtlas": "D",
-        "pMeleeState": "D"
+        "abortFeedback": "T",
+        "closeFeedback": "T",
+        "confirmationCancelled": "T",
+        "connectedFeedback": "T",
+        "errorFeedback": "T",
+        "pMeleeState": "D",
+        "resetFeedback": "T",
+        "updateRandomSeed": "T"
       }
     },
     {
@@ -4683,10 +4753,15 @@
         "MeleeSetup_deserializeTeam": "T",
         "MeleeSetup_getFleet": "T",
         "MeleeSetup_getFleetValue": "T",
+        "MeleeSetup_getSentShip": "T",
+        "MeleeSetup_getSentTeamName": "T",
         "MeleeSetup_getShip": "T",
         "MeleeSetup_getTeamName": "T",
         "MeleeSetup_new": "T",
+        "MeleeSetup_resetSentTeams": "T",
         "MeleeSetup_serializeTeam": "T",
+        "MeleeSetup_setSentShip": "T",
+        "MeleeSetup_setSentTeamName": "T",
         "MeleeSetup_setShip": "T",
         "MeleeSetup_setTeamName": "T",
         "MeleeTeam_copy": "T",
@@ -4707,7 +4782,7 @@
     },
     {
       "source": "src/uqm/supermelee/pickmele.c",
-      "source_sha256": "56e41fe15c4eea9efe9cf03dde3ae5ffcf5f9ac41d3053aacac990e240228afc",
+      "source_sha256": "5ba5486ac0040469cbfb52fe943c8f660d8903df15e52ea406ac3decbf62bffe",
       "symbols": {
         "BuildPickMeleeFrame": "T",
         "DestroyPickMeleeFrame": "T",
@@ -4719,64 +4794,320 @@
         "PickMeleeFrame": "D",
         "selectShipComputer": "T",
         "selectShipHuman": "T",
-        "setShipSelected": "T"
+        "selectShipNetwork": "T",
+        "setShipSelected": "T",
+        "updateMeleeSelection": "T"
       }
     },
     {
-      "source": "src/libs/math/random.c",
-      "source_sha256": "69fa6b5227738f318dc35dbd855c3cf065e49aafa6839b2ebc36409b1745fc7d",
+      "source": "src/uqm/supermelee/netplay/checkbuf.c",
+      "source_sha256": "97dfb8092e21a3a63dcff0bebd6b3abd0f479f6d4ac46a219fb3dc1e0b1d2d7d",
       "symbols": {
-        "TFB_Random": "T",
-        "TFB_SeedRandom": "T",
-        "printBits": "T"
+        "ChecksumBuffer_addChecksum": "T",
+        "ChecksumBuffer_getChecksum": "T",
+        "ChecksumBuffer_init": "T",
+        "ChecksumBuffer_uninit": "T"
       }
     },
     {
-      "source": "src/libs/math/random2.c",
-      "source_sha256": "90776d5112ca7319c945dd1498c5a29560eab0bf7bcced0f6a0d7f9f45a76387",
+      "source": "src/uqm/supermelee/netplay/checksum.c",
+      "source_sha256": "bf6f78512cb00296e4490217340916cfeb50eaef50b948c5101b8e83241e1182",
       "symbols": {
-        "RandomContext_Copy": "T",
-        "RandomContext_Delete": "T",
-        "RandomContext_FastRandom": "T",
-        "RandomContext_GetSeed": "T",
-        "RandomContext_New": "T",
-        "RandomContext_Random": "T",
-        "RandomContext_SeedRandom": "T",
-        "RandomContext_Set": "T",
-        "RangeMinMax": "T"
+        "addLocalChecksum": "T",
+        "addRemoteChecksum": "T",
+        "crc_processDispQueue": "T",
+        "crc_processELEMENT": "T",
+        "crc_processEXTENT": "T",
+        "crc_processPOINT": "T",
+        "crc_processRNG": "T",
+        "crc_processSTATE": "T",
+        "crc_processState": "T",
+        "crc_processVELOCITY_DESC": "T",
+        "initChecksumBuffers": "T",
+        "localChecksumBuffer": "D",
+        "uninitChecksumBuffers": "T",
+        "verifyChecksums": "T"
       }
     },
     {
-      "source": "src/libs/math/sqrt.c",
-      "source_sha256": "9231283bdfd0e51c5dce3e95ea51ed24e704211f12c2cd75035fa4abad86ce7e",
+      "source": "src/uqm/supermelee/netplay/crc.c",
+      "source_sha256": "3cd636daaa2c1067b1e124b7772b60b66b59ec359f0ff8bffa8b782cd781547c",
       "symbols": {
-        "crc32b": "T",
-        "square_root": "T"
+        "crcTable": "D",
+        "crc_finish": "T",
+        "crc_init": "T",
+        "crc_processBytes": "T",
+        "crc_processUint16": "T",
+        "crc_processUint32": "T",
+        "crc_processUint8": "T"
       }
     },
     {
-      "source": "src/uqm/trans.c",
-      "source_sha256": "ab68cb0187bb32edafb743d2efec74ba9c4d16031eb246307067f1b9284a8a92",
+      "source": "src/uqm/supermelee/netplay/netconnection.c",
+      "source_sha256": "8c6217c02b3d5b066bfdccaa655062ff00ddb6ef4fbdb1bfaee95e4af8988b3b",
       "symbols": {
-        "ARCTAN": "T",
-        "sinetab": "D"
+        "Agreement_nothingAgreed": "D",
+        "NetConnection_close": "T",
+        "NetConnection_doErrorCallback": "T",
+        "NetConnection_getChecksumBuffer": "T",
+        "NetConnection_getChecksumInterval": "T",
+        "NetConnection_getDiscriminant": "T",
+        "NetConnection_getExtra": "T",
+        "NetConnection_getInputDelay": "T",
+        "NetConnection_getPeerOptions": "T",
+        "NetConnection_getPlayerNr": "T",
+        "NetConnection_getReadyCallback": "T",
+        "NetConnection_getReadyCallbackArg": "T",
+        "NetConnection_getResetCallback": "T",
+        "NetConnection_getResetCallbackArg": "T",
+        "NetConnection_getState": "T",
+        "NetConnection_getStateData": "T",
+        "NetConnection_getStatistics": "T",
+        "NetConnection_isConnected": "T",
+        "NetConnection_open": "T",
+        "NetConnection_setExtra": "T",
+        "NetConnection_setReadyCallback": "T",
+        "NetConnection_setResetCallback": "T",
+        "NetConnection_setState": "T",
+        "NetConnection_setStateData": "T",
+        "NetConnection_webDisconnect": "T",
+        "NetConnection_webPoll": "T"
       }
     },
     {
-      "source": "src/uqm/velocity.c",
-      "source_sha256": "9662585170acec94af7f81d5083be5a8b8e575f34b42210042de37ad9d2aea78",
+      "source": "src/uqm/supermelee/netplay/netinput.c",
+      "source_sha256": "a771a04f95acae53f877826d377f4067bde9497450d959af792111ea4b2703dc",
       "symbols": {
-        "DeltaVelocityComponents": "T",
-        "GetCurrentVelocityComponents": "T",
-        "GetCurrentVelocityComponentsSdword": "T",
-        "GetNextVelocityComponents": "T",
-        "GetNextVelocityComponentsSdword": "T",
-        "SetVelocityComponents": "T",
-        "SetVelocityVector": "T"
+        "BattleInputBuffer_pop": "T",
+        "BattleInputBuffer_push": "T",
+        "getBattleInputBuffer": "T",
+        "getBattleInputDelay": "T",
+        "initBattleInputBuffers": "T",
+        "setBattleInputDelay": "T",
+        "uninitBattleInputBuffers": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/netmelee.c",
+      "source_sha256": "e48d222b197c4b1151114be54258b741371695f7967561020e32597d1d51872a",
+      "symbols": {
+        "NetMelee_getBattleState": "T",
+        "NetMelee_getMeleeState": "T",
+        "addNetConnection": "T",
+        "allConnected": "T",
+        "cancelConfirmations": "T",
+        "closeAllConnections": "T",
+        "closeDisconnectedConnections": "T",
+        "closePlayerNetworkConnection": "T",
+        "confirmConnections": "T",
+        "connectionsLocalReady": "T",
+        "flushPacketQueues": "T",
+        "forEachConnectedPlayer": "T",
+        "getNumNetConnections": "T",
+        "initBattleStateDataConnections": "T",
+        "localReadyConnections": "T",
+        "negotiateReady": "T",
+        "negotiateReadyConnections": "T",
+        "netConnections": "D",
+        "netInput": "T",
+        "netInputBlocking": "T",
+        "networkBattleInput": "T",
+        "numNetConnections": "D",
+        "openPlayerNetworkConnection": "T",
+        "removeNetConnection": "T",
+        "resetConnections": "T",
+        "sendAbortConnections": "T",
+        "setBattleStateConnections": "T",
+        "setStateConnections": "T",
+        "setupInputDelay": "T",
+        "waitReady": "T",
+        "waitReset": "T",
+        "waitResetConnections": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/netmisc.c",
+      "source_sha256": "aea05f3bafdc02db36f6bff65226d3c7433e53460b0fe4e59bf7fb03939796b8",
+      "symbols": {
+        "NetMelee_closeCallback": "T",
+        "NetMelee_connectCallback": "T",
+        "NetMelee_errorCallback": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/netoptions.c",
+      "source_sha256": "243e1d9d7c9693a788431a66e27fa59d36c4b75d7c6c36b63f98f56082b5013f",
+      "symbols": {
+        "netplayOptions": "D",
+        "webNetplayRole": "D"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/netrcv.c",
+      "source_sha256": "a5a8eaa70e6175843eea0a423827833f3d62ce74d66736445d75d1aa68dbee1e",
+      "symbols": {
+        "webDataReady": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/netsend.c",
+      "source_sha256": "c7acab90496c128c64334d9b2f86638c2b8a7cc103d19865de779230e9f2073f",
+      "symbols": {
+        "sendPacket": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/netstate.c",
+      "source_sha256": "fa87b39a15fd56262dc255efdec67f3fcc26b706a869e62e4d388a35e9d0379a",
+      "symbols": {
+        "NetConnectionStateData_release": "T",
+        "netStateData": "D"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/notify.c",
+      "source_sha256": "1c3993151c202839052e7f463805b67234c052639a5ff8ba5e7232198733cad9",
+      "symbols": {
+        "Netplay_Notify_battleInput": "T",
+        "Netplay_Notify_checksum": "T",
+        "Netplay_Notify_frameCount": "T",
+        "Netplay_Notify_inputDelay": "T",
+        "Netplay_Notify_seedRandom": "T",
+        "Netplay_Notify_setFleet": "T",
+        "Netplay_Notify_setShip": "T",
+        "Netplay_Notify_setTeamName": "T",
+        "Netplay_Notify_shipSelected": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/notifyall.c",
+      "source_sha256": "21549e4b07ef17e6806e7f754dab5980f7d05f2d5ec2d895d83b4a1b2aa586e3",
+      "symbols": {
+        "Netplay_NotifyAll_battleInput": "T",
+        "Netplay_NotifyAll_checksum": "T",
+        "Netplay_NotifyAll_inputDelay": "T",
+        "Netplay_NotifyAll_setFleet": "T",
+        "Netplay_NotifyAll_setShip": "T",
+        "Netplay_NotifyAll_setTeamName": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/packet.c",
+      "source_sha256": "4b9f8a1054489d81fa716fdc1f1d164bfd0a43ffd832e54849d8cdb420bf1087",
+      "symbols": {
+        "Packet_Abort_create": "T",
+        "Packet_Ack_create": "T",
+        "Packet_BattleInput_create": "T",
+        "Packet_Checksum_create": "T",
+        "Packet_Fleet_create": "T",
+        "Packet_FrameCount_create": "T",
+        "Packet_Handshake0_create": "T",
+        "Packet_Handshake1_create": "T",
+        "Packet_HandshakeCancelAck_create": "T",
+        "Packet_HandshakeCancel_create": "T",
+        "Packet_Init_create": "T",
+        "Packet_InputDelay_create": "T",
+        "Packet_Ping_create": "T",
+        "Packet_Ready_create": "T",
+        "Packet_Reset_create": "T",
+        "Packet_SeedRandom_create": "T",
+        "Packet_SelectShip_create": "T",
+        "Packet_TeamName_create": "T",
+        "Packet_delete": "T",
+        "packetTypeData": "D"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/packethandlers.c",
+      "source_sha256": "a5e3b75d89c82468e898b42fe63cef17a1ae70a4fbf195a6674590cf3d9fe13b",
+      "symbols": {
+        "PacketHandler_Abort": "T",
+        "PacketHandler_Ack": "T",
+        "PacketHandler_BattleInput": "T",
+        "PacketHandler_Checksum": "T",
+        "PacketHandler_Fleet": "T",
+        "PacketHandler_FrameCount": "T",
+        "PacketHandler_Handshake0": "T",
+        "PacketHandler_Handshake1": "T",
+        "PacketHandler_HandshakeCancel": "T",
+        "PacketHandler_HandshakeCancelAck": "T",
+        "PacketHandler_Init": "T",
+        "PacketHandler_InputDelay": "T",
+        "PacketHandler_Ping": "T",
+        "PacketHandler_Ready": "T",
+        "PacketHandler_Reset": "T",
+        "PacketHandler_SeedRandom": "T",
+        "PacketHandler_SelectShip": "T",
+        "PacketHandler_TeamName": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/packetsenders.c",
+      "source_sha256": "19dbbb087aa95ae4f7dd9362990d19f25c3468901b4d6ec0e9b27f9650e943bc",
+      "symbols": {
+        "sendAbort": "T",
+        "sendAck": "T",
+        "sendBattleInput": "T",
+        "sendChecksum": "T",
+        "sendFleet": "T",
+        "sendFleetShip": "T",
+        "sendFrameCount": "T",
+        "sendHandshake0": "T",
+        "sendHandshake1": "T",
+        "sendHandshakeCancel": "T",
+        "sendHandshakeCancelAck": "T",
+        "sendInit": "T",
+        "sendInputDelay": "T",
+        "sendPing": "T",
+        "sendReady": "T",
+        "sendReset": "T",
+        "sendSeedRandom": "T",
+        "sendSelectShip": "T",
+        "sendTeamName": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/packetq.c",
+      "source_sha256": "8906da7b9cf3c088fe3ccc38310e7c441c6a9d8426d856eed82cb8bf355da01b",
+      "symbols": {
+        "PacketQueue_init": "T",
+        "PacketQueue_uninit": "T",
+        "flushPacketQueue": "T",
+        "queuePacket": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/proto/npconfirm.c",
+      "source_sha256": "8981364480e1f2e350df7214ff6c95abc515084849894fdfde34b34a0ca142c5",
+      "symbols": {
+        "Netplay_cancelConfirmation": "T",
+        "Netplay_confirm": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/proto/ready.c",
+      "source_sha256": "1f75f8374f5c84a0781ab32d02514a5b7c6ce554a6ebf872f77f6e82c6429571",
+      "symbols": {
+        "Netplay_isLocalReady": "T",
+        "Netplay_isRemoteReady": "T",
+        "Netplay_localReady": "T",
+        "Netplay_remoteReady": "T"
+      }
+    },
+    {
+      "source": "src/uqm/supermelee/netplay/proto/reset.c",
+      "source_sha256": "420568a9a2d7b4b324a3a3377f43c5393084f60f198a28af1b2b54035d3c7f90",
+      "symbols": {
+        "Netplay_isLocalReset": "T",
+        "Netplay_isRemoteReset": "T",
+        "Netplay_localReset": "T",
+        "Netplay_remoteReset": "T",
+        "Netplay_setResetCallback": "T"
       }
     }
   ],
   "allowed_missing": {
-    "__main_argc_argv": "Provided by the explicit C platform entry adapter."
+    "__main_argc_argv": "Provided by the explicit C platform entry adapter.",
+    "crcTable": "Private implementation data replaced by uqm-core; no game caller references it."
   }
 }

@@ -22,6 +22,10 @@ extern "C" {
     pub type frame_desc;
     pub type tfb_soundsample;
     pub type getmelee_struct;
+    pub type MeleeTeam;
+    pub type MeleeSetup;
+    pub type RandomContext;
+    pub type NetConnection;
     fn BatchGraphics();
     fn UnbatchGraphics();
     fn GetFrameRect(Frame: FRAME, pRect: *mut RECT) -> BOOLEAN;
@@ -56,11 +60,21 @@ extern "C" {
     fn AllocElement() -> HELEMENT;
     fn crew_preprocess(ElementPtr: *mut ELEMENT);
     fn SetVelocityComponents(velocityptr: *mut VELOCITY_DESC, dx: SDWORD, dy: SDWORD);
+    static mut PlayerInput: [*mut InputContext; 0];
     fn MeleeShipDeath(_: *mut STARSHIP);
     static mut stars_in_space: FRAME;
     static mut stars_misc: [FRAME; 3];
     static mut GlobData: GLOBDATA;
     fn TFB_Random() -> DWORD;
+    fn NetConnection_isConnected(conn: *const NetConnection) -> bool;
+    fn NetConnection_getStateData(
+        conn: *const NetConnection,
+    ) -> *mut NetConnectionStateData;
+    fn NetConnection_setState(conn: *mut NetConnection, state: NetState);
+    fn NetConnection_getState(conn: *const NetConnection) -> NetState;
+    static mut battle_counter: [BYTE; 2];
+    static mut battleFrameCount: BattleFrameCounter;
+    fn BattleSong(DoPlay: BOOLEAN);
     fn free_ship(
         RaceDescPtr: *mut RACE_DESC,
         FreeIconData: BOOLEAN,
@@ -70,13 +84,32 @@ extern "C" {
     fn animation_preprocess(ElementPtr: *mut ELEMENT);
     fn ship_preprocess(ElementPtr: *mut ELEMENT);
     fn ship_postprocess(ElementPtr: *mut ELEMENT);
-    fn FleetIsInfinite(playerNr: COUNT) -> BOOLEAN;
-    fn UpdateShipFragCrew(_: *mut STARSHIP);
-    static mut battle_counter: [BYTE; 2];
-    fn BattleSong(DoPlay: BOOLEAN);
+    static mut netConnections: [*mut NetConnection; 0];
+    fn initBattleStateDataConnections();
+    fn negotiateReady(
+        conn: *mut NetConnection,
+        notifyRemote: bool,
+        nextState: NetState,
+    ) -> bool;
+    fn negotiateReadyConnections(notifyRemote: bool, nextState: NetState) -> bool;
+    fn waitReady(conn: *mut NetConnection) -> bool;
+    fn Netplay_Notify_frameCount(
+        conn: *mut NetConnection,
+        frameCount: BattleFrameCounter,
+    );
     fn DeltaEnergy(ElementPtr: *mut ELEMENT, energy_delta: SIZE) -> BOOLEAN;
     fn PreProcessStatus(ShipPtr: *mut ELEMENT);
     fn PostProcessStatus(ShipPtr: *mut ELEMENT);
+    fn Netplay_localReady(
+        conn: *mut NetConnection,
+        callback: NetConnection_ReadyCallback,
+        arg: *mut ::core::ffi::c_void,
+        notifyRemote: bool,
+    ) -> bool;
+    fn Netplay_isLocalReady(conn: *const NetConnection) -> bool;
+    fn flushPacketQueue(conn: *mut NetConnection) -> ::core::ffi::c_int;
+    fn FleetIsInfinite(playerNr: COUNT) -> BOOLEAN;
+    fn UpdateShipFragCrew(_: *mut STARSHIP);
     fn StopMusic();
     fn PlayMusic(MusicRef: MUSIC_REF, Continuous: BOOLEAN, Priority: BYTE);
     static mut GameSounds: SOUND;
@@ -123,6 +156,7 @@ pub struct Color {
 pub type RESOURCE = *const ::core::ffi::c_char;
 pub type STRING_TABLE_ENTRY_DESC = string_table_entry;
 pub type STRING = *mut STRING_TABLE_ENTRY_DESC;
+pub type DIRENTRY = STRING;
 pub type FRAME_DESC = frame_desc;
 pub type FRAME = *mut FRAME_DESC;
 pub type TIME_VALUE = UWORD;
@@ -220,6 +254,7 @@ pub struct INTERSECT_CONTROL {
     pub EndPoint: POINT,
     pub IntersectStamp: STAMP,
 }
+pub type TimeCount = DWORD;
 pub type BATTLE_INPUT_STATE = UBYTE;
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
@@ -573,6 +608,12 @@ pub struct HumanInputContext {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
+pub struct NetworkInputContext {
+    pub handlers: *mut BattleInputHandlers,
+    pub playerNr: COUNT,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
 pub struct CLOCK_STATE {
     pub day_index: BYTE,
     pub month_index: BYTE,
@@ -659,6 +700,117 @@ pub struct GAME_STATE {
 pub struct GLOBDATA {
     pub SIS_state: SIS_STATE,
     pub Game_state: GAME_STATE,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct NetState(pub ::core::ffi::c_uint);
+impl NetState {
+    pub const NetState_unconnected: Self = Self(0);
+    pub const NetState_connecting: Self = Self(1);
+    pub const NetState_init: Self = Self(2);
+    pub const NetState_inSetup: Self = Self(3);
+    pub const NetState_preBattle: Self = Self(4);
+    pub const NetState_interBattle: Self = Self(5);
+    pub const NetState_selectShip: Self = Self(6);
+    pub const NetState_inBattle: Self = Self(7);
+    pub const NetState_endingBattle: Self = Self(8);
+    pub const NetState_endingBattle2: Self = Self(9);
+}
+pub type NetConnection_ReadyCallback = Option<
+    unsafe extern "C" fn(*mut NetConnection, *mut ::core::ffi::c_void) -> (),
+>;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetConnectionStateData {
+    pub releaseFunction: NetConnectionStateData_ReleaseFunction,
+}
+pub type NetConnectionStateData_ReleaseFunction = Option<
+    unsafe extern "C" fn(*mut NetConnectionStateData) -> (),
+>;
+pub type BattleFrameCounter = DWORD;
+pub type BattleFrameCallback = unsafe extern "C" fn() -> ();
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct battlestate_struct {
+    pub InputFunc: Option<unsafe extern "C" fn(*mut battlestate_struct) -> BOOLEAN>,
+    pub first_time: BOOLEAN,
+    pub NextTime: DWORD,
+    pub frame_cb: Option<BattleFrameCallback>,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct melee_state {
+    pub InputFunc: Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>,
+    pub Initialized: BOOLEAN,
+    pub meleeStarted: BOOLEAN,
+    pub MeleeOption: MELEE_OPTIONS,
+    pub side: COUNT,
+    pub row: COUNT,
+    pub col: COUNT,
+    pub meleeSetup: *mut MeleeSetup,
+    pub load: melee_load_state,
+    pub currentShip: MeleeShip,
+    pub CurIndex: COUNT,
+    pub buildPickConfirmed: BOOLEAN,
+    pub randomContext: *mut RandomContext,
+    pub LastInputTime: TimeCount,
+    pub hMusic: MUSIC_REF,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct MeleeShip(pub ::core::ffi::c_uint);
+impl MeleeShip {
+    pub const MELEE_ANDROSYNTH: Self = Self(0);
+    pub const MELEE_ARILOU: Self = Self(1);
+    pub const MELEE_CHENJESU: Self = Self(2);
+    pub const MELEE_CHMMR: Self = Self(3);
+    pub const MELEE_DRUUGE: Self = Self(4);
+    pub const MELEE_EARTHLING: Self = Self(5);
+    pub const MELEE_ILWRATH: Self = Self(6);
+    pub const MELEE_KOHR_AH: Self = Self(7);
+    pub const MELEE_MELNORME: Self = Self(8);
+    pub const MELEE_MMRNMHRM: Self = Self(9);
+    pub const MELEE_MYCON: Self = Self(10);
+    pub const MELEE_ORZ: Self = Self(11);
+    pub const MELEE_PKUNK: Self = Self(12);
+    pub const MELEE_SHOFIXTI: Self = Self(13);
+    pub const MELEE_SLYLANDRO: Self = Self(14);
+    pub const MELEE_SPATHI: Self = Self(15);
+    pub const MELEE_SUPOX: Self = Self(16);
+    pub const MELEE_SYREEN: Self = Self(17);
+    pub const MELEE_THRADDASH: Self = Self(18);
+    pub const MELEE_UMGAH: Self = Self(19);
+    pub const MELEE_URQUAN: Self = Self(20);
+    pub const MELEE_UTWIG: Self = Self(21);
+    pub const MELEE_VUX: Self = Self(22);
+    pub const MELEE_YEHAT: Self = Self(23);
+    pub const MELEE_ZOQFOTPIK: Self = Self(24);
+    pub const MELEE_UNSET: Self = Self(254);
+    pub const MELEE_NONE: Self = Self(255);
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct melee_load_state {
+    pub preBuiltList: *mut *mut MeleeTeam,
+    pub preBuiltCount: COUNT,
+    pub dirEntries: DIRENTRY,
+    pub entryIndices: *mut COUNT,
+    pub numIndices: COUNT,
+    pub view: [*mut MeleeTeam; 5],
+    pub top: COUNT,
+    pub bot: COUNT,
+    pub cur: COUNT,
+    pub viewSize: COUNT,
+}
+pub type MELEE_OPTIONS = BYTE;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct BattleStateData {
+    pub releaseFunction: NetConnectionStateData_ReleaseFunction,
+    pub meleeState: *mut melee_state,
+    pub battleState: *mut battlestate_struct,
+    pub getMeleeState: *mut getmelee_struct,
+    pub endFrameCount: BattleFrameCounter,
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
@@ -782,6 +934,128 @@ unsafe extern "C" fn DittyPlaying() -> BOOLEAN {
 pub unsafe extern "C" fn ResetWinnerStarShip() {
     winnerStarShip = ::core::ptr::null_mut::<STARSHIP>();
 }
+unsafe extern "C" fn readyToEnd2Callback(
+    mut conn: *mut NetConnection,
+    mut arg: *mut ::core::ffi::c_void,
+) {
+    NetConnection_setState(conn, NetState::NetState_endingBattle2);
+}
+unsafe extern "C" fn readyToEndCallback(
+    mut conn: *mut NetConnection,
+    mut arg: *mut ::core::ffi::c_void,
+) {
+    let mut battleStateData: *mut BattleStateData = ::core::ptr::null_mut::<
+        BattleStateData,
+    >();
+    battleStateData = NetConnection_getStateData(conn) as *mut BattleStateData;
+    NetConnection_setState(conn, NetState::NetState_endingBattle);
+    if battleFrameCount.wrapping_add(1 as BattleFrameCounter)
+        > (*battleStateData).endFrameCount
+    {
+        (*battleStateData).endFrameCount = battleFrameCount
+            .wrapping_add(1 as BattleFrameCounter);
+    }
+    Netplay_Notify_frameCount(
+        conn,
+        battleFrameCount.wrapping_add(1 as BattleFrameCounter),
+    );
+    flushPacketQueue(conn);
+    uqm_lua_checked!(Netplay_localReady(
+        conn,
+        Some(
+            readyToEnd2Callback
+                as unsafe extern "C" fn(
+                    *mut NetConnection,
+                    *mut ::core::ffi::c_void,
+                ) -> (),
+        ),
+        ::core::ptr::null_mut::<::core::ffi::c_void>(),
+        false,
+    ), ());
+}
+unsafe extern "C" fn readyForBattleEndPlayer(mut conn: *mut NetConnection) -> bool {
+    let mut battleStateData: *mut BattleStateData = ::core::ptr::null_mut::<
+        BattleStateData,
+    >();
+    if conn.is_null() || !NetConnection_isConnected(conn) {
+        GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
+            as ::core::ffi::c_int
+            | C2Rust_Unnamed_5::CHECK_ABORT.0 as ::core::ffi::c_int) as ACTIVITY;
+        return false;
+    }
+    battleStateData = NetConnection_getStateData(conn) as *mut BattleStateData;
+    if NetConnection_getState(conn).0 == NetState::NetState_interBattle.0
+        || NetConnection_getState(conn).0 == NetState::NetState_inSetup.0
+    {
+        return true;
+    }
+    if NetConnection_getState(conn).0 == NetState::NetState_inBattle.0 {
+        if Netplay_isLocalReady(conn) {
+            return false;
+        }
+        uqm_lua_checked!(Netplay_localReady(
+            conn,
+            Some(
+                readyToEndCallback
+                    as unsafe extern "C" fn(
+                        *mut NetConnection,
+                        *mut ::core::ffi::c_void,
+                    ) -> (),
+            ),
+            ::core::ptr::null_mut::<::core::ffi::c_void>(),
+            true,
+        ), false);
+        if NetConnection_getState(conn).0 == NetState::NetState_inBattle.0 {
+            return false;
+        }
+    }
+    (NetConnection_getState(conn).0 == NetState::NetState_endingBattle.0
+        || NetConnection_getState(conn).0 == NetState::NetState_endingBattle2.0
+        || {
+            __assert_fail(
+                b"NetConnection_getState (conn) == NetState_endingBattle || NetConnection_getState (conn) == NetState_endingBattle2\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                b"src/uqm/tactrans.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                207 as ::core::ffi::c_int,
+                b"readyForBattleEndPlayer\0".as_ptr() as *const ::core::ffi::c_char,
+            );
+            0 as ::core::ffi::c_int != 0
+        }) as ::core::ffi::c_int;
+    if battleFrameCount < (*battleStateData).endFrameCount {
+        return false;
+    }
+    if NetConnection_getState(conn).0 == NetState::NetState_endingBattle.0 {
+        if !uqm_lua_checked!(waitReady(conn), false) {
+            GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
+                as ::core::ffi::c_int
+                | C2Rust_Unnamed_5::CHECK_ABORT.0 as ::core::ffi::c_int) as ACTIVITY;
+            return false;
+        }
+        (NetConnection_getState(conn).0 == NetState::NetState_endingBattle2.0
+            || {
+                __assert_fail(
+                    b"NetConnection_getState (conn) == NetState_endingBattle2\0".as_ptr()
+                        as *const ::core::ffi::c_char,
+                    b"src/uqm/tactrans.c\0"
+                        .as_ptr() as *const ::core::ffi::c_char,
+                    226 as ::core::ffi::c_int,
+                    b"readyForBattleEndPlayer\0".as_ptr() as *const ::core::ffi::c_char,
+                );
+                0 as ::core::ffi::c_int != 0
+            }) as ::core::ffi::c_int;
+        if battleFrameCount < (*battleStateData).endFrameCount {
+            return false;
+        }
+    }
+    if !uqm_lua_checked!(negotiateReady(conn, true, NetState::NetState_interBattle), false) {
+        GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
+            as ::core::ffi::c_int
+            | C2Rust_Unnamed_5::CHECK_ABORT.0 as ::core::ffi::c_int) as ACTIVITY;
+        return false;
+    }
+    return true;
+}
 #[no_mangle]
 pub unsafe extern "C" fn battleEndReadyHuman(
     mut context: *mut HumanInputContext,
@@ -794,9 +1068,36 @@ pub unsafe extern "C" fn battleEndReadyComputer(
 ) -> bool {
     return true;
 }
+#[no_mangle]
+pub unsafe extern "C" fn battleEndReadyNetwork(
+    mut context: *mut NetworkInputContext,
+) -> bool {
+    return uqm_lua_checked!(readyForBattleEndPlayer(
+        *(&raw mut netConnections as *mut *mut NetConnection)
+            .offset((*context).playerNr as isize),
+    ), false);
+}
 #[inline]
 unsafe extern "C" fn readyForBattleEnd() -> bool {
-    return DittyPlaying().0 == 0;
+    let mut playerI: ::core::ffi::c_int = 0;
+    if DittyPlaying().0 != 0 {
+        return false;
+    }
+    playerI = 0 as ::core::ffi::c_int;
+    while playerI < 2 as ::core::ffi::c_int {
+        if !uqm_lua_checked!((*(**(&raw mut PlayerInput as *mut *mut InputContext)
+            .offset(playerI as isize))
+            .handlers)
+            .battleEndReady
+            .expect(
+                "non-null function pointer",
+            )(*(&raw mut PlayerInput as *mut *mut InputContext).offset(playerI as isize)), false)
+        {
+            return false;
+        }
+        playerI += 1;
+    }
+    return true;
 }
 unsafe extern "C" fn preprocess_dead_ship(mut DeadShipPtr: *mut ELEMENT) {
     ProcessSound(
@@ -900,7 +1201,7 @@ unsafe extern "C" fn setMinShipLifeSpan(mut ship: *mut ELEMENT, mut life_span: C
                         as *const ::core::ffi::c_char,
                     b"src/uqm/tactrans.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
-                    383 as ::core::ffi::c_int,
+                    395 as ::core::ffi::c_int,
                     b"setMinShipLifeSpan\0".as_ptr() as *const ::core::ffi::c_char,
                 );
                 0 as ::core::ffi::c_int != 0
@@ -913,7 +1214,7 @@ unsafe extern "C" fn setMinShipLifeSpan(mut ship: *mut ELEMENT, mut life_span: C
                         as *const ::core::ffi::c_char,
                     b"src/uqm/tactrans.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
-                    384 as ::core::ffi::c_int,
+                    396 as ::core::ffi::c_int,
                     b"setMinShipLifeSpan\0".as_ptr() as *const ::core::ffi::c_char,
                 );
                 0 as ::core::ffi::c_int != 0
@@ -971,7 +1272,7 @@ unsafe extern "C" fn checkOtherShipLifeSpan(mut deadShip: *mut ELEMENT) {
 pub unsafe extern "C" fn new_ship(mut DeadShipPtr: *mut ELEMENT) {
     let mut DeadStarShipPtr: *mut STARSHIP = ::core::ptr::null_mut::<STARSHIP>();
     DeadStarShipPtr = (*DeadShipPtr).pParent as *mut STARSHIP;
-    if !readyForBattleEnd() {
+    if !uqm_lua_checked!(readyForBattleEnd(), ()) {
         (*DeadShipPtr).state_flags = ((*DeadShipPtr).state_flags as ::core::ffi::c_int
             & !((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int)) as ELEMENT_FLAGS;
         (*DeadShipPtr).c2rust_unnamed.life_span = (*DeadShipPtr)
@@ -991,11 +1292,34 @@ pub unsafe extern "C" fn new_ship(mut DeadShipPtr: *mut ELEMENT) {
     uqm_lua_checked!(free_ship((*DeadStarShipPtr).RaceDescPtr, BOOLEAN::TRUE, BOOLEAN::TRUE), ());
     (*DeadStarShipPtr).RaceDescPtr = ::core::ptr::null_mut::<RACE_DESC>();
     UnbatchGraphics();
+    initBattleStateDataConnections();
+    let mut allOk: bool = uqm_lua_checked!(negotiateReadyConnections(
+        true,
+        NetState::NetState_interBattle,
+    ), ());
+    if !allOk {
+        GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
+            as ::core::ffi::c_int
+            & !(C2Rust_Unnamed_5::IN_BATTLE.0 as ::core::ffi::c_int)) as ACTIVITY;
+        BatchGraphics();
+        return;
+    }
     if FleetIsInfinite((*DeadStarShipPtr).playerNr as COUNT).0 == 0 {
         UpdateShipFragCrew(DeadStarShipPtr);
         (*DeadStarShipPtr).SpeciesID = SPECIES_ID::NO_ID;
     }
     if uqm_lua_checked!(GetNextStarShip(DeadStarShipPtr, (*DeadStarShipPtr).playerNr as COUNT), ()).0 != 0 {
+        let mut allOk_0: bool = uqm_lua_checked!(negotiateReadyConnections(
+            true,
+            NetState::NetState_inBattle,
+        ), ());
+        if !allOk_0 {
+            GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
+                as ::core::ffi::c_int
+                & !(C2Rust_Unnamed_5::IN_BATTLE.0 as ::core::ffi::c_int)) as ACTIVITY;
+            BatchGraphics();
+            return;
+        }
         if RestartMusic.0 != 0 {
             uqm_lua_checked!(BattleSong(BOOLEAN::TRUE), ());
         }
@@ -1005,6 +1329,10 @@ pub unsafe extern "C" fn new_ship(mut DeadShipPtr: *mut ELEMENT) {
         GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
             as ::core::ffi::c_int
             & !(C2Rust_Unnamed_5::IN_BATTLE.0 as ::core::ffi::c_int)) as ACTIVITY;
+    } else {
+        GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
+            as ::core::ffi::c_int
+            | C2Rust_Unnamed_5::CHECK_ABORT.0 as ::core::ffi::c_int) as ACTIVITY;
     }
     BatchGraphics();
 }
@@ -1013,7 +1341,7 @@ unsafe extern "C" fn explosion_preprocess(mut ShipPtr: *mut ELEMENT) {
     i = (12 as ::core::ffi::c_int * 3 as ::core::ffi::c_int
         - (*ShipPtr).c2rust_unnamed.life_span as ::core::ffi::c_int) as BYTE;
     's_71: {
-        'c_27108: {
+        'c_27971: {
             match i as ::core::ffi::c_int {
                 25 => {
                     (*ShipPtr).preprocess_func = None;
@@ -1030,10 +1358,10 @@ unsafe extern "C" fn explosion_preprocess(mut ShipPtr: *mut ELEMENT) {
                         as ::core::ffi::c_int
                         | (1 as ::core::ffi::c_int) << 5 as ::core::ffi::c_int)
                         as ELEMENT_FLAGS;
-                    break 'c_27108;
+                    break 'c_27971;
                 }
                 _ => {
-                    break 'c_27108;
+                    break 'c_27971;
                 }
             }
             i = 1 as BYTE;
@@ -1160,7 +1488,7 @@ pub unsafe extern "C" fn FindAliveStarShip(mut deadShip: *mut ELEMENT) -> *mut S
                         b"aliveShip != NULL\0".as_ptr() as *const ::core::ffi::c_char,
                         b"src/uqm/tactrans.c\0"
                             .as_ptr() as *const ::core::ffi::c_char,
-                        646 as ::core::ffi::c_int,
+                        658 as ::core::ffi::c_int,
                         b"FindAliveStarShip\0".as_ptr() as *const ::core::ffi::c_char,
                     );
                     0 as ::core::ffi::c_int != 0
@@ -1207,7 +1535,7 @@ pub unsafe extern "C" fn RecordShipDeath(mut deadShip: *mut ELEMENT) {
                 b"deadStarShip != NULL\0".as_ptr() as *const ::core::ffi::c_char,
                 b"src/uqm/tactrans.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-                691 as ::core::ffi::c_int,
+                703 as ::core::ffi::c_int,
                 b"RecordShipDeath\0".as_ptr() as *const ::core::ffi::c_char,
             );
             0 as ::core::ffi::c_int != 0
@@ -1222,7 +1550,7 @@ pub unsafe extern "C" fn RecordShipDeath(mut deadShip: *mut ELEMENT) {
                         as *const ::core::ffi::c_char,
                     b"src/uqm/tactrans.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
-                    697 as ::core::ffi::c_int,
+                    709 as ::core::ffi::c_int,
                     b"RecordShipDeath\0".as_ptr() as *const ::core::ffi::c_char,
                 );
                 0 as ::core::ffi::c_int != 0
@@ -1421,7 +1749,7 @@ unsafe extern "C" fn cycle_ion_trail(mut ElementPtr: *mut ELEMENT) {
                     as *const ::core::ffi::c_char,
                 b"src/uqm/tactrans.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-                780 as ::core::ffi::c_int,
+                792 as ::core::ffi::c_int,
                 b"cycle_ion_trail\0".as_ptr() as *const ::core::ffi::c_char,
             );
             0 as ::core::ffi::c_int != 0
@@ -1454,7 +1782,7 @@ pub unsafe extern "C" fn spawn_ion_trail(
                     as *const ::core::ffi::c_char,
                 b"src/uqm/tactrans.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-                801 as ::core::ffi::c_int,
+                813 as ::core::ffi::c_int,
                 b"spawn_ion_trail\0".as_ptr() as *const ::core::ffi::c_char,
             );
             0 as ::core::ffi::c_int != 0

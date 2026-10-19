@@ -123,10 +123,12 @@ extern "C" {
     fn worldIsMoon(solarSys: *const SOLARSYS_STATE, world: *const PLANET_DESC) -> bool;
     fn moonIndex(solarSys: *const SOLARSYS_STATE, moon: *const PLANET_DESC) -> COUNT;
     fn GetStarBackGround(encounter: BOOLEAN) -> FRAME;
-    static mut PlayerInput: [*mut InputContext; 0];
     static mut battle_counter: [BYTE; 2];
     fn Battle(_: Option<BattleFrameCallback>) -> BOOLEAN;
+    static mut PlayerInput: [*mut InputContext; 0];
     static mut EncounterRace: SIZE;
+    static mut CurStarDescPtr: *mut STAR_DESC;
+    fn GetClusterName(pSD: *const STAR_DESC, buf: *mut UNICODE);
     fn load_gravity_well(selector: BYTE);
     fn free_gravity_well();
     fn Build(pQueue: *mut QUEUE, SpeciesID: SPECIES_ID) -> HLINK;
@@ -135,8 +137,6 @@ extern "C" {
     fn DoMenuChooser(pMS: *mut MENU_STATE, BaseState: BYTE) -> BOOLEAN;
     fn DrawMenuStateStrings(beg_index: BYTE, NewState: SWORD);
     fn GameOptions() -> BOOLEAN;
-    static mut CurStarDescPtr: *mut STAR_DESC;
-    fn GetClusterName(pSD: *const STAR_DESC, buf: *mut UNICODE);
     fn DrawArmadaPickShip(draw_salvage_frame: BOOLEAN, pPickRect: *mut RECT);
     fn InitPickFrame();
     fn DestroyPickFrame();

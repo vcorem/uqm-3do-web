@@ -42,9 +42,9 @@ extern "C" {
         _: *const ::core::ffi::c_char,
         _: *const ::core::ffi::c_char,
     ) -> ::core::ffi::c_int;
-    fn GetShipValue(StarShip: MeleeShip) -> COUNT;
     fn log_add(_: log_Level, fmt: *const ::core::ffi::c_char, ...);
     fn GetShipCostFromIndex(Index: ::core::ffi::c_uint) -> COUNT;
+    fn GetShipValue(StarShip: MeleeShip) -> COUNT;
 }
 pub type size_t = usize;
 #[derive(Copy, Clone)]
@@ -90,6 +90,8 @@ impl MeleeShip {
 pub struct MeleeSetup {
     pub teams: [MeleeTeam; 2],
     pub fleetValue: [COUNT; 2],
+    pub sentTeams: [MeleeTeam; 2],
+    pub haveSentTeamName: [bool; 2],
 }
 pub type COUNT = UWORD;
 pub type UWORD = uint16;
@@ -275,6 +277,21 @@ pub unsafe extern "C" fn MeleeTeam_copy(
 ) {
     *copy = *original;
 }
+unsafe extern "C" fn MeleeSetup_initSentTeam(
+    mut setup: *mut MeleeSetup,
+    mut teamNr: size_t,
+) {
+    let mut team: *mut MeleeTeam = (&raw mut (*setup).sentTeams as *mut MeleeTeam)
+        .offset(teamNr as isize);
+    let mut slotI: FleetShipIndex = 0;
+    slotI = 0 as FleetShipIndex;
+    while (slotI as ::core::ffi::c_int) < 14 as ::core::ffi::c_int {
+        MeleeTeam_setShip(team, slotI, MeleeShip::MELEE_UNSET);
+        slotI = slotI.wrapping_add(1);
+    }
+    (*setup).haveSentTeamName[teamNr] = false;
+    MeleeTeam_setName(team, b"<INVALID>\0".as_ptr() as *const ::core::ffi::c_char);
+}
 #[no_mangle]
 pub unsafe extern "C" fn MeleeSetup_new() -> *mut MeleeSetup {
     let mut teamI: size_t = 0;
@@ -289,6 +306,7 @@ pub unsafe extern "C" fn MeleeSetup_new() -> *mut MeleeSetup {
             (&raw mut (*result).teams as *mut MeleeTeam).offset(teamI as isize),
         );
         (*result).fleetValue[teamI] = 0 as COUNT;
+        MeleeSetup_initSentTeam(result, teamI);
         teamI = teamI.wrapping_add(1);
     }
     return result;
@@ -296,6 +314,15 @@ pub unsafe extern "C" fn MeleeSetup_new() -> *mut MeleeSetup {
 #[no_mangle]
 pub unsafe extern "C" fn MeleeSetup_delete(mut setup: *mut MeleeSetup) {
     HFree(setup as *mut ::core::ffi::c_void);
+}
+#[no_mangle]
+pub unsafe extern "C" fn MeleeSetup_resetSentTeams(mut setup: *mut MeleeSetup) {
+    let mut teamI: size_t = 0;
+    teamI = 0 as size_t;
+    while teamI < 2 as size_t {
+        MeleeSetup_initSentTeam(setup, teamI);
+        teamI = teamI.wrapping_add(1);
+    }
 }
 #[no_mangle]
 pub unsafe extern "C" fn MeleeSetup_setShip(
@@ -395,6 +422,73 @@ pub unsafe extern "C" fn MeleeSetup_serializeTeam(
     let mut team: *const MeleeTeam = (&raw const (*setup).teams as *const MeleeTeam)
         .offset(teamNr as isize);
     return uqm_lua_checked!(MeleeTeam_serialize(team, stream), 0);
+}
+#[no_mangle]
+pub unsafe extern "C" fn MeleeSetup_getSentShip(
+    mut setup: *const MeleeSetup,
+    mut teamNr: size_t,
+    mut slotNr: FleetShipIndex,
+) -> MeleeShip {
+    return MeleeTeam_getShip(
+        (&raw const (*setup).sentTeams as *const MeleeTeam).offset(teamNr as isize),
+        slotNr,
+    );
+}
+#[no_mangle]
+pub unsafe extern "C" fn MeleeSetup_getSentTeamName(
+    mut setup: *const MeleeSetup,
+    mut teamNr: size_t,
+) -> *const ::core::ffi::c_char {
+    if !(*setup).haveSentTeamName[teamNr] {
+        return ::core::ptr::null::<::core::ffi::c_char>();
+    }
+    return MeleeTeam_getTeamName(
+        (&raw const (*setup).sentTeams as *const MeleeTeam).offset(teamNr as isize),
+    );
+}
+#[no_mangle]
+pub unsafe extern "C" fn MeleeSetup_setSentShip(
+    mut setup: *mut MeleeSetup,
+    mut teamNr: size_t,
+    mut slotNr: FleetShipIndex,
+    mut ship: MeleeShip,
+) -> bool {
+    let mut team: *mut MeleeTeam = (&raw mut (*setup).sentTeams as *mut MeleeTeam)
+        .offset(teamNr as isize);
+    let mut oldShip: MeleeShip = MeleeTeam_getShip(team, slotNr);
+    if ship.0 == oldShip.0 {
+        return false;
+    }
+    MeleeTeam_setShip(team, slotNr, ship);
+    return true;
+}
+#[no_mangle]
+pub unsafe extern "C" fn MeleeSetup_setSentTeamName(
+    mut setup: *mut MeleeSetup,
+    mut teamNr: size_t,
+    mut name: *const ::core::ffi::c_char,
+) -> bool {
+    let mut haveSentName: bool = (*setup).haveSentTeamName[teamNr];
+    if name.is_null() {
+        if !haveSentName {
+            return false;
+        }
+        let mut team: *mut MeleeTeam = (&raw mut (*setup).sentTeams as *mut MeleeTeam)
+            .offset(teamNr as isize);
+        MeleeTeam_setName(team, b"<INVALID>\0".as_ptr() as *const ::core::ffi::c_char);
+    } else {
+        let mut team_0: *mut MeleeTeam = (&raw mut (*setup).sentTeams as *mut MeleeTeam)
+            .offset(teamNr as isize);
+        if haveSentName {
+            let mut oldName: *const ::core::ffi::c_char = MeleeTeam_getTeamName(team_0);
+            if strcmp(oldName, name) == 0 as ::core::ffi::c_int {
+                return false;
+            }
+        }
+        MeleeTeam_setName(team_0, name);
+    }
+    (*setup).haveSentTeamName[teamNr] = !name.is_null();
+    return true;
 }
 #[export_name = "uqm_c2rust_init_f2b808cc7fbb65e1"]
 unsafe extern "C" fn c2rust_run_static_initializers() {

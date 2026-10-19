@@ -34,17 +34,17 @@ extern "C" {
     fn TFB_Random() -> DWORD;
     fn ProcessSound(Sound: SOUND, PositionalObject: *mut ELEMENT);
     fn DeltaEnergy(ElementPtr: *mut ELEMENT, energy_delta: SIZE) -> BOOLEAN;
+    fn ship_intelligence(
+        ShipPtr: *mut ELEMENT,
+        ObjectsOfConcern: *mut EVALUATE_DESC,
+        ConcernCounter: COUNT,
+    );
     fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
     fn collision(
         ElementPtr0: *mut ELEMENT,
         pPt0: *mut POINT,
         ElementPtr1: *mut ELEMENT,
         pPt1: *mut POINT,
-    );
-    fn ship_intelligence(
-        ShipPtr: *mut ELEMENT,
-        ObjectsOfConcern: *mut EVALUATE_DESC,
-        ConcernCounter: COUNT,
     );
 }
 pub type size_t = usize;

@@ -37,8 +37,7 @@ result = {'edition': args.edition, 'target': 'wasm32-unknown-emscripten',
           'emscripten': (ROOT / '.emscripten-version').read_text().strip(),
           'source_units': records, 'allowed_missing': {
               '__main_argc_argv': 'Provided by the explicit C platform entry adapter.'}}
-if args.edition == 'original':
-    result['allowed_missing']['crcTable'] = 'Private implementation data replaced by uqm-core; no game caller references it.'
+result['allowed_missing']['crcTable'] = 'Private implementation data replaced by uqm-core; no game caller references it.'
 args.output.parent.mkdir(parents=True, exist_ok=True)
 args.output.write_text(json.dumps(result, indent=2) + '\n')
 print(f'Captured {len(records)} source units into {args.output}')

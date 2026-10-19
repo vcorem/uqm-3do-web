@@ -25,7 +25,10 @@ extern "C" {
     pub type font_desc;
     pub type drawable_desc;
     pub type tfb_soundsample;
+    pub type MeleeTeam;
     pub type MeleeSetup;
+    pub type RandomContext;
+    pub type NetConnection;
     fn SetContext(Context: CONTEXT) -> CONTEXT;
     fn SetContextForeGroundColor(Color: Color) -> Color;
     fn SetContextFGFrame(Frame: FRAME) -> FRAME;
@@ -89,10 +92,23 @@ extern "C" {
     static mut GlobData: GLOBDATA;
     fn isPC(optWhich: ::core::ffi::c_int) -> OPT_CONSOLETYPE;
     fn TFB_Random() -> DWORD;
+    fn NetConnection_isConnected(conn: *const NetConnection) -> bool;
+    fn NetConnection_getStateData(
+        conn: *const NetConnection,
+    ) -> *mut NetConnectionStateData;
     static mut battle_counter: [BYTE; 2];
+    fn GetPlayerOrder(i: COUNT) -> COUNT;
     fn Build(pQueue: *mut QUEUE, SpeciesID: SPECIES_ID) -> HLINK;
     fn GetStarShipFromIndex(pShipQ: *mut QUEUE, Index: COUNT) -> HLINK;
     fn NameCaptain(pQueue: *mut QUEUE, SpeciesID: SPECIES_ID) -> BYTE;
+    static mut StatusFrame: FRAME;
+    static mut OffScreenContext: CONTEXT;
+    static mut ScreenContext: CONTEXT;
+    static mut SpaceContext: CONTEXT;
+    static mut TinyFont: FONT;
+    static mut TinyFontBold: FONT;
+    static mut race_q: [QUEUE; 0];
+    static mut PlayerControl: [BYTE; 0];
     fn Flash_createHighlight(
         gfxContext: CONTEXT,
         rect: *const RECT,
@@ -116,18 +132,18 @@ extern "C" {
     fn Flash_setFrameTime(context: *mut FlashContext, frameTime: TimeCount);
     fn Flash_setPulseBox(context: *mut FlashContext, isPulsing: BOOLEAN);
     fn Flash_setRect(context: *mut FlashContext, rect: *const RECT);
-    fn Async_process();
+    static mut netConnections: [*mut NetConnection; 0];
+    fn netInput();
+    fn flushPacketQueues();
+    fn allConnected() -> bool;
+    fn setStateConnections(state: NetState) -> bool;
+    fn negotiateReadyConnections(notifyRemote: bool, nextState: NetState) -> bool;
+    fn Netplay_Notify_shipSelected(conn: *mut NetConnection, index: FleetShipIndex);
+    static mut master_q: QUEUE;
     fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
     fn PlayMenuSound(S: MENU_SOUND_EFFECT);
-    static mut master_q: QUEUE;
-    static mut StatusFrame: FRAME;
-    static mut OffScreenContext: CONTEXT;
-    static mut ScreenContext: CONTEXT;
-    static mut SpaceContext: CONTEXT;
-    static mut TinyFont: FONT;
-    static mut TinyFontBold: FONT;
-    static mut race_q: [QUEUE; 0];
-    static mut PlayerControl: [BYTE; 0];
+    fn Async_process();
+    fn log_add(_: log_Level, fmt: *const ::core::ffi::c_char, ...);
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -149,6 +165,7 @@ pub struct C2Rust_Unnamed {
     pub selecting: BOOLEAN,
     pub done: BOOLEAN,
     pub flashContext: *mut FlashContext,
+    pub remoteSelected: BOOLEAN,
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
@@ -188,6 +205,7 @@ pub struct Color {
 pub type RESOURCE = *const ::core::ffi::c_char;
 pub type STRING_TABLE_ENTRY_DESC = string_table_entry;
 pub type STRING = *mut STRING_TABLE_ENTRY_DESC;
+pub type DIRENTRY = STRING;
 pub type CONTEXT_DESC = context_desc;
 pub type FRAME_DESC = frame_desc;
 pub type FONT_DESC = font_desc;
@@ -674,6 +692,12 @@ pub struct HumanInputContext {
     pub handlers: *mut BattleInputHandlers,
     pub playerNr: COUNT,
 }
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetworkInputContext {
+    pub handlers: *mut BattleInputHandlers,
+    pub playerNr: COUNT,
+}
 pub type FleetShipIndex = COUNT;
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -766,6 +790,58 @@ pub struct GLOBDATA {
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
+pub struct NetState(pub ::core::ffi::c_uint);
+impl NetState {
+    pub const NetState_unconnected: Self = Self(0);
+    pub const NetState_connecting: Self = Self(1);
+    pub const NetState_init: Self = Self(2);
+    pub const NetState_inSetup: Self = Self(3);
+    pub const NetState_preBattle: Self = Self(4);
+    pub const NetState_interBattle: Self = Self(5);
+    pub const NetState_selectShip: Self = Self(6);
+    pub const NetState_inBattle: Self = Self(7);
+    pub const NetState_endingBattle: Self = Self(8);
+    pub const NetState_endingBattle2: Self = Self(9);
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetConnectionStateData {
+    pub releaseFunction: NetConnectionStateData_ReleaseFunction,
+}
+pub type NetConnectionStateData_ReleaseFunction = Option<
+    unsafe extern "C" fn(*mut NetConnectionStateData) -> (),
+>;
+pub type BattleFrameCounter = DWORD;
+pub type BattleFrameCallback = unsafe extern "C" fn() -> ();
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct battlestate_struct {
+    pub InputFunc: Option<unsafe extern "C" fn(*mut battlestate_struct) -> BOOLEAN>,
+    pub first_time: BOOLEAN,
+    pub NextTime: DWORD,
+    pub frame_cb: Option<BattleFrameCallback>,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct melee_state {
+    pub InputFunc: Option<unsafe extern "C" fn(*mut melee_state) -> BOOLEAN>,
+    pub Initialized: BOOLEAN,
+    pub meleeStarted: BOOLEAN,
+    pub MeleeOption: MELEE_OPTIONS,
+    pub side: COUNT,
+    pub row: COUNT,
+    pub col: COUNT,
+    pub meleeSetup: *mut MeleeSetup,
+    pub load: melee_load_state,
+    pub currentShip: MeleeShip,
+    pub CurIndex: COUNT,
+    pub buildPickConfirmed: BOOLEAN,
+    pub randomContext: *mut RandomContext,
+    pub LastInputTime: TimeCount,
+    pub hMusic: MUSIC_REF,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct MeleeShip(pub ::core::ffi::c_uint);
 impl MeleeShip {
     pub const MELEE_ANDROSYNTH: Self = Self(0);
@@ -796,6 +872,21 @@ impl MeleeShip {
     pub const MELEE_UNSET: Self = Self(254);
     pub const MELEE_NONE: Self = Self(255);
 }
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct melee_load_state {
+    pub preBuiltList: *mut *mut MeleeTeam,
+    pub preBuiltCount: COUNT,
+    pub dirEntries: DIRENTRY,
+    pub entryIndices: *mut COUNT,
+    pub numIndices: COUNT,
+    pub view: [*mut MeleeTeam; 5],
+    pub top: COUNT,
+    pub bot: COUNT,
+    pub cur: COUNT,
+    pub viewSize: COUNT,
+}
+pub type MELEE_OPTIONS = BYTE;
 pub type HMASTERSHIP = HLINK;
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -806,7 +897,29 @@ pub struct MASTER_SHIP_INFO {
     pub ShipInfo: SHIP_INFO,
     pub Fleet: FLEET_STUFF,
 }
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct BattleStateData {
+    pub releaseFunction: NetConnectionStateData_ReleaseFunction,
+    pub meleeState: *mut melee_state,
+    pub battleState: *mut battlestate_struct,
+    pub getMeleeState: *mut getmelee_struct,
+    pub endFrameCount: BattleFrameCounter,
+}
 pub type MENU_SOUND_FLAGS = UWORD;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct log_Level(pub ::core::ffi::c_uint);
+impl log_Level {
+    pub const log_Nothing: Self = Self(0);
+    pub const log_User: Self = Self(1);
+    pub const log_Fatal: Self = Self(1);
+    pub const log_Error: Self = Self(2);
+    pub const log_Warning: Self = Self(3);
+    pub const log_Info: Self = Self(4);
+    pub const log_Debug: Self = Self(5);
+    pub const log_All: Self = Self(6);
+}
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct MENU_SOUND_EFFECT(pub ::core::ffi::c_uint);
@@ -948,9 +1061,9 @@ unsafe extern "C" fn MeleeShipByUsedIndex(
         let mut StarShipPtr: *mut STARSHIP = LockStarShip(queue, hShip);
         if (*StarShipPtr).SpeciesID.0 != SPECIES_ID::NO_ID.0
             && {
-                let c2rust_fresh3 = index;
+                let c2rust_fresh0 = index;
                 index = index.wrapping_sub(1);
-                c2rust_fresh3 as ::core::ffi::c_int == 0 as ::core::ffi::c_int
+                c2rust_fresh0 as ::core::ffi::c_int == 0 as ::core::ffi::c_int
             }
         {
             UnlockLink(queue, hShip);
@@ -1043,6 +1156,9 @@ pub unsafe extern "C" fn setShipSelected(
     (*gms).player[playerI as usize].choice = choice;
     (*gms).player[playerI as usize].hBattleShip = ship;
     uqm_lua_checked!(PlayMenuSound(MENU_SOUND_EFFECT::MENU_SOUND_SUCCESS), false);
+    if reportNetwork {
+        reportShipSelected(gms, choice);
+    }
     (*gms).player[playerI as usize].done = BOOLEAN(
         1 as ::core::ffi::c_int as ::core::ffi::c_uint,
     );
@@ -1097,18 +1213,18 @@ unsafe extern "C" fn SelectShip_processInput(
             & ((1 as ::core::ffi::c_int) << 0 as ::core::ffi::c_int)
                 as BATTLE_INPUT_STATE as ::core::ffi::c_int != 0
         {
-            let c2rust_fresh0 = new_col;
+            let c2rust_fresh1 = new_col;
             new_col = new_col.wrapping_sub(1);
-            if c2rust_fresh0 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+            if c2rust_fresh1 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
                 new_col = 7 as COUNT;
             }
         } else if inputState as ::core::ffi::c_int
             & ((1 as ::core::ffi::c_int) << 1 as ::core::ffi::c_int)
                 as BATTLE_INPUT_STATE as ::core::ffi::c_int != 0
         {
-            let c2rust_fresh1 = new_col;
+            let c2rust_fresh2 = new_col;
             new_col = new_col.wrapping_add(1);
-            if c2rust_fresh1 as ::core::ffi::c_int == 7 as ::core::ffi::c_int {
+            if c2rust_fresh2 as ::core::ffi::c_int == 7 as ::core::ffi::c_int {
                 new_col = 0 as COUNT;
             }
         }
@@ -1116,9 +1232,9 @@ unsafe extern "C" fn SelectShip_processInput(
             & ((1 as ::core::ffi::c_int) << 2 as ::core::ffi::c_int)
                 as BATTLE_INPUT_STATE as ::core::ffi::c_int != 0
         {
-            let c2rust_fresh2 = new_row;
+            let c2rust_fresh3 = new_row;
             new_row = new_row.wrapping_sub(1);
-            if c2rust_fresh2 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+            if c2rust_fresh3 as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
                 new_row = (2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int) as COUNT;
             }
         } else if inputState as ::core::ffi::c_int
@@ -1175,6 +1291,17 @@ pub unsafe extern "C" fn selectShipComputer(
         ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BATTLE_INPUT_STATE,
     ), BOOLEAN(0));
 }
+#[no_mangle]
+pub unsafe extern "C" fn selectShipNetwork(
+    mut context: *mut NetworkInputContext,
+    mut gms: *mut GETMELEE_STATE,
+) -> BOOLEAN {
+    uqm_lua_checked!(flushPacketQueues(), BOOLEAN(0));
+    if (*gms).player[(*context).playerNr as usize].remoteSelected.0 != 0 {
+        (*gms).player[(*context).playerNr as usize].done = BOOLEAN::TRUE;
+    }
+    return BOOLEAN::TRUE;
+}
 unsafe extern "C" fn DoGetMelee(mut gms: *mut GETMELEE_STATE) -> BOOLEAN {
     let mut done: BOOLEAN = BOOLEAN::FALSE;
     let mut playerI: COUNT = 0;
@@ -1196,47 +1323,54 @@ unsafe extern "C" fn DoGetMelee(mut gms: *mut GETMELEE_STATE) -> BOOLEAN {
         playerI = playerI.wrapping_add(1);
     }
     uqm_lua_checked!(SleepThread((840 as ::core::ffi::c_int / 120 as ::core::ffi::c_int) as TimePeriod), BOOLEAN(0));
+    uqm_lua_checked!(netInput(), BOOLEAN(0));
     '_aborted: {
-        if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
-            & C2Rust_Unnamed_7::CHECK_ABORT.0 as ::core::ffi::c_int == 0
-        {
-            done = BOOLEAN::TRUE;
-            playerI = 0 as COUNT;
-            while (playerI as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
-                if (*gms).player[playerI as usize].selecting.0 != 0 {
-                    if (*gms).player[playerI as usize].done.0 == 0 {
-                        if uqm_lua_checked!((*(**(&raw mut PlayerInput as *mut *mut InputContext)
-                            .offset(playerI as isize))
-                            .handlers)
-                            .selectShip
-                            .expect(
-                                "non-null function pointer",
-                            )(
-                                *(&raw mut PlayerInput as *mut *mut InputContext)
-                                    .offset(playerI as isize),
-                                gms,
-                            ), BOOLEAN(0))
-                            .0 == 0
-                        {
-                            break '_aborted;
-                        }
-                        if (*gms).player[playerI as usize].done.0 != 0 {
-                            uqm_lua_checked!(Flash_terminate(
-                                (*gms).player[playerI as usize].flashContext,
-                            ), BOOLEAN(0));
-                            (*gms).player[playerI as usize].flashContext = ::core::ptr::null_mut::<
-                                FlashContext,
-                            >();
-                        } else {
-                            done = BOOLEAN::FALSE;
+        if allConnected() {
+            if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+                & C2Rust_Unnamed_7::CHECK_ABORT.0 as ::core::ffi::c_int == 0
+            {
+                done = BOOLEAN::TRUE;
+                playerI = 0 as COUNT;
+                while (playerI as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
+                    if (*gms).player[playerI as usize].selecting.0 != 0 {
+                        if (*gms).player[playerI as usize].done.0 == 0 {
+                            if uqm_lua_checked!((*(**(&raw mut PlayerInput as *mut *mut InputContext)
+                                .offset(playerI as isize))
+                                .handlers)
+                                .selectShip
+                                .expect(
+                                    "non-null function pointer",
+                                )(
+                                    *(&raw mut PlayerInput as *mut *mut InputContext)
+                                        .offset(playerI as isize),
+                                    gms,
+                                ), BOOLEAN(0))
+                                .0 == 0
+                            {
+                                break '_aborted;
+                            }
+                            if (*gms).player[playerI as usize].done.0 != 0 {
+                                uqm_lua_checked!(Flash_terminate(
+                                    (*gms).player[playerI as usize].flashContext,
+                                ), BOOLEAN(0));
+                                (*gms).player[playerI as usize].flashContext = ::core::ptr::null_mut::<
+                                    FlashContext,
+                                >();
+                            } else {
+                                done = BOOLEAN::FALSE;
+                            }
                         }
                     }
+                    playerI = playerI.wrapping_add(1);
                 }
-                playerI = playerI.wrapping_add(1);
+                uqm_lua_checked!(flushPacketQueues(), BOOLEAN(0));
+                return BOOLEAN(
+                    (done.0 == 0) as ::core::ffi::c_int as ::core::ffi::c_uint,
+                );
             }
-            return BOOLEAN((done.0 == 0) as ::core::ffi::c_int as ::core::ffi::c_uint);
         }
     }
+    uqm_lua_checked!(flushPacketQueues(), BOOLEAN(0));
     playerI = 0 as COUNT;
     while (playerI as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
         if (*gms).player[playerI as usize].selecting.0 != 0 {
@@ -1403,7 +1537,7 @@ pub unsafe extern "C" fn FillPickMeleeFrame(mut setup: *mut MeleeSetup) {
         };
         let mut buf: [UNICODE; 30] = [0; 30];
         let mut index: FleetShipIndex = 0;
-        sideI = i;
+        sideI = GetPlayerOrder(i);
         side = (sideI == 0) as ::core::ffi::c_int as COUNT;
         s.frame = SetAbsFrameIndex(PickMeleeFrame, side);
         SetContextFGFrame(s.frame);
@@ -1584,6 +1718,12 @@ pub unsafe extern "C" fn MeleeGameOver() {
         uqm_lua_checked!(DrawPickMeleeFrame(playerI), ());
         playerI = playerI.wrapping_add(1);
     }
+    if !uqm_lua_checked!(negotiateReadyConnections(true, NetState::NetState_inSetup), ()) {
+        GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
+            as ::core::ffi::c_int
+            | C2Rust_Unnamed_7::CHECK_ABORT.0 as ::core::ffi::c_int) as ACTIVITY;
+        return;
+    }
     TimeOut = GetTimeCounter()
         .wrapping_add((840 as ::core::ffi::c_int * 4 as ::core::ffi::c_int) as TimeCount)
         as DWORD;
@@ -1653,10 +1793,32 @@ unsafe extern "C" fn GetMeleeStarShips(
             selecting: BOOLEAN::FALSE,
             done: BOOLEAN::FALSE,
             flashContext: ::core::ptr::null_mut::<FlashContext>(),
+            remoteSelected: BOOLEAN::FALSE,
         }; 2],
     };
     let mut now: TimeCount = 0;
     let mut i: COUNT = 0;
+    playerI = 0 as COUNT;
+    while (playerI as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
+        let mut conn: *mut NetConnection = ::core::ptr::null_mut::<NetConnection>();
+        if playerMask as ::core::ffi::c_int
+            & (1 as ::core::ffi::c_int) << playerI as ::core::ffi::c_int
+            != 0 as ::core::ffi::c_int
+        {
+            conn = *(&raw mut netConnections as *mut *mut NetConnection)
+                .offset(playerI as isize) as *mut NetConnection;
+            if !conn.is_null() {
+                let mut battleStateData: *mut BattleStateData = ::core::ptr::null_mut::<
+                    BattleStateData,
+                >();
+                battleStateData = NetConnection_getStateData(conn)
+                    as *mut BattleStateData;
+                (*battleStateData).getMeleeState = &raw mut gmstate
+                    as *mut getmelee_struct;
+            }
+        }
+        playerI = playerI.wrapping_add(1);
+    }
     ok = BOOLEAN(1 as ::core::ffi::c_int as ::core::ffi::c_uint);
     now = GetTimeCounter();
     gmstate.InputFunc = Some(
@@ -1665,7 +1827,7 @@ unsafe extern "C" fn GetMeleeStarShips(
     gmstate.Initialized = BOOLEAN::FALSE;
     i = 0 as COUNT;
     while (i as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
-        playerI = i;
+        playerI = GetPlayerOrder(i);
         gmstate.player[playerI as usize].selecting = BOOLEAN(
             (playerMask as ::core::ffi::c_int
                 & (1 as ::core::ffi::c_int) << playerI as ::core::ffi::c_int
@@ -1682,6 +1844,7 @@ unsafe extern "C" fn GetMeleeStarShips(
             gmstate.player[playerI as usize].timeIn = now;
             gmstate.player[playerI as usize].row = 0 as COUNT;
             gmstate.player[playerI as usize].col = 7 as COUNT;
+            gmstate.player[playerI as usize].remoteSelected = BOOLEAN::FALSE;
             gmstate.player[playerI as usize].flashContext = Flash_createHighlight(
                 ScreenContext,
                 ::core::ptr::null::<RECT>(),
@@ -1700,21 +1863,41 @@ unsafe extern "C" fn GetMeleeStarShips(
                 gmstate.player[playerI as usize].flashContext,
                 BOOLEAN(isPC(optWhichMenu).0),
             );
-            Flash_setSpeed(
-                gmstate.player[playerI as usize].flashContext,
-                0 as TimeCount,
-                (840 as ::core::ffi::c_int / 16 as ::core::ffi::c_int) as TimeCount,
-                0 as TimeCount,
-                (840 as ::core::ffi::c_int / 16 as ::core::ffi::c_int) as TimeCount,
-            );
+            if *(&raw mut PlayerControl as *mut BYTE).offset(playerI as isize)
+                as ::core::ffi::c_int
+                & ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE
+                    as ::core::ffi::c_int != 0
+            {
+                Flash_setSpeed(
+                    gmstate.player[playerI as usize].flashContext,
+                    (840 as ::core::ffi::c_int / 2 as ::core::ffi::c_int) as TimeCount,
+                    0 as TimeCount,
+                    (840 as ::core::ffi::c_int / 2 as ::core::ffi::c_int) as TimeCount,
+                    0 as TimeCount,
+                );
+            } else {
+                Flash_setSpeed(
+                    gmstate.player[playerI as usize].flashContext,
+                    0 as TimeCount,
+                    (840 as ::core::ffi::c_int / 16 as ::core::ffi::c_int) as TimeCount,
+                    0 as TimeCount,
+                    (840 as ::core::ffi::c_int / 16 as ::core::ffi::c_int) as TimeCount,
+                );
+            }
             uqm_lua_checked!(PickMelee_ChangedSelection(&raw mut gmstate, playerI), BOOLEAN(0));
             uqm_lua_checked!(Flash_start(gmstate.player[playerI as usize].flashContext), BOOLEAN(0));
         }
         i = i.wrapping_add(1);
     }
+    let mut allOk: bool = uqm_lua_checked!(negotiateReadyConnections(true, NetState::NetState_selectShip), BOOLEAN(0));
+    if !allOk {
+        ok = BOOLEAN(0 as ::core::ffi::c_int as ::core::ffi::c_uint);
+    }
     SetDefaultMenuRepeatDelay();
     SetContext(OffScreenContext);
-    uqm_lua_checked!(DoInput(&raw mut gmstate as *mut ::core::ffi::c_void, BOOLEAN::FALSE), BOOLEAN(0));
+    if ok.0 != 0 {
+        uqm_lua_checked!(DoInput(&raw mut gmstate as *mut ::core::ffi::c_void, BOOLEAN::FALSE), BOOLEAN(0));
+    }
     uqm_lua_checked!(WaitForSoundEnd(0 as COUNT), BOOLEAN(0));
     playerI = 0 as COUNT;
     while (playerI as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
@@ -1733,10 +1916,41 @@ unsafe extern "C" fn GetMeleeStarShips(
         }
         playerI = playerI.wrapping_add(1);
     }
+    if ok.0 != 0 {
+        if !uqm_lua_checked!(negotiateReadyConnections(true, NetState::NetState_interBattle), BOOLEAN(0)) {
+            ok = BOOLEAN(0 as ::core::ffi::c_int as ::core::ffi::c_uint);
+        }
+    } else {
+        uqm_lua_checked!(setStateConnections(NetState::NetState_interBattle), BOOLEAN(0));
+    }
     if ok.0 == 0 {
         GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
             as ::core::ffi::c_int
             & !(C2Rust_Unnamed_7::IN_BATTLE.0 as ::core::ffi::c_int)) as ACTIVITY;
+    }
+    playerI = 0 as COUNT;
+    while (playerI as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
+        let mut conn_0: *mut NetConnection = ::core::ptr::null_mut::<NetConnection>();
+        if playerMask as ::core::ffi::c_int
+            & (1 as ::core::ffi::c_int) << playerI as ::core::ffi::c_int
+            != 0 as ::core::ffi::c_int
+        {
+            conn_0 = *(&raw mut netConnections as *mut *mut NetConnection)
+                .offset(playerI as isize) as *mut NetConnection;
+            if !conn_0.is_null()
+                && NetConnection_isConnected(conn_0) as ::core::ffi::c_int != 0
+            {
+                let mut battleStateData_0: *mut BattleStateData = ::core::ptr::null_mut::<
+                    BattleStateData,
+                >();
+                battleStateData_0 = NetConnection_getStateData(conn_0)
+                    as *mut BattleStateData;
+                (*battleStateData_0).getMeleeState = ::core::ptr::null_mut::<
+                    getmelee_struct,
+                >();
+            }
+        }
+        playerI = playerI.wrapping_add(1);
     }
     return ok;
 }
@@ -1789,6 +2003,48 @@ pub unsafe extern "C" fn GetNextMeleeStarShip(
         *result = ships[which_player as usize];
     }
     return ok;
+}
+#[no_mangle]
+pub unsafe extern "C" fn updateMeleeSelection(
+    mut gms: *mut GETMELEE_STATE,
+    mut playerI: COUNT,
+    mut ship: COUNT,
+) -> bool {
+    if gms.is_null() || (*gms).player[playerI as usize].selecting.0 == 0
+        || (*gms).player[playerI as usize].done.0 != 0
+    {
+        log_add(
+            log_Level::log_Warning,
+            b"Unexpected ship selection packet received.\n\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+        return false;
+    }
+    if !uqm_lua_checked!(setShipSelected(gms, playerI, ship, false), false) {
+        log_add(
+            log_Level::log_Warning,
+            b"Invalid ship selection received from remote party.\n\0".as_ptr()
+                as *const ::core::ffi::c_char,
+        );
+        return false;
+    }
+    (*gms).player[playerI as usize].remoteSelected = BOOLEAN::TRUE;
+    return true;
+}
+unsafe extern "C" fn reportShipSelected(mut gms: *mut GETMELEE_STATE, mut index: COUNT) {
+    let mut playerI: size_t = 0;
+    playerI = 0 as size_t;
+    while playerI < 2 as size_t {
+        let mut conn: *mut NetConnection = *(&raw mut netConnections
+            as *mut *mut NetConnection)
+            .offset(playerI as isize);
+        if !conn.is_null() {
+            if NetConnection_isConnected(conn) {
+                Netplay_Notify_shipSelected(conn, index);
+            }
+        }
+        playerI = playerI.wrapping_add(1);
+    }
 }
 #[inline]
 unsafe extern "C" fn LockMasterShip(

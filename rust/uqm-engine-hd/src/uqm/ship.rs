@@ -90,16 +90,14 @@ extern "C" {
     fn OpponentAlive(TestStarShipPtr: *mut STARSHIP) -> BOOLEAN;
     fn ship_death(ShipPtr: *mut ELEMENT);
     fn spawn_ion_trail(ElementPtr: *mut ELEMENT, x: SIZE, y: SIZE);
-    fn BattleSong(DoPlay: BOOLEAN);
     static mut StatusContext: CONTEXT;
     static mut race_q: [QUEUE; 0];
-    static mut GameSounds: SOUND;
-    fn ProcessSound(Sound: SOUND, PositionalObject: *mut ELEMENT);
     fn GetEncounterStarShip(
         LastStarShipPtr: *mut STARSHIP,
         which_player: COUNT,
     ) -> HSTARSHIP;
-    fn GetColorMapColor(ColorMapIndex: COUNT, ColorIndex: COUNT) -> Color;
+    static mut GameSounds: SOUND;
+    fn ProcessSound(Sound: SOUND, PositionalObject: *mut ELEMENT);
     fn DrawRenderedBox(
         r: *mut RECT,
         filled: BOOLEAN,
@@ -107,6 +105,9 @@ extern "C" {
         r#type: ::core::ffi::c_int,
         custom: ::core::ffi::c_int,
     );
+    fn GetColorMapColor(ColorMapIndex: COUNT, ColorIndex: COUNT) -> Color;
+    fn GetPlayerOrder(i: COUNT) -> COUNT;
+    fn BattleSong(DoPlay: BOOLEAN);
 }
 pub type uint8 = ::core::ffi::c_uchar;
 pub type sint8 = ::core::ffi::c_schar;
@@ -1829,7 +1830,7 @@ pub unsafe extern "C" fn GetInitialStarShips() -> BOOLEAN {
         i = 0 as COUNT;
         while (i as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
             let mut StarShipPtr: *mut STARSHIP = ::core::ptr::null_mut::<STARSHIP>();
-            let mut playerI: COUNT = i;
+            let mut playerI: COUNT = GetPlayerOrder(i);
             StarShipPtr = LockStarShip(
                 (&raw mut race_q as *mut QUEUE).offset(playerI as isize),
                 ships[playerI as usize],

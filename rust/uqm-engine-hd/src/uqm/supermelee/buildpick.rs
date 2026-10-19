@@ -80,18 +80,18 @@ extern "C" {
     static mut GlobData: GLOBDATA;
     fn isPC(optWhich: ::core::ffi::c_int) -> OPT_CONSOLETYPE;
     fn is3DO(optWhich: ::core::ffi::c_int) -> OPT_CONSOLETYPE;
+    fn DoShipSpin(index: COUNT, hMusic: MUSIC_REF);
     fn GetShipBox(pRect: *mut RECT, side: COUNT, row: COUNT, col: COUNT);
     fn DrawMeleeShipStrings(pMS: *mut MELEE_STATE, NewStarShip: MeleeShip);
     static mut MeleeFrame: FRAME;
     fn Melee_flashSelection(pMS: *mut MELEE_STATE);
     fn DrawShipPickerText(stamp: STAMP);
-    fn DoShipSpin(index: COUNT, hMusic: MUSIC_REF);
     fn GetShipIconsFromIndex(Index: ::core::ffi::c_uint) -> FRAME;
-    fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
-    fn PlayMenuSound(S: MENU_SOUND_EFFECT);
     static mut OffScreenContext: CONTEXT;
     static mut SpaceContext: CONTEXT;
     static mut StarConFont: FONT;
+    fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
+    fn PlayMenuSound(S: MENU_SOUND_EFFECT);
 }
 pub type uint8 = ::core::ffi::c_uchar;
 pub type uint16 = ::core::ffi::c_ushort;

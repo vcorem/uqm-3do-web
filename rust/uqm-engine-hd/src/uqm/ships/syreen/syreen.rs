@@ -38,12 +38,12 @@ extern "C" {
     static mut PlayerControl: [BYTE; 0];
     fn ProcessSound(Sound: SOUND, PositionalObject: *mut ELEMENT);
     fn DeltaEnergy(ElementPtr: *mut ELEMENT, energy_delta: SIZE) -> BOOLEAN;
-    fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
     fn ship_intelligence(
         ShipPtr: *mut ELEMENT,
         ObjectsOfConcern: *mut EVALUATE_DESC,
         ConcernCounter: COUNT,
     );
+    fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
 }
 pub type uint8 = ::core::ffi::c_uchar;
 pub type uint16 = ::core::ffi::c_ushort;

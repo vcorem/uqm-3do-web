@@ -152,7 +152,7 @@ extern "C" {
     );
     fn Flash_UpdateOriginal(context: *mut FlashContext);
     static mut GameStrings: STRING;
-    fn Melee();
+    static mut webNetplayRole: ::core::ffi::c_int;
     static mut ScreenContext: CONTEXT;
     static mut MicroFont: FONT;
     static mut TinyFont: FONT;
@@ -173,6 +173,7 @@ extern "C" {
     fn PlayMenuSound(S: MENU_SOUND_EFFECT);
     fn SeedRandomNumbers() -> DWORD;
     fn SaveContextFrame(saveRect: *const RECT) -> STAMP;
+    fn Melee();
     fn SetTransitionSource(pRect: *const RECT);
     fn ScreenTransition(transition: ::core::ffi::c_int, pRect: *const RECT);
     fn FreeGameData();
@@ -1731,6 +1732,13 @@ unsafe extern "C" fn TryStartGame() -> BOOLEAN {
     MenuState.InputFunc = Some(
         DoRestart as unsafe extern "C" fn(*mut MENU_STATE) -> BOOLEAN,
     ) as Option<unsafe extern "C" fn(*mut menu_state) -> BOOLEAN>;
+    if webNetplayRole >= 0 as ::core::ffi::c_int {
+        uqm_lua_checked!(FreeGameData(), BOOLEAN(0));
+        setBrowserGameScreen(b"melee\0".as_ptr() as *const ::core::ffi::c_char);
+        uqm_lua_checked!(Melee(), BOOLEAN(0));
+        webNetplayRole = -1 as ::core::ffi::c_int;
+        GlobData.Game_state.CurrentActivity = 0 as ACTIVITY;
+    }
     while uqm_lua_checked!(RestartMenu(&raw mut MenuState), BOOLEAN(0)).0 == 0 {
         if GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
             == C2Rust_Unnamed_2::SUPER_MELEE.0 as ::core::ffi::c_int

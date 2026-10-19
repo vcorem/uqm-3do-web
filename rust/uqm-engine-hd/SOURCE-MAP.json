@@ -1385,7 +1385,7 @@
   {
     "rust": "src/uqm/restart.rs",
     "c": "src/uqm/restart.c",
-    "source_sha256": "31f2df265de0786a3b611ff9852c2dff9cf63988551d554338dfa3e3743fbdd8"
+    "source_sha256": "c2d2b4c0af707754285fdc752a99e955aa53c23d52744cf6d6c6d979c37d49e7"
   },
   {
     "rust": "src/uqm/save.rs",
@@ -1610,7 +1610,7 @@
   {
     "rust": "src/uqm/supermelee/melee.rs",
     "c": "src/uqm/supermelee/melee.c",
-    "source_sha256": "6f9fbd386f044c6b4fc91d074cbf9719b084d38291164fd8833671438c071333"
+    "source_sha256": "c3991d24a606ceb95b4ab12b6b4e8790192e82d4522af4eaa840b1176bb55637"
   },
   {
     "rust": "src/uqm/supermelee/meleesetup.rs",
@@ -1618,14 +1618,115 @@
     "source_sha256": "ebbdad8bf00922dfd5953da9e9fed432ed7d252bc3fec407a4d1a236d020c08c"
   },
   {
+    "rust": "src/uqm/supermelee/netplay/checkbuf.rs",
+    "c": "src/uqm/supermelee/netplay/checkbuf.c",
+    "source_sha256": "97dfb8092e21a3a63dcff0bebd6b3abd0f479f6d4ac46a219fb3dc1e0b1d2d7d"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/checksum.rs",
+    "c": "src/uqm/supermelee/netplay/checksum.c",
+    "source_sha256": "bf6f78512cb00296e4490217340916cfeb50eaef50b948c5101b8e83241e1182"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/crc.rs",
+    "c": "src/uqm/supermelee/netplay/crc.c",
+    "source_sha256": "3cd636daaa2c1067b1e124b7772b60b66b59ec359f0ff8bffa8b782cd781547c",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netconnection.rs",
+    "c": "src/uqm/supermelee/netplay/netconnection.c",
+    "source_sha256": "8c6217c02b3d5b066bfdccaa655062ff00ddb6ef4fbdb1bfaee95e4af8988b3b"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netinput.rs",
+    "c": "src/uqm/supermelee/netplay/netinput.c",
+    "source_sha256": "a771a04f95acae53f877826d377f4067bde9497450d959af792111ea4b2703dc"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netmelee.rs",
+    "c": "src/uqm/supermelee/netplay/netmelee.c",
+    "source_sha256": "e48d222b197c4b1151114be54258b741371695f7967561020e32597d1d51872a"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netmisc.rs",
+    "c": "src/uqm/supermelee/netplay/netmisc.c",
+    "source_sha256": "aea05f3bafdc02db36f6bff65226d3c7433e53460b0fe4e59bf7fb03939796b8"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netoptions.rs",
+    "c": "src/uqm/supermelee/netplay/netoptions.c",
+    "source_sha256": "243e1d9d7c9693a788431a66e27fa59d36c4b75d7c6c36b63f98f56082b5013f"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netrcv.rs",
+    "c": "src/uqm/supermelee/netplay/netrcv.c",
+    "source_sha256": "a5a8eaa70e6175843eea0a423827833f3d62ce74d66736445d75d1aa68dbee1e"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netsend.rs",
+    "c": "src/uqm/supermelee/netplay/netsend.c",
+    "source_sha256": "c7acab90496c128c64334d9b2f86638c2b8a7cc103d19865de779230e9f2073f"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netstate.rs",
+    "c": "src/uqm/supermelee/netplay/netstate.c",
+    "source_sha256": "fa87b39a15fd56262dc255efdec67f3fcc26b706a869e62e4d388a35e9d0379a"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/notify.rs",
+    "c": "src/uqm/supermelee/netplay/notify.c",
+    "source_sha256": "1c3993151c202839052e7f463805b67234c052639a5ff8ba5e7232198733cad9"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/notifyall.rs",
+    "c": "src/uqm/supermelee/netplay/notifyall.c",
+    "source_sha256": "21549e4b07ef17e6806e7f754dab5980f7d05f2d5ec2d895d83b4a1b2aa586e3"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/packet.rs",
+    "c": "src/uqm/supermelee/netplay/packet.c",
+    "source_sha256": "4b9f8a1054489d81fa716fdc1f1d164bfd0a43ffd832e54849d8cdb420bf1087"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/packethandlers.rs",
+    "c": "src/uqm/supermelee/netplay/packethandlers.c",
+    "source_sha256": "a5e3b75d89c82468e898b42fe63cef17a1ae70a4fbf195a6674590cf3d9fe13b"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/packetq.rs",
+    "c": "src/uqm/supermelee/netplay/packetq.c",
+    "source_sha256": "8906da7b9cf3c088fe3ccc38310e7c441c6a9d8426d856eed82cb8bf355da01b"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/packetsenders.rs",
+    "c": "src/uqm/supermelee/netplay/packetsenders.c",
+    "source_sha256": "19dbbb087aa95ae4f7dd9362990d19f25c3468901b4d6ec0e9b27f9650e943bc"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/proto/npconfirm.rs",
+    "c": "src/uqm/supermelee/netplay/proto/npconfirm.c",
+    "source_sha256": "8981364480e1f2e350df7214ff6c95abc515084849894fdfde34b34a0ca142c5"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/proto/ready.rs",
+    "c": "src/uqm/supermelee/netplay/proto/ready.c",
+    "source_sha256": "1f75f8374f5c84a0781ab32d02514a5b7c6ce554a6ebf872f77f6e82c6429571"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/proto/reset.rs",
+    "c": "src/uqm/supermelee/netplay/proto/reset.c",
+    "source_sha256": "420568a9a2d7b4b324a3a3377f43c5393084f60f198a28af1b2b54035d3c7f90"
+  },
+  {
     "rust": "src/uqm/supermelee/pickmele.rs",
     "c": "src/uqm/supermelee/pickmele.c",
-    "source_sha256": "56e41fe15c4eea9efe9cf03dde3ae5ffcf5f9ac41d3053aacac990e240228afc"
+    "source_sha256": "5ba5486ac0040469cbfb52fe943c8f660d8903df15e52ea406ac3decbf62bffe"
   },
   {
     "rust": "src/uqm/tactrans.rs",
     "c": "src/uqm/tactrans.c",
-    "source_sha256": "a07a1415f932544ad8374298cc2f923fa0117c4f1db7396b0a10e3f87f74bceb"
+    "source_sha256": "261a65082e09fa3dee79ccd126852d88b62e41993abce51d66dc2c200a3fc541"
   },
   {
     "rust": "src/uqm/trans.rs",
@@ -1657,6 +1758,6 @@
   {
     "rust": "src/uqm.rs",
     "c": "src/uqm.c",
-    "source_sha256": "6cb9314ccc8a55365f940a64150e5702d541bad082cda489973bca5ae328c5a6"
+    "source_sha256": "04cc733b400dbec892ada8167a89fec40dd0ae84fbd67aedf6b60a8334586233"
   }
 ]

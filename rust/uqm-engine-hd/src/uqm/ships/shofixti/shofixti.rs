@@ -59,12 +59,12 @@ extern "C" {
     );
     fn CalcSoundPosition(ElementPtr: *mut ELEMENT) -> SoundPosition;
     fn DeltaCrew(ElementPtr: *mut ELEMENT, crew_delta: SIZE) -> BOOLEAN;
-    fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
     fn ship_intelligence(
         ShipPtr: *mut ELEMENT,
         ObjectsOfConcern: *mut EVALUATE_DESC,
         ConcernCounter: COUNT,
     );
+    fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
     fn StopAllBattleMusic();
     fn FindAliveStarShip(deadShip: *mut ELEMENT) -> *mut STARSHIP;
     fn GetWinnerStarShip() -> *mut STARSHIP;

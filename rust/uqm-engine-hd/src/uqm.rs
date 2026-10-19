@@ -109,8 +109,8 @@ extern "C" {
     static mut SavedHeight: ::core::ffi::c_int;
     fn InitColorMaps();
     fn UninitColorMaps();
-    static mut snddriver: ::core::ffi::c_int;
     static mut soundflags: ::core::ffi::c_int;
+    static mut snddriver: ::core::ffi::c_int;
     fn unInitAudio();
     fn InitThreadSystem();
     fn UnInitThreadSystem();
@@ -279,12 +279,14 @@ extern "C" {
     fn Callback_uninit();
     fn init_communication();
     fn uninit_communication();
-    fn initIO() -> ::core::ffi::c_int;
-    fn uninitIO();
     static mut MainExited: ::core::ffi::c_int;
     fn SignalStopMainThread();
     fn ProcessUtilityKeys();
     fn Starcon2Main(threadArg: *mut ::core::ffi::c_void) -> ::core::ffi::c_int;
+    fn initIO() -> ::core::ffi::c_int;
+    fn uninitIO();
+    static mut netplayOptions: NetplayOptions;
+    static mut webNetplayRole: ::core::ffi::c_int;
 }
 pub type __builtin_va_list = *mut ::core::ffi::c_void;
 #[derive(Copy, Clone)]
@@ -457,6 +459,21 @@ impl log_Level {
     pub const log_Info: Self = Self(4);
     pub const log_Debug: Self = Self(5);
     pub const log_All: Self = Self(6);
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetplayPeerOptions {
+    pub isServer: bool,
+    pub host: *const ::core::ffi::c_char,
+    pub port: *const ::core::ffi::c_char,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetplayOptions {
+    pub metaServer: *const ::core::ffi::c_char,
+    pub metaPort: *const ::core::ffi::c_char,
+    pub peer: [NetplayPeerOptions; 2],
+    pub inputDelay: size_t,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -701,6 +718,12 @@ impl C2Rust_Unnamed_8 {
     pub const DZRP1_OPT: Self = Self(1083);
     pub const DZLP2_OPT: Self = Self(1084);
     pub const DZRP2_OPT: Self = Self(1085);
+    pub const NETHOST1_OPT: Self = Self(1086);
+    pub const NETPORT1_OPT: Self = Self(1087);
+    pub const NETHOST2_OPT: Self = Self(1088);
+    pub const NETPORT2_OPT: Self = Self(1089);
+    pub const NETDELAY_OPT: Self = Self(1090);
+    pub const WEB_NETPLAY_OPT: Self = Self(1091);
 }
 #[no_mangle]
 pub static mut restartGame: BOOLEAN = BOOLEAN::FALSE;
@@ -1337,6 +1360,16 @@ pub unsafe extern "C" fn main_0(
         },
         b"Oct 19 2026\0".as_ptr() as *const ::core::ffi::c_char,
         b"19:17:44\0".as_ptr() as *const ::core::ffi::c_char,
+    );
+    log_add(
+        log_Level::log_User,
+        b"Netplay protocol version %d.%d. Netplay opponent must have UQM %d.%d.%d or later.\n\0"
+            .as_ptr() as *const ::core::ffi::c_char,
+        0 as ::core::ffi::c_int,
+        4 as ::core::ffi::c_int,
+        0 as ::core::ffi::c_int,
+        8 as ::core::ffi::c_int,
+        5 as ::core::ffi::c_int,
     );
     printf(
         b"GCC_VERSION: %d.%d.%d\n\n\0".as_ptr() as *const ::core::ffi::c_char,
@@ -2440,7 +2473,7 @@ unsafe extern "C" fn getUserConfigOptions(mut options: *mut options_struct) {
 }
 static mut optString: *const ::core::ffi::c_char = b"+r:f:oc:b:spC:n:?hM:S:T:q:ug:l:i:vwxk\0"
     .as_ptr() as *const ::core::ffi::c_char;
-static mut longOptions: [option; 108] = [
+static mut longOptions: [option; 114] = [
     option {
         name: b"res\0".as_ptr() as *const ::core::ffi::c_char,
         has_arg: 1 as ::core::ffi::c_int,
@@ -3084,6 +3117,42 @@ static mut longOptions: [option; 108] = [
         val: C2Rust_Unnamed_8::DZRP2_OPT.0 as ::core::ffi::c_int,
     },
     option {
+        name: b"nethost1\0".as_ptr() as *const ::core::ffi::c_char,
+        has_arg: 1 as ::core::ffi::c_int,
+        flag: ::core::ptr::null_mut::<::core::ffi::c_int>(),
+        val: C2Rust_Unnamed_8::NETHOST1_OPT.0 as ::core::ffi::c_int,
+    },
+    option {
+        name: b"netport1\0".as_ptr() as *const ::core::ffi::c_char,
+        has_arg: 1 as ::core::ffi::c_int,
+        flag: ::core::ptr::null_mut::<::core::ffi::c_int>(),
+        val: C2Rust_Unnamed_8::NETPORT1_OPT.0 as ::core::ffi::c_int,
+    },
+    option {
+        name: b"nethost2\0".as_ptr() as *const ::core::ffi::c_char,
+        has_arg: 1 as ::core::ffi::c_int,
+        flag: ::core::ptr::null_mut::<::core::ffi::c_int>(),
+        val: C2Rust_Unnamed_8::NETHOST2_OPT.0 as ::core::ffi::c_int,
+    },
+    option {
+        name: b"netport2\0".as_ptr() as *const ::core::ffi::c_char,
+        has_arg: 1 as ::core::ffi::c_int,
+        flag: ::core::ptr::null_mut::<::core::ffi::c_int>(),
+        val: C2Rust_Unnamed_8::NETPORT2_OPT.0 as ::core::ffi::c_int,
+    },
+    option {
+        name: b"netdelay\0".as_ptr() as *const ::core::ffi::c_char,
+        has_arg: 1 as ::core::ffi::c_int,
+        flag: ::core::ptr::null_mut::<::core::ffi::c_int>(),
+        val: C2Rust_Unnamed_8::NETDELAY_OPT.0 as ::core::ffi::c_int,
+    },
+    option {
+        name: b"web-netplay\0".as_ptr() as *const ::core::ffi::c_char,
+        has_arg: 1 as ::core::ffi::c_int,
+        flag: ::core::ptr::null_mut::<::core::ffi::c_int>(),
+        val: C2Rust_Unnamed_8::WEB_NETPLAY_OPT.0 as ::core::ffi::c_int,
+    },
+    option {
         name: ::core::ptr::null::<::core::ffi::c_char>(),
         has_arg: 0 as ::core::ffi::c_int,
         flag: ::core::ptr::null_mut::<::core::ffi::c_int>(),
@@ -3175,8 +3244,8 @@ unsafe extern "C" fn parseOptions(
         if c == -1 as ::core::ffi::c_int {
             break;
         }
-        's_1864: {
-            'c_23164: {
+        's_1968: {
+            'c_24110: {
                 match c {
                     63 => {
                         if optopt != '?' as ::core::ffi::c_int {
@@ -3185,7 +3254,7 @@ unsafe extern "C" fn parseOptions(
                                     as *const ::core::ffi::c_char,
                             );
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     104 => {}
@@ -3208,12 +3277,12 @@ unsafe extern "C" fn parseOptions(
                                     .as_ptr() as *const ::core::ffi::c_char,
                             );
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             (*options).resolution.width = width;
                             (*options).resolution.height = height;
                             (*options).resolution.set = true;
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     102 => {
@@ -3225,7 +3294,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp < 0 as ::core::ffi::c_int
                                 || temp > 2 as ::core::ffi::c_int
@@ -3239,25 +3308,25 @@ unsafe extern "C" fn parseOptions(
                                 (*options).fullscreen.value = temp;
                                 (*options).fullscreen.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     119 => {
                         (*options).fullscreen.value = 0 as ::core::ffi::c_int;
                         (*options).fullscreen.set = true;
-                        break 's_1864;
+                        break 's_1968;
                     }
                     111 => {
                         setBoolOption(&raw mut (*options).opengl, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     120 => {
                         setBoolOption(&raw mut (*options).opengl, false);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     107 => {
                         setBoolOption(&raw mut (*options).keepAspectRatio, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     99 => {
                         if !setListOption(
@@ -3271,7 +3340,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     98 => {
                         if !setListOption(
@@ -3286,19 +3355,19 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     115 => {
                         setBoolOption(&raw mut (*options).scanlines, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     112 => {
                         setBoolOption(&raw mut (*options).showFps, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     110 => {
                         (*options).contentDir = optarg;
-                        break 's_1864;
+                        break 's_1968;
                     }
                     77 => {
                         if !setVolumeOption(
@@ -3308,7 +3377,7 @@ unsafe extern "C" fn parseOptions(
                         ) {
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     83 => {
                         if !setVolumeOption(
@@ -3318,7 +3387,7 @@ unsafe extern "C" fn parseOptions(
                         ) {
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     84 => {
                         if !setVolumeOption(
@@ -3328,7 +3397,7 @@ unsafe extern "C" fn parseOptions(
                         ) {
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     113 => {
                         if !setListOption(
@@ -3343,11 +3412,11 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     117 => {
                         setBoolOption(&raw mut (*options).subtitles, false);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     103 => {
                         if !setFloatOption(
@@ -3357,15 +3426,15 @@ unsafe extern "C" fn parseOptions(
                         ) {
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     108 => {
                         (*options).logFile = optarg;
-                        break 's_1864;
+                        break 's_1968;
                     }
                     67 => {
                         (*options).configDir = optarg;
-                        break 's_1864;
+                        break 's_1968;
                     }
                     105 => {
                         if !setChoiceOption(&raw mut (*options).whichIntro, optarg) {
@@ -3375,7 +3444,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1000 => {
                         let mut temp_0: ::core::ffi::c_int = 0;
@@ -3386,7 +3455,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_0 < 0 as ::core::ffi::c_int
                                 || temp_0 > 2 as ::core::ffi::c_int
@@ -3399,7 +3468,7 @@ unsafe extern "C" fn parseOptions(
                             } else {
                                 (*options).whichCoarseScan.value = temp_0;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1001 => {
@@ -3410,7 +3479,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1002 => {
                         if !setChoiceOption(&raw mut (*options).whichFonts, optarg) {
@@ -3420,7 +3489,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1003 => {
                         if !setChoiceOption(&raw mut (*options).whichShield, optarg) {
@@ -3430,7 +3499,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1004 => {
                         if !setChoiceOption(&raw mut (*options).smoothScroll, optarg) {
@@ -3440,7 +3509,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1005 => {
                         if !setListOption(
@@ -3454,11 +3523,11 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1006 => {
                         setBoolOption(&raw mut (*options).stereoSFX, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1007 => {
                         (*options).numAddons += 1;
@@ -3477,11 +3546,11 @@ unsafe extern "C" fn parseOptions(
                         *(*options).addons.offset((*options).numAddons as isize) = ::core::ptr::null::<
                             ::core::ffi::c_char,
                         >();
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1008 => {
                         (*options).addonDir = optarg;
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1009 => {
                         let mut value: ::core::ffi::c_int = 0;
@@ -3498,19 +3567,19 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1010 => {
                         setBoolOption(&raw mut (*options).safeMode, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1011 => {
                         (*options).graphicsBackend = optarg;
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1012 => {
                         setBoolOption(&raw mut (*options).cheatMode, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1013 => {
                         let mut temp_1: ::core::ffi::c_int = 0;
@@ -3521,7 +3590,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_1 < 0 as ::core::ffi::c_int
                                 || temp_1 > 2 as ::core::ffi::c_int
@@ -3535,7 +3604,7 @@ unsafe extern "C" fn parseOptions(
                                 (*options).optGodModes.value = temp_1;
                                 (*options).optGodModes.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1014 => {
@@ -3548,7 +3617,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_2 < 0 as ::core::ffi::c_int
                                 || temp_2 > 2 as ::core::ffi::c_int
@@ -3562,48 +3631,48 @@ unsafe extern "C" fn parseOptions(
                                 (*options).timeDilationScale.value = temp_2;
                                 (*options).timeDilationScale.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1015 => {
                         setBoolOption(&raw mut (*options).bubbleWarp, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1016 => {
                         setBoolOption(&raw mut (*options).unlockShips, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1017 => {
                         setBoolOption(&raw mut (*options).headStart, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1018 => {
                         setBoolOption(&raw mut (*options).autoButtons, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1019 => {
                         setBoolOption(&raw mut (*options).infiniteRU, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1020 => {
                         setBoolOption(&raw mut (*options).skipIntro, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1021 => {
                         setBoolOption(&raw mut (*options).mainMenuMusic, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1022 => {
                         setBoolOption(&raw mut (*options).nebulae, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1023 => {
                         setBoolOption(&raw mut (*options).orbitingPlanets, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1024 => {
                         setBoolOption(&raw mut (*options).texturedPlanets, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1025 => {
                         let mut temp_3: ::core::ffi::c_int = 0;
@@ -3614,7 +3683,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_3 < 0 as ::core::ffi::c_int
                                 || temp_3 > 3 as ::core::ffi::c_int
@@ -3628,28 +3697,28 @@ unsafe extern "C" fn parseOptions(
                                 (*options).optDateFormat.value = temp_3;
                                 (*options).optDateFormat.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1026 => {
                         setBoolOption(&raw mut (*options).infiniteFuel, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1027 => {
                         setBoolOption(&raw mut (*options).partialPickup, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1028 => {
                         setBoolOption(&raw mut (*options).submenu, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1029 => {
                         setBoolOption(&raw mut (*options).infiniteCredits, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1030 => {
                         setBoolOption(&raw mut (*options).customBorder, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1031 => {
                         let mut temp_4: ::core::ffi::c_int = 0;
@@ -3660,7 +3729,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_4 < 0 as ::core::ffi::c_int
                                 || temp_4 > 3 as ::core::ffi::c_int
@@ -3674,7 +3743,7 @@ unsafe extern "C" fn parseOptions(
                                 (*options).seedType.value = temp_4;
                                 (*options).seedType.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1032 => {
@@ -3686,7 +3755,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if if temp_5 < 3 as ::core::ffi::c_int
                                 || temp_5 > 2147483644 as ::core::ffi::c_int
@@ -3707,12 +3776,12 @@ unsafe extern "C" fn parseOptions(
                                 (*options).customSeed.value = temp_5;
                                 (*options).customSeed.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1033 => {
                         setBoolOption(&raw mut (*options).shipSeed, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1034 => {
                         let mut temp_6: ::core::ffi::c_int = 0;
@@ -3723,7 +3792,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_6 < 0 as ::core::ffi::c_int
                                 || temp_6 > 1 as ::core::ffi::c_int
@@ -3737,7 +3806,7 @@ unsafe extern "C" fn parseOptions(
                                 (*options).sphereColors.value = temp_6;
                                 (*options).sphereColors.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1035 => {
@@ -3750,7 +3819,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_7 < 0 as ::core::ffi::c_int
                                 || temp_7 > 2 as ::core::ffi::c_int
@@ -3764,12 +3833,12 @@ unsafe extern "C" fn parseOptions(
                                 (*options).spaceMusic.value = temp_7;
                                 (*options).spaceMusic.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1036 => {
                         setBoolOption(&raw mut (*options).wholeFuel, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1037 => {
                         let mut temp_8: ::core::ffi::c_int = 0;
@@ -3781,7 +3850,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_8 < 0 as ::core::ffi::c_int
                                 || temp_8 > 2 as ::core::ffi::c_int
@@ -3795,7 +3864,7 @@ unsafe extern "C" fn parseOptions(
                                 (*options).dirJoyP1.value = temp_8;
                                 (*options).dirJoyP1.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1038 => {
@@ -3806,7 +3875,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1039 => {
                         if !setChoiceOption(&raw mut (*options).scrTrans, optarg) {
@@ -3816,7 +3885,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1040 => {
                         let mut temp_9: ::core::ffi::c_int = 0;
@@ -3827,7 +3896,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_9 < 0 as ::core::ffi::c_int
                                 || temp_9 > 3 as ::core::ffi::c_int
@@ -3847,7 +3916,7 @@ unsafe extern "C" fn parseOptions(
                                 }
                                 (*options).optDifficulty.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1041 => {
@@ -3860,7 +3929,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_10 < 0 as ::core::ffi::c_int
                                 || temp_10 > 3 as ::core::ffi::c_int
@@ -3874,12 +3943,12 @@ unsafe extern "C" fn parseOptions(
                                 (*options).optFuelRange.value = temp_10;
                                 (*options).optFuelRange.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1042 => {
                         setBoolOption(&raw mut (*options).extended, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1043 => {
                         let mut temp_11: ::core::ffi::c_int = 0;
@@ -3890,7 +3959,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_11 < 0 as ::core::ffi::c_int
                                 || temp_11 > 2 as ::core::ffi::c_int
@@ -3904,24 +3973,24 @@ unsafe extern "C" fn parseOptions(
                                 (*options).nomad.value = temp_11;
                                 (*options).nomad.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1044 => {
                         setBoolOption(&raw mut (*options).gameOver, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1045 => {
                         setBoolOption(&raw mut (*options).shipDirectionIP, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1046 => {
                         setBoolOption(&raw mut (*options).hazardColors, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1047 => {
                         setBoolOption(&raw mut (*options).orzCompFont, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1048 => {
                         let mut temp_12: ::core::ffi::c_int = 0;
@@ -3932,7 +4001,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_12 < 0 as ::core::ffi::c_int
                                 || temp_12 > 2 as ::core::ffi::c_int
@@ -3946,12 +4015,12 @@ unsafe extern "C" fn parseOptions(
                                 (*options).optControllerType.value = temp_12;
                                 (*options).optControllerType.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1049 => {
                         setBoolOption(&raw mut (*options).smartAutoPilot, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1050 => {
                         if !setChoiceOption(&raw mut (*options).tintPlanSphere, optarg) {
@@ -3961,7 +4030,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1051 => {
                         if !setChoiceOption(&raw mut (*options).planetStyle, optarg) {
@@ -3971,7 +4040,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1052 => {
                         let mut temp_13: ::core::ffi::c_int = 0;
@@ -3982,7 +4051,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_13 < 0 as ::core::ffi::c_int
                                 || temp_13 > 3 as ::core::ffi::c_int
@@ -3996,7 +4065,7 @@ unsafe extern "C" fn parseOptions(
                                 (*options).starBackground.value = temp_13;
                                 (*options).starBackground.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1053 => {
@@ -4007,11 +4076,11 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1054 => {
                         setBoolOption(&raw mut (*options).nonStopOscill, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1055 => {
                         if !setChoiceOption(&raw mut (*options).scopeStyle, optarg) {
@@ -4021,11 +4090,11 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1056 => {
                         setBoolOption(&raw mut (*options).hyperStars, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1057 => {
                         if !setChoiceOption(&raw mut (*options).landerStyle, optarg) {
@@ -4035,7 +4104,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1058 => {
                         if strcmp(
@@ -4061,7 +4130,7 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1059 => {
                         if !setChoiceOption(&raw mut (*options).flagshipColor, optarg) {
@@ -4071,27 +4140,27 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1060 => {
                         setBoolOption(&raw mut (*options).noHQEncounters, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1061 => {
                         setBoolOption(&raw mut (*options).deCleansing, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1062 => {
                         setBoolOption(&raw mut (*options).meleeObstacles, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1063 => {
                         setBoolOption(&raw mut (*options).showVisitedStars, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1064 => {
                         setBoolOption(&raw mut (*options).unscaledStarSystem, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1065 => {
                         let mut temp_14: ::core::ffi::c_int = 0;
@@ -4102,7 +4171,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_14 < 0 as ::core::ffi::c_int
                                 || temp_14 > 2 as ::core::ffi::c_int
@@ -4116,20 +4185,20 @@ unsafe extern "C" fn parseOptions(
                                 (*options).sphereType.value = temp_14;
                                 (*options).sphereType.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1066 => {
                         setBoolOption(&raw mut (*options).slaughterMode, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1067 => {
                         setBoolOption(&raw mut (*options).advancedAutoPilot, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1068 => {
                         setBoolOption(&raw mut (*options).meleeToolTips, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1069 => {
                         let mut temp_15: ::core::ffi::c_int = 0;
@@ -4140,7 +4209,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_15 < 0 as ::core::ffi::c_int
                                 || temp_15 > 2 as ::core::ffi::c_int
@@ -4154,7 +4223,7 @@ unsafe extern "C" fn parseOptions(
                                 (*options).musicResume.value = temp_15;
                                 (*options).musicResume.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1070 => {
@@ -4166,7 +4235,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_16 < 0 as ::core::ffi::c_int
                                 || temp_16 > 2 as ::core::ffi::c_int
@@ -4180,32 +4249,32 @@ unsafe extern "C" fn parseOptions(
                                 (*options).windowType.value = temp_16;
                                 (*options).windowType.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1071 => {
                         setBoolOption(&raw mut (*options).scatterElements, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1072 => {
                         setBoolOption(&raw mut (*options).showUpgrades, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1073 => {
                         setBoolOption(&raw mut (*options).fleetPointSys, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1074 => {
                         setBoolOption(&raw mut (*options).shipStore, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1075 => {
                         setBoolOption(&raw mut (*options).captainNames, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1076 => {
                         setBoolOption(&raw mut (*options).dosMenus, true);
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1081 => {
                         if !setChoiceOption(&raw mut (*options).flagshipColor, optarg) {
@@ -4216,15 +4285,15 @@ unsafe extern "C" fn parseOptions(
                             );
                             badArg = true;
                         }
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1077 => {
                         optSuperMelee = BOOLEAN::TRUE;
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1078 => {
                         optLoadGame = BOOLEAN::TRUE;
-                        break 's_1864;
+                        break 's_1968;
                     }
                     1079 => {
                         let mut temp_17: ::core::ffi::c_int = 0;
@@ -4235,7 +4304,7 @@ unsafe extern "C" fn parseOptions(
                         ) == -1 as ::core::ffi::c_int
                         {
                             badArg = true;
-                            break 's_1864;
+                            break 's_1968;
                         } else {
                             if temp_17 < 0 as ::core::ffi::c_int
                                 || temp_17 > 50 as ::core::ffi::c_int
@@ -4249,7 +4318,7 @@ unsafe extern "C" fn parseOptions(
                                 (*options).nebulaevol.value = temp_17;
                                 (*options).nebulaevol.set = true;
                             }
-                            break 's_1864;
+                            break 's_1968;
                         }
                     }
                     1082 | 1083 | 1084 | 1085 => {
@@ -4258,10 +4327,77 @@ unsafe extern "C" fn parseOptions(
                                 .as_ptr() as *const ::core::ffi::c_char,
                         );
                         badArg = true;
-                        break 'c_23164;
+                        break 'c_24110;
                     }
                     1080 => {
-                        break 'c_23164;
+                        break 'c_24110;
+                    }
+                    1091 => {
+                        if strcmp(
+                            optarg,
+                            b"host\0".as_ptr() as *const ::core::ffi::c_char,
+                        ) == 0 as ::core::ffi::c_int
+                        {
+                            webNetplayRole = 0 as ::core::ffi::c_int;
+                        } else if strcmp(
+                            optarg,
+                            b"guest\0".as_ptr() as *const ::core::ffi::c_char,
+                        ) == 0 as ::core::ffi::c_int
+                        {
+                            webNetplayRole = 1 as ::core::ffi::c_int;
+                        } else {
+                            saveError(
+                                b"Invalid web-netplay role; use host or guest.\0".as_ptr()
+                                    as *const ::core::ffi::c_char,
+                            );
+                            badArg = true;
+                        }
+                        netplayOptions.inputDelay = 3 as size_t;
+                        break 's_1968;
+                    }
+                    1086 => {
+                        netplayOptions.peer[0usize].isServer = false;
+                        netplayOptions.peer[0usize].host = optarg;
+                        break 's_1968;
+                    }
+                    1087 => {
+                        netplayOptions.peer[0usize].port = optarg;
+                        break 's_1968;
+                    }
+                    1088 => {
+                        netplayOptions.peer[1usize].isServer = false;
+                        netplayOptions.peer[1usize].host = optarg;
+                        break 's_1968;
+                    }
+                    1089 => {
+                        netplayOptions.peer[1usize].port = optarg;
+                        break 's_1968;
+                    }
+                    1090 => {
+                        let mut temp_18: ::core::ffi::c_int = 0;
+                        if parseIntOption(
+                            optarg,
+                            &raw mut temp_18,
+                            b"network input delay\0".as_ptr()
+                                as *const ::core::ffi::c_char,
+                        ) == -1 as ::core::ffi::c_int
+                        {
+                            badArg = true;
+                            break 's_1968;
+                        } else {
+                            netplayOptions.inputDelay = temp_18 as size_t;
+                            if netplayOptions.inputDelay
+                                > (840 as ::core::ffi::c_int / 24 as ::core::ffi::c_int)
+                                    as size_t
+                            {
+                                saveError(
+                                    b"Network input delay is absurdly large.\0".as_ptr()
+                                        as *const ::core::ffi::c_char,
+                                );
+                                badArg = true;
+                            }
+                            break 's_1968;
+                        }
                     }
                     _ => {
                         saveError(
@@ -4274,7 +4410,7 @@ unsafe extern "C" fn parseOptions(
                             },
                         );
                         badArg = true;
-                        break 's_1864;
+                        break 's_1968;
                     }
                 }
                 (*options).runMode = C2Rust_Unnamed_7::runMode_usage;
@@ -4491,6 +4627,21 @@ unsafe extern "C" fn usage(mut out: *mut FILE, mut defaults: *const options_stru
     log_add(
         log_Level::log_User,
         b"  --safe (start in safe mode)\0".as_ptr() as *const ::core::ffi::c_char,
+    );
+    log_add(
+        log_Level::log_User,
+        b"  --nethostN=HOSTNAME (server to connect to for player N (1=bottom, 2=top)\0"
+            .as_ptr() as *const ::core::ffi::c_char,
+    );
+    log_add(
+        log_Level::log_User,
+        b"  --netportN=PORT (port to connect to/listen on for player N (1=bottom, 2=top)\0"
+            .as_ptr() as *const ::core::ffi::c_char,
+    );
+    log_add(
+        log_Level::log_User,
+        b"  --netdelay=FRAMES (number of frames to buffer/delay network input for\0"
+            .as_ptr() as *const ::core::ffi::c_char,
     );
     log_add(
         log_Level::log_User,

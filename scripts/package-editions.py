@@ -12,14 +12,14 @@ def package(original, hd, output):
     for source in (original, hd):
         if source == output or source in output.parents or output in source.parents:
             raise ValueError('The output must be separate from both engine build directories.')
-    for source, extra in ((original, ('netplay-client.js',)), (hd, ('content-licenses.txt',))):
+    for source, extra in ((original, ('netplay-client.js',)), (hd, ('content-licenses.txt', 'netplay-client.js'))):
         for name in ENGINE + extra:
             path = source / name
             if not path.is_file() or not path.stat().st_size:
                 raise ValueError('Missing build artifact: ' + str(path))
     root = Path(__file__).resolve().parent.parent
     output.mkdir(parents=True, exist_ok=True)
-    for source, edition, extra in ((original, 'original', ('netplay-client.js',)), (hd, 'hd', ('content-licenses.txt',))):
+    for source, edition, extra in ((original, 'original', ('netplay-client.js',)), (hd, 'hd', ('content-licenses.txt', 'netplay-client.js'))):
         destination = output / edition
         destination.mkdir(exist_ok=True)
         for name in ENGINE + extra:

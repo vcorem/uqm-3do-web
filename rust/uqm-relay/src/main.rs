@@ -525,8 +525,11 @@ impl App {
 fn room_path(target: &str) -> Option<(&str, bool)> {
     let tail = target.strip_prefix("/netplay/")?;
     let (id, role) = tail.split_once("?role=")?;
-    if id.len() != 32
-        || !id
+    // Keep the edition prefix in the room and retired-ID key. Original and HD
+    // engines cannot stay in sync, even if players use the same room token.
+    let token = id.strip_prefix("hd/").unwrap_or(id);
+    if token.len() != 32
+        || !token
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
     {
@@ -1357,10 +1360,28 @@ mod tests {
             room_path("/netplay/0123456789abcdef0123456789abcdef?role=host"),
             Some(("0123456789abcdef0123456789abcdef", true))
         );
+        assert_eq!(
+            room_path("/netplay/hd/0123456789abcdef0123456789abcdef?role=host"),
+            Some(("hd/0123456789abcdef0123456789abcdef", true))
+        );
+        assert_eq!(
+            room_path("/netplay/hd/0123456789abcdef0123456789abcdef?role=guest"),
+            Some(("hd/0123456789abcdef0123456789abcdef", false))
+        );
         for bad in [
             "/netplay/ABCDEF0123456789abcdef0123456789?role=host",
             "/netplay/0123456789abcdef0123456789abcdef?role=host&x=1",
             "/netplay/0123456789abcdef0123456789abcdef?role=guest/",
+            "/netplay/hd/ABCDEF0123456789abcdef0123456789?role=host",
+            "/netplay/hd/0123456789abcdef0123456789abcdef?role=host&x=1",
+            "/netplay/hd/0123456789abcdef0123456789abcdef?role=guest/",
+            "/netplay/hd/0123456789abcdef0123456789abcdef",
+            "/netplay/hd/hd/0123456789abcdef0123456789abcdef?role=host",
+            "/netplay/original/0123456789abcdef0123456789abcdef?role=host",
+            "/netplay/3do/0123456789abcdef0123456789abcdef?role=host",
+            "/netplay/HD/0123456789abcdef0123456789abcdef?role=host",
+            "/netplay/%68d/0123456789abcdef0123456789abcdef?role=host",
+            "/netplay/hd%2f0123456789abcdef0123456789abcdef?role=host",
         ] {
             assert!(room_path(bad).is_none());
         }

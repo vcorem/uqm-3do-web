@@ -22,6 +22,18 @@ button { color:#080b12; background:#dfbd75; border:0; border-radius:4px; padding
 button:disabled { opacity:.55; cursor:wait; } progress { width:100%; margin:10px 0 24px; accent-color:#dfbd75; }
 .bar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:20px; margin:16px 0; min-height:38px; font-size:13px; }
 .bar button { background:#182232; color:#e1e6ee; padding:8px 16px; font-size:13px; }
+.online { border: 1px solid #273142; border-radius: 5px; padding: 18px; margin-bottom: 22px; }
+.online h2 { font-size: 16px; margin: 0 0 6px; }
+.online p { font-size: 13px; margin: 6px 0 12px; }
+.online-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.online-actions label { flex: 1 1 260px; display: grid; gap: 6px; color: #a4adbc; font-size: 12px; }
+.online input { width: 100%; min-width: 0; border: 1px solid #42516a; border-radius: 4px; padding: 11px; background: #101722; color: #e1e6ee; font: 13px system-ui, sans-serif; }
+.online button { padding: 10px 16px; font-size: 13px; }
+.online button.secondary { background: #182232; color: #e1e6ee; }
+#online-status { color: #a4adbc; }
+#online-status.warning { color: #f3cc86; }
+#online-role { color: #dfbd75; }
+#invite-row { margin:12px 0; }
 #storage { color:#a4adbc; } #storage.warning { color:#f3cc86; }
 .controls { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; border-top:1px solid #273142; padding-top:18px; }
 .controls strong { display:block; font-size:13px; margin-bottom:8px; } .controls p { color:#a4adbc; font-size:13px; margin:0; }
@@ -49,25 +61,104 @@ details { margin-top:18px; font-size:12px; color:#778396; } pre { white-space:pr
 <div><strong>Player 1 · default arrows</strong><p><kbd>↑</kbd> thrust · <kbd>← →</kbd> turn<br><kbd>Right Ctrl / Enter</kbd> fire · <kbd>Right Shift</kbd> special</p></div>
 <div><strong>Player 2 · WASD template</strong><p><kbd>W</kbd> thrust · <kbd>A D</kbd> turn<br><kbd>V</kbd> fire · <kbd>B</kbd> special<br>Select this template in the in-game controls.</p></div>
 </div>
+  <section class="online" aria-labelledby="online-title">
+    <h2 id="online-title">Online Melee</h2>
+    <p class="muted">Challenge another HD player in a private room. Each player uses the arrow-key controls. HD rooms cannot join Original 3DO rooms.</p>
+    <div class="online-actions" id="online-entry">
+      <button id="create-room" class="secondary">Create room</button>
+      <label for="join-invite">Room invite or code<input id="join-invite" type="text" autocomplete="off" spellcheck="false" maxlength="2048" placeholder="Paste your opponent’s invite"></label>
+      <button id="join-room" class="secondary">Join room</button>
+    </div>
+    <div class="online-actions" id="invite-row" hidden>
+      <label for="room-invite">Share this invite with your opponent<input id="room-invite" type="text" readonly spellcheck="false"></label>
+      <button id="copy-invite" class="secondary">Copy invite</button>
+    </div>
+    <p id="online-status" role="status">Create a room or join with an invite.</p>
+    <p id="online-role" hidden></p>
+    <div class="online-actions">
+      <button id="launch-online" disabled hidden>Launch online Melee</button>
+      <button id="leave-room" class="secondary" hidden>Leave room</button>
+    </div>
+  </section>
 <footer>
 HD artwork and engine from <a href="https://github.com/JHGuitarFreak/UQM-MegaMod">UQM MegaMod 0.8.5</a>, based on The Ur-Quan Masters and Star Control II.<br>
-Campaign and local Melee. Online Melee is available in Original 3DO.<br>
+Campaign, local Melee and Online Melee against another HD player.<br>
 HD saves are separate from Original 3DO and are not interchangeable. Save in-game before switching editions.<br>
 Saves stay in this browser; clearing site data removes them. <a href="COPYING.txt">Code license</a> · <a href="content-licenses.txt">Artwork and media credits</a>
 </footer>
-<details><summary>Diagnostics</summary><pre id="log"></pre></details>
+<details><summary>Diagnostics</summary><pre id="net-stats">Online session: inactive</pre><pre id="log"></pre></details>
 </main>
+<script src="netplay-client.js"></script>
 <script>
 var canvas = document.getElementById('canvas');
 var startButton = document.getElementById('start');
 var statusText = document.getElementById('status');
 var progress = document.getElementById('progress');
 var runtimeReady = false, started = false, logLines = [];
+  var room = null;
+  var roomRole = null;
+  var statsTimer = null;
+  var onlineStatus = document.getElementById('online-status');
+  var launchOnline = document.getElementById('launch-online');
+  var leaveRoom = document.getElementById('leave-room');
+  var joinInput = document.getElementById('join-invite');
+  function updateOnlineControls() {
+    var activeRoom = room && ['waiting', 'ready'].includes(room.state);
+    document.getElementById('online-entry').hidden = !!activeRoom || started;
+    launchOnline.hidden = !activeRoom || started;
+    launchOnline.disabled = !runtimeReady || !room || room.state !== 'ready' || started;
+    leaveRoom.hidden = !activeRoom;
+    if (!activeRoom) document.getElementById('invite-row').hidden = true;
+  }
+  function renderNetStats() {
+    if (!room) return;
+    var stats = room.stats;
+    document.getElementById('net-stats').textContent = [
+      'Room connection: ' + room.state,
+      'Role: ' + (room.role === 0 ? 'host (bottom fleet)' : 'guest (top fleet)'),
+      'Engine: ' + (stats.engineState || 'not launched'),
+      'Remote player: ' + (stats.remotePlayer === undefined ? 'not assigned' : stats.remotePlayer),
+      'Received: ' + stats.receivedBytes + ' bytes / ' + stats.receivedFrames + ' frames',
+      'Sent: ' + stats.sentBytes + ' bytes / ' + stats.sentFrames + ' frames',
+      'Queued: ' + room.incomingBytes + ' bytes',
+      'Checksums verified: ' + (stats.checksumsVerified || 0),
+      'Last verified frame: ' + (stats.lastVerifiedFrame === undefined ? 'none' : stats.lastVerifiedFrame),
+      'Checksum mismatches: ' + (stats.checksumMismatches || 0)
+    ].join('\n');
+  }
+  function roomStatus(event) {
+    onlineStatus.textContent = event.message;
+    onlineStatus.className = ['error', 'closed'].includes(event.state) ? 'warning' : '';
+    updateOnlineControls();
+    renderNetStats();
+    if (['error', 'closed'].includes(event.state) && statsTimer) {
+      clearInterval(statsTimer);
+      statsTimer = null;
+    }
+  }
+  function openRoom(role, token) {
+    if (started) return;
+    if (room) room.close();
+    roomRole = role;
+    room = UQMNetplay.connect({ token: token, role: role, edition: 'hd', onStatus: roomStatus });
+    Module.webNet = room;
+    document.getElementById('room-invite').value = UQMNetplay.inviteURL(token);
+    document.getElementById('invite-row').hidden = role !== 'host' || !['waiting', 'ready'].includes(room.state);
+    document.getElementById('online-role').hidden = true;
+    updateOnlineControls();
+    renderNetStats();
+    if (['waiting', 'ready'].includes(room.state)) statsTimer = setInterval(renderNetStats, 1000);
+  }
+  function roomInputError(error) {
+    onlineStatus.textContent = error.message || String(error);
+    onlineStatus.className = 'warning';
+  }
 function log(message) {
   logLines.push(String(message)); if (logLines.length > 160) logLines.shift();
   document.getElementById('log').textContent = logLines.join('\n');
 }
 function fail(message) {
+  if (room) room.close();
   statusText.textContent = message; document.getElementById('overlay').hidden = false;
   progress.hidden = true; startButton.disabled = true; startButton.textContent = 'Unable to start'; log(message);
 }
@@ -96,21 +187,74 @@ var Module = {
     runtimeReady=true; progress.hidden=true;
     statusText.textContent='HD is ready. Launch to enable sound and keyboard controls.';
     startButton.disabled=false; startButton.textContent='Launch HD game';
+    updateOnlineControls();
   },
   onAbort:function(reason) { fail('The game could not start: '+reason); },
   onExit:function(status) {
     Module.exitStatus=status;
+    if(room) room.close();
     if(status!==0) { fail('The game closed with an error. See Diagnostics below.'); return; }
     statusText.textContent='Game closed. Reload this page to play again.';
     document.getElementById('overlay').hidden=false; startButton.hidden=true;
   }
 };
-startButton.addEventListener('click',function() {
-  if(started||!runtimeReady) return;
-  started=true; document.getElementById('overlay').hidden=true;
-  document.getElementById('fullscreen').disabled=false; canvas.focus();
-  try { Module.callMain(Module.arguments.slice()); } catch(error) { fail(String(error)); }
-});
+  function launchGame(online) {
+    if (started || !runtimeReady) return;
+    if (online && (!room || room.state !== 'ready')) return;
+    if (!online && room) room.close();
+    var args = Module.arguments.slice();
+    if (online) args.push('--web-netplay=' + roomRole);
+    started = true;
+    updateOnlineControls();
+    if (online) {
+      var roleText = document.getElementById('online-role');
+      roleText.textContent = 'You control the ' + (room.role === 0 ? 'bottom' : 'top') + ' fleet. Use the arrow-key controls.';
+      roleText.hidden = false;
+      onlineStatus.textContent = 'Online Melee launched. If your opponent has not launched yet, the game will wait for them.';
+    } else {
+      onlineStatus.textContent = 'Local game running. Reload this page to start online Melee.';
+    }
+    document.getElementById('overlay').hidden = true;
+    document.getElementById('fullscreen').disabled = false;
+    canvas.focus();
+    try { Module.callMain(args); } catch (error) { fail(String(error)); }
+  }
+startButton.addEventListener('click', function () { launchGame(false); });
+  launchOnline.addEventListener('click', function () { launchGame(true); });
+  document.getElementById('create-room').addEventListener('click', function () {
+    try { openRoom('host', UQMNetplay.createToken()); } catch (error) { roomInputError(error); }
+  });
+  document.getElementById('join-room').addEventListener('click', function () {
+    try { openRoom('guest', UQMNetplay.parseRoom(joinInput.value)); } catch (error) { roomInputError(error); }
+  });
+  joinInput.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') { event.preventDefault(); document.getElementById('join-room').click(); }
+  });
+  leaveRoom.addEventListener('click', function () {
+    if (room) room.close();
+    if (started) onlineStatus.textContent = 'You left the room. Reload this page to start another game.';
+  });
+  document.getElementById('copy-invite').addEventListener('click', function () {
+    var invite = document.getElementById('room-invite');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(invite.value).then(function () {
+        onlineStatus.textContent = 'Invite copied. Send it to your opponent.';
+      }).catch(function () { invite.focus(); invite.select(); onlineStatus.textContent = 'Select and copy the invite above.'; });
+    } else { invite.focus(); invite.select(); onlineStatus.textContent = 'Select and copy the invite above.'; }
+  });
+  if (typeof UQMNetplay !== 'undefined') {
+    try {
+      if (new URLSearchParams(location.hash.slice(1)).has('room')) {
+        joinInput.value = UQMNetplay.parseRoom(location.hash);
+        onlineStatus.textContent = 'An invite is ready. Click Join room to connect.';
+      }
+    } catch (error) { roomInputError(error); }
+  } else {
+    onlineStatus.textContent = 'Online play is unavailable in this build.';
+    document.getElementById('create-room').disabled = true;
+    document.getElementById('join-room').disabled = true;
+  }
+  window.addEventListener('beforeunload', function () { if (room) room.close(); });
 var editionLink=document.getElementById('choose-edition');
 if(editionLink) editionLink.addEventListener('click',function(event) {
   if(Module.storageState==='saving') event.preventDefault();

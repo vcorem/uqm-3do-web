@@ -1,6 +1,6 @@
 {
-  "changed_files": 264,
-  "checked_calls": 13209,
+  "changed_files": 274,
+  "checked_calls": 13429,
   "files": [
     {
       "file": "src/libs/callback/alarm.rs",
@@ -4471,7 +4471,7 @@
           "function": "RunAwayAllowed"
         },
         {
-          "checked_calls": 2,
+          "checked_calls": 5,
           "failure_return": "()",
           "function": "ProcessInput"
         },
@@ -4486,7 +4486,7 @@
           "function": "FreeBattleSong"
         },
         {
-          "checked_calls": 6,
+          "checked_calls": 8,
           "failure_return": "BOOLEAN(0)",
           "function": "DoBattle"
         },
@@ -4496,7 +4496,7 @@
           "function": "selectAllShips"
         },
         {
-          "checked_calls": 13,
+          "checked_calls": 15,
           "failure_return": "BOOLEAN(0)",
           "function": "Battle"
         }
@@ -4619,6 +4619,61 @@
           "checked_calls": 2,
           "failure_return": "()",
           "function": "MoveGameClockDays"
+        }
+      ]
+    },
+    {
+      "file": "src/uqm/cnctdlg.rs",
+      "functions": [
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "MCD_DrawMenuScreen"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "MCD_DrawButton"
+        },
+        {
+          "checked_calls": 4,
+          "failure_return": "()",
+          "function": "MCD_DrawSlider"
+        },
+        {
+          "checked_calls": 5,
+          "failure_return": "()",
+          "function": "MCD_DrawTextEntry"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "BOOLEAN(0)",
+          "function": "OnTextEntryFrame"
+        },
+        {
+          "checked_calls": 4,
+          "failure_return": "0",
+          "function": "OnTextEntryEvent"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "CreateWidgets"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "DrawConnectDialog"
+        },
+        {
+          "checked_calls": 11,
+          "failure_return": "BOOLEAN(0)",
+          "function": "DoMeleeConnectDialog"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "BOOLEAN(0)",
+          "function": "MeleeConnectDialog"
         }
       ]
     },
@@ -10626,7 +10681,7 @@
           "function": "RestartMenu"
         },
         {
-          "checked_calls": 4,
+          "checked_calls": 6,
           "failure_return": "BOOLEAN(0)",
           "function": "TryStartGame"
         },
@@ -12511,7 +12566,7 @@
           "function": "DrawSuperMeleeTitle"
         },
         {
-          "checked_calls": 11,
+          "checked_calls": 12,
           "failure_return": "()",
           "function": "RepairMeleeFrame"
         },
@@ -12536,12 +12591,27 @@
           "function": "DrawTeamString"
         },
         {
-          "checked_calls": 12,
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "multiLineDrawText"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "DrawMeleeStatusMessage"
+        },
+        {
+          "checked_calls": 7,
+          "failure_return": "()",
+          "function": "UpdateMeleeStatusMessage"
+        },
+        {
+          "checked_calls": 13,
           "failure_return": "()",
           "function": "Deselect"
         },
         {
-          "checked_calls": 12,
+          "checked_calls": 13,
           "failure_return": "()",
           "function": "Select"
         },
@@ -12576,17 +12646,22 @@
           "function": "OnTeamNameChange"
         },
         {
+          "checked_calls": 1,
+          "failure_return": "BOOLEAN(0)",
+          "function": "TeamNameFrameCallback"
+        },
+        {
           "checked_calls": 5,
           "failure_return": "()",
           "function": "BuildPickShipPopup"
         },
         {
-          "checked_calls": 16,
+          "checked_calls": 18,
           "failure_return": "BOOLEAN(0)",
           "function": "DoEdit"
         },
         {
-          "checked_calls": 2,
+          "checked_calls": 11,
           "failure_return": "BOOLEAN(0)",
           "function": "DoConfirmSettings"
         },
@@ -12596,7 +12671,7 @@
           "function": "LoadMeleeInfo"
         },
         {
-          "checked_calls": 1,
+          "checked_calls": 2,
           "failure_return": "()",
           "function": "FreeMeleeInfo"
         },
@@ -12611,22 +12686,32 @@
           "function": "StartMelee"
         },
         {
-          "checked_calls": 1,
+          "checked_calls": 9,
           "failure_return": "()",
           "function": "StartMeleeButtonPressed"
         },
         {
+          "checked_calls": 15,
+          "failure_return": "BOOLEAN(0)",
+          "function": "DoConnectingDialog"
+        },
+        {
           "checked_calls": 1,
+          "failure_return": "()",
+          "function": "check_for_disconnects"
+        },
+        {
+          "checked_calls": 3,
           "failure_return": "()",
           "function": "nextControlType"
         },
         {
-          "checked_calls": 5,
+          "checked_calls": 7,
           "failure_return": "()",
           "function": "MeleeOptionSelect"
         },
         {
-          "checked_calls": 12,
+          "checked_calls": 18,
           "failure_return": "BOOLEAN(0)",
           "function": "DoMelee"
         },
@@ -12644,6 +12729,46 @@
           "checked_calls": 11,
           "failure_return": "()",
           "function": "Melee"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "confirmationCancelled"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "connectionFeedback"
+        },
+        {
+          "checked_calls": 3,
+          "failure_return": "()",
+          "function": "connectedFeedback"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "abortFeedback"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "resetFeedback"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "errorFeedback"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "closeWebMeleeRoom"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "closeFeedback"
         },
         {
           "checked_calls": 1,
@@ -12689,6 +12814,16 @@
           "checked_calls": 2,
           "failure_return": "false",
           "function": "Melee_LocalChange_team"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "Melee_RemoteChange_ship"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "Melee_RemoteChange_teamName"
         }
       ]
     },
@@ -12714,6 +12849,346 @@
           "checked_calls": 1,
           "failure_return": "0",
           "function": "MeleeSetup_serializeTeam"
+        }
+      ]
+    },
+    {
+      "file": "src/uqm/supermelee/netplay/netconnection.rs",
+      "functions": [
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "NetConnection_doDeleteCallback"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "NetConnection_delete"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "Netplay_doCloseCallback"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "NetConnection_doClose"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "NetConnection_webDisconnect"
+        },
+        {
+          "checked_calls": 3,
+          "failure_return": "()",
+          "function": "NetConnection_webPoll"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "NetConnection_close"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "NetConnection_doErrorCallback"
+        }
+      ]
+    },
+    {
+      "file": "src/uqm/supermelee/netplay/netmelee.rs",
+      "functions": [
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "forEachConnectedPlayer"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "closeAllConnections"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "closeDisconnectedConnections"
+        },
+        {
+          "checked_calls": 4,
+          "failure_return": "()",
+          "function": "netInputAux"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "netInput"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "netInputBlocking"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "flushPacketQueues"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "connectionsLocalReady"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "0",
+          "function": "networkBattleInput"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "closePlayerNetworkConnection"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "setStateConnections"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "sendAbortConnections"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "resetConnection"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "resetConnections"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "localReadyConnection"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "localReadyConnections"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "BOOLEAN(0)",
+          "function": "negotiateReadyInputFunc"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "false",
+          "function": "negotiateReady"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "negotiateReadyConnections"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "waitReadyCallback"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "BOOLEAN(0)",
+          "function": "waitReadyInputFunc"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "waitReady"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "BOOLEAN(0)",
+          "function": "waitResetInputFunc"
+        },
+        {
+          "checked_calls": 3,
+          "failure_return": "false",
+          "function": "waitReset"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "waitResetConnections"
+        }
+      ]
+    },
+    {
+      "file": "src/uqm/supermelee/netplay/netmisc.rs",
+      "functions": [
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "NetMelee_connectCallback"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "NetMelee_closeCallback"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "NetMelee_errorCallback"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "NetMelee_enterState_inSetup"
+        }
+      ]
+    },
+    {
+      "file": "src/uqm/supermelee/netplay/netrcv.rs",
+      "functions": [
+        {
+          "checked_calls": 1,
+          "failure_return": "0",
+          "function": "dataReceivedSingle"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "0",
+          "function": "dataReceivedMulti"
+        },
+        {
+          "checked_calls": 4,
+          "failure_return": "()",
+          "function": "webDataReady"
+        }
+      ]
+    },
+    {
+      "file": "src/uqm/supermelee/netplay/netstate.rs",
+      "functions": [
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "NetConnectionStateData_release"
+        }
+      ]
+    },
+    {
+      "file": "src/uqm/supermelee/netplay/notifyall.rs",
+      "functions": [
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "Netplay_NotifyAll_inputDelay"
+        }
+      ]
+    },
+    {
+      "file": "src/uqm/supermelee/netplay/packethandlers.rs",
+      "functions": [
+        {
+          "checked_calls": 3,
+          "failure_return": "0",
+          "function": "PacketHandler_Init"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "0",
+          "function": "PacketHandler_Ready"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "0",
+          "function": "PacketHandler_Fleet"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "0",
+          "function": "PacketHandler_TeamName"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "0",
+          "function": "PacketHandler_SelectShip"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "0",
+          "function": "PacketHandler_FrameCount"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "0",
+          "function": "PacketHandler_Abort"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "0",
+          "function": "PacketHandler_Reset"
+        }
+      ]
+    },
+    {
+      "file": "src/uqm/supermelee/netplay/proto/ready.rs",
+      "functions": [
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "Netplay_bothReady"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "Netplay_localReady"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "Netplay_remoteReady"
+        }
+      ]
+    },
+    {
+      "file": "src/uqm/supermelee/netplay/proto/reset.rs",
+      "functions": [
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "Netplay_connectionReset"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "Netplay_doConnectionResetCallback"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "Netplay_resetConditionTriggered"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
+          "function": "Netplay_setResetCallback"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "Netplay_localReset"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "()",
+          "function": "Netplay_remoteReset"
         }
       ]
     },
@@ -12746,7 +13221,12 @@
           "function": "selectShipComputer"
         },
         {
-          "checked_calls": 4,
+          "checked_calls": 1,
+          "failure_return": "BOOLEAN(0)",
+          "function": "selectShipNetwork"
+        },
+        {
+          "checked_calls": 7,
           "failure_return": "BOOLEAN(0)",
           "function": "DoGetMelee"
         },
@@ -12776,7 +13256,7 @@
           "function": "DrawPickMeleeFrame"
         },
         {
-          "checked_calls": 3,
+          "checked_calls": 4,
           "failure_return": "()",
           "function": "MeleeGameOver"
         },
@@ -12786,7 +13266,7 @@
           "function": "MeleeShipDeath"
         },
         {
-          "checked_calls": 6,
+          "checked_calls": 9,
           "failure_return": "BOOLEAN(0)",
           "function": "GetMeleeStarShips"
         },
@@ -12799,6 +13279,11 @@
           "checked_calls": 2,
           "failure_return": "BOOLEAN(0)",
           "function": "GetNextMeleeStarShip"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "updateMeleeSelection"
         }
       ]
     },
@@ -12818,10 +13303,30 @@
         {
           "checked_calls": 1,
           "failure_return": "()",
+          "function": "readyToEndCallback"
+        },
+        {
+          "checked_calls": 3,
+          "failure_return": "false",
+          "function": "readyForBattleEndPlayer"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "battleEndReadyNetwork"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "false",
+          "function": "readyForBattleEnd"
+        },
+        {
+          "checked_calls": 1,
+          "failure_return": "()",
           "function": "cleanup_dead_ship"
         },
         {
-          "checked_calls": 6,
+          "checked_calls": 9,
           "failure_return": "()",
           "function": "new_ship"
         },
@@ -13327,6 +13832,7 @@
     "ConvertTrack",
     "CreateShieldMask",
     "CreateStarBackGround",
+    "CreateWidgets",
     "Credits",
     "Credits_MakeTransFrame",
     "Credits_RenderTextFrame",
@@ -13386,6 +13892,7 @@
     "DoCommunication",
     "DoConfirmExit",
     "DoConfirmSettings",
+    "DoConnectingDialog",
     "DoConvSummary",
     "DoCreditsInput",
     "DoDiffChooser",
@@ -13403,6 +13910,7 @@
     "DoLoadTeam",
     "DoManipulateDevices",
     "DoMelee",
+    "DoMeleeConnectDialog",
     "DoMelnormeHate",
     "DoMelnormeMiffed",
     "DoMelnormePissed",
@@ -13474,6 +13982,7 @@
     "DrawCargoStrings",
     "DrawCommBorder",
     "DrawConfirmationWindow",
+    "DrawConnectDialog",
     "DrawControlText",
     "DrawControls",
     "DrawCrewFuelString",
@@ -13518,6 +14027,7 @@
     "DrawMatchedStarName",
     "DrawMeleeIcon",
     "DrawMeleeShipStrings",
+    "DrawMeleeStatusMessage",
     "DrawMenuStateStrings",
     "DrawMinDatText",
     "DrawMineralHelpers",
@@ -13959,6 +14469,10 @@
     "LoadVideoFile",
     "Logo",
     "LoserUrquan",
+    "MCD_DrawButton",
+    "MCD_DrawMenuScreen",
+    "MCD_DrawSlider",
+    "MCD_DrawTextEntry",
     "MD_GetAtom",
     "MD_SampleLength",
     "MD_SampleLoad",
@@ -13980,6 +14494,7 @@
     "ManipulateShips",
     "MaskLanderGraphics",
     "Melee",
+    "MeleeConnectDialog",
     "MeleeGameOver",
     "MeleeOptionSelect",
     "MeleeSetup_deserializeTeam",
@@ -13993,6 +14508,8 @@
     "Melee_LocalChange_ship",
     "Melee_LocalChange_team",
     "Melee_LocalChange_teamName",
+    "Melee_RemoteChange_ship",
+    "Melee_RemoteChange_teamName",
     "Melee_UpdateView_fleetValue",
     "Melee_UpdateView_ship",
     "Melee_UpdateView_teamName",
@@ -14031,6 +14548,29 @@
     "NameSaveGame",
     "NatureOfConversation",
     "NeedInfo",
+    "NetConnectionStateData_release",
+    "NetConnection_close",
+    "NetConnection_delete",
+    "NetConnection_doClose",
+    "NetConnection_doDeleteCallback",
+    "NetConnection_doErrorCallback",
+    "NetConnection_webDisconnect",
+    "NetConnection_webPoll",
+    "NetMelee_closeCallback",
+    "NetMelee_connectCallback",
+    "NetMelee_enterState_inSetup",
+    "NetMelee_errorCallback",
+    "Netplay_NotifyAll_inputDelay",
+    "Netplay_bothReady",
+    "Netplay_connectionReset",
+    "Netplay_doCloseCallback",
+    "Netplay_doConnectionResetCallback",
+    "Netplay_localReady",
+    "Netplay_localReset",
+    "Netplay_remoteReady",
+    "Netplay_remoteReset",
+    "Netplay_resetConditionTriggered",
+    "Netplay_setResetCallback",
     "NeutralSupox",
     "NeutralUtwig",
     "NoRadioactives",
@@ -14063,6 +14603,14 @@
     "PLRResume",
     "PLRSeek",
     "PLRStop",
+    "PacketHandler_Abort",
+    "PacketHandler_Fleet",
+    "PacketHandler_FrameCount",
+    "PacketHandler_Init",
+    "PacketHandler_Ready",
+    "PacketHandler_Reset",
+    "PacketHandler_SelectShip",
+    "PacketHandler_TeamName",
     "PauseFlash",
     "PauseGame",
     "PauseMusic",
@@ -14421,6 +14969,7 @@
     "TFB_UploadTransitionScreen",
     "TaaloWorld",
     "TalkSegue",
+    "TeamNameFrameCallback",
     "TellHistory",
     "TellMission",
     "TellMoonBase",
@@ -14463,6 +15012,7 @@
     "UpdateFuelRequirement",
     "UpdateInputState",
     "UpdateMap",
+    "UpdateMeleeStatusMessage",
     "UpdatePickMeleeFleetValue",
     "UpdateSoundPosition",
     "UpdateSoundPositions",
@@ -14642,6 +15192,7 @@
     "_text_blt",
     "_text_blt_alt",
     "_text_blt_fade",
+    "abortFeedback",
     "addEvent",
     "add_text",
     "addon_unavailable",
@@ -14695,6 +15246,7 @@
     "audio_Sourcef",
     "audio_Sourcefv",
     "audio_Sourcei",
+    "battleEndReadyNetwork",
     "black_urquan_intelligence",
     "black_urquan_postprocess",
     "blaster_collision",
@@ -14718,6 +15270,7 @@
     "checkArilouGate",
     "check_availability",
     "check_dos_3do_modes",
+    "check_for_disconnects",
     "check_for_hd",
     "check_hyperspace_encounter",
     "check_old_shofixti",
@@ -14732,10 +15285,19 @@
     "cleanup_dead_ship",
     "clearEscorts",
     "clear_control",
+    "closeAllConnections",
+    "closeDisconnectedConnections",
+    "closeFeedback",
+    "closePlayerNetworkConnection",
+    "closeWebMeleeRoom",
     "collision",
     "comet_collision",
     "computer_intelligence",
     "cone_collision",
+    "confirmationCancelled",
+    "connectedFeedback",
+    "connectionFeedback",
+    "connectionsLocalReady",
     "copen",
     "copyError",
     "copyFile",
@@ -14751,6 +15313,8 @@
     "crew_collision",
     "crystal_collision",
     "cwrite",
+    "dataReceivedMulti",
+    "dataReceivedSingle",
     "deadzone_DrawValue",
     "debugCallCommand",
     "debugCmdCat",
@@ -14824,6 +15388,7 @@
     "enterInnerSystem",
     "equipShip",
     "eraseLandingFuelUsage",
+    "errorFeedback",
     "fighter_collision",
     "fileExists2",
     "fillrect_prim",
@@ -14836,6 +15401,7 @@
     "flashSupportShip",
     "flashSupportShipCrew",
     "flee_preprocess",
+    "flushPacketQueues",
     "font_DrawShadowedText",
     "font_DrawText",
     "font_DrawTextAlt",
@@ -14847,6 +15413,7 @@
     "forAllPlanetTypes",
     "forAllPlanets",
     "forAllStars",
+    "forEachConnectedPlayer",
     "forwardToNextEvent",
     "fprintfWorld",
     "frame_intersect",
@@ -14938,6 +15505,8 @@
     "load_life_form",
     "load_orbit_theme",
     "load_ship",
+    "localReadyConnection",
+    "localReadyConnections",
     "logHelper",
     "luaFunctionWrapper",
     "luaUqm_callFunction",
@@ -15066,8 +15635,16 @@
     "mountBaseZip",
     "mountContentDir",
     "mountDirZips",
+    "multiLineDrawText",
     "mycon_intelligence",
     "mycon_postprocess",
+    "negotiateReady",
+    "negotiateReadyConnections",
+    "negotiateReadyInputFunc",
+    "netInput",
+    "netInputAux",
+    "netInputBlocking",
+    "networkBattleInput",
     "newResourceDesc",
     "new_pkunk",
     "new_ship",
@@ -15160,6 +15737,9 @@
     "read_le_16",
     "read_le_32",
     "read_str",
+    "readyForBattleEnd",
+    "readyForBattleEndPlayer",
+    "readyToEndCallback",
     "rebind_control",
     "rebind_menu_control",
     "redraw_menu",
@@ -15174,8 +15754,11 @@
     "res_PutInteger",
     "res_PutString",
     "res_Remove",
+    "resetConnection",
+    "resetConnections",
     "resetCrewBattle",
     "resetEnergyBattle",
+    "resetFeedback",
     "responseCallback",
     "restorePlanetLocationImage",
     "rotateStarbase",
@@ -15194,9 +15777,11 @@
     "selectAllShips",
     "selectShipComputer",
     "selectShipHuman",
+    "selectShipNetwork",
     "selectSupportShip",
     "self_destruct",
     "self_destruct_kill_objects",
+    "sendAbortConnections",
     "sentinel_collision",
     "serialiseGameState",
     "setGameStateUint",
@@ -15206,6 +15791,7 @@
     "setSegue",
     "setShipSelected",
     "setStarMarked",
+    "setStateConnections",
     "ship_death",
     "ship_intelligence",
     "ship_movement",
@@ -15378,6 +15964,7 @@
     "uninitIO",
     "uninit_pkunk",
     "updateFlashRect",
+    "updateMeleeSelection",
     "upgradeSwitch",
     "urquan_intelligence",
     "urquan_postprocess",
@@ -15390,6 +15977,12 @@
     "vux_postprocess",
     "vux_preprocess",
     "waitForKey",
+    "waitReady",
+    "waitReadyCallback",
+    "waitReadyInputFunc",
+    "waitReset",
+    "waitResetConnections",
+    "waitResetInputFunc",
     "wava_Close",
     "wava_Decode",
     "wava_Open",
@@ -15400,6 +15993,7 @@
     "wava_readFormatHeader",
     "weapon_collision",
     "weapon_collision_cb",
+    "webDataReady",
     "write_16",
     "write_32",
     "write_8",

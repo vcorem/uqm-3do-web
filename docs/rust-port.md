@@ -7,11 +7,18 @@ object files. The work is isolated on `codex/rust-port`, starting from
 `783d8d3ce`. The previous playable checkout and its saves are unchanged.
 
 This is a source port, not a memory-safe or idiomatic rewrite. C2Rust translated
-340 configured Original units and 330 HD units into `unsafe` Rust, preserving
+340 configured Original units and 350 HD units into `unsafe` Rust, preserving
 the original ABI and algorithms. Ten units in each engine are superseded by
 independently written, differentially tested Rust modules. The PNG integration
 is also written in Rust, with a narrow C guard for libpng's `setjmp` errors.
 Preserved C sources provide provenance and independent reference builds.
+
+The HD Online Melee work from main commit
+`5d7810ba5302803abe537f1b669d696a3af073ad` is included in this branch. Enabling
+its WebSocket transport, protocol handlers and synchronization code expands the
+configured HD engine from 330 to 350 translated units. The HD launcher, shared
+browser client and Rust relay support the same edition-specific room contract.
+This port does not import main's deployment setup or deploy a public service.
 
 ## Implementation boundaries
 
@@ -37,6 +44,15 @@ the reference C engine; `UQM_CORE=hybrid` retains the intermediate ten-module
 migration for diagnosis. Edition-specific `engine-language.json` records the
 actual implementation and dependencies. Media and save databases are unchanged.
 See [translation provenance and regeneration](../scripts/rust-engine/README.md).
+
+Both editions support Online Melee with another player using the same edition.
+Original connects to `/netplay/<room>` and HD connects to `/netplay/hd/<room>`,
+with the `role=host` or `role=guest` query. Both relays keep active and retired
+rooms separate by edition and token while sharing resource limits. The engines
+are incompatible across editions. The HD invitation retains the HD page path;
+both players join and then click **Launch online Melee**. Campaign persistence
+also stays separate: Original mounts `/home/web_user/.uqm`, while HD mounts
+`/home/web_user/.uqm-hd`. No save conversion is performed.
 
 ## Toolchains and build
 
@@ -114,6 +130,15 @@ UQM_RELAY=rust UQM_DIST=dist UQM_PEER_DIST=.tools/c-reference \
   UQM_TEST_OUTPUT=test-results/rust-c npm run test:browser
 UQM_RELAY=rust UQM_DIST=dist UQM_PEER_DIST=.tools/c-reference \
   UQM_SHIP_SMOKE=all UQM_TEST_OUTPUT=test-results/rust-ships npm run test:browser
+
+# HD uses its own package, room namespace, save mount and C reference.
+HD_BUILD_OUTPUT="$PWD/.tools/hd-dist" ./scripts/build-hd-web.sh
+UQM_EDITION=hd UQM_RELAY=rust UQM_DIST=.tools/hd-dist \
+  UQM_TEST_OUTPUT=test-results/hd-rust npm run test:browser
+UQM_CORE=c HD_BUILD_OUTPUT="$PWD/.tools/hd-c-reference" ./scripts/build-hd-web.sh
+UQM_EDITION=hd UQM_RELAY=rust UQM_DIST=.tools/hd-dist \
+  UQM_PEER_DIST=.tools/hd-c-reference \
+  UQM_TEST_OUTPUT=test-results/hd-rust-c npm run test:browser
 ```
 
 The oracle compiles the unchanged C sources with renamed symbols and compares
@@ -141,6 +166,14 @@ both Wasm hashes and tests full fleet matches, jitter, rematches, checksum
 agreement, disconnect recovery and persistence. Rust-versus-Rust alone cannot
 detect a matching regression on both peers. Test-only relay options and aggregate
 events are explicit CLI flags, never controlled by a client URL.
+
+`UQM_EDITION` defaults to `original`; set it to `hd` for HD. Both package paths
+must contain standalone builds of that same edition. The harness checks the
+actual WebSocket paths as well as engine synchronization and preserves the
+selected edition's local fleet settings. An HD Rust/C pair compares language
+implementations of HD; it does not connect HD to Original. The commands above
+are reproducible checks, not a claim that every scenario has completed; consult
+the dated validation record for the actual results and artifact hashes.
 
 The old unused C `crc_processBytes` loops forever for nonempty input. Its Rust
 replacement is intentionally corrected, using the scalar C CRC as its oracle.

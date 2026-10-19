@@ -73,7 +73,6 @@ extern "C" {
     fn TFB_Random() -> DWORD;
     fn GetNextMeleeStarShip(which_player: COUNT, result: *mut HSTARSHIP) -> BOOLEAN;
     fn FleetIsInfinite(playerNr: COUNT) -> BOOLEAN;
-    static mut battle_counter: [BYTE; 2];
     static mut StatusFrame: FRAME;
     static mut FontGradFrame: FRAME;
     static mut SpaceContext: CONTEXT;
@@ -84,6 +83,7 @@ extern "C" {
     static mut DeathByMelee: BOOLEAN;
     fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
     fn PlayMenuSound(S: MENU_SOUND_EFFECT);
+    static mut battle_counter: [BYTE; 2];
 }
 pub type uint8 = ::core::ffi::c_uchar;
 pub type uint16 = ::core::ffi::c_ushort;

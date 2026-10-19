@@ -24,8 +24,13 @@ extern "C" {
     fn HFree(p: *mut ::core::ffi::c_void);
     fn battleEndReadyHuman(context: *mut HumanInputContext) -> bool;
     fn battleEndReadyComputer(context: *mut ComputerInputContext) -> bool;
+    fn battleEndReadyNetwork(context: *mut NetworkInputContext) -> bool;
     fn computer_intelligence(
         context: *mut ComputerInputContext,
+        StarShipPtr: *mut STARSHIP,
+    ) -> BATTLE_INPUT_STATE;
+    fn networkBattleInput(
+        context: *mut NetworkInputContext,
         StarShipPtr: *mut STARSHIP,
     ) -> BATTLE_INPUT_STATE;
     fn selectShipHuman(
@@ -34,6 +39,10 @@ extern "C" {
     ) -> BOOLEAN;
     fn selectShipComputer(
         context: *mut ComputerInputContext,
+        gms: *mut GETMELEE_STATE,
+    ) -> BOOLEAN;
+    fn selectShipNetwork(
+        context: *mut NetworkInputContext,
         gms: *mut GETMELEE_STATE,
     ) -> BOOLEAN;
     fn frameInputHuman(
@@ -411,6 +420,12 @@ pub struct HumanInputContext {
     pub handlers: *mut BattleInputHandlers,
     pub playerNr: COUNT,
 }
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetworkInputContext {
+    pub handlers: *mut BattleInputHandlers,
+    pub playerNr: COUNT,
+}
 pub type size_t = usize;
 #[no_mangle]
 pub static mut PlayerInput: [*mut InputContext; 2] = [::core::ptr::null_mut::<
@@ -519,6 +534,57 @@ pub static mut HumanInputHandlers: BattleInputHandlers = unsafe {
     }
 };
 #[no_mangle]
+pub static mut NetworkInputHandlers: BattleInputHandlers = unsafe {
+    BattleInputHandlers {
+        frameInput: ::core::mem::transmute::<
+            Option<
+                unsafe extern "C" fn(
+                    *mut NetworkInputContext,
+                    *mut STARSHIP,
+                ) -> BATTLE_INPUT_STATE,
+            >,
+            BattleFrameInputFunction,
+        >(
+            Some(
+                networkBattleInput
+                    as unsafe extern "C" fn(
+                        *mut NetworkInputContext,
+                        *mut STARSHIP,
+                    ) -> BATTLE_INPUT_STATE,
+            ),
+        ),
+        selectShip: ::core::mem::transmute::<
+            Option<
+                unsafe extern "C" fn(
+                    *mut NetworkInputContext,
+                    *mut GETMELEE_STATE,
+                ) -> BOOLEAN,
+            >,
+            SelectShipFunction,
+        >(
+            Some(
+                selectShipNetwork
+                    as unsafe extern "C" fn(
+                        *mut NetworkInputContext,
+                        *mut GETMELEE_STATE,
+                    ) -> BOOLEAN,
+            ),
+        ),
+        battleEndReady: ::core::mem::transmute::<
+            Option<unsafe extern "C" fn(*mut NetworkInputContext) -> bool>,
+            BattleEndReadyFunction,
+        >(
+            Some(
+                battleEndReadyNetwork
+                    as unsafe extern "C" fn(*mut NetworkInputContext) -> bool,
+            ),
+        ),
+        deleteContext: Some(
+            InputContext_delete as unsafe extern "C" fn(*mut InputContext) -> (),
+        ),
+    }
+};
+#[no_mangle]
 pub unsafe extern "C" fn InputContext_init(
     mut context: *mut InputContext,
     mut handlers: *mut BattleInputHandlers,
@@ -555,6 +621,20 @@ pub unsafe extern "C" fn HumanInputContext_new(
     InputContext_init(
         result as *mut InputContext,
         &raw mut HumanInputHandlers,
+        playerNr,
+    );
+    return result;
+}
+#[no_mangle]
+pub unsafe extern "C" fn NetworkInputContext_new(
+    mut playerNr: COUNT,
+) -> *mut NetworkInputContext {
+    let mut result: *mut NetworkInputContext = HMalloc(
+        ::core::mem::size_of::<NetworkInputContext>(),
+    ) as *mut NetworkInputContext;
+    InputContext_init(
+        result as *mut InputContext,
+        &raw mut NetworkInputHandlers,
         playerNr,
     );
     return result;

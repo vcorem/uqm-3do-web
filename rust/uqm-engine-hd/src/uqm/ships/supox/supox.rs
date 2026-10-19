@@ -24,13 +24,13 @@ extern "C" {
     static mut resolutionFactor: ::core::ffi::c_uint;
     fn ARCTAN(delta_x: SDWORD, delta_y: SDWORD) -> COUNT;
     fn TFB_Random() -> DWORD;
-    fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
-    fn inertial_thrust(ElementPtr: *mut ELEMENT) -> STATUS_FLAGS;
     fn ship_intelligence(
         ShipPtr: *mut ELEMENT,
         ObjectsOfConcern: *mut EVALUATE_DESC,
         ConcernCounter: COUNT,
     );
+    fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
+    fn inertial_thrust(ElementPtr: *mut ELEMENT) -> STATUS_FLAGS;
 }
 pub type uint8 = ::core::ffi::c_uchar;
 pub type uint16 = ::core::ffi::c_ushort;

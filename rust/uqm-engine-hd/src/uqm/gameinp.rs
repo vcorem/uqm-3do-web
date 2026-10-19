@@ -39,8 +39,6 @@ extern "C" {
     static mut InSetupMenu: BOOLEAN;
     fn TaskSwitch();
     fn inSavablePos() -> BOOLEAN;
-    static mut MenuSounds: SOUND;
-    fn NotPositional() -> SoundPosition;
     fn PlaySoundEffect(
         S: SOUND,
         Channel: COUNT,
@@ -54,6 +52,8 @@ extern "C" {
         PositionalObject: *mut ::core::ffi::c_void,
         Priority: BYTE,
     );
+    static mut MenuSounds: SOUND;
+    fn NotPositional() -> SoundPosition;
     fn debugKeyPressedSynchronous();
     fn debugKey2PressedSynchronous();
     fn debugKey3PressedSynchronous();

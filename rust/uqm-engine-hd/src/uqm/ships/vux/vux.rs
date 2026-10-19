@@ -52,6 +52,11 @@ extern "C" {
     static mut PlayerControl: [BYTE; 0];
     fn ProcessSound(Sound: SOUND, PositionalObject: *mut ELEMENT);
     fn DeltaEnergy(ElementPtr: *mut ELEMENT, energy_delta: SIZE) -> BOOLEAN;
+    fn ship_intelligence(
+        ShipPtr: *mut ELEMENT,
+        ObjectsOfConcern: *mut EVALUATE_DESC,
+        ConcernCounter: COUNT,
+    );
     fn initialize_laser(pLaserBlock: *mut LASER_BLOCK) -> HELEMENT;
     fn initialize_missile(pMissileBlock: *mut MISSILE_BLOCK) -> HELEMENT;
     fn TrackShip(Tracker: *mut ELEMENT, pfacing: *mut COUNT) -> SIZE;
@@ -60,11 +65,6 @@ extern "C" {
         modify_stamp: *mut STAMP,
         modify_flags: BYTE,
     ) -> FRAME;
-    fn ship_intelligence(
-        ShipPtr: *mut ELEMENT,
-        ObjectsOfConcern: *mut EVALUATE_DESC,
-        ConcernCounter: COUNT,
-    );
 }
 pub type uint8 = ::core::ffi::c_uchar;
 pub type uint16 = ::core::ffi::c_ushort;

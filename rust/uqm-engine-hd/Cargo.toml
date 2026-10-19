@@ -16,6 +16,7 @@ path = "lib.rs"
 crate-type = ["staticlib", "rlib"]
 [dependencies]
 uqm-core = { path = "../uqm-core", features = ["hd"] }
+c2rust-bitfields = { version = "=0.22.1", features = ["no_std"] }
 
 
 [profile.release]

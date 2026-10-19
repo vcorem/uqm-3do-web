@@ -24,7 +24,7 @@ guards around individual libpng operations. Link `png-guard.c` once. Do not
 restore the generated `setjmp` implementation, which would jump across Rust
 frames.
 
-The original C `crcTable` data export is intentionally absent: only the old
+The C `crcTable` data export is intentionally absent in both editions: only the old
 CRC implementation used it, and `uqm-core` owns all CRC operations. All game
 function exports are preserved. Generated modules superseded by `uqm-core`
 remain in the source mapping but are excluded by `lib.rs`.
@@ -36,6 +36,14 @@ source revisions, plus hashes of the translator patch, source locks and
 postprocessing tools. `verify-provenance.py` rejects altered or nonportable
 reproduction inputs; deliberate pipeline changes require a reviewed hash update.
 `compile-db.py` also rejects mismatched Clang and Emscripten versions.
+HD browser netplay incorporates upstream web commit
+`5d7810ba5302803abe537f1b669d696a3af073ad` from this project's main branch.
+The entire HD engine is regenerated with `NETPLAY=NETPLAY_FULL`, including the
+20 network/protocol units and every conditional caller and structure. Browser
+transport operations run through the same Emscripten main-thread JavaScript
+bindings as the C reference. HD rooms use a separate relay namespace from
+Original rooms; the two game editions are not simulation-compatible.
+
 `original-inputs.json` and `hd-inputs.json` record exact
 compiler flags, active source units, and hashes of C sources and headers.
 They also fix the historical `__DATE__` / `__TIME__` build banner strings, so
@@ -105,7 +113,7 @@ Compilation and symbol coverage alone do not establish gameplay equivalence.
 
 ## Validation performed during this migration
 
-The portable regeneration script was rerun over all 340 Original and 330 HD
+The portable regeneration script was rerun over all 340 Original and 350 HD
 units with both macro reconstruction modes disabled. Both packaged staging
 crates compiled successfully for shared-memory Wasm, retained every expected
 game export, and preserved the verified core, PNG, solar display list,
@@ -115,7 +123,7 @@ lengths, and rejection of partially regenerated state without source mutation.
 Runtime verification is recorded by the main project test reports.
 
 The checked-in `original-exports.json` / `hd-exports.json` snapshots were captured
-from all 340 / 330 real Emscripten C objects (2,444 / 2,799 public symbols). They
+from all 340 / 350 real Emscripten C objects (2,444 / 3,008 public symbols). They
 record each source hash and are checked against the translation input locks.
 `capture-exports.py` reproduces a staged snapshot from the complete pinned C
 reference object tree after verifying every locked source/header hash. Review
@@ -129,7 +137,7 @@ bash tests/rust/test-allocator.sh
 ```
 
 The only permitted missing archive symbols are the C platform entry and the
-private, replaced Original CRC table. The audit also rejects archive members
+private, replaced CRC table. The audit also rejects archive members
 that are not Rust codegen objects. `link-policy.py` rejects legacy C game input
 files in the final link while allowing the named platform/codec guards, the
 Emscripten compatibility shim and HD's pinned external Lua runtime. These checks

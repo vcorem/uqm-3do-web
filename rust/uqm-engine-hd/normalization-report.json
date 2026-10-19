@@ -1,7 +1,7 @@
 {
   "lib.rs": {
-    "before": 9040,
-    "after": 9297
+    "before": 9509,
+    "after": 9766
   },
   "src/libs/graphics/gfxload.rs": {
     "before": 46051,
@@ -20,71 +20,71 @@
     "after": 77581
   },
   "src/libs/sound/music.rs": {
-    "before": 42031,
-    "after": 42085
+    "before": 42039,
+    "after": 42093
   },
   "src/libs/sound/trackplayer.rs": {
-    "before": 62566,
-    "after": 62578
+    "before": 62574,
+    "after": 62586
   },
   "src/libs/threads/pthread/posixthreads.rs": {
     "before": 25456,
     "after": 25462
   },
   "src/uqm/encount.rs": {
-    "before": 132506,
-    "after": 132518
+    "before": 132554,
+    "after": 132566
   },
   "src/uqm/gameopt.rs": {
     "before": 204632,
     "after": 204656
   },
   "src/uqm/hyper.rs": {
-    "before": 206206,
-    "after": 206218
+    "before": 206246,
+    "after": 206258
   },
   "src/uqm/outfit.rs": {
     "before": 139532,
     "after": 139574
   },
   "src/uqm/planets/planets.rs": {
-    "before": 69545,
-    "after": 69563
+    "before": 69561,
+    "after": 69579
   },
   "src/uqm/planets/pstarmap.rs": {
-    "before": 307744,
-    "after": 307756
+    "before": 307752,
+    "after": 307764
   },
   "src/uqm/planets/scan.rs": {
-    "before": 165201,
-    "after": 165213
+    "before": 165249,
+    "after": 165261
   },
   "src/uqm/planets/solarsys.rs": {
-    "before": 269253,
-    "after": 269271
+    "before": 269357,
+    "after": 269375
   },
   "src/uqm/process.rs": {
-    "before": 135033,
-    "after": 135039
+    "before": 135049,
+    "after": 135055
   },
   "src/uqm/ship.rs": {
-    "before": 77098,
-    "after": 77104
+    "before": 77180,
+    "after": 77186
   },
   "src/uqm/shipyard.rs": {
-    "before": 207486,
-    "after": 207516
+    "before": 207534,
+    "after": 207564
   },
   "src/uqm/sis.rs": {
-    "before": 190617,
-    "after": 190647
+    "before": 190665,
+    "after": 190695
   },
   "src/uqm/sounds.rs": {
     "before": 16259,
     "after": 16265
   },
   "src/uqm/tactrans.rs": {
-    "before": 92013,
-    "after": 92031
+    "before": 104431,
+    "after": 104449
   }
 }

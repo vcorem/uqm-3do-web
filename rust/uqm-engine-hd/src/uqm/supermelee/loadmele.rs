@@ -99,16 +99,6 @@ extern "C" {
     static mut meleeDir: *mut uio_DirHandle;
     fn SleepThreadUntil(wakeTime: TimeCount);
     static mut GlobData: GLOBDATA;
-    fn DoMelee(pMS: *mut MELEE_STATE) -> BOOLEAN;
-    fn DrawMeleeIcon(which_icon: COUNT, HiLite: BOOLEAN);
-    fn RepairMeleeFrame(pRect: *const RECT);
-    static mut MeleeFrame: FRAME;
-    fn QuickRepair(whichFrame: COUNT, pRect: *mut RECT);
-    fn Melee_LocalChange_team(
-        pMS: *mut MELEE_STATE,
-        teamNr: size_t,
-        team: *const MeleeTeam,
-    ) -> bool;
     fn MeleeTeam_new() -> *mut MeleeTeam;
     fn MeleeTeam_delete(team: *mut MeleeTeam);
     fn MeleeTeam_serialize(
@@ -128,15 +118,25 @@ extern "C" {
         setup: *const MeleeSetup,
         teamNr: size_t,
     ) -> *const ::core::ffi::c_char;
-    static mut GameStrings: STRING;
     fn ConfirmSaveLoad(MsgStamp: *mut STAMP);
+    static mut GameStrings: STRING;
+    fn DoMelee(pMS: *mut MELEE_STATE) -> BOOLEAN;
+    fn DrawMeleeIcon(which_icon: COUNT, HiLite: BOOLEAN);
+    fn RepairMeleeFrame(pRect: *const RECT);
+    static mut MeleeFrame: FRAME;
+    fn QuickRepair(whichFrame: COUNT, pRect: *mut RECT);
+    fn Melee_LocalChange_team(
+        pMS: *mut MELEE_STATE,
+        teamNr: size_t,
+        team: *const MeleeTeam,
+    ) -> bool;
     fn GetShipIconsFromIndex(Index: ::core::ffi::c_uint) -> FRAME;
+    fn SaveProblem();
+    fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
+    fn log_add(_: log_Level, fmt: *const ::core::ffi::c_char, ...);
     static mut ScreenContext: CONTEXT;
     static mut SpaceContext: CONTEXT;
     static mut MicroFont: FONT;
-    fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
-    fn SaveProblem();
-    fn log_add(_: log_Level, fmt: *const ::core::ffi::c_char, ...);
 }
 pub type size_t = usize;
 pub type uint8 = ::core::ffi::c_uchar;
@@ -499,6 +499,8 @@ pub struct MeleeTeam {
 pub struct MeleeSetup {
     pub teams: [MeleeTeam; 2],
     pub fleetValue: [COUNT; 2],
+    pub sentTeams: [MeleeTeam; 2],
+    pub haveSentTeamName: [bool; 2],
 }
 pub type MELEE_OPTIONS = BYTE;
 pub type MELEE_STATE = melee_state;

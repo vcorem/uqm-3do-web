@@ -182,6 +182,18 @@ compares native C callbacks, catches bad arguments/metamethod/parser/reader
 errors, injects allocation failures, checks nested callbacks and upvalues, and
 reuses each state after failure. See [Lua oracle details](LUA.md).
 
+## HD network packet and transport oracle
+
+Run `bash tests/rust/test-hd-netplay.sh --all` after the HD source is configured.
+This imports the actual generated HD receive/send/packet-handler Rust modules
+and compares them with independently compiled, renamed C implementations in
+the same Wasm process. Each of four debug/release × direct/pthread modes checks
+12,210 scenarios and 13 C/Rust ABI properties. Cases include packet lengths,
+sides, ship positions/types, reset/confirmation flags, fragmented/coalesced
+input, disconnects and send backpressure. The pthread runs use the real
+main-thread JavaScript bridge. See [HD netplay oracle details](HD-NETPLAY.md)
+for fixtures, limitations, exact source hashes and report locations.
+
 ## Actual translator macro expansion
 
 Run `python3 tests/rust/test-macros.py --clang "$CLANG_PATH"` after installing

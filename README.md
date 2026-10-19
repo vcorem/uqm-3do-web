@@ -13,7 +13,7 @@ handles browser APIs and the launcher. This is not a memory-safe rewrite.
 See [Rust scope, build requirements and validation](docs/rust-port.md).
 
 **Status: private alpha.** The campaign, local Melee and private two-player
-Online Melee run in the browser. Online combat has been exercised in two
+Online Melee run in the browser. Original online combat has been exercised in two
 independent browser processes on one computer, including full fleet matches,
 rematches, simulated delay and disconnect recovery, with matching simulation
 checksums and no observed mismatch. Two separate computers over the internet
@@ -34,8 +34,9 @@ See [compatibility scope and remaining checks](docs/3do-compatibility.md).
 
 An optional combined build opens with an edition picker: **Original 3DO** or
 **Redrawn HD**, using actual 1280×960 artwork from UQM MegaMod 0.8.5. Only the
-selected edition downloads. HD has its own campaign saves and local Melee;
-online Melee remains in Original 3DO.
+selected edition downloads. Both editions support campaign, local Melee and
+Online Melee with another player using the same edition. HD has separate saves
+and rooms; HD and Original cannot play one another.
 See [HD build, storage and attribution](docs/hd-edition.md).
 
 Build the selection screen and both editions with `./scripts/build-editions.sh`.
@@ -65,12 +66,19 @@ npm start -- --port 10000
 The first start compiles the Rust relay. `npm run start:node` runs the retained
 Node reference server for comparison.
 
-Open **http://127.0.0.1:10000/**. Create a room, copy its invite, then open the
+Open **http://127.0.0.1:10000/** and choose an edition if using the combined
+package. Create a room on that edition's page, copy its invite, then open the
 invite in a second browser page and click **Join room**. When both players are
 connected and the game has loaded, each clicks **Launch online Melee**. In the
-original Melee screen, configure the fleets, confirm Start Melee on both sides
+Melee screen, configure the fleets, confirm Start Melee on both sides
 and choose ships. The host controls the bottom fleet; the guest controls the
-top fleet. Both use the player-one keyboard template.
+top fleet. Both use the player-one keyboard template; HD uses the arrow-key
+controls. An HD invitation preserves the HD page address, so its recipient
+launches the matching engine.
+
+Original rooms connect to `/netplay/<room>` and HD rooms connect to
+`/netplay/hd/<room>`. One relay serves both, with separate room identities and
+shared capacity limits. A matching room code cannot connect different editions.
 
 Rooms use the original UQM netplay protocol and simulation over an ordered
 WebSocket relay, with a three-frame default input delay. Browser callbacks
@@ -136,13 +144,17 @@ HTML as a file, or using a server without the isolation headers, will not
 support the shared memory used by the game. The initial content bundle is
 large because it includes the complete campaign voice recordings and installed
 3DO videos. Online Melee additionally needs the same-origin Rust or Node relay at
-`/netplay/`; a static host alone is insufficient.
+`/netplay/`, including its `/netplay/hd/` subtree; a static host alone is
+insufficient.
 
 ## Saving and controls
 
 Saves and preferences use IndexedDB on the current browser origin. Keep the
 same hostname and port to access the same saves. Clearing site data removes
-them. Browser persistence is requested on the first write; storage is still
+them. Original mounts `/home/web_user/.uqm`; HD mounts
+`/home/web_user/.uqm-hd`. Switching editions or starting an online session does
+not convert campaign saves between engines. Browser persistence is requested
+on the first write; storage is still
 subject to the browser's policy. A storage failure is shown in the launcher;
 if initial loading fails, the game can run in memory without overwriting
 existing database saves. Writes are serialized to avoid overlapping flushes.
@@ -166,8 +178,10 @@ npm run test:browser
 npm run test:subtitles
 bash -n scripts/build-web.sh
 python3 -m py_compile scripts/serve.py
-# Optional redrawn HD engine, campaign and edition-switch checks:
+# Optional redrawn HD engine, online, campaign and edition-switch checks:
 ./scripts/build-hd-web.sh
+UQM_EDITION=hd UQM_RELAY=rust UQM_DIST=.tools/hd-dist \
+  UQM_TEST_OUTPUT=test-results/hd-netplay npm run test:browser
 UQM_DIST=.tools/hd-dist npm run test:hd-campaign
 UQM_DIST=.tools/hd-dist npm run test:hd-stability
 python3 scripts/package-editions.py --original dist --hd .tools/hd-dist --output .tools/editions-dist
@@ -175,7 +189,9 @@ UQM_DIST=.tools/editions-dist npm run test:editions
 ```
 
 Browser smoke checks and their limitations are recorded separately in
-[the validation record](docs/validation.md). A passing build or one playable
+[the original validation record](docs/validation.md) and
+[the Rust validation record](docs/rust-validation.md). The latter records
+which Rust Original and HD checks have completed. A passing build or one playable
 battle does not establish exact 3DO fidelity or complete campaign coverage.
 The upstream fork lists missing Firefox audio samples and unsupported SDL
 mixing/threading paths; this build retains OpenAL and pthreads.
@@ -194,6 +210,9 @@ fleet settings. It writes diagnostics and screenshots to the ignored
 `test-results/browser/` directory. Use `UQM_DIST=/absolute/path/to/package` to
 test a separate build. These are automated regression scenarios; the
 validation record distinguishes completed runs from remaining checks.
+Set `UQM_EDITION=hd` for an HD package; the default is `original`. Both peers
+must use the same edition. `UQM_PEER_DIST` can supply an independent C build of
+that edition for comparison with Rust; see [Rust verification](docs/rust-port.md#verification).
 
 To exercise other engines or a mixed pair, install the matching Playwright
 browsers and choose the host and guest separately:

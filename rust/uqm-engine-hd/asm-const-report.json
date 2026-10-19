@@ -10,5 +10,41 @@
     "symbol": "uqm_em_asm_1",
     "bytes": 42,
     "sha256": "a2df828f26676937ee772609878f04ffe7606bd250c90a60da87a7018f5f147f"
+  },
+  {
+    "source": "src/uqm/supermelee/netplay/checksum.rs",
+    "symbol": "uqm_em_asm_2",
+    "bytes": 250,
+    "sha256": "febab3070d6a4197b02e3b0f4b5f30de1c753316b1e8ce6cddd9376b98b16469"
+  },
+  {
+    "source": "src/uqm/supermelee/netplay/netconnection.rs",
+    "symbol": "uqm_em_asm_3",
+    "bytes": 191,
+    "sha256": "8c2951e4543858d544cdc589d48454a0c4eeddd331f399421dec3f2fa82eba1b"
+  },
+  {
+    "source": "src/uqm/supermelee/netplay/netconnection.rs",
+    "symbol": "uqm_em_asm_4",
+    "bytes": 46,
+    "sha256": "be99aa9cfd0f217c80051259ec21f970ead47ade72b8654043bf94cd863b10a7"
+  },
+  {
+    "source": "src/uqm/supermelee/netplay/netconnection.rs",
+    "symbol": "uqm_em_asm_5",
+    "bytes": 118,
+    "sha256": "6503d2ee3e8e0c891b3782e99b59af0a3ad6f4ad023b6793b0d7028ebe8b2fda"
+  },
+  {
+    "source": "src/uqm/supermelee/netplay/netrcv.rs",
+    "symbol": "uqm_em_asm_6",
+    "bytes": 484,
+    "sha256": "17a19f1cf9324f79c8862471d08ce6fdcaaf48f95bdd88c908bac915dbc7c7c6"
+  },
+  {
+    "source": "src/uqm/supermelee/netplay/netsend.rs",
+    "symbol": "uqm_em_asm_7",
+    "bytes": 202,
+    "sha256": "03c1ce9a7be03c68215a93ba0d73b285a1544c3ec31c20f28ed97fc0545abf98"
   }
 ]

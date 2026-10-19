@@ -178,12 +178,12 @@ extern "C" {
     static mut TinyFontBold: FONT;
     static mut classicPackPresent: BOOLEAN;
     fn PlayMusicResume(hMusic: MUSIC_REF, Volume: BYTE);
-    fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
-    fn PlayMenuSound(S: MENU_SOUND_EFFECT);
     static mut master_q: QUEUE;
     fn FindMasterShip(ship_ref: SPECIES_ID) -> HMASTERSHIP;
     fn FindMasterShipIndex(ship_ref: SPECIES_ID) -> ::core::ffi::c_int;
     fn GetShipCostFromIndex(Index: ::core::ffi::c_uint) -> COUNT;
+    fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
+    fn PlayMenuSound(S: MENU_SOUND_EFFECT);
     fn AnyButtonPress(DetectSpecial: BOOLEAN) -> BOOLEAN;
     fn SetTransitionSource(pRect: *const RECT);
     fn ScreenTransition(transition: ::core::ffi::c_int, pRect: *const RECT);
