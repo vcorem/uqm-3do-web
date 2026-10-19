@@ -79,13 +79,14 @@ async function startWorker(t, vars = {}) {
     child.stderr.destroy();
     await rm(temp, { recursive: true, force: true });
   });
+  const deadline = Date.now() + 90000;
   for (let attempt = 0; ; attempt++) {
     if (child.exitCode !== null) throw new Error(`wrangler dev exited:\n${log}`);
     try {
       const response = await fetch(origin + '/', { signal: AbortSignal.timeout(2000) });
       if (response.ok) break;
     } catch { /* Not listening yet. */ }
-    if (attempt > 600) throw new Error(`wrangler dev did not start:\n${log}`);
+    if (Date.now() > deadline) throw new Error(`wrangler dev did not start in 90 s:\n${log}`);
     await pause(100);
   }
   const wsBase = origin.replace('http:', 'ws:');
