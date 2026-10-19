@@ -25,3 +25,7 @@ playwright-report/
 
 # Local copy of the patched Emscripten runtime
 /sc2/wasm/compat/
+
+# Cloudflare deployment output
+deploy/data-parts.json
+deploy/.wrangler/
