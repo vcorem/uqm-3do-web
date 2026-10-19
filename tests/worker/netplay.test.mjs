@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -42,14 +42,18 @@ async function startWorker(t, vars = {}) {
   const port = await freePort();
   const inspectorPort = await freePort();
   const origin = `http://127.0.0.1:${port}`;
-  await writeFile(path.join(temp, 'index.html'), '<canvas>game</canvas>');
+  // Static files get their own folder: wrangler dev watches it, and its cache and
+  // --persist-to state in the same folder make it reload without end on Linux.
+  const site = path.join(temp, 'site');
+  await mkdir(site);
+  await writeFile(path.join(site, 'index.html'), '<canvas>game</canvas>');
   // The real deploy config must declare the same objects, or this test proves nothing about it.
   const deployed = await readFile(path.join(root, 'deploy/wrangler.jsonc'), 'utf8');
   const config = {
     name: 'uqm-web-test',
     main: path.join(root, 'deploy/worker.js'),
     compatibility_date: /"compatibility_date":\s*"([^"]+)"/.exec(deployed)[1],
-    assets: { directory: temp, binding: 'ASSETS', run_worker_first: true,
+    assets: { directory: site, binding: 'ASSETS', run_worker_first: true,
       html_handling: 'none', not_found_handling: 'none' },
     durable_objects: { bindings: [
       { name: 'NETPLAY_ROOMS', class_name: 'NetplayRoom' },

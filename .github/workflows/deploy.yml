@@ -30,9 +30,7 @@ jobs:
         run: npm test
       - name: Test the Cloudflare relay under wrangler dev
         timeout-minutes: 10
-        env:
-          WRANGLER_TEST_LOG_LEVEL: debug
-        run: npx --yes wrangler@4.143.1 --version && node --test --test-concurrency=1 --test-reporter=spec --test-name-pattern='two real WebSocket' tests/worker/netplay.test.mjs
+        run: npm run test:worker
       - name: Install pinned Emscripten SDK
         run: |
           mkdir -p .tools
