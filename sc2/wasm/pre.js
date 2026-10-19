@@ -11,6 +11,8 @@ Module.preRun.push(function () {
 
     // The page may present these messages without interrupting gameplay.
     function report(state, message, error, warningKey) {
+        // Persistence-permission warnings can arrive during an active flush.
+        Module.storageState = syncing || pendingWrite ? "saving" : state;
         const status = { state, message };
         if (error) status.error = error.message || String(error);
         if (typeof Module.onStorageStatus === "function") {

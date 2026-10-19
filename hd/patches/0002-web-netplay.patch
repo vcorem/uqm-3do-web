@@ -1,0 +1,977 @@
+diff --git a/build/unix/build.config b/build/unix/build.config
+index 4367693..48a8247 100644
+--- a/build/unix/build.config
++++ b/build/unix/build.config
+@@ -335,7 +335,7 @@ uqm_prepare_config()
+ 	esac	
+ 	
+ 
+-	CHOICE_netplay_OPTIONS="none full ipv4"
++	CHOICE_netplay_OPTIONS="none full ipv4 web"
+ 	CHOICE_netplay_TITLE="Network Supermelee support"
+ 	CHOICE_netplay_OPTION_none_TITLE="disabled"
+ 	CHOICE_netplay_OPTION_none_ACTION=netplay_none_action
+@@ -361,7 +361,20 @@ uqm_prepare_config()
+ 		NETPLAY="IPV4"
+ 		use_library netlibs
+ 	}
++	CHOICE_netplay_OPTION_web_TITLE="Browser private-room relay"
++	CHOICE_netplay_OPTION_web_PRECOND=netplay_web_supported
++	netplay_web_supported() {
++		[ "$HOST_SYSTEM" = Emscripten ]
++	}
++	CHOICE_netplay_OPTION_web_ACTION=netplay_web_action
++	netplay_web_action() {
++		CCOMMONFLAGS="$CCOMMONFLAGS -DNETPLAY=NETPLAY_FULL"
++		NETPLAY="WEB"
++	}
+ 	CHOICE_netplay_DEFAULT=full
++	if [ "$HOST_SYSTEM" = Emscripten ]; then
++		CHOICE_netplay_DEFAULT=web
++	fi
+ 
+ 	CHOICE_ioformat_OPTIONS="stdio stdio_zip"
+ 	CHOICE_ioformat_TITLE="Supported file i/o methods"
+diff --git a/src/libs/Makeinfo b/src/libs/Makeinfo
+index 633ecb2..3b33abb 100644
+--- a/src/libs/Makeinfo
++++ b/src/libs/Makeinfo
+@@ -8,7 +8,7 @@ if [ -n "$uqm_USE_INTERNAL_LUA" ]; then
+ 	uqm_SUBDIRS="$uqm_SUBDIRS lua"
+ fi
+ 
+-if [ -n "$uqm_NETPLAY" ]; then
++if [ -n "$uqm_NETPLAY" ] && [ "$uqm_NETPLAY" != WEB ]; then
+ 	uqm_SUBDIRS="$uqm_SUBDIRS network"
+ fi
+ 
+diff --git a/src/uqm.c b/src/uqm.c
+index 221eb38..cca73e2 100644
+--- a/src/uqm.c
++++ b/src/uqm.c
+@@ -745,7 +745,7 @@ int main(int argc, char** argv)
+ 	Alarm_init ();
+ 	Callback_init ();
+ 
+-#ifdef NETPLAY
++#if defined(NETPLAY) && !defined(__EMSCRIPTEN__)
+ 	Network_init ();
+ 	NetManager_init ();
+ #endif
+@@ -819,7 +819,7 @@ int main(int argc, char** argv)
+ 		UninitColorMaps ();
+ 		TFB_UninitGraphics ();
+ 
+-#ifdef NETPLAY
++#if defined(NETPLAY) && !defined(__EMSCRIPTEN__)
+ 		NetManager_uninit ();
+ 		Network_uninit ();
+ #endif
+@@ -1351,6 +1351,9 @@ enum
+ 	NETHOST2_OPT,
+ 	NETPORT2_OPT,
+ 	NETDELAY_OPT,
++#ifdef __EMSCRIPTEN__
++	WEB_NETPLAY_OPT,
++#endif
+ #endif
+ };
+ 
+@@ -1472,6 +1475,9 @@ static struct option longOptions[] =
+ 	{"nethost2", 1, NULL, NETHOST2_OPT},
+ 	{"netport2", 1, NULL, NETPORT2_OPT},
+ 	{"netdelay", 1, NULL, NETDELAY_OPT},
++#ifdef __EMSCRIPTEN__
++	{"web-netplay", 1, NULL, WEB_NETPLAY_OPT},
++#endif
+ #endif
+ 	{0, 0, 0, 0}
+ };
+@@ -2362,6 +2368,19 @@ parseOptions (int argc, char *argv[], struct options_struct *options)
+ 				optNoClassic = TRUE;
+ 				break;
+ #ifdef NETPLAY
++#ifdef __EMSCRIPTEN__
++			case WEB_NETPLAY_OPT:
++				if (strcmp (optarg, "host") == 0)
++					webNetplayRole = 0;
++				else if (strcmp (optarg, "guest") == 0)
++					webNetplayRole = 1;
++				else {
++					saveError ("Invalid web-netplay role; use host or guest.");
++					badArg = true;
++				}
++				netplayOptions.inputDelay = 3;
++				break;
++#endif
+ 			case NETHOST1_OPT:
+ 				netplayOptions.peer[0].isServer = false;
+ 				netplayOptions.peer[0].host = optarg;
+diff --git a/src/uqm/restart.c b/src/uqm/restart.c
+index 91c8991..528d0df 100644
+--- a/src/uqm/restart.c
++++ b/src/uqm/restart.c
+@@ -50,6 +50,9 @@
+ #include "libs/resource/stringbank.h"
+ // for StringBank_Create() & SplitString()
+ 
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++#include "supermelee/netplay/netoptions.h"
++#endif
+ #ifdef __EMSCRIPTEN__
+ #include <emscripten.h>
+ #endif
+@@ -812,6 +815,18 @@ TryStartGame (void)
+ 	memset (&MenuState, 0, sizeof (MenuState));
+ 	MenuState.InputFunc = DoRestart;
+ 
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++	if (webNetplayRole >= 0)
++	{
++		// The browser room determines the two players for this session.
++		FreeGameData ();
++		setBrowserGameScreen ("melee");
++		Melee ();
++		webNetplayRole = -1;
++		GLOBAL (CurrentActivity) = 0;
++	}
++#endif
++
+ 	while (!RestartMenu (&MenuState))
+ 	{	// spin until a game is started or loaded
+ 		if (LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE &&
+diff --git a/src/uqm/supermelee/melee.c b/src/uqm/supermelee/melee.c
+index 3d4436c..6686112 100644
+--- a/src/uqm/supermelee/melee.c
++++ b/src/uqm/supermelee/melee.c
+@@ -1683,6 +1683,10 @@ TeamNameFrameCallback (TEXTENTRY_STATE *pTES)
+ 	// The team name itself isn't modified visually due to remote changes
+ 	// while it is being edited.
+ 	netInput ();
++#ifdef __EMSCRIPTEN__
++	if (webNetplayRole >= 0 && (GLOBAL (CurrentActivity) & CHECK_ABORT))
++		return FALSE;
++#endif
+ #endif
+ 
+ 	(void) pTES;
+@@ -1751,6 +1755,10 @@ DoEdit (MELEE_STATE *pMS)
+ 
+ #ifdef NETPLAY
+ 	netInput ();
++#ifdef __EMSCRIPTEN__
++	if (webNetplayRole >= 0 && (GLOBAL (CurrentActivity) & CHECK_ABORT))
++		return FALSE;
++#endif
+ #endif
+ 	if ((pMS->row < NUM_MELEE_ROWS || pMS->currentShip == MELEE_NONE)
+ 			&& (PulsedInputState.menu[KEY_MENU_CANCEL]
+@@ -1985,6 +1993,10 @@ DoConfirmSettings (MELEE_STATE *pMS)
+ #else
+ 	closeDisconnectedConnections ();
+ 	netInput ();
++#ifdef __EMSCRIPTEN__
++	if (webNetplayRole >= 0 && (GLOBAL (CurrentActivity) & CHECK_ABORT))
++		return FALSE;
++#endif
+ 	SleepThread (ONE_SECOND / 120);
+ 
+ 	numDone = numPlayersReady ();
+@@ -2396,6 +2408,14 @@ check_for_disconnects (MELEE_STATE *pMS)
+ 		conn = netConnections[player];
+ 		if (conn == NULL || !NetConnection_isConnected (conn))
+ 		{
++#ifdef __EMSCRIPTEN__
++			if (webNetplayRole >= 0)
++			{
++				// A browser room cannot turn into a local two-player game.
++				GLOBAL (CurrentActivity) |= CHECK_ABORT;
++				return;
++			}
++#endif
+ 			PlayerControl[player] = HUMAN_CONTROL | STANDARD_RATING;
+ 			DrawControls (player, FALSE);
+ 			log_add (log_User, "Player %d has disconnected; shifting "
+@@ -2491,6 +2511,10 @@ MeleeOptionSelect (MELEE_STATE *pMS)
+ 			COUNT which_side;
+ 			BOOLEAN confirmed;
+ 
++#ifdef __EMSCRIPTEN__
++			DrawMeleeStatusMessage ("Open an Online Melee room in the browser launcher.");
++			break;
++#endif
+ 			which_side = pMS->MeleeOption == NET_TOP ? 1 : 0;
+ 			confirmed = MeleeConnectDialog (which_side);
+ 			RedrawMeleeFrame ();
+@@ -2507,6 +2531,12 @@ MeleeOptionSelect (MELEE_STATE *pMS)
+ 		case CONTROLS_BOT:
+ 		{
+ 			COUNT which_side = (pMS->MeleeOption == CONTROLS_TOP) ? 1 : 0;
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++			if (webNetplayRole >= 0) {
++				DrawMeleeStatusMessage ("Player sides are assigned by the online room.");
++				break;
++			}
++#endif
+ 			nextControlType (which_side);
+ 			break;
+ 		}
+@@ -2547,6 +2577,10 @@ DoMelee (MELEE_STATE *pMS)
+ 		}
+ 
+ 		InitMelee (pMS);
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++		if (webNetplayRole >= 0 && netConnections[1 - webNetplayRole] == NULL)
++			openPlayerNetworkConnection (1 - webNetplayRole, pMS);
++#endif
+ 
+ 		FadeScreen (FadeAllToColor, ONE_SECOND / 2);
+ 		pMS->LastInputTime = GetTimeCounter ();
+@@ -2555,6 +2589,10 @@ DoMelee (MELEE_STATE *pMS)
+ 
+ #ifdef NETPLAY
+ 	netInput ();
++#ifdef __EMSCRIPTEN__
++	if (webNetplayRole >= 0 && (GLOBAL (CurrentActivity) & CHECK_ABORT))
++		return FALSE;
++#endif
+ #endif
+ 	
+ 	if (PulsedInputState.menu[KEY_MENU_CANCEL] ||
+@@ -2727,6 +2765,11 @@ err:
+ void
+ Melee (void)
+ {
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++	BYTE savedControl[NUM_PLAYERS];
++	CONTROL_TEMPLATE savedTemplates[NUM_PLAYERS];
++	BOOLEAN webSession = webNetplayRole >= 0;
++#endif
+ 	InitGlobData ();
+ 	{
+ 		MELEE_STATE MenuState;
+@@ -2771,6 +2814,15 @@ Melee (void)
+ 					MenuState.load.preBuiltList[1]);
+ 		}
+ 
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++		memcpy (savedControl, PlayerControl, sizeof savedControl);
++		memcpy (savedTemplates, PlayerControls, sizeof savedTemplates);
++		if (webSession) {
++			PlayerControl[webNetplayRole] = HUMAN_CONTROL | STANDARD_RATING;
++			PlayerControl[1 - webNetplayRole] = NETWORK_CONTROL | STANDARD_RATING;
++			PlayerControls[webNetplayRole] = CONTROL_TEMPLATE_PL_1;
++		}
++#endif
+ 		MenuState.side = 0;
+ 		SetMenuSounds (MENU_SOUND_ARROWS, MENU_SOUND_SELECT);
+ 		DoInput (&MenuState, TRUE);
+@@ -2778,8 +2830,18 @@ Melee (void)
+ 		StopMusic ();
+ 		WaitForSoundEnd (TFBSOUND_WAIT_ALL);
+ 
+-		WriteMeleeConfig (&MenuState);
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++		// A room must not replace the user's local fleet/control preferences.
++		if (!webSession)
++#endif
++			WriteMeleeConfig (&MenuState);
+ 		FreeMeleeInfo (&MenuState);
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++		if (webSession) {
++			memcpy (PlayerControl, savedControl, sizeof savedControl);
++			memcpy (PlayerControls, savedTemplates, sizeof savedTemplates);
++		}
++#endif
+ 		DestroySound (ReleaseSound (GameSounds));
+ 		GameSounds = 0;
+ 
+@@ -2941,17 +3003,35 @@ errorFeedback (NetConnection *conn)
+ 				// "Top player: connection failed."
+ }
+ 
++#ifdef __EMSCRIPTEN__
++static bool
++closeWebMeleeRoom (const char *message)
++{
++	if (webNetplayRole < 0)
++		return false;
++
++	// Show the reason before aborting: the popup itself exits on CHECK_ABORT.
++	// An intentional quit is already aborting and needs no second popup.
++	if (!(GLOBAL (CurrentActivity) & CHECK_ABORT))
++	{
++		DoPopupWindow (message);
++		GLOBAL (CurrentActivity) |= CHECK_ABORT;
++	}
++	return true;
++}
++#endif
++
+ void
+ closeFeedback (NetConnection *conn)
+ {
+-	if (NetConnection_getPlayerNr (conn) == 0)
+-		connectionFeedback (conn, GAME_STRING (NETMELEE_STRING_BASE + 12),
+-				false);
+-				// "Bottom player: connection closed."
+-	else
+-		connectionFeedback (conn, GAME_STRING (NETMELEE_STRING_BASE + 13),
+-				false);
+-				// "Top player: connection closed."
++	const char *message = GAME_STRING (NETMELEE_STRING_BASE +
++			(NetConnection_getPlayerNr (conn) == 0 ? 12 : 13));
++			// "Bottom/Top player: connection closed."
++#ifdef __EMSCRIPTEN__
++	if (closeWebMeleeRoom (message))
++		return;
++#endif
++	connectionFeedback (conn, message, false);
+ }
+ 
+ #endif  /* NETPLAY */
+diff --git a/src/uqm/supermelee/netplay/Makeinfo b/src/uqm/supermelee/netplay/Makeinfo
+index ff31011..a1a9c9a 100644
+--- a/src/uqm/supermelee/netplay/Makeinfo
++++ b/src/uqm/supermelee/netplay/Makeinfo
+@@ -1,4 +1,4 @@
+ uqm_SUBDIRS="proto"
+ uqm_CFILES="checkbuf.c checksum.c crc.c netconnection.c netinput.c netmelee.c netmisc.c netoptions.c netrcv.c netsend.c netstate.c notify.c notifyall.c packet.c packethandlers.c packetsenders.c packetq.c"
+-uqm_HFILES="checkbuf.h checksum.h crc.h netconnection.h netinput.h netmelee.h netmisc.h netoptions.h netplay.h netrcv.h netsend.h netstate.h notifyall.h notify.h packet.h packethandlers.h packetq.h packetsenders.h"
++uqm_HFILES="checkbuf.h checksum.h crc.h netconnection.h netinput.h netmelee.h netmisc.h netoptions.h netplay.h netrcv.h netsend.h netstate.h webtransport.h notifyall.h notify.h packet.h packethandlers.h packetq.h packetsenders.h"
+ 
+diff --git a/src/uqm/supermelee/netplay/checksum.c b/src/uqm/supermelee/netplay/checksum.c
+index 5d687f0..dc5bec5 100644
+--- a/src/uqm/supermelee/netplay/checksum.c
++++ b/src/uqm/supermelee/netplay/checksum.c
+@@ -20,6 +20,7 @@
+ 
+ #include "checksum.h"
+ #include "netoptions.h"
++#include "webtransport.h"
+ 
+ #ifdef NETPLAY_CHECKSUM
+ 
+@@ -288,10 +289,18 @@ verifyChecksums(BattleFrameCounter frameNr) {
+ 
+ 		if (localChecksum != remoteChecksum) {
+ 			log_add(log_Error, "Network connections have gone out of "
+-					"sync.\n");
++					"sync at frame %u (local %08x, remote %08x).\n",
++					(unsigned) frameNr, (unsigned) localChecksum,
++					(unsigned) remoteChecksum);
++#ifdef __EMSCRIPTEN__
++			WebTransport_checksum(frameNr, 0);
++#endif
+ 			return false;
+ 		}
+ 	}
++#ifdef __EMSCRIPTEN__
++	WebTransport_checksum(frameNr, 1);
++#endif
+ 	return true;
+ }
+ 
+diff --git a/src/uqm/supermelee/netplay/netconnection.c b/src/uqm/supermelee/netplay/netconnection.c
+index 48ab46b..321269d 100644
+--- a/src/uqm/supermelee/netplay/netconnection.c
++++ b/src/uqm/supermelee/netplay/netconnection.c
+@@ -21,8 +21,9 @@
+ #include "netconnection.h"
+ 
+ #include "netrcv.h"
++#include "webtransport.h"
+ 
+-#if defined(DEBUG) || defined(NETPLAY_DEBUG)
++#if defined(DEBUG) || defined(NETPLAY_DEBUG) || defined(__EMSCRIPTEN__)
+ #	include "libs/log.h"
+ #endif
+ #if defined(NETPLAY_DEBUG) && defined(NETPLAY_DEBUG_FILE)
+@@ -38,11 +39,15 @@
+ #endif
+ 
+ 
++#ifndef __EMSCRIPTEN__
+ static void closeCallback(NetDescriptor *nd);
++#endif
+ static void NetConnection_doClose(NetConnection *conn);
+ 
+ 
++#ifndef __EMSCRIPTEN__
+ #include "nc_connect.ci"
++#endif
+ 
+ #if defined(NETPLAY_DEBUG) && defined(NETPLAY_DEBUG_FILE)
+ uio_Stream *netplayDebugFile;
+@@ -157,7 +162,12 @@ NetConnection_open(int player, const NetplayPeerOptions *options,
+ 	}
+ #endif
+ 
++#ifdef __EMSCRIPTEN__
++	// Connect on the next normal input poll, after addNetConnection().
++	NetConnection_setState(conn, NetState_connecting);
++#else
+ 	NetConnection_go(conn);
++#endif
+ 
+ 	return conn;
+ }
+@@ -219,6 +229,7 @@ NetConnection_doClose(NetConnection *conn) {
+ 	NetConnection_setState(conn, NetState_unconnected);
+ }
+ 
++#ifndef __EMSCRIPTEN__
+ // Called when the NetDescriptor is shut down.
+ static void
+ closeCallback(NetDescriptor *nd) {
+@@ -229,9 +240,48 @@ closeCallback(NetDescriptor *nd) {
+ 	NetConnection_doClose(conn);
+ }
+ 
++#else
++// Keep the object alive until the caller leaves any blocking protocol wait.
++// Those waits retain NetConnection pointers across netInput().
++void
++NetConnection_webDisconnect(NetConnection *conn, int err) {
++	if (conn->stateFlags.disconnected)
++		return;
++	WebTransport_close();
++	if (err != 0)
++		log_add(log_Error, "Web netplay transport failed (error %d).", err);
++	NetConnection_doClose(conn);
++}
++
++void
++NetConnection_webPoll(NetConnection *conn) {
++	int status;
++	if (conn->stateFlags.disconnected)
++		return;
++	status = WebTransport_status();
++	if (status < 0) {
++		NetConnection_webDisconnect(conn, 0);
++		return;
++	}
++	if (status == 0)
++		return;
++	if (!conn->stateFlags.connected) {
++		conn->stateFlags.discriminant = status == 1;
++		conn->stateFlags.connected = true;
++		NetConnection_setState(conn, NetState_init);
++		if (conn->connectCallback != NULL)
++			conn->connectCallback(conn);
++	}
++	webDataReady(conn);
++}
++#endif
++
+ // Close and release a NetConnection.
+ void
+ NetConnection_close(NetConnection *conn) {
++#ifdef __EMSCRIPTEN__
++	WebTransport_close();
++#else
+ 	if (conn->nd != NULL) {
+ 		NetDescriptor_setCloseCallback(conn->nd, NULL);
+ 				// We're not interested in the close callback of the
+@@ -240,6 +290,8 @@ NetConnection_close(NetConnection *conn) {
+ 				// This would queue the close callback.
+ 		conn->nd = NULL;
+ 	}
++
++#endif
+ 	if (!conn->stateFlags.disconnected)
+ 		NetConnection_doClose(conn);
+ 	NetConnection_delete(conn);
+@@ -252,8 +304,9 @@ NetConnection_doErrorCallback(NetConnection *nd, int err) {
+ 	if (nd->errorCallback != NULL) {
+ 		error.state = nd->state;
+ 		error.err = err;
++		error.extra.connectError = NULL;
++		(*nd->errorCallback)(nd, &error);
+ 	}
+-	(*nd->errorCallback)(nd, &error);
+ }
+ 
+ void
+@@ -325,6 +378,9 @@ NetConnection_setState(NetConnection *conn, NetState state) {
+ 	}
+ #endif
+ 	conn->state = state;
++#ifdef __EMSCRIPTEN__
++	WebTransport_engineState(netStateData[state].name, conn->player);
++#endif
+ }
+ 
+ NetState
+diff --git a/src/uqm/supermelee/netplay/netconnection.h b/src/uqm/supermelee/netplay/netconnection.h
+index 485d3c4..e436c9b 100644
+--- a/src/uqm/supermelee/netplay/netconnection.h
++++ b/src/uqm/supermelee/netplay/netconnection.h
+@@ -210,6 +210,10 @@ NetConnection *NetConnection_open(int player,
+ 		NetConnection_ErrorCallback errorCallback,
+ 		NetConnection_DeleteCallback deleteCallback, void *extra);
+ void NetConnection_close(NetConnection *conn);
++#ifdef __EMSCRIPTEN__
++void NetConnection_webPoll(NetConnection *conn);
++void NetConnection_webDisconnect(NetConnection *conn, int err);
++#endif
+ bool NetConnection_isConnected(const NetConnection *conn);
+ 
+ void NetConnection_doErrorCallback(NetConnection *nd, int err);
+diff --git a/src/uqm/supermelee/netplay/netmelee.c b/src/uqm/supermelee/netplay/netmelee.c
+index e9368fd..08a812e 100644
+--- a/src/uqm/supermelee/netplay/netmelee.c
++++ b/src/uqm/supermelee/netplay/netmelee.c
+@@ -31,6 +31,9 @@
+ #include "proto/npconfirm.h"
+ #include "proto/ready.h"
+ #include "proto/reset.h"
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#endif
+ 
+ #include "../../battlecontrols.h"
+ 		// for NetworkInputContext
+@@ -145,7 +148,19 @@ NetMelee_getBattleState(NetConnection *conn) {
+ 
+ static inline void
+ netInputAux(uint32 timeoutMs) {
++#ifdef __EMSCRIPTEN__
++	COUNT player;
++	for (player = 0; player < NUM_PLAYERS; player++) {
++		if (netConnections[player] != NULL)
++			NetConnection_webPoll(netConnections[player]);
++	}
++	// Blocking network waits must yield to browser I/O and stay responsive.
++	// Limit the sleep to 8 ms even when native code requests 500 ms.
++	if (timeoutMs > 0)
++		emscripten_sleep(timeoutMs < 8 ? timeoutMs : 8);
++#else
+ 	NetManager_process(&timeoutMs);
++#endif
+ 			// This may cause more packets to be queued, hence the
+ 			// flushPacketQueues().
+ 	Async_process();
+@@ -198,8 +213,13 @@ flushPacketQueues(void) {
+ 			continue;
+ 
+ 		flushStatus = flushPacketQueue(conn);
+-		if (flushStatus == -1 && errno != EAGAIN && errno != EWOULDBLOCK)
++		if (flushStatus == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
++#ifdef __EMSCRIPTEN__
++			NetConnection_webDisconnect(conn, errno);
++#else
+ 			closePlayerNetworkConnection(player);
++#endif
++		}
+ 	}
+ }
+ 
+@@ -572,7 +592,8 @@ negotiateReadyConnections(bool notifyRemote, NetState nextState) {
+ 			continue;
+ 		}
+ 
+-		negotiateReady(conn, notifyRemote, nextState);
++		if (!negotiateReady(conn, notifyRemote, nextState))
++			numDisconnected++;
+ 	}
+ 
+ 	return numDisconnected == 0;
+@@ -730,7 +751,8 @@ waitResetConnections(NetState nextState) {
+ 			continue;
+ 		}
+ 
+-		waitReset(conn, nextState);
++		if (!waitReset(conn, nextState))
++			numDisconnected++;
+ 	}
+ 
+ 	return numDisconnected == 0;
+diff --git a/src/uqm/supermelee/netplay/netoptions.c b/src/uqm/supermelee/netplay/netoptions.c
+index a74e1a3..0b4812e 100644
+--- a/src/uqm/supermelee/netplay/netoptions.c
++++ b/src/uqm/supermelee/netplay/netoptions.c
+@@ -37,3 +37,7 @@ NetplayOptions netplayOptions = {
+ };
+ 
+ 
++
++#ifdef __EMSCRIPTEN__
++int webNetplayRole = -1;
++#endif
+diff --git a/src/uqm/supermelee/netplay/netoptions.h b/src/uqm/supermelee/netplay/netoptions.h
+index 7abd074..4ba3ae0 100644
+--- a/src/uqm/supermelee/netplay/netoptions.h
++++ b/src/uqm/supermelee/netplay/netoptions.h
+@@ -47,6 +47,10 @@ typedef struct {
+ 	size_t inputDelay;
+ } NetplayOptions;
+ extern NetplayOptions netplayOptions;
++#ifdef __EMSCRIPTEN__
++// -1 offline, 0 room host, 1 invited player.
++extern int webNetplayRole;
++#endif
+ 
+ 
+ #if defined(__cplusplus)
+diff --git a/src/uqm/supermelee/netplay/netrcv.c b/src/uqm/supermelee/netplay/netrcv.c
+index 12c29a9..f186a33 100644
+--- a/src/uqm/supermelee/netplay/netrcv.c
++++ b/src/uqm/supermelee/netplay/netrcv.c
+@@ -24,6 +24,7 @@
+ #include "netconnection.h"
+ #include "netrcv.h"
+ #include "packet.h"
++#include "webtransport.h"
+ 
+ #include "types.h"
+ #include "libs/log.h"
+@@ -56,7 +57,8 @@ dataReceivedSingle(NetConnection *conn, const uint8 *data,
+ 		return -1;
+ 	}
+ 
+-	if (packetLen < packetTypeData[type].len) {
++	if (packetLen < packetTypeData[type].len ||
++			packetLen > NETPLAY_READBUFSIZE) {
+ 		// Bad len field of packet.
+ 		log_add(log_Warning, "Packet with bad length field received (type="
+ 				"%s, lenfield=%d.\n", packetTypeData[type].name,
+@@ -120,6 +122,11 @@ dataReceivedMulti(NetConnection *conn, const uint8 *data, size_t len) {
+ 			break;
+ 		}
+ 
++#ifdef __EMSCRIPTEN__
++		// A protocol callback can discover a failed outgoing connection.
++		if (!NetConnection_isConnected(conn))
++			return -1;
++#endif
+ 		processed += packetLen;
+ 		data += packetLen;
+ 		len -= packetLen;
+@@ -128,6 +135,7 @@ dataReceivedMulti(NetConnection *conn, const uint8 *data, size_t len) {
+ 	return processed;
+ }
+ 
++#ifndef __EMSCRIPTEN__
+ void
+ dataReadyCallback(NetDescriptor *nd) {
+ 	NetConnection *conn = (NetConnection *) NetDescriptor_getExtra(nd);
+@@ -191,3 +199,39 @@ dataReadyCallback(NetDescriptor *nd) {
+ 
+ 
+ 
++
++#else
++void
++webDataReady(NetConnection *conn) {
++	// Bound each poll so a burst cannot monopolize the simulation thread.
++	unsigned iteration;
++	for (iteration = 0; iteration < 32; iteration++) {
++		size_t remaining = NETPLAY_READBUFSIZE - (conn->readEnd - conn->readBuf);
++		int numRead;
++		ssize_t processed;
++		if (remaining == 0) {
++			NetConnection_webDisconnect(conn, EBADMSG);
++			return;
++		}
++		numRead = WebTransport_receive(conn->readEnd, remaining);
++		if (numRead < 0) {
++			NetConnection_webDisconnect(conn, ECONNRESET);
++			return;
++		}
++		if (numRead == 0)
++			return;
++		conn->readEnd += numRead;
++		processed = dataReceivedMulti(conn, conn->readBuf,
++				conn->readEnd - conn->readBuf);
++		if (processed < 0) {
++			NetConnection_webDisconnect(conn, errno);
++			return;
++		}
++		if (processed > 0) {
++			memmove(conn->readBuf, conn->readBuf + processed,
++					(conn->readEnd - conn->readBuf) - processed);
++			conn->readEnd -= processed;
++		}
++	}
++}
++#endif
+diff --git a/src/uqm/supermelee/netplay/netrcv.h b/src/uqm/supermelee/netplay/netrcv.h
+index 149fea7..cbb8e24 100644
+--- a/src/uqm/supermelee/netplay/netrcv.h
++++ b/src/uqm/supermelee/netplay/netrcv.h
+@@ -25,7 +25,12 @@
+ extern "C" {
+ #endif
+ 
++#ifdef __EMSCRIPTEN__
++#include "netconnection.h"
++void webDataReady(NetConnection *conn);
++#else
+ void dataReadyCallback(NetDescriptor *nd);
++#endif
+ 
+ #if defined(__cplusplus)
+ }
+diff --git a/src/uqm/supermelee/netplay/netsend.c b/src/uqm/supermelee/netplay/netsend.c
+index b9f371f..fc085ee 100644
+--- a/src/uqm/supermelee/netplay/netsend.c
++++ b/src/uqm/supermelee/netplay/netsend.c
+@@ -26,6 +26,7 @@
+ #include "packet.h"
+ #include "libs/log.h"
+ #include "libs/net.h"
++#include "webtransport.h"
+ 
+ #include <assert.h>
+ #include <errno.h>
+@@ -34,9 +35,11 @@
+ 
+ int
+ sendPacket(NetConnection *conn, Packet *packet) {
++#ifndef __EMSCRIPTEN__
+ 	ssize_t sendResult;
+ 	size_t len;
+ 	Socket *socket;
++#endif
+ 		
+ 	assert(NetConnection_isConnected(conn));
+ 
+@@ -57,6 +60,15 @@ sendPacket(NetConnection *conn, Packet *packet) {
+ #endif  /* NETPLAY_DEBUG_FILE */
+ #endif  /* NETPLAY_DEBUG */
+ 
++#ifdef __EMSCRIPTEN__
++	{
++		int result = WebTransport_send(packet, packetLength(packet));
++		if (result != 1) {
++			errno = result == 0 ? EAGAIN : ECONNRESET;
++			return -1;
++		}
++	}
++#else
+ 	socket = NetDescriptor_getSocket(conn->nd);
+ 
+ 	len = packetLength(packet);
+@@ -84,6 +96,8 @@ sendPacket(NetConnection *conn, Packet *packet) {
+ 		}
+ 	}
+ 
++#endif  /* __EMSCRIPTEN__ */
++
+ #ifdef NETPLAY_STATISTICS
+ 	NetConnection_getStatistics(conn)->packetsSent++;
+ 	NetConnection_getStatistics(conn)->packetTypeSent[packetType(packet)]++;
+diff --git a/src/uqm/supermelee/netplay/packethandlers.c b/src/uqm/supermelee/netplay/packethandlers.c
+index 2253ec2..3fb7ceb 100644
+--- a/src/uqm/supermelee/netplay/packethandlers.c
++++ b/src/uqm/supermelee/netplay/packethandlers.c
+@@ -196,12 +196,13 @@ PacketHandler_Fleet(NetConnection *conn, const Packet_Fleet *packet) {
+ 	player = localSide(conn, (NetplaySide) packet->side);
+ 
+ 	len = packetLength((const Packet *) packet);
+-	if (sizeof packet + numShips * sizeof(packet->ships[0]) > len) {
++	if (packet->side > NetplaySide_remote || numShips > MELEE_FLEET_SIZE ||
++			sizeof *packet + numShips * sizeof(packet->ships[0]) > len) {
+ 		// There is not enough room in the packet to contain all
+ 		// the ships it says it contains.
+ 		log_add(log_Warning, "Invalid fleet size. Specified size is %d, "
+ 				"actual size = %d\n",
+-				numShips, (int) ((len - sizeof packet) / sizeof(packet->ships[0])));
++				numShips, (int) ((len - sizeof *packet) / sizeof(packet->ships[0])));
+ 		errno = EBADMSG;
+ 		return -1;
+ 	}
+@@ -256,6 +257,12 @@ PacketHandler_TeamName(NetConnection *conn, const Packet_TeamName *packet) {
+ 	if (!testNetState(conn->state == NetState_inSetup, PACKET_FLEET))
+ 		return -1;  // errno is set
+ 
++	if (packet->side > NetplaySide_remote ||
++			packetLength((const Packet *) packet) <= sizeof *packet) {
++		errno = EBADMSG;
++		return -1;
++	}
++
+ 	battleStateData = (BattleStateData *) NetConnection_getStateData(conn);
+ 
+ 	if (conn->stateFlags.handshake.localOk) {
+diff --git a/src/uqm/supermelee/netplay/webtransport.h b/src/uqm/supermelee/netplay/webtransport.h
+new file mode 100644
+index 0000000..c3b79d1
+--- /dev/null
++++ b/src/uqm/supermelee/netplay/webtransport.h
+@@ -0,0 +1,89 @@
++/* Browser transport for the unchanged UQM netplay protocol. */
++#ifndef UQM_SUPERMELEE_NETPLAY_WEBTRANSPORT_H_
++#define UQM_SUPERMELEE_NETPLAY_WEBTRANSPORT_H_
++
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#include <stddef.h>
++
++/* All JavaScript access runs on the browser main runtime. The simulation
++ * runs on a pthread; WebSocket callbacks only enqueue bytes, never call C. */
++static inline int
++WebTransport_status(void) {
++	return MAIN_THREAD_EM_ASM_INT({
++		var net = Module.webNet;
++		if (!net || net.state === 'closed' || net.state === 'error') return -1;
++		if (net.state !== 'ready') return 0;
++		return net.role === 0 ? 1 : net.role === 1 ? 2 : -1;
++	});
++}
++
++/* Copy at most capacity bytes, preserving ordered stream semantics even
++ * when a WebSocket message contains partial or multiple UQM packets. */
++static inline int
++WebTransport_receive(void *dest, size_t capacity) {
++	return MAIN_THREAD_EM_ASM_INT({
++		var net = Module.webNet;
++		if (!net || net.state !== 'ready') return -1;
++		var copied = 0;
++		while (net.incoming.length && copied < $1) {
++			var chunk = net.incoming[0];
++			if (!(chunk instanceof Uint8Array)) return -1;
++			var length = Math.min(chunk.byteLength, $1 - copied);
++			HEAPU8.set(chunk.subarray(0, length), $0 + copied);
++			copied += length;
++			net.incomingBytes -= length;
++			if (length === chunk.byteLength) net.incoming.shift();
++			else net.incoming[0] = chunk.subarray(length);
++		}
++		return copied;
++	}, dest, capacity);
++}
++
++/* 1 sent, 0 backpressure (retain packet for retry), -1 disconnected. */
++static inline int
++WebTransport_send(const void *data, size_t size) {
++	return MAIN_THREAD_EM_ASM_INT({
++		var net = Module.webNet;
++		if (!net || net.state !== 'ready') return -1;
++		try {
++			if (net.send(HEAPU8.slice($0, $0 + $1))) return 1;
++			return net.state === 'ready' ? 0 : -1;
++		} catch (error) {
++			return -1;
++		}
++	}, data, size);
++}
++
++static inline void
++WebTransport_close(void) {
++	MAIN_THREAD_EM_ASM({
++		if (Module.webNet) Module.webNet.close();
++	});
++}
++
++static inline void
++WebTransport_engineState(const char *state, int player) {
++	MAIN_THREAD_EM_ASM({
++		var net = Module.webNet;
++		if (!net) return;
++		net.stats.engineState = UTF8ToString($0);
++		net.stats.remotePlayer = $1;
++	}, state, player);
++}
++
++static inline void
++WebTransport_checksum(unsigned frame, int matches) {
++	MAIN_THREAD_EM_ASM({
++		var net = Module.webNet;
++		if (!net) return;
++		if ($1) {
++			net.stats.checksumsVerified = (net.stats.checksumsVerified || 0) + 1;
++			net.stats.lastVerifiedFrame = $0 >>> 0;
++		} else {
++			net.stats.checksumMismatches = (net.stats.checksumMismatches || 0) + 1;
++		}
++	}, frame, matches);
++}
++#endif
++#endif
+diff --git a/src/uqm/supermelee/pickmele.c b/src/uqm/supermelee/pickmele.c
+index 5f9986b..c9523df 100644
+--- a/src/uqm/supermelee/pickmele.c
++++ b/src/uqm/supermelee/pickmele.c
+@@ -667,7 +667,11 @@ MeleeGameOver (void)
+ 	
+ 
+ #ifdef NETPLAY
+-	negotiateReadyConnections(true, NetState_inSetup);
++	if (!negotiateReadyConnections(true, NetState_inSetup))
++	{
++		GLOBAL (CurrentActivity) |= CHECK_ABORT;
++		return;
++	}
+ #endif
+ 
+ 	TimeOut = GetTimeCounter () + (ONE_SECOND * 4);
+@@ -806,7 +810,10 @@ GetMeleeStarShips (COUNT playerMask, HSTARSHIP *ships)
+ 	SetContext (OffScreenContext);
+ 
+ 
+-	DoInput (&gmstate, FALSE);
++	// A failed negotiation must leave through the cleanup below without
++	// entering ship selection for a match whose peer has disconnected.
++	if (ok)
++		DoInput (&gmstate, FALSE);
+ 	WaitForSoundEnd (0);
+ 
+ 
+diff --git a/src/uqm/tactrans.c b/src/uqm/tactrans.c
+index 077a4ad..29c9590 100644
+--- a/src/uqm/tactrans.c
++++ b/src/uqm/tactrans.c
+@@ -171,6 +171,11 @@ static bool
+ readyForBattleEndPlayer (NetConnection *conn)
+ {
+ 	BattleStateData *battleStateData;
++	if (conn == NULL || !NetConnection_isConnected (conn))
++	{
++		GLOBAL (CurrentActivity) |= CHECK_ABORT;
++		return false;
++	}
+ 	battleStateData = (BattleStateData *) NetConnection_getStateData(conn);
+ 
+ 	if (NetConnection_getState (conn) == NetState_interBattle ||
+@@ -213,8 +218,11 @@ readyForBattleEndPlayer (NetConnection *conn)
+ 		// We have reached the target frame count, but we don't know
+ 		// the remote target frame count yet. So we wait until it has
+ 		// come in.
+-		waitReady (conn);
+-		// TODO: check whether all connections are still connected.
++		if (!waitReady (conn))
++		{
++			GLOBAL (CurrentActivity) |= CHECK_ABORT;
++			return false;
++		}
+ 		assert (NetConnection_getState (conn) == NetState_endingBattle2);
+ 
+ 		// Continue the simulation if the battleFrameCount has gone up.
+@@ -223,7 +231,11 @@ readyForBattleEndPlayer (NetConnection *conn)
+ 	}
+ 
+ 	// We are ready and wait for the other party to become ready too.
+-	negotiateReady (conn, true, NetState_interBattle);
++	if (!negotiateReady (conn, true, NetState_interBattle))
++	{
++		GLOBAL (CurrentActivity) |= CHECK_ABORT;
++		return false;
++	}
+ 
+ 	return true;	
+ }
+diff --git a/wasm/config.state.expected b/wasm/config.state.expected
+index cd0f567..6c752cc 100644
+--- a/wasm/config.state.expected
++++ b/wasm/config.state.expected
+@@ -4,7 +4,7 @@ CHOICE_sound_VALUE='openal'
+ CHOICE_mikmod_VALUE='internal'
+ CHOICE_lua_VALUE='internal'
+ CHOICE_ovcodec_VALUE='standard'
+-CHOICE_netplay_VALUE='none'
++CHOICE_netplay_VALUE='web'
+ CHOICE_joystick_VALUE='enabled'
+ CHOICE_ioformat_VALUE='stdio_zip'
+ CHOICE_accel_VALUE='asm'

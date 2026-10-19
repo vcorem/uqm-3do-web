@@ -1,0 +1,36 @@
+name: Remote Online Melee peer
+
+# One player of a live Online Melee match, for tests between two different
+# computers and networks. The other player runs tests/browser/netplay-peer.mjs
+# elsewhere with the same room token. Settings: tests/browser/remote-peer.env.
+on:
+  push:
+    branches: [test/remote-peer]
+
+permissions:
+  contents: read
+
+jobs:
+  peer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Play one side of the match on the live site
+        run: |
+          set -a; . tests/browser/remote-peer.env; set +a
+          curl -fsS https://ipinfo.io/json | python3 -c "import json,sys; d=json.load(sys.stdin); print('runner network:', d.get('city'), d.get('region'), d.get('country'), d.get('org'))" || true
+          UQM_TEST_OUTPUT=test-results/peer node tests/browser/netplay-peer.mjs
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: remote-peer
+          path: test-results/peer

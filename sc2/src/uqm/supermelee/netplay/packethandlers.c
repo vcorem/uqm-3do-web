@@ -196,12 +196,13 @@ PacketHandler_Fleet(NetConnection *conn, const Packet_Fleet *packet) {
 	player = localSide(conn, (NetplaySide) packet->side);
 
 	len = packetLength((const Packet *) packet);
-	if (sizeof packet + numShips * sizeof(packet->ships[0]) > len) {
+	if (packet->side > NetplaySide_remote || numShips > MELEE_FLEET_SIZE ||
+			sizeof *packet + numShips * sizeof(packet->ships[0]) > len) {
 		// There is not enough room in the packet to contain all
 		// the ships it says it contains.
 		log_add(log_Warning, "Invalid fleet size. Specified size is %d, "
 				"actual size = %d",
-				numShips, (int) ((len - sizeof packet) / sizeof(packet->ships[0])));
+				numShips, (int) ((len - sizeof *packet) / sizeof(packet->ships[0])));
 		errno = EBADMSG;
 		return -1;
 	}
@@ -255,6 +256,12 @@ PacketHandler_TeamName(NetConnection *conn, const Packet_TeamName *packet) {
 
 	if (!testNetState(conn->state == NetState_inSetup, PACKET_FLEET))
 		return -1;  // errno is set
+
+	if (packet->side > NetplaySide_remote ||
+			packetLength((const Packet *) packet) <= sizeof *packet) {
+		errno = EBADMSG;
+		return -1;
+	}
 
 	battleStateData = (BattleStateData *) NetConnection_getStateData(conn);
 

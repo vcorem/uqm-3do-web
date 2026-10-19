@@ -1,0 +1,30 @@
+{
+  "name": "uqm-web",
+  "main": "worker.js",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    // Written by deploy/split-data.py from the packaged edition site.
+    "directory": "../.tools/site",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "none",
+    "not_found_handling": "none"
+  },
+  "routes": [
+    { "pattern": "urquanmasters.org", "custom_domain": true },
+    { "pattern": "www.urquanmasters.org", "custom_domain": true }
+  ],
+  // Online Melee relay: one object per room, one global object for the connection bounds.
+  "durable_objects": {
+    "bindings": [
+      { "name": "NETPLAY_ROOMS", "class_name": "NetplayRoom" },
+      { "name": "NETPLAY_GATE", "class_name": "NetplayGate" }
+    ]
+  },
+  "migrations": [
+    { "tag": "netplay-v1", "new_sqlite_classes": ["NetplayRoom", "NetplayGate"] }
+  ],
+  "observability": { "enabled": true }
+}

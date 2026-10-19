@@ -40,6 +40,24 @@
 #include "uqmversion.h"
 #include "libs/graphics/gfx_common.h"
 #include "libs/inplib.h"
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+#include "supermelee/netplay/netoptions.h"
+#endif
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
+// Read-only browser diagnostics, emitted after the actual menu draw/fade.
+// This never changes simulation state or drives input.
+static void
+setBrowserGameScreen (const char *screen)
+{
+#ifdef __EMSCRIPTEN__
+	MAIN_THREAD_EM_ASM({ Module.gameScreen = UTF8ToString($0); }, screen);
+#else
+	(void) screen;
+#endif
+}
 
 
 enum
@@ -134,6 +152,7 @@ DoRestart (MENU_STATE *pMS)
 		pMS->Initialized = TRUE;
 
 		SleepThreadUntil (FadeScreen (FadeAllToColor, ONE_SECOND / 2));
+		setBrowserGameScreen ("mainMenu");
 	}
 	else if (GLOBAL (CurrentActivity) & CHECK_ABORT)
 	{
@@ -141,6 +160,7 @@ DoRestart (MENU_STATE *pMS)
 	}
 	else if (PulsedInputState.menu[KEY_MENU_SELECT])
 	{
+		setBrowserGameScreen ("transition");
 		switch (pMS->CurState)
 		{
 			case LOAD_SAVED_GAME:
@@ -169,6 +189,7 @@ DoRestart (MENU_STATE *pMS)
 				DrawRestartMenu (pMS, pMS->CurState, pMS->CurFrame);
 				Flash_continue(pMS->flashContext);
 				UnbatchGraphics ();
+				setBrowserGameScreen ("mainMenu");
 				return TRUE;
 			case QUIT_GAME:
 				SleepThreadUntil (FadeScreen (FadeAllToBlack, ONE_SECOND / 2));
@@ -307,6 +328,7 @@ RestartMenu (MENU_STATE *pMS)
 	SetMenuSounds (MENU_SOUND_UP | MENU_SOUND_DOWN, MENU_SOUND_SELECT);
 	SetDefaultMenuRepeatDelay ();
 	DoInput (pMS, TRUE);
+	setBrowserGameScreen ("transition");
 	
 	StopMusic ();
 	if (pMS->hMusic)
@@ -347,12 +369,25 @@ TryStartGame (void)
 	memset (&MenuState, 0, sizeof (MenuState));
 	MenuState.InputFunc = DoRestart;
 
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+	if (webNetplayRole >= 0)
+	{
+		// The browser room determines the two players for this session.
+		FreeGameData ();
+		setBrowserGameScreen ("melee");
+		Melee ();
+		webNetplayRole = -1;
+		GLOBAL (CurrentActivity) = 0;
+	}
+#endif
+
 	while (!RestartMenu (&MenuState))
 	{	// spin until a game is started or loaded
 		if (LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE &&
 				!(GLOBAL (CurrentActivity) & CHECK_ABORT))
 		{
 			FreeGameData ();
+			setBrowserGameScreen ("melee");
 			Melee ();
 			MenuState.Initialized = FALSE;
 		}

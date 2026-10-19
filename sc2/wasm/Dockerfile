@@ -13,6 +13,7 @@ COPY build ./build
 COPY src ./src
 COPY Make* build.sh build.vars.in ./
 COPY wasm ./wasm
+COPY wasm/netplay-client.js ./netplay-client.js
 COPY COPYING ./COPYING.txt
 
 RUN emconfigure ./build.sh uqm config

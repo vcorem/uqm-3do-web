@@ -170,6 +170,11 @@ static bool
 readyForBattleEndPlayer (NetConnection *conn)
 {
 	BattleStateData *battleStateData;
+	if (conn == NULL || !NetConnection_isConnected (conn))
+	{
+		GLOBAL (CurrentActivity) |= CHECK_ABORT;
+		return false;
+	}
 	battleStateData = (BattleStateData *) NetConnection_getStateData(conn);
 
 	if (NetConnection_getState (conn) == NetState_interBattle ||
@@ -212,8 +217,11 @@ readyForBattleEndPlayer (NetConnection *conn)
 		// We have reached the target frame count, but we don't know
 		// the remote target frame count yet. So we wait until it has
 		// come in.
-		waitReady (conn);
-		// TODO: check whether all connections are still connected.
+		if (!waitReady (conn))
+		{
+			GLOBAL (CurrentActivity) |= CHECK_ABORT;
+			return false;
+		}
 		assert (NetConnection_getState (conn) == NetState_endingBattle2);
 
 		// Continue the simulation if the battleFrameCount has gone up.
@@ -222,7 +230,11 @@ readyForBattleEndPlayer (NetConnection *conn)
 	}
 
 	// We are ready and wait for the other party to become ready too.
-	negotiateReady (conn, true, NetState_interBattle);
+	if (!negotiateReady (conn, true, NetState_interBattle))
+	{
+		GLOBAL (CurrentActivity) |= CHECK_ABORT;
+		return false;
+	}
 
 	return true;	
 }

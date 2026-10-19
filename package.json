@@ -1,0 +1,25 @@
+{
+  "name": "uqm-3do-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local WebAssembly game and private two-player Melee relay",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/netplay.mjs",
+    "test": "node --test sc2/wasm/tests/*.test.cjs tests/server/*.test.mjs tests/web/*.test.cjs",
+    "test:worker": "node --test --test-concurrency=1 --test-reporter=spec tests/worker/*.test.mjs",
+    "test:browser": "node tests/browser/netplay.mjs",
+    "test:subtitles": "node tests/browser/subtitles.mjs",
+    "test:editions": "node tests/browser/editions.mjs",
+    "test:hd-campaign": "node tests/browser/hd-campaign.mjs",
+    "test:hd-stability": "node tests/browser/hd-stability.mjs"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

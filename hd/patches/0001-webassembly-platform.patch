@@ -1,0 +1,490 @@
+diff --git a/Makeproject b/Makeproject
+index 9455a13..27f113d 100644
+--- a/Makeproject
++++ b/Makeproject
+@@ -9,6 +9,14 @@ else
+ 	uqm_NAME=UrQuanMasters           # File name of executable
+ fi
+ case "$HOST_SYSTEM" in
++	Emscripten)
++		uqm_OBJS="${uqm_OBJS%/}-wasm/"
++		if [ "$DEBUG" = "1" ]; then
++			uqm_NAME=uqm-debug.html
++		else
++			uqm_NAME=uqm.html
++		fi
++		;;
+ 	ARMV5|WINSCW|GCCE)
+ 		uqm_NAME="uqm.lib"
+ 		;;
+diff --git a/build.vars.in b/build.vars.in
+index 03e1222..a507169 100644
+--- a/build.vars.in
++++ b/build.vars.in
+@@ -34,7 +34,7 @@ REZ='@REZ@'
+ WINDRES='@WINDRES@'
+ uqm_CFLAGS='@CFLAGS@'
+ uqm_CXXFLAGS='@CXXFLAGS@'
+-uqm_LDFLAGS='@LDFLAGS@'
++uqm_LDFLAGS='@LDFLAGS@ @LDFLAGS_FINAL@'
+ uqm_INSTALL_BINDIR='@INSTALL_BINDIR@'
+ uqm_INSTALL_LIBDIR='@INSTALL_LIBDIR@'
+ uqm_INSTALL_SHAREDIR='@INSTALL_SHAREDIR@'
+diff --git a/build/unix/build.config b/build/unix/build.config
+index fcb136b..4367693 100644
+--- a/build/unix/build.config
++++ b/build/unix/build.config
+@@ -76,6 +76,15 @@ uqm_requirements()
+ 			;;
+ 	esac
+ 	
++	if [ "$HOST_SYSTEM" = Emscripten ]; then
++		LDFLAGS="$LDFLAGS -g2 -s ASSERTIONS=1 -s STACK_OVERFLOW_CHECK=2 -s ASYNCIFY -pthread"
++		LDFLAGS_FINAL="$LDFLAGS_FINAL wasm/compat/emscripten-proxying.o --preload-file=content@/content -lidbfs.js --pre-js wasm/pre.js"
++		LDFLAGS_FINAL="$LDFLAGS_FINAL --shell-file wasm/shell.html -s EXPORTED_RUNTIME_METHODS=callMain -s EXIT_RUNTIME=1"
++		LDFLAGS_FINAL="$LDFLAGS_FINAL -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH=1 -s MAXIMUM_MEMORY=1073741824"
++		LDFLAGS_FINAL="$LDFLAGS_FINAL -s STACK_SIZE=1048576 -s DEFAULT_PTHREAD_STACK_SIZE=1048576 -s ASYNCIFY_STACK_SIZE=65536"
++		CCOMMONFLAGS="$CCOMMONFLAGS -s ASYNCIFY -pthread"
++	fi
++
+ 	# Add define for HAVE__BOOL
+ 	define_have_type _Bool
+ 
+@@ -495,7 +504,7 @@ uqm_process_config() {
+ 			HAVE_GETOPT_LONG HAVE_REGEX_H_FLAG \
+ 			USE_ZIP_IO USE_PLATFORM_ACCEL THREADLIB USE_WINSOCK \
+ 			INSTALL_LIBDIR INSTALL_BINDIR INSTALL_SHAREDIR \
+-			INSTALL_APPDIR INSTALL_ICONDIR REZ WINDRES $HAVE_SYMBOLS"
++			INSTALL_APPDIR INSTALL_ICONDIR REZ WINDRES LDFLAGS_FINAL $HAVE_SYMBOLS"
+ 	SUBSTITUTE_FILES="build.vars"
+ 	substitute_vars SUBSTITUTE_VARS SUBSTITUTE_FILES . "$BUILD_WORK"
+ 
+diff --git a/build/unix/config_functions b/build/unix/config_functions
+index 23adc2d..eb02a83 100644
+--- a/build/unix/config_functions
++++ b/build/unix/config_functions
+@@ -1055,7 +1055,11 @@ EOF
+ 
+ # Define the build system type.
+ set_build_system() {
+-	BUILD_SYSTEM=`uname -s`
++	if [ -n "$EMSCRIPTEN" ]; then
++		BUILD_SYSTEM="Emscripten"
++	else
++		BUILD_SYSTEM=`uname -s`
++	fi
+ }
+ 
+ # Define the host system type.
+diff --git a/build/unix/config_proginfo_build b/build/unix/config_proginfo_build
+index fed6589..7b8fb45 100644
+--- a/build/unix/config_proginfo_build
++++ b/build/unix/config_proginfo_build
+@@ -171,6 +171,37 @@ case "$HOST_SYSTEM" in
+ 		BUILDTOOL_LINK_COMMAND="\$PROG_gcce_FILE $EXTRA_GCCE_FLAGS_LINK"
+ 		BUILDTOOL_LINK_DEPEND='gcce'
+ 		;;	
++	Emscripten)
++		BUILDTOOL_PREPROC_C_COMMAND="\$PROG_emcc_FILE -E $EXTRA_PLATFORM_EMCC_FLAGS_PREPROC_C"
++		BUILDTOOL_PREPROC_C_DEPEND='emcc'
++
++		BUILDTOOL_MKDEP_C_COMMAND="\$PROG_emcc_FILE -MM $EXTRA_PLATFORM_EMCC_FLAGS_MKDEP_C"
++		BUILDTOOL_MKDEP_C_DEPEND='emcc'
++
++		BUILDTOOL_COMPILE_C_COMMAND="\$PROG_emcc_FILE -c $EXTRA_PLATFORM_EMCC_FLAGS_COMPILE_C"
++		BUILDTOOL_COMPILE_C_DEPEND='emcc'
++
++		BUILDTOOL_PREPROC_CXX_COMMAND="\$PROG_emxx_FILE -E $EXTRA_PLATFORM_EMCC_FLAGS_PREPROC_CXX"
++		BUILDTOOL_PREPROC_CXX_DEPEND='emxx'
++
++		BUILDTOOL_MKDEP_CXX_COMMAND="\$PROG_emxx_FILE -MM $EXTRA_PLATFORM_EMCC_FLAGS_MKDEP_CXX"
++		BUILDTOOL_MKDEP_CXX_DEPEND='emxx'
++
++		BUILDTOOL_COMPILE_CXX_COMMAND="\$PROG_emxx_FILE -c $EXTRA_PLATFORM_EMCC_FLAGS_COMPILE_CXX"
++		BUILDTOOL_COMPILE_CXX_DEPEND='emxx'
++
++		BUILDTOOL_PREPROC_OBJC_COMMAND="\$PROG_emcc_FILE -E $EXTRA_PLATFORM_EMCC_FLAGS_PREPROC_OBJC"
++		BUILDTOOL_PREPROC_OBJC_DEPEND='emcc'
++
++		BUILDTOOL_MKDEP_OBJC_COMMAND="\$PROG_emcc_FILE -MM $EXTRA_PLATFORM_EMCC_FLAGS_MKDEP_OBJC"
++		BUILDTOOL_MKDEP_OBJC_DEPEND='emcc'
++
++		BUILDTOOL_COMPILE_OBJC_COMMAND="\$PROG_emcc_FILE -c $EXTRA_PLATFORM_EMCC_FLAGS_COMPILE_OBJC"
++		BUILDTOOL_COMPILE_OBJC_DEPEND='emcc'
++
++		BUILDTOOL_LINK_COMMAND="\$PROG_emcc_FILE $EXTRA_PLATFORM_EMCC_FLAGS_LINK"
++		BUILDTOOL_LINK_DEPEND='emcc'
++		;;
+ 	*)
+ 		useGccBuildTools
+ 		;;
+@@ -348,3 +379,15 @@ PROG_mingw_gcc_VERSION='$(i686-pc-mingw32-gcc --version)'
+ ##############################################################################
+ # Describe the symbols (possibly) used:                                      #
+ ##############################################################################
++
++### emcc ###
++PROG_emcc_NAME="Emscripten Clang cross-compiler"
++PROG_emcc_FILE="emcc"
++PROG_emcc_ACTION=""
++PROG_emcc_VERSION='$(emcc --version)'
++
++### emxx ###
++PROG_emxx_NAME="Emscripten Clang C++ cross-compiler"
++PROG_emxx_FILE="em++"
++PROG_emxx_ACTION=""
++PROG_emxx_VERSION='$(em++ --version)'
+diff --git a/build/unix/config_proginfo_host b/build/unix/config_proginfo_host
+index d32bd2f..7ad8514 100644
+--- a/build/unix/config_proginfo_host
++++ b/build/unix/config_proginfo_host
+@@ -44,6 +44,12 @@ SYSTEM_HOST_LDFLAGS=""
+ ### SDL2 ###
+ LIB_SDL2_NAME="Simple DirectMedia Layer version 2.x"
+ case "$HOST_SYSTEM" in
++	Emscripten)
++		LIB_SDL2_CFLAGS="-s USE_SDL=2"
++		LIB_SDL2_LDFLAGS="-s USE_SDL=2"
++		LIB_SDL2_VERSION="2.24.2"
++		LIB_SDL2_DETECT="true"
++		;;
+ 	WINSCW|GCCE|ARMV5)
+ 		LIB_SDL2_DETECT="false"
+ 		;;
+@@ -74,6 +80,10 @@ LIB_libpng_NAME="libpng"
+ # To link against a static libpng, set LDFLAGS with an appropriate -L
+ # argument before calling `build.sh uqm config`.
+ case "$HOST_SYSTEM" in
++	Emscripten)
++		LIB_libpng_CFLAGS="-s USE_LIBPNG=1"
++		LIB_libpng_LDFLAGS="-lpng-mt"
++		;;
+ 	Darwin)
+ 		if not have_framework libpng; then
+ 			LIB_libpng_CFLAGS=""
+@@ -91,6 +101,9 @@ esac
+ LIB_openal_NAME="OpenAL"
+ LIB_openal_CFLAGS=""
+ case "$HOST_SYSTEM" in
++	Emscripten)
++		LIB_openal_LDFLAGS="-lopenal"
++		;;
+ 	FreeBSD|OpenBSD)
+ 		LIB_openal_LDFLAGS="-L/usr/local/lib -pthread -lopenal"
+ 		;;
+@@ -107,8 +120,8 @@ case "$HOST_SYSTEM" in
+ esac
+ LIB_openal_VERSION=""
+ case "$HOST_SYSTEM" in
+-	Darwin)
+-		## Apple does not ship pkg-config on Mac OSX
++	Darwin|Emscripten)
++		# Emscripten libraries are supplied by the SDK, without pkg-config.
+ 		;;
+ 	*)
+ 		LIB_openal_DETECT="try_pkgconfig_lib openal openal"
+@@ -120,6 +133,10 @@ esac
+ ### Vorbisfile ###
+ LIB_vorbisfile_NAME="vorbisfile"
+ case "$HOST_SYSTEM" in
++	Emscripten)
++		LIB_vorbisfile_CFLAGS="-s USE_VORBIS=1"
++		LIB_vorbisfile_LDFLAGS="-lvorbis -logg"
++		;;
+ 	FreeBSD|OpenBSD)
+ 		LIB_vorbisfile_CFLAGS="-I/usr/local/include"
+ 		LIB_vorbisfile_LDFLAGS="-L/usr/local/lib -lvorbisfile -lvorbis"
+@@ -148,8 +165,8 @@ case "$HOST_SYSTEM" in
+ 	ARMV5|WINSCW|GCCE)
+ 		LIB_vorbisfile_DETECT="false"
+ 		;;
+-	Darwin)
+-		## Apple does not ship pkg-config on Mac OSX
++	Darwin|Emscripten)
++		# Emscripten libraries are supplied by the SDK, without pkg-config.
+ 		;;
+ 	*)
+ 		LIB_vorbisfile_DETECT="try_pkgconfig_lib vorbisfile vorbisfile"
+@@ -202,6 +219,10 @@ esac
+ LIB_zlib_NAME="zlib"
+ LIB_zlib_CFLAGS=""
+ case "$HOST_SYSTEM" in
++	Emscripten)
++		LIB_zlib_CFLAGS="-s USE_ZLIB=1"
++		LIB_zlib_LDFLAGS="-lz"
++		;;
+ 	MINGW32*|CYGWIN*|cegcc)
+ 		LIB_zlib_LDFLAGS="-lzdll"
+ 		;;
+@@ -217,8 +238,8 @@ case "$HOST_SYSTEM" in
+ 	ARMV5|WINSCW|GCCE)
+ 		LIB_zlib_DETECT="true"
+ 		;;
+-	Darwin)
+-		## Apple does not ship pkg-config on Mac OSX
++	Darwin|Emscripten)
++		# Emscripten libraries are supplied by the SDK, without pkg-config.
+ 		;;
+ 	*)
+ 		LIB_zlib_DETECT="try_pkgconfig_lib zlib zlib"
+diff --git a/src/config_unix.h.in b/src/config_unix.h.in
+index f9dc2ca..18c919b 100644
+--- a/src/config_unix.h.in
++++ b/src/config_unix.h.in
+@@ -14,7 +14,11 @@
+ #define CONTENTDIR "@CONTENTDIR@"
+ 
+ /* Directory where game data will be stored */
++#ifdef __EMSCRIPTEN__
++#define USERDIR "/home/web_user/.uqm-hd/"
++#else
+ #define USERDIR "~/.uqm-megamod/"
++#endif
+ 
+ /* Directory where config files will be stored */
+ #define CONFIGDIR USERDIR
+diff --git a/src/libs/threads/pthread/posixthreads.c b/src/libs/threads/pthread/posixthreads.c
+index 4f0d2e8..570e593 100644
+--- a/src/libs/threads/pthread/posixthreads.c
++++ b/src/libs/threads/pthread/posixthreads.c
+@@ -17,6 +17,7 @@
+ #include <stdlib.h>
+ #include "libs/misc.h"
+ #include "libs/memlib.h"
++#include "../thrcommon.h"
+ #include "posixthreads.h"
+ #include <pthread.h>
+ #include <unistd.h>
+@@ -257,7 +258,11 @@ SleepThreadUntil_PT (TimeCount wakeTime) {
+ 
+ void
+ TaskSwitch_PT (void) {
++#ifdef EMSCRIPTEN
++	TaskSwitch_Emscripten ();
++#else
+ 	usleep (1000);
++#endif
+ }
+ 
+ void
+diff --git a/src/libs/threads/thrcommon.c b/src/libs/threads/thrcommon.c
+index bc54751..49d3c0c 100644
+--- a/src/libs/threads/thrcommon.c
++++ b/src/libs/threads/thrcommon.c
+@@ -16,6 +16,10 @@
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
++#ifdef EMSCRIPTEN
++#include <emscripten.h>
++#endif
++
+ #include "libs/threadlib.h"
+ #include "libs/timelib.h"
+ #include "libs/log.h"
+@@ -449,3 +453,13 @@ GetRecursiveMutexDepth (RecursiveMutex mutex)
+ {
+ 	return NativeGetRecursiveMutexDepth (mutex);
+ }
++
++#ifdef EMSCRIPTEN
++/* Emscripten needs special treatment to convert synchronous code to async.
++ * See https://emscripten.org/docs/porting/asyncify.html
++ */
++void
++TaskSwitch_Emscripten (void) {
++	emscripten_sleep (1);
++}
++#endif
+diff --git a/src/libs/threads/thrcommon.h b/src/libs/threads/thrcommon.h
+index d6d6d41..20c4837 100644
+--- a/src/libs/threads/thrcommon.h
++++ b/src/libs/threads/thrcommon.h
+@@ -24,5 +24,9 @@
+ #	include "pthread/posixthreads.h"
+ #endif  /* defined(THREADLIB_PTHREAD) */
+ 
++#ifdef EMSCRIPTEN
++/* Emscripten requires different yield function */
++void TaskSwitch_Emscripten (void);
++#endif
+ 
+ #endif  /* _THR_COMMON_H */
+diff --git a/src/libs/uio/uiostream.c b/src/libs/uio/uiostream.c
+index 9530b4a..fb70e38 100644
+--- a/src/libs/uio/uiostream.c
++++ b/src/libs/uio/uiostream.c
+@@ -22,6 +22,10 @@
+ #include "iointrn.h"
+ #include "uiostream.h"
+ 
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#endif
++
+ #include <errno.h>
+ #include <stdio.h>
+ #include <stdarg.h>
+@@ -114,8 +118,12 @@ uio_fopen(uio_DirHandle *dir, const char *path, const char *mode) {
+ 
+ int
+ uio_fclose(uio_Stream *stream) {
+-	if (stream->operation == uio_StreamOperation_write)
++	if (stream->operation == uio_StreamOperation_write) {
+ 		uio_Stream_flushWriteBuffer(stream);
++#ifdef __EMSCRIPTEN__
++		MAIN_THREAD_EM_ASM(wasm_syncfs());
++#endif
++	}
+ 	uio_close(stream->handle);
+ 	uio_Stream_delete(stream);
+ 	return 0;
+diff --git a/src/uqm.c b/src/uqm.c
+index e79aaa8..221eb38 100644
+--- a/src/uqm.c
++++ b/src/uqm.c
+@@ -336,7 +336,11 @@ int main(int argc, char** argv)
+ 		INIT_CONFIG_OPTION(  showFps,           false ),
+ 		INIT_CONFIG_OPTION(  keepAspectRatio,   false ),
+ 		INIT_CONFIG_OPTION(  gamma,             1.0f ),
++#if defined(__EMSCRIPTEN__) && defined(HAVE_OPENAL)
++		INIT_CONFIG_OPTION(  soundDriver,       audio_DRIVER_OPENAL ),
++#else
+ 		INIT_CONFIG_OPTION(  soundDriver,       audio_DRIVER_MIXSDL ),
++#endif
+ 		INIT_CONFIG_OPTION(  soundQuality,      audio_QUALITY_HIGH ),
+ 		INIT_CONFIG_OPTION(  use3doMusic,       true ),
+ 		INIT_CONFIG_OPTION(  useRemixMusic,     false ),
+diff --git a/src/uqm/gameinp.c b/src/uqm/gameinp.c
+index caf6973..33e147c 100644
+--- a/src/uqm/gameinp.c
++++ b/src/uqm/gameinp.c
+@@ -561,7 +561,7 @@ SDL_GameControllerTypeToString (SDL_GameControllerType type)
+ 		"MAX (Invalid)"
+ 	};
+ 
+-	if (type < 0 || type > SDL_CONTROLLER_TYPE_MAX)
++	if ((unsigned int) type >= sizeof strings / sizeof strings[0])
+ 		return "Unknown (Invalid)";
+ 
+ 	return strings[type];
+diff --git a/src/uqm/hyper.c b/src/uqm/hyper.c
+index 4ce3b93..68dc28d 100644
+--- a/src/uqm/hyper.c
++++ b/src/uqm/hyper.c
+@@ -906,6 +906,13 @@ DoAdvancedAutoPilot (void)
+ 
+ }
+ 
++// The element callback returns void; preserve the transition result for direct callers.
++static void
++hyper_preprocess (ELEMENT *ElementPtr)
++{
++	(void) hyper_transition (ElementPtr);
++}
++
+ BOOLEAN
+ hyper_transition (ELEMENT *ElementPtr)
+ {
+@@ -924,8 +931,7 @@ hyper_transition (ELEMENT *ElementPtr)
+ 		}
+ 		else
+ 		{
+-			ElementPtr->preprocess_func =
+-					(void(*)(struct element *ElementPtr))hyper_transition;
++			ElementPtr->preprocess_func = hyper_preprocess;
+ 			ElementPtr->postprocess_func = NULL;
+ 			ElementPtr->state_flags |= NONSOLID;
+ 			ElementPtr->next.image.frame =
+diff --git a/src/uqm/misc.c b/src/uqm/misc.c
+index 7920c27..9a92cf6 100644
+--- a/src/uqm/misc.c
++++ b/src/uqm/misc.c
+@@ -32,6 +32,13 @@
+ #include "igfxres.h"
+ #include "nameref.h"
+ 
++// The element callback ignores the gravity result used by placement checks.
++static void
++planet_postprocess (ELEMENT *ElementPtr)
++{
++	(void) CalculateGravity (ElementPtr);
++}
++
+ void
+ spawn_planet (void)
+ {
+@@ -70,8 +77,7 @@ spawn_planet (void)
+ 			PlanetElementPtr->current.image.frame =
+ 					PlanetElementPtr->current.image.farray[0];
+ 			PlanetElementPtr->collision_func = collision;
+-			PlanetElementPtr->postprocess_func =
+-					(void (*) (struct element *ElementPtr))CalculateGravity;
++			PlanetElementPtr->postprocess_func = planet_postprocess;
+ 			ZeroVelocityComponents (&PlanetElementPtr->velocity);
+ 			do
+ 			{
+diff --git a/src/uqm/restart.c b/src/uqm/restart.c
+index 03ff17a..91c8991 100644
+--- a/src/uqm/restart.c
++++ b/src/uqm/restart.c
+@@ -50,6 +50,21 @@
+ #include "libs/resource/stringbank.h"
+ // for StringBank_Create() & SplitString()
+ 
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#endif
++
++// Read-only diagnostics for actual browser navigation checks.
++static void
++setBrowserGameScreen (const char *screen)
++{
++#ifdef __EMSCRIPTEN__
++	MAIN_THREAD_EM_ASM({ Module.gameScreen = UTF8ToString($0); }, screen);
++#else
++	(void) screen;
++#endif
++}
++
+ enum
+ {
+ 	START_NEW_GAME = 0,
+@@ -499,6 +514,7 @@ DoRestart (MENU_STATE *pMS)
+ 		pMS->Initialized = TRUE;
+ 
+ 		SleepThreadUntil (FadeScreen (FadeAllToColor, ONE_SECOND / 2));
++		setBrowserGameScreen ("mainMenu");
+ 	}
+ 	else if (GLOBAL (CurrentActivity) & CHECK_ABORT)
+ 	{
+@@ -780,6 +796,7 @@ RestartMenu (MENU_STATE *pMS)
+ 	FlushColorXForms ();
+ 
+ 	SeedRandomNumbers ();
++	setBrowserGameScreen ("transition");
+ 
+ 	return (LOBYTE (GLOBAL (CurrentActivity)) != SUPER_MELEE);
+ }
+@@ -801,6 +818,7 @@ TryStartGame (void)
+ 				!(GLOBAL (CurrentActivity) & CHECK_ABORT))
+ 		{
+ 			FreeGameData ();
++			setBrowserGameScreen ("melee");
+ 			Melee ();
+ 			MenuState.Initialized = FALSE;
+ 		}
+--- /dev/null
++++ b/wasm/config.state.expected
+@@ -0,0 +1,11 @@
++CHOICE_debug_VALUE='debug'
++CHOICE_graphics_VALUE='sdl2'
++CHOICE_sound_VALUE='openal'
++CHOICE_mikmod_VALUE='internal'
++CHOICE_lua_VALUE='internal'
++CHOICE_ovcodec_VALUE='standard'
++CHOICE_netplay_VALUE='none'
++CHOICE_joystick_VALUE='enabled'
++CHOICE_ioformat_VALUE='stdio_zip'
++CHOICE_accel_VALUE='asm'
++CHOICE_threadlib_VALUE='pthread'

@@ -31,6 +31,9 @@
 #include "proto/npconfirm.h"
 #include "proto/ready.h"
 #include "proto/reset.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 #include "../../battlecontrols.h"
 		// for NetworkInputContext
@@ -145,7 +148,19 @@ NetMelee_getBattleState(NetConnection *conn) {
 
 static inline void
 netInputAux(uint32 timeoutMs) {
+#ifdef __EMSCRIPTEN__
+	COUNT player;
+	for (player = 0; player < NUM_PLAYERS; player++) {
+		if (netConnections[player] != NULL)
+			NetConnection_webPoll(netConnections[player]);
+	}
+	// Blocking network waits must yield to browser I/O and stay responsive.
+	// Limit the sleep to 8 ms even when native code requests 500 ms.
+	if (timeoutMs > 0)
+		emscripten_sleep(timeoutMs < 8 ? timeoutMs : 8);
+#else
 	NetManager_process(&timeoutMs);
+#endif
 			// This may cause more packets to be queued, hence the
 			// flushPacketQueues().
 	Async_process();
@@ -198,8 +213,13 @@ flushPacketQueues(void) {
 			continue;
 
 		flushStatus = flushPacketQueue(conn);
-		if (flushStatus == -1 && errno != EAGAIN && errno != EWOULDBLOCK)
+		if (flushStatus == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+#ifdef __EMSCRIPTEN__
+			NetConnection_webDisconnect(conn, errno);
+#else
 			closePlayerNetworkConnection(player);
+#endif
+		}
 	}
 }
 
@@ -572,7 +592,8 @@ negotiateReadyConnections(bool notifyRemote, NetState nextState) {
 			continue;
 		}
 
-		negotiateReady(conn, notifyRemote, nextState);
+		if (!negotiateReady(conn, notifyRemote, nextState))
+			numDisconnected++;
 	}
 
 	return numDisconnected == 0;
@@ -730,7 +751,8 @@ waitResetConnections(NetState nextState) {
 			continue;
 		}
 
-		waitReset(conn, nextState);
+		if (!waitReset(conn, nextState))
+			numDisconnected++;
 	}
 
 	return numDisconnected == 0;

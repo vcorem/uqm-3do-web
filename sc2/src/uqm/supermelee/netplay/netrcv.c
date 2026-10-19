@@ -24,6 +24,7 @@
 #include "netconnection.h"
 #include "netrcv.h"
 #include "packet.h"
+#include "webtransport.h"
 
 #include "types.h"
 #include "libs/log.h"
@@ -56,7 +57,8 @@ dataReceivedSingle(NetConnection *conn, const uint8 *data,
 		return -1;
 	}
 
-	if (packetLen < packetTypeData[type].len) {
+	if (packetLen < packetTypeData[type].len ||
+			packetLen > NETPLAY_READBUFSIZE) {
 		// Bad len field of packet.
 		log_add(log_Warning, "Packet with bad length field received (type="
 				"%s, lenfield=%d.\n", packetTypeData[type].name,
@@ -120,6 +122,11 @@ dataReceivedMulti(NetConnection *conn, const uint8 *data, size_t len) {
 			break;
 		}
 
+#ifdef __EMSCRIPTEN__
+		// A protocol callback can discover a failed outgoing connection.
+		if (!NetConnection_isConnected(conn))
+			return -1;
+#endif
 		processed += packetLen;
 		data += packetLen;
 		len -= packetLen;
@@ -128,6 +135,7 @@ dataReceivedMulti(NetConnection *conn, const uint8 *data, size_t len) {
 	return processed;
 }
 
+#ifndef __EMSCRIPTEN__
 void
 dataReadyCallback(NetDescriptor *nd) {
 	NetConnection *conn = (NetConnection *) NetDescriptor_getExtra(nd);
@@ -191,3 +199,39 @@ dataReadyCallback(NetDescriptor *nd) {
 
 
 
+
+#else
+void
+webDataReady(NetConnection *conn) {
+	// Bound each poll so a burst cannot monopolize the simulation thread.
+	unsigned iteration;
+	for (iteration = 0; iteration < 32; iteration++) {
+		size_t remaining = NETPLAY_READBUFSIZE - (conn->readEnd - conn->readBuf);
+		int numRead;
+		ssize_t processed;
+		if (remaining == 0) {
+			NetConnection_webDisconnect(conn, EBADMSG);
+			return;
+		}
+		numRead = WebTransport_receive(conn->readEnd, remaining);
+		if (numRead < 0) {
+			NetConnection_webDisconnect(conn, ECONNRESET);
+			return;
+		}
+		if (numRead == 0)
+			return;
+		conn->readEnd += numRead;
+		processed = dataReceivedMulti(conn, conn->readBuf,
+				conn->readEnd - conn->readBuf);
+		if (processed < 0) {
+			NetConnection_webDisconnect(conn, errno);
+			return;
+		}
+		if (processed > 0) {
+			memmove(conn->readBuf, conn->readBuf + processed,
+					(conn->readEnd - conn->readBuf) - processed);
+			conn->readEnd -= processed;
+		}
+	}
+}
+#endif

@@ -17,3 +17,15 @@ sc2/*.data
 .tools/
 dist/
 __pycache__/
+
+# Node relay dependencies and browser test artifacts
+node_modules/
+test-results/
+playwright-report/
+
+# Local copy of the patched Emscripten runtime
+/sc2/wasm/compat/
+
+# Cloudflare deployment output
+deploy/data-parts.json
+deploy/.wrangler/

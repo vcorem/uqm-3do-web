@@ -25,7 +25,12 @@
 extern "C" {
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include "netconnection.h"
+void webDataReady(NetConnection *conn);
+#else
 void dataReadyCallback(NetDescriptor *nd);
+#endif
 
 #if defined(__cplusplus)
 }
