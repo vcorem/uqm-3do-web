@@ -38,5 +38,6 @@ for artifact in uqm-debug.js uqm-debug.wasm uqm-debug.data uqm-debug.worker.js; 
 done
 cp COPYING "$output/COPYING.txt"
 cp wasm/netplay-client.js "$output/netplay-client.js"
+cp "$root/web/game-help/game-help.js" "$output/game-help.js"
 echo "Built $output/index.html"
 echo "Preview: python3 scripts/serve.py"

@@ -61,7 +61,7 @@ jobs:
           UQM_DIST=.tools/editions-dist npm run test:editions
       - name: Check the browser package and script syntax
         run: |
-          for artifact in index.html uqm-debug.js uqm-debug.wasm uqm-debug.data uqm-debug.worker.js netplay-client.js COPYING.txt toolchain-fixes.json; do
+          for artifact in index.html uqm-debug.js uqm-debug.wasm uqm-debug.data uqm-debug.worker.js netplay-client.js game-help.js COPYING.txt toolchain-fixes.json; do
             test -s "dist/$artifact"
           done
           bash -n scripts/build-web.sh scripts/build-hd-web.sh scripts/build-editions.sh

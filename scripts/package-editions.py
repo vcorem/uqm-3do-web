@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 import shutil
 
-ENGINE = ('index.html', 'uqm-debug.js', 'uqm-debug.wasm', 'uqm-debug.data', 'uqm-debug.worker.js', 'COPYING.txt', 'toolchain-fixes.json')
+ENGINE = ('index.html', 'uqm-debug.js', 'uqm-debug.wasm', 'uqm-debug.data', 'uqm-debug.worker.js', 'COPYING.txt', 'toolchain-fixes.json', 'game-help.js')
 
 
 def package(original, hd, output):
