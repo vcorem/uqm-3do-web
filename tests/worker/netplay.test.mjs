@@ -62,7 +62,7 @@ async function startWorker(t, vars = {}) {
   await writeFile(configPath, JSON.stringify(config));
   const child = spawn('npx', ['--yes', WRANGLER, 'dev', '--config', configPath, '--ip', '127.0.0.1',
     '--port', String(port), '--inspector-port', String(inspectorPort), '--persist-to', path.join(temp, 'state'),
-    '--show-interactive-dev-session=false', '--log-level', 'warn'],
+    '--show-interactive-dev-session=false', '--log-level', process.env.WRANGLER_TEST_LOG_LEVEL ?? 'warn'],
   // Own process group: npx does not always pass SIGTERM on to wrangler and workerd,
   // and their open pipes would keep this test file running.
   { cwd: temp, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
@@ -80,13 +80,15 @@ async function startWorker(t, vars = {}) {
     await rm(temp, { recursive: true, force: true });
   });
   const deadline = Date.now() + 90000;
+  let lastCheck = 'no answer';
   for (let attempt = 0; ; attempt++) {
     if (child.exitCode !== null) throw new Error(`wrangler dev exited:\n${log}`);
     try {
       const response = await fetch(origin + '/', { signal: AbortSignal.timeout(2000) });
       if (response.ok) break;
-    } catch { /* Not listening yet. */ }
-    if (Date.now() > deadline) throw new Error(`wrangler dev did not start in 90 s:\n${log}`);
+      lastCheck = 'HTTP ' + response.status;
+    } catch (error) { lastCheck = String(error.cause?.code ?? error.name); /* Not listening yet. */ }
+    if (Date.now() > deadline) throw new Error(`wrangler dev did not start in 90 s (last check: ${lastCheck}):\n${log}`);
     await pause(100);
   }
   const wsBase = origin.replace('http:', 'ws:');
