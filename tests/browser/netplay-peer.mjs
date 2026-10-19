@@ -75,11 +75,17 @@ try {
   const deadline = Date.now() + joinTimeout;
   for (let attempt = 1; ; attempt++) {
     await page.evaluate(([role, token]) => openRoom(role, token), [role, token]);
-    const state = await page.waitForFunction(() => {
-      const state = Module.webNet && Module.webNet.state;
-      return ['waiting', 'ready', 'error', 'closed'].includes(state) && state;
-    }, null, { polling: 100, timeout: 30000 }).then(handle => handle.jsonValue());
-    if (state === 'waiting' || state === 'ready') { log(`in room (${state}) after ${attempt} attempt(s)`); break; }
+    // The client shows 'waiting' when its socket opens, before the relay answers. A host is
+    // in its room after the relay's 'waiting'; a guest is in only when the room is 'ready'.
+    const goal = role === 'host' ? 'waiting' : 'ready';
+    const state = await page.waitForFunction(goal => {
+      const net = Module.webNet;
+      const state = net && net.state;
+      if (state === 'error' || state === 'closed' || state === 'ready') return state;
+      return goal === 'waiting' && state === 'waiting' &&
+        document.getElementById('online-status').textContent === 'Waiting for your opponent to join…' ? state : false;
+    }, goal, { polling: 100, timeout: 30000 }).then(handle => handle.jsonValue()).catch(() => 'timeout');
+    if (state === goal || state === 'ready') { log(`in room (${state}) after ${attempt} attempt(s)`); break; }
     if (role === 'host' || Date.now() > deadline) throw new Error(`Could not enter the room: ${state}`);
     await sleep(2000);
   }
