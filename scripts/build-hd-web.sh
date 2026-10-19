@@ -88,4 +88,5 @@ done
 cp content/notices/upstream/licenses/COPYING-UQM "$output/COPYING.txt"
 cp content/content-licenses.txt "$output/content-licenses.txt"
 cp "$root/hd/content-lock.json" "$output/content-lock.json"
+cp "$root/web/game-help/game-help.js" "$output/game-help.js"
 echo "Built native 1280×960 HD browser runtime: $output/index.html"
