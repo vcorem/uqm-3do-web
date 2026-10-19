@@ -1,0 +1,14 @@
+[
+  {
+    "source": "src/libs/uio/uiostream.rs",
+    "symbol": "uqm_em_asm_0",
+    "bytes": 14,
+    "sha256": "942647c14a18d22b541f8c82779b089f1f1a1b2f6973a8b4ca2d24453d220adf"
+  },
+  {
+    "source": "src/uqm/restart.rs",
+    "symbol": "uqm_em_asm_1",
+    "bytes": 42,
+    "sha256": "a2df828f26676937ee772609878f04ffe7606bd250c90a60da87a7018f5f147f"
+  }
+]

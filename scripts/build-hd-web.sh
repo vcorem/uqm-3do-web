@@ -56,6 +56,20 @@ done
 mkdir -p "$source_dir/wasm"
 cp "$root/hd/wasm/shell.html" "$source_dir/wasm/shell.html"
 cp "$root/hd/wasm/pre.js" "$source_dir/wasm/pre.js"
+case "${UQM_CORE:-rust}" in
+  rust)
+    export UQM_RUST_CORE=0
+    unset UQM_RUST_LIB
+    ;;
+  hybrid)
+    "$root/scripts/build-rust-core.sh" hd
+    export UQM_RUST_CORE=1
+    export UQM_RUST_LIB="$root/.tools/rust-hd/wasm32-unknown-emscripten/release/libuqm_core.a"
+    cp "$root/hd/rust/rust_config.c" "$source_dir/src/libs/math/rust_config.c"
+    ;;
+  c) export UQM_RUST_CORE=0; unset UQM_RUST_LIB ;;
+  *) echo 'UQM_CORE must be rust, hybrid or c.' >&2; exit 1 ;;
+esac
 fetch_args=(--output "$source_dir/content")
 if [[ "${HD_OFFLINE:-0}" = 1 ]]; then fetch_args+=(--offline); fi
 python3 "$root/scripts/fetch-hd-content.py" "${fetch_args[@]}"
@@ -66,6 +80,24 @@ emcc -c -E - -s USE_ZLIB=1 -s USE_LIBPNG=1 -s USE_VORBIS=1 -s USE_SDL=2 -pthread
 cp wasm/config.state.expected config.state
 emconfigure ./build.sh uqm config </dev/null
 diff -u wasm/config.state.expected <(grep '^CHOICE_' config.state)
+if [[ "${UQM_CORE:-rust}" = rust ]]; then
+  mkdir -p "$root/.tools"
+  "$root/scripts/rust-engine/build.sh" hd >"$root/.tools/rust-engine-hd-build.log" 2>&1 || {
+    tail -n 100 "$root/.tools/rust-engine-hd-build.log" >&2; exit 1;
+  }
+  python3 "$root/scripts/rust-engine/link.py" hd --source "$source_dir" \
+    --generated "$root/rust/uqm-engine-hd" \
+    --library "${CARGO_TARGET_DIR:-$root/.tools/rust-engine-hd}/wasm32-unknown-emscripten/release/libuqm_engine_hd.a" \
+    --output "$output"
+  python3 - "$root/hd/content-lock.json" "$output/uqm-debug.data" <<'PY'
+import json, os, sys
+with open(sys.argv[1]) as source:
+    expected = sum(package['bytes'] for package in json.load(source)['packages'])
+if os.path.getsize(sys.argv[2]) < expected:
+    raise SystemExit('HD preload is smaller than its required media packages.')
+PY
+  exit 0
+fi
 ./build.sh uqm depend
 # Upstream does not track shell, pre-JS, or media package changes as link inputs.
 # Always recreate the preload metadata and runtime together.
@@ -80,6 +112,7 @@ if os.path.getsize(sys.argv[2]) < expected:
     raise SystemExit('HD preload is smaller than its required media packages.')
 PY
 mkdir -p "$output"
+rm -f "$output/link-inputs.json"
 cp uqm-debug.html "$output/index.html"
 cp wasm/compat/toolchain-fixes.json "$output/toolchain-fixes.json"
 for artifact in uqm-debug.js uqm-debug.wasm uqm-debug.data uqm-debug.worker.js; do
@@ -88,4 +121,12 @@ done
 cp content/notices/upstream/licenses/COPYING-UQM "$output/COPYING.txt"
 cp content/content-licenses.txt "$output/content-licenses.txt"
 cp "$root/hd/content-lock.json" "$output/content-lock.json"
+python3 - "$output/engine-language.json" "${UQM_CORE:-rust}" <<'PY'
+import json, sys
+with open(sys.argv[1], 'w') as stream:
+    json.dump({'core': sys.argv[2], 'edition': 'hd',
+               'rust_modules': ['rng', 'context_rng', 'integer_sqrt', 'string_crc', 'velocity', 'trigonometry', 'queues', 'box_geometry', 'line_clipping', 'dirty_regions']
+               if sys.argv[2] == 'hybrid' else [], 'complete_rust_port': False}, stream, indent=2)
+    stream.write('\n')
+PY
 echo "Built native 1280×960 HD browser runtime: $output/index.html"

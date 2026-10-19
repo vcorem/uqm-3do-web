@@ -5,6 +5,13 @@ A local WebAssembly port of UQM 0.8.0, based on
 `daadbb540a8c46f09dcdb0080b4212fb33e6cb94` (2023-12-10).
 The reference target is **Star Control II for the 3DO**.
 
+**Rust port branch (`codex/rust-port`).** Both Original and HD game engines
+build from Rust implementations, alongside a native Rust network relay.
+The engine translation retains substantial `unsafe` code and the original C ABI;
+SDL, codecs and the HD Lua interpreter remain external dependencies. JavaScript
+handles browser APIs and the launcher. This is not a memory-safe rewrite.
+See [Rust scope, build requirements and validation](docs/rust-port.md).
+
 **Status: private alpha.** The campaign, local Melee and private two-player
 Online Melee run in the browser. Online combat has been exercised in two
 independent browser processes on one computer, including full fleet matches,
@@ -13,7 +20,8 @@ checksums and no observed mismatch. Two separate computers over the internet
 and the complete 3DO fidelity checklist are still unverified. No public
 release or deployment has been made.
 
-The original C engine, ships, physics and game artwork remain in place.
+The original ships, physics and artwork remain in place. On this branch,
+the game implementations compile from Rust to WebAssembly.
 The browser launcher selects 3DO menus, fonts, scan icons, shields, scrolling
 and melee zoom. The checkout includes 3DO music and speech. Original 3DO
 videos are included in the repository content: intro, ending and all 25 ship
@@ -46,13 +54,16 @@ In a ship selection menu, press **Alt / Option** for the ship video.
 
 ## Play Online Melee locally
 
-Use Node.js 22 or newer. After building the game, start the combined game and
+Use Node.js 22 or newer and the pinned Rust toolchain described below. After building the game, start the Rust game and
 room server on a separate port so an existing campaign preview can stay open:
 
 ```sh
 npm ci
 npm start -- --port 10000
 ```
+
+The first start compiles the Rust relay. `npm run start:node` runs the retained
+Node reference server for comparison.
 
 Open **http://127.0.0.1:10000/**. Create a room, copy its invite, then open the
 invite in a second browser page and click **Join room**. When both players are
@@ -79,7 +90,7 @@ they do not run the room relay.
 ## Build locally
 
 Requirements: Git, Python 3.10 or newer for the current SDK installer, a POSIX
-shell and Make. macOS needs the Xcode command-line tools. The compiler and
+shell, Make and Rustup. macOS needs the Xcode command-line tools. The compiler and
 its caches live inside `.tools/emsdk`; no shell startup changes are needed.
 
 ```sh
@@ -87,17 +98,19 @@ mkdir -p .tools
 git clone https://github.com/emscripten-core/emsdk.git .tools/emsdk
 .tools/emsdk/emsdk install 3.1.50
 .tools/emsdk/emsdk activate 3.1.50
+rustup toolchain install 1.85.1 --profile minimal --component rustfmt --component clippy
+rustup toolchain install "$(cat .rust-wasm-toolchain)" --profile minimal --component rust-src --target wasm32-unknown-emscripten
 ./scripts/build-web.sh
 python3 scripts/serve.py
 ```
 
 If the default Python is older, set `EMSDK_PYTHON` to a Python 3.10+ executable
 when running the SDK installer. The SDK supplies its own runtime afterward.
-Use `JOBS=8 ./scripts/build-web.sh` to change build concurrency.
-The script selects the browser network configuration, refreshes the original
-build system's source list, and relinks the page on every package build so
-changes to the launcher or storage script cannot leave stale output. Compiled
-objects and downloaded compiler ports are reused when their dependencies allow.
+The script configures browser dependencies, compiles the Rust engine and
+relinks the page on every package build so launcher or storage edits cannot
+leave stale output. Compiler outputs and downloaded ports are cached.
+Use `UQM_CORE=c` for the C reference, or `UQM_CORE=hybrid` for the intermediate
+core migration; default `UQM_CORE=rust` uses the whole Rust game engine.
 To keep a separate preview package, use an absolute output path, for example
 `BUILD_OUTPUT="$PWD/.tools/netplay-dist" ./scripts/build-web.sh`.
 Emscripten **3.1.50** is pinned in `.emscripten-version`; the build script
@@ -122,7 +135,7 @@ Serve `.wasm` as `application/wasm`. Use HTTPS outside localhost. Opening the
 HTML as a file, or using a server without the isolation headers, will not
 support the shared memory used by the game. The initial content bundle is
 large because it includes the complete campaign voice recordings and installed
-3DO videos. Online Melee additionally needs the same-origin Node relay at
+3DO videos. Online Melee additionally needs the same-origin Rust or Node relay at
 `/netplay/`; a static host alone is insufficient.
 
 ## Saving and controls
@@ -201,7 +214,7 @@ in fresh Chromium sessions. It checks actual voiced dialogue and changing
 subtitle pixels with the launcher override, then removes the override to verify
 that the saved disabled preference hides text while speech keeps playing.
 Use `UQM_DIST`, `UQM_TEST_OUTPUT` and `CHROME_BIN` as above. This local desktop
-regression uses timed navigation and is not part of CI.
+regression uses timed navigation and runs in CI alongside the Rust engine checks.
 
 GitHub Actions runs the unit and network checks, including the real-browser
 Melee scenarios, both pinned-toolchain engine builds, HD campaign travel,

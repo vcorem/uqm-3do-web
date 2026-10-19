@@ -145,6 +145,14 @@ async function scenario(origin, name, enableOverride) {
     }
     for (const key of held) await page.keyboard.up(key);
     held = [];
+    // The collision can start the encounter at the end of the last segment.
+    // Let real portrait/music/voice loading finish with no further movement.
+    // Reaching the file alone is insufficient: PCM and glyph checks follow.
+    const dialogueDeadline = Date.now() + 20000;
+    while (!reachedHayes && Date.now() < dialogueDeadline) {
+      reachedHayes = (await speechState(page)).voiceFiles.length > 0;
+      if (!reachedHayes) await sleep(100);
+    }
     assert.ok(reachedHayes, 'Real keyboard navigation did not reach Hayes; inspect failure screenshot.');
     const until = Date.now() + 8500;
     while (Date.now() < until) {

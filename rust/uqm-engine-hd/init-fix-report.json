@@ -1,0 +1,37 @@
+{
+  "initializer_count": 7,
+  "initializers": [
+    {
+      "path": "src/uqm/comm/melnorm/melnorm.rs",
+      "symbol": "uqm_c2rust_init_c0a05c6c2fe9d518"
+    },
+    {
+      "path": "src/uqm/galaxy.rs",
+      "symbol": "uqm_c2rust_init_cc8c9db2fa0eecb9"
+    },
+    {
+      "path": "src/uqm/intro.rs",
+      "symbol": "uqm_c2rust_init_b155651a38e88e34"
+    },
+    {
+      "path": "src/uqm/loadship.rs",
+      "symbol": "uqm_c2rust_init_1a10fe952125b2c9"
+    },
+    {
+      "path": "src/uqm/setupmenu.rs",
+      "symbol": "uqm_c2rust_init_ba407804bbae8b28"
+    },
+    {
+      "path": "src/uqm/state.rs",
+      "symbol": "uqm_c2rust_init_0e4888f246ed0b4b"
+    },
+    {
+      "path": "src/uqm/supermelee/meleesetup.rs",
+      "symbol": "uqm_c2rust_init_f2b808cc7fbb65e1"
+    }
+  ],
+  "entry_symbol": "uqm_rust_main",
+  "entry_adapter": "uqm_rust_entry.c",
+  "required_lib_item": "mod uqm_engine_init;",
+  "initialization_order": "sorted source paths; only C static-initializer expressions"
+}

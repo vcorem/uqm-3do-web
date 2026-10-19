@@ -18,7 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -29,30 +29,75 @@ jobs:
           cache: npm
       - name: Install locked Node dependencies
         run: npm ci
+      - name: Install the pinned Rust toolchain and build the relay
+        run: |
+          rustup toolchain install 1.85.1 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-emscripten
+          rustup toolchain install "$(cat .rust-wasm-toolchain)" --profile minimal --component rust-src --target wasm32-unknown-emscripten
+          cargo build --manifest-path rust/Cargo.toml -p uqm-relay --release --locked
+          cargo fmt --manifest-path rust/Cargo.toml --all -- --check
+          cargo test --manifest-path rust/Cargo.toml --workspace --all-features --locked
+          cargo clippy --manifest-path rust/Cargo.toml --workspace --all-targets --all-features --locked -- -D warnings
       - name: Test browser helpers and real WebSocket relay
         run: npm test
+      - name: Check reproducible Rust translation helpers
+        run: python3 scripts/rust-engine/test_tools.py
       - name: Install pinned Emscripten SDK
         run: |
           mkdir -p .tools
           git clone --depth 1 https://github.com/emscripten-core/emsdk.git .tools/emsdk
           .tools/emsdk/emsdk install "$(cat .emscripten-version)"
           .tools/emsdk/emsdk activate "$(cat .emscripten-version)"
+      - name: Compare Rust core, movement and geometry with actual C implementations
+        run: |
+          bash scripts/test-rust-core.sh --all
+          bash tests/rust/test-velocity.sh --all
+          bash tests/rust/test-queue-geometry.sh --all
+          bash tests/rust/test-bbox.sh --all
       - name: Build the complete browser game
         env:
           JOBS: '4'
         run: ./scripts/build-web.sh
       - name: Run actual-source Wasm transport and disconnect regressions
         run: bash sc2/src/uqm/supermelee/netplay/tests/run.sh
+      - name: Verify complete Original Rust exports and allocator alignment
+        run: |
+          python3 scripts/rust-engine/check-exports.py original .tools/rust-engine-original/wasm32-unknown-emscripten/release/libuqm_engine_original.a
+          bash tests/rust/test-allocator.sh
       - name: Install Chromium for game integration tests
         run: npx playwright install --with-deps chromium
       - name: Test real two-browser matches and disconnects
-        run: npm run test:browser
+        run: UQM_RELAY=rust npm run test:browser
+      - name: Test voiced dialogue and subtitle pixels in the Rust engine
+        run: npm run test:subtitles
+      - name: Compare C and Rust clients in real battles through the Rust relay
+        run: |
+          UQM_CORE=c BUILD_OUTPUT="$PWD/.tools/c-reference" ./scripts/build-web.sh
+          UQM_RELAY=rust UQM_PEER_DIST=.tools/c-reference UQM_TEST_OUTPUT=test-results/rust-c npm run test:browser
+      - name: Compare ship movement, weapons and specials with the C client
+        run: UQM_RELAY=rust UQM_PEER_DIST=.tools/c-reference UQM_SHIP_SMOKE=0,3,11,18,19,21,22,23 UQM_TEST_OUTPUT=test-results/rust-ships npm run test:browser
       - name: Build pinned redrawn HD engine and verify official media
         env:
           JOBS: '4'
         run: ./scripts/build-hd-web.sh
+      - name: Compare HD Rust core, movement and geometry with pinned MegaMod C
+        run: |
+          python3 scripts/rust-engine/check-exports.py hd .tools/rust-engine-hd/wasm32-unknown-emscripten/release/libuqm_engine_hd.a
+          bash scripts/test-rust-core.sh --all --hd
+          bash tests/rust/test-velocity.sh --all --hd
+          bash tests/rust/test-queue-geometry.sh --all --hd
+          bash tests/rust/test-bbox.sh --all --hd
+      - name: Compare Rust PNG decoding and writing with both original implementations
+        run: bash tests/rust/test-png.sh --wasm
+      - name: Verify Lua failures return normally through Rust callbacks
+        run: |
+          bash tests/rust/test-lua.sh --wasm
+          python3 scripts/rust-engine/test_lua_propagate.py .tools/rust-lua-transform-target/release/uqm-lua-propagate
+      - name: Compare solar draw ordering, including the sun and maximum planet count
+        run: python3 tests/rust/test-solar-sort.py
       - name: Test real HD campaign loading and travel to Hyperspace
-        run: UQM_DIST=.tools/hd-dist npm run test:hd-campaign
+        run: |
+          node tests/browser/scene-pixels.test.mjs
+          UQM_DIST=.tools/hd-dist npm run test:hd-campaign
       - name: Test HD idle stability and actual local combat
         run: UQM_DIST=.tools/hd-dist npm run test:hd-stability
       - name: Package and test the edition picker with both real engines
@@ -64,6 +109,6 @@ jobs:
           for artifact in index.html uqm-debug.js uqm-debug.wasm uqm-debug.data uqm-debug.worker.js netplay-client.js COPYING.txt toolchain-fixes.json; do
             test -s "dist/$artifact"
           done
-          bash -n scripts/build-web.sh scripts/build-hd-web.sh scripts/build-editions.sh
-          python3 -m py_compile scripts/serve.py scripts/fetch-hd-content.py scripts/package-editions.py scripts/prepare-emscripten-proxy.py
+          bash -n scripts/build-web.sh scripts/build-hd-web.sh scripts/build-editions.sh scripts/build-rust-core.sh scripts/build-rust-relay.sh scripts/run-rust-relay.sh scripts/rust-env.sh scripts/test-rust-core.sh scripts/rust-engine/build.sh tests/rust/test-velocity.sh tests/rust/test-queue-geometry.sh tests/rust/test-bbox.sh tests/rust/test-png.sh tests/rust/test-lua.sh tests/rust/test-allocator.sh
+          python3 -m py_compile scripts/serve.py scripts/fetch-hd-content.py scripts/package-editions.py scripts/prepare-emscripten-proxy.py scripts/rust-engine/*.py
           git diff --check

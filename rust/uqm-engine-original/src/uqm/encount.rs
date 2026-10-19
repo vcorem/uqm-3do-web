@@ -1,0 +1,3359 @@
+//Copyright Paul Reiche, Fred Ford. 1992-2002
+
+/*
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ */
+
+// Rust translation of src/uqm/encount.c.
+extern "C" {
+    pub type string_table_entry;
+    pub type string_table;
+    pub type context_desc;
+    pub type frame_desc;
+    pub type font_desc;
+    pub type drawable_desc;
+    pub type tfb_soundsample;
+    pub type FlashContext;
+    pub type getmelee_struct;
+    fn SleepThreadUntil(wakeTime: TimeCount);
+    fn GetTimeCounter() -> TimeCount;
+    fn __assert_fail(
+        _: *const ::core::ffi::c_char,
+        _: *const ::core::ffi::c_char,
+        _: ::core::ffi::c_int,
+        _: *const ::core::ffi::c_char,
+    );
+    fn FreeLink(pq: *mut QUEUE, hLink: HLINK);
+    fn ReinitQueue(pq: *mut QUEUE);
+    fn RemoveQueue(pq: *mut QUEUE, hLink: HLINK);
+    fn printf(_: *const ::core::ffi::c_char, ...) -> ::core::ffi::c_int;
+    fn sprintf(
+        _: *mut ::core::ffi::c_char,
+        _: *const ::core::ffi::c_char,
+        ...
+    ) -> ::core::ffi::c_int;
+    fn utf8StringCopy(
+        dst: *mut ::core::ffi::c_char,
+        size: size_t,
+        src: *const ::core::ffi::c_char,
+    ) -> *mut ::core::ffi::c_uchar;
+    fn CaptureStringTable(StringTable: STRING_TABLE) -> STRING;
+    fn ReleaseStringTable(String: STRING) -> STRING_TABLE;
+    fn SetAbsStringTableIndex(String: STRING, StringTableIndex: COUNT) -> STRING;
+    fn GetStringAddress(String: STRING) -> STRINGPTR;
+    fn LoadSoundInstance(res: RESOURCE) -> SOUND_REF;
+    fn LoadMusicInstance(res: RESOURCE) -> MUSIC_REF;
+    fn DestroySound(SoundRef: SOUND_REF) -> BOOLEAN;
+    fn DestroyMusic(MusicRef: MUSIC_REF) -> BOOLEAN;
+    fn WaitForSoundEnd(Channel: COUNT);
+    fn strupr(_: *mut ::core::ffi::c_char) -> *mut ::core::ffi::c_char;
+    fn InitSISContexts();
+    fn DrawSISFrame();
+    fn SetFlashRect(pRect: *const RECT);
+    fn DrawHyperCoords(puniverse: POINT);
+    fn DrawSISTitle(pStr: *mut UNICODE);
+    fn DrawSISMessage(pStr: *const UNICODE);
+    fn DrawStatusMessage(pStr: *const UNICODE);
+    fn SetStatusMessageMode(_: StatMsgMode) -> StatMsgMode;
+    fn DeltaSISGauges(
+        crew_delta: SIZE,
+        fuel_delta: SIZE,
+        resunit_delta: ::core::ffi::c_int,
+    );
+    fn SetContext(Context: CONTEXT) -> CONTEXT;
+    fn SetContextForeGroundColor(Color: Color) -> Color;
+    fn SetContextBackGroundColor(Color: Color) -> Color;
+    fn DrawStamp(pStamp: *mut STAMP);
+    fn DrawFilledStamp(pStamp: *mut STAMP);
+    fn DrawFilledRectangle(pRect: *mut RECT);
+    fn font_DrawText(pText: *mut TEXT);
+    fn BatchGraphics();
+    fn UnbatchGraphics();
+    fn ClearDrawable();
+    fn DestroyDrawable(Drawable: DRAWABLE) -> BOOLEAN;
+    fn GetFrameRect(Frame: FRAME, pRect: *mut RECT) -> BOOLEAN;
+    fn LoadGraphicInstance(res: RESOURCE) -> *mut ::core::ffi::c_void;
+    fn SetContextFont(Font: FONT) -> FONT;
+    fn SetAbsFrameIndex(Frame: FRAME, FrameIndex: COUNT) -> FRAME;
+    fn IncFrameIndex(Frame: FRAME) -> FRAME;
+    fn CaptureDrawable(Drawable: DRAWABLE) -> FRAME;
+    fn ReleaseDrawable(Frame: FRAME) -> DRAWABLE;
+    static mut GlobData: GLOBDATA;
+    fn getGameState(
+        state: *mut BYTE,
+        startBit: ::core::ffi::c_int,
+        endBit: ::core::ffi::c_int,
+    ) -> BYTE;
+    fn setGameState(
+        state: *mut BYTE,
+        startBit: ::core::ffi::c_int,
+        endBit: ::core::ffi::c_int,
+        val: BYTE,
+    );
+    fn inHQSpace() -> BOOLEAN;
+    fn TFB_Random() -> DWORD;
+    fn square_root(value: DWORD) -> COUNT;
+    fn DoMenuChooser(pMS: *mut MENU_STATE, BaseState: BYTE) -> BOOLEAN;
+    fn DrawMenuStateStrings(beg_index: BYTE, NewState: SWORD);
+    static mut ScreenWidth: ::core::ffi::c_int;
+    static mut ScreenHeight: ::core::ffi::c_int;
+    static mut sinetab: [SIZE; 0];
+    fn ARCTAN(delta_x: SIZE, delta_y: SIZE) -> COUNT;
+    static mut battle_counter: [BYTE; 2];
+    fn Battle(_: Option<BattleFrameCallback>) -> BOOLEAN;
+    static mut PlayerInput: [*mut InputContext; 0];
+    static mut CurrentInputState: CONTROLLER_INPUT_STATE;
+    static mut PulsedInputState: CONTROLLER_INPUT_STATE;
+    static mut PlayerControls: [CONTROL_TEMPLATE; 0];
+    fn FlushInput();
+    fn WaitForAnyButton(
+        newButton: BOOLEAN,
+        duration: TimePeriod,
+        resetInput: BOOLEAN,
+    ) -> BOOLEAN;
+    fn DoInput(pInputState: *mut ::core::ffi::c_void, resetInput: BOOLEAN);
+    static mut EncounterRace: SIZE;
+    static mut CurStarDescPtr: *mut STAR_DESC;
+    fn GetClusterName(pSD: *const STAR_DESC, buf: *mut UNICODE);
+    fn Build(pQueue: *mut QUEUE, SpeciesID: SPECIES_ID) -> HLINK;
+    fn GetStarShipFromIndex(pShipQ: *mut QUEUE, Index: COUNT) -> HLINK;
+    fn load_gravity_well(selector: BYTE);
+    fn free_gravity_well();
+    fn GameOptions() -> BOOLEAN;
+    fn DrawArmadaPickShip(draw_salvage_frame: BOOLEAN, pPickRect: *mut RECT);
+    static mut GameStrings: STRING;
+    fn StopMusic();
+    fn PlayMusic(MusicRef: MUSIC_REF, Continuous: BOOLEAN, Priority: BYTE);
+    static mut SpaceContext: CONTEXT;
+    static mut MicroFont: FONT;
+    static mut TinyFont: FONT;
+    static mut race_q: [QUEUE; 0];
+    static mut PlayerControl: [BYTE; 0];
+    fn SetPlayerInput(playerI: COUNT) -> bool;
+    fn ClearPlayerInput(playerI: COUNT);
+    static mut GameSounds: SOUND;
+    fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
+    fn abort() -> !;
+    fn SetTransitionSource(pRect: *const RECT);
+    fn ScreenTransition(transition: ::core::ffi::c_int, pRect: *const RECT);
+    fn log_add(_: log_Level, fmt: *const ::core::ffi::c_char, ...);
+    fn AnyButtonPress(DetectSpecial: BOOLEAN) -> BOOLEAN;
+}
+pub type BYTE = uint8;
+pub type uint8 = ::core::ffi::c_uchar;
+pub type COUNT = UWORD;
+pub type UWORD = uint16;
+pub type uint16 = ::core::ffi::c_ushort;
+pub type SDWORD = sint32;
+pub type sint32 = ::core::ffi::c_int;
+pub type POINT = point;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct point {
+    pub x: COORD,
+    pub y: COORD,
+}
+pub type COORD = SWORD;
+pub type SWORD = sint16;
+pub type sint16 = ::core::ffi::c_short;
+pub type SIZE = SWORD;
+pub type HELEMENT = HLINK;
+pub type HLINK = QUEUE_HANDLE;
+pub type QUEUE_HANDLE = *mut ::core::ffi::c_void;
+pub type size_t = ::core::ffi::c_ulong;
+pub type uint32 = ::core::ffi::c_uint;
+pub type UBYTE = uint8;
+pub type DWORD = uint32;
+pub type UNICODE = ::core::ffi::c_char;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct BOOLEAN(pub ::core::ffi::c_uint);
+impl BOOLEAN {
+    pub const FALSE: Self = Self(0);
+    pub const TRUE: Self = Self(1);
+}
+pub type TimeCount = DWORD;
+pub type TimePeriod = DWORD;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct link {
+    pub pred: HLINK,
+    pub succ: HLINK,
+}
+pub type LINK = link;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct QUEUE {
+    pub head: HLINK,
+    pub tail: HLINK,
+    pub pq_tab: *mut BYTE,
+    pub free_list: HLINK,
+    pub object_size: COUNT,
+    pub num_objects: BYTE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct CLOCK_STATE {
+    pub day_index: BYTE,
+    pub month_index: BYTE,
+    pub year_index: COUNT,
+    pub tick_count: SIZE,
+    pub day_in_ticks: SIZE,
+    pub event_q: QUEUE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct Color {
+    pub r: BYTE,
+    pub g: BYTE,
+    pub b: BYTE,
+    pub a: BYTE,
+}
+pub type RESOURCE = *const ::core::ffi::c_char;
+pub type STRING_TABLE_ENTRY_DESC = string_table_entry;
+pub type STRING_TABLE_DESC = string_table;
+pub type STRING_TABLE = *mut STRING_TABLE_DESC;
+pub type STRING = *mut STRING_TABLE_ENTRY_DESC;
+pub type STRINGPTR = *mut ::core::ffi::c_char;
+pub type CONTEXT_DESC = context_desc;
+pub type FRAME_DESC = frame_desc;
+pub type FONT_DESC = font_desc;
+pub type DRAWABLE_DESC = drawable_desc;
+pub type CONTEXT = *mut CONTEXT_DESC;
+pub type FRAME = *mut FRAME_DESC;
+pub type FONT = *mut FONT_DESC;
+pub type DRAWABLE = *mut DRAWABLE_DESC;
+pub type TIME_VALUE = UWORD;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct extent {
+    pub width: COORD,
+    pub height: COORD,
+}
+pub type EXTENT = extent;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct stamp {
+    pub origin: POINT,
+    pub frame: FRAME,
+}
+pub type STAMP = stamp;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct rect {
+    pub corner: POINT,
+    pub extent: EXTENT,
+}
+pub type RECT = rect;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct line {
+    pub first: POINT,
+    pub second: POINT,
+}
+pub type LINE = line;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct TEXT_ALIGN(pub ::core::ffi::c_uint);
+impl TEXT_ALIGN {
+    pub const ALIGN_LEFT: Self = Self(0);
+    pub const ALIGN_CENTER: Self = Self(1);
+    pub const ALIGN_RIGHT: Self = Self(2);
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct text {
+    pub baseline: POINT,
+    pub pStr: *const UNICODE,
+    pub align: TEXT_ALIGN,
+    pub CharCount: COUNT,
+}
+pub type TEXT = text;
+pub type GRAPHICS_PRIM = BYTE;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union PRIM_DESC {
+    pub Point: POINT,
+    pub Stamp: STAMP,
+    pub Line: LINE,
+    pub Text: TEXT,
+    pub Rect: RECT,
+}
+pub type PRIM_LINKS = DWORD;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct PRIMITIVE {
+    pub Links: PRIM_LINKS,
+    pub Type: GRAPHICS_PRIM,
+    pub color: Color,
+    pub Object: PRIM_DESC,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct INTERSECT_CONTROL {
+    pub last_time_val: TIME_VALUE,
+    pub EndPoint: POINT,
+    pub IntersectStamp: STAMP,
+}
+pub type SOUND_REF = STRING_TABLE;
+pub type SOUND = STRING;
+pub type TFB_SoundSample = tfb_soundsample;
+pub type MUSIC_REF = *mut *mut TFB_SoundSample;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct SIS_STATE {
+    pub log_x: SDWORD,
+    pub log_y: SDWORD,
+    pub ResUnits: DWORD,
+    pub FuelOnBoard: DWORD,
+    pub CrewEnlisted: COUNT,
+    pub TotalElementMass: COUNT,
+    pub TotalBioMass: COUNT,
+    pub ModuleSlots: [BYTE; 16],
+    pub DriveSlots: [BYTE; 11],
+    pub JetSlots: [BYTE; 8],
+    pub NumLanders: BYTE,
+    pub ElementAmounts: [COUNT; 8],
+    pub ShipName: [UNICODE; 16],
+    pub CommanderName: [UNICODE; 16],
+    pub PlanetName: [UNICODE; 16],
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct StatMsgMode(pub ::core::ffi::c_uint);
+impl StatMsgMode {
+    pub const SMM_UNDEFINED: Self = Self(0);
+    pub const SMM_DATE: Self = Self(1);
+    pub const SMM_RES_UNITS: Self = Self(2);
+    pub const SMM_CREDITS: Self = Self(3);
+    pub const SMM_DEFAULT: Self = Self(1);
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct velocity_desc {
+    pub TravelAngle: COUNT,
+    pub vector: EXTENT,
+    pub fract: EXTENT,
+    pub error: EXTENT,
+    pub incr: EXTENT,
+}
+pub type VELOCITY_DESC = velocity_desc;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed {
+    pub const SHOFIXTI_VISITS: Self = Self(0);
+    pub const END_SHOFIXTI_VISITS: Self = Self(2);
+    pub const SHOFIXTI_STACK1: Self = Self(3);
+    pub const END_SHOFIXTI_STACK1: Self = Self(4);
+    pub const SHOFIXTI_STACK2: Self = Self(5);
+    pub const END_SHOFIXTI_STACK2: Self = Self(7);
+    pub const SHOFIXTI_STACK3: Self = Self(8);
+    pub const END_SHOFIXTI_STACK3: Self = Self(9);
+    pub const SHOFIXTI_KIA: Self = Self(10);
+    pub const END_SHOFIXTI_KIA: Self = Self(10);
+    pub const SHOFIXTI_BRO_KIA: Self = Self(11);
+    pub const END_SHOFIXTI_BRO_KIA: Self = Self(11);
+    pub const SHOFIXTI_RECRUITED: Self = Self(12);
+    pub const END_SHOFIXTI_RECRUITED: Self = Self(12);
+    pub const SHOFIXTI_MAIDENS: Self = Self(13);
+    pub const END_SHOFIXTI_MAIDENS: Self = Self(13);
+    pub const MAIDENS_ON_SHIP: Self = Self(14);
+    pub const END_MAIDENS_ON_SHIP: Self = Self(14);
+    pub const BATTLE_SEGUE: Self = Self(15);
+    pub const END_BATTLE_SEGUE: Self = Self(15);
+    pub const PLANETARY_LANDING: Self = Self(16);
+    pub const END_PLANETARY_LANDING: Self = Self(16);
+    pub const PLANETARY_CHANGE: Self = Self(17);
+    pub const END_PLANETARY_CHANGE: Self = Self(17);
+    pub const SPATHI_VISITS: Self = Self(18);
+    pub const END_SPATHI_VISITS: Self = Self(20);
+    pub const SPATHI_HOME_VISITS: Self = Self(21);
+    pub const END_SPATHI_HOME_VISITS: Self = Self(23);
+    pub const FOUND_PLUTO_SPATHI: Self = Self(24);
+    pub const END_FOUND_PLUTO_SPATHI: Self = Self(25);
+    pub const SPATHI_SHIELDED_SELVES: Self = Self(26);
+    pub const END_SPATHI_SHIELDED_SELVES: Self = Self(26);
+    pub const SPATHI_CREATURES_EXAMINED: Self = Self(27);
+    pub const END_SPATHI_CREATURES_EXAMINED: Self = Self(27);
+    pub const SPATHI_CREATURES_ELIMINATED: Self = Self(28);
+    pub const END_SPATHI_CREATURES_ELIMINATED: Self = Self(28);
+    pub const UMGAH_BROADCASTERS: Self = Self(29);
+    pub const END_UMGAH_BROADCASTERS: Self = Self(29);
+    pub const SPATHI_MANNER: Self = Self(30);
+    pub const END_SPATHI_MANNER: Self = Self(31);
+    pub const SPATHI_QUEST: Self = Self(32);
+    pub const END_SPATHI_QUEST: Self = Self(32);
+    pub const LIED_ABOUT_CREATURES: Self = Self(33);
+    pub const END_LIED_ABOUT_CREATURES: Self = Self(34);
+    pub const SPATHI_PARTY: Self = Self(35);
+    pub const END_SPATHI_PARTY: Self = Self(35);
+    pub const KNOW_SPATHI_PASSWORD: Self = Self(36);
+    pub const END_KNOW_SPATHI_PASSWORD: Self = Self(36);
+    pub const ILWRATH_HOME_VISITS: Self = Self(37);
+    pub const END_ILWRATH_HOME_VISITS: Self = Self(39);
+    pub const ILWRATH_CHMMR_VISITS: Self = Self(40);
+    pub const END_ILWRATH_CHMMR_VISITS: Self = Self(40);
+    pub const ARILOU_SPACE: Self = Self(41);
+    pub const END_ARILOU_SPACE: Self = Self(41);
+    pub const ARILOU_SPACE_SIDE: Self = Self(42);
+    pub const END_ARILOU_SPACE_SIDE: Self = Self(43);
+    pub const ARILOU_SPACE_COUNTER: Self = Self(44);
+    pub const END_ARILOU_SPACE_COUNTER: Self = Self(47);
+    pub const LANDER_SHIELDS: Self = Self(48);
+    pub const END_LANDER_SHIELDS: Self = Self(51);
+    pub const MET_MELNORME: Self = Self(52);
+    pub const END_MET_MELNORME: Self = Self(52);
+    pub const MELNORME_RESCUE_REFUSED: Self = Self(53);
+    pub const END_MELNORME_RESCUE_REFUSED: Self = Self(53);
+    pub const MELNORME_RESCUE_COUNT: Self = Self(54);
+    pub const END_MELNORME_RESCUE_COUNT: Self = Self(56);
+    pub const TRADED_WITH_MELNORME: Self = Self(57);
+    pub const END_TRADED_WITH_MELNORME: Self = Self(57);
+    pub const WHY_MELNORME_PURPLE: Self = Self(58);
+    pub const END_WHY_MELNORME_PURPLE: Self = Self(58);
+    pub const MELNORME_CREDIT0: Self = Self(59);
+    pub const END_MELNORME_CREDIT0: Self = Self(66);
+    pub const MELNORME_CREDIT1: Self = Self(67);
+    pub const END_MELNORME_CREDIT1: Self = Self(74);
+    pub const MELNORME_BUSINESS_COUNT: Self = Self(75);
+    pub const END_MELNORME_BUSINESS_COUNT: Self = Self(76);
+    pub const MELNORME_YACK_STACK0: Self = Self(77);
+    pub const END_MELNORME_YACK_STACK0: Self = Self(78);
+    pub const MELNORME_YACK_STACK1: Self = Self(79);
+    pub const END_MELNORME_YACK_STACK1: Self = Self(80);
+    pub const MELNORME_YACK_STACK2: Self = Self(81);
+    pub const END_MELNORME_YACK_STACK2: Self = Self(84);
+    pub const MELNORME_YACK_STACK3: Self = Self(85);
+    pub const END_MELNORME_YACK_STACK3: Self = Self(87);
+    pub const MELNORME_YACK_STACK4: Self = Self(88);
+    pub const END_MELNORME_YACK_STACK4: Self = Self(89);
+    pub const WHY_MELNORME_BLUE: Self = Self(90);
+    pub const END_WHY_MELNORME_BLUE: Self = Self(90);
+    pub const MELNORME_ANGER: Self = Self(91);
+    pub const END_MELNORME_ANGER: Self = Self(92);
+    pub const MELNORME_MIFFED_COUNT: Self = Self(93);
+    pub const END_MELNORME_MIFFED_COUNT: Self = Self(94);
+    pub const MELNORME_PISSED_COUNT: Self = Self(95);
+    pub const END_MELNORME_PISSED_COUNT: Self = Self(96);
+    pub const MELNORME_HATE_COUNT: Self = Self(97);
+    pub const END_MELNORME_HATE_COUNT: Self = Self(98);
+    pub const PROBE_MESSAGE_DELIVERED: Self = Self(99);
+    pub const END_PROBE_MESSAGE_DELIVERED: Self = Self(99);
+    pub const PROBE_ILWRATH_ENCOUNTER: Self = Self(100);
+    pub const END_PROBE_ILWRATH_ENCOUNTER: Self = Self(100);
+    pub const STARBASE_AVAILABLE: Self = Self(101);
+    pub const END_STARBASE_AVAILABLE: Self = Self(101);
+    pub const STARBASE_VISITED: Self = Self(102);
+    pub const END_STARBASE_VISITED: Self = Self(102);
+    pub const RADIOACTIVES_PROVIDED: Self = Self(103);
+    pub const END_RADIOACTIVES_PROVIDED: Self = Self(103);
+    pub const LANDERS_LOST: Self = Self(104);
+    pub const END_LANDERS_LOST: Self = Self(104);
+    pub const GIVEN_FUEL_BEFORE: Self = Self(105);
+    pub const END_GIVEN_FUEL_BEFORE: Self = Self(105);
+    pub const AWARE_OF_SAMATRA: Self = Self(106);
+    pub const END_AWARE_OF_SAMATRA: Self = Self(106);
+    pub const YEHAT_CAVALRY_ARRIVED: Self = Self(107);
+    pub const END_YEHAT_CAVALRY_ARRIVED: Self = Self(107);
+    pub const URQUAN_MESSED_UP: Self = Self(108);
+    pub const END_URQUAN_MESSED_UP: Self = Self(108);
+    pub const MOONBASE_DESTROYED: Self = Self(109);
+    pub const END_MOONBASE_DESTROYED: Self = Self(109);
+    pub const WILL_DESTROY_BASE: Self = Self(110);
+    pub const END_WILL_DESTROY_BASE: Self = Self(110);
+    pub const ARTIFACT_2_ON_SHIP: Self = Self(111);
+    pub const END_ARTIFACT_2_ON_SHIP: Self = Self(111);
+    pub const ARTIFACT_3_ON_SHIP: Self = Self(112);
+    pub const END_ARTIFACT_3_ON_SHIP: Self = Self(112);
+    pub const KOHR_AH_KILLED_ALL: Self = Self(113);
+    pub const END_KOHR_AH_KILLED_ALL: Self = Self(113);
+    pub const STARBASE_YACK_STACK1: Self = Self(114);
+    pub const END_STARBASE_YACK_STACK1: Self = Self(114);
+    pub const DISCUSSED_PORTAL_SPAWNER: Self = Self(115);
+    pub const END_DISCUSSED_PORTAL_SPAWNER: Self = Self(115);
+    pub const DISCUSSED_TALKING_PET: Self = Self(116);
+    pub const END_DISCUSSED_TALKING_PET: Self = Self(116);
+    pub const DISCUSSED_UTWIG_BOMB: Self = Self(117);
+    pub const END_DISCUSSED_UTWIG_BOMB: Self = Self(117);
+    pub const DISCUSSED_SUN_EFFICIENCY: Self = Self(118);
+    pub const END_DISCUSSED_SUN_EFFICIENCY: Self = Self(118);
+    pub const DISCUSSED_ROSY_SPHERE: Self = Self(119);
+    pub const END_DISCUSSED_ROSY_SPHERE: Self = Self(119);
+    pub const DISCUSSED_AQUA_HELIX: Self = Self(120);
+    pub const END_DISCUSSED_AQUA_HELIX: Self = Self(120);
+    pub const DISCUSSED_CLEAR_SPINDLE: Self = Self(121);
+    pub const END_DISCUSSED_CLEAR_SPINDLE: Self = Self(121);
+    pub const DISCUSSED_ULTRON: Self = Self(122);
+    pub const END_DISCUSSED_ULTRON: Self = Self(122);
+    pub const DISCUSSED_MAIDENS: Self = Self(123);
+    pub const END_DISCUSSED_MAIDENS: Self = Self(123);
+    pub const DISCUSSED_UMGAH_HYPERWAVE: Self = Self(124);
+    pub const END_DISCUSSED_UMGAH_HYPERWAVE: Self = Self(124);
+    pub const DISCUSSED_BURVIX_HYPERWAVE: Self = Self(125);
+    pub const END_DISCUSSED_BURVIX_HYPERWAVE: Self = Self(125);
+    pub const SYREEN_WANT_PROOF: Self = Self(126);
+    pub const END_SYREEN_WANT_PROOF: Self = Self(126);
+    pub const PLAYER_HAVING_SEX: Self = Self(127);
+    pub const END_PLAYER_HAVING_SEX: Self = Self(127);
+    pub const MET_ARILOU: Self = Self(128);
+    pub const END_MET_ARILOU: Self = Self(128);
+    pub const DISCUSSED_TAALO_PROTECTOR: Self = Self(129);
+    pub const END_DISCUSSED_TAALO_PROTECTOR: Self = Self(129);
+    pub const DISCUSSED_EGG_CASING0: Self = Self(130);
+    pub const END_DISCUSSED_EGG_CASING0: Self = Self(130);
+    pub const DISCUSSED_EGG_CASING1: Self = Self(131);
+    pub const END_DISCUSSED_EGG_CASING1: Self = Self(131);
+    pub const DISCUSSED_EGG_CASING2: Self = Self(132);
+    pub const END_DISCUSSED_EGG_CASING2: Self = Self(132);
+    pub const DISCUSSED_SYREEN_SHUTTLE: Self = Self(133);
+    pub const END_DISCUSSED_SYREEN_SHUTTLE: Self = Self(133);
+    pub const DISCUSSED_VUX_BEAST: Self = Self(134);
+    pub const END_DISCUSSED_VUX_BEAST: Self = Self(134);
+    pub const DISCUSSED_DESTRUCT_CODE: Self = Self(135);
+    pub const END_DISCUSSED_DESTRUCT_CODE: Self = Self(135);
+    pub const DISCUSSED_URQUAN_WARP: Self = Self(136);
+    pub const END_DISCUSSED_URQUAN_WARP: Self = Self(136);
+    pub const DISCUSSED_ARTIFACT_2: Self = Self(137);
+    pub const END_DISCUSSED_ARTIFACT_2: Self = Self(137);
+    pub const DISCUSSED_ARTIFACT_3: Self = Self(138);
+    pub const END_DISCUSSED_ARTIFACT_3: Self = Self(138);
+    pub const ATTACKED_DRUUGE: Self = Self(139);
+    pub const END_ATTACKED_DRUUGE: Self = Self(139);
+    pub const NEW_ALLIANCE_NAME: Self = Self(140);
+    pub const END_NEW_ALLIANCE_NAME: Self = Self(141);
+    pub const PORTAL_COUNTER: Self = Self(142);
+    pub const END_PORTAL_COUNTER: Self = Self(145);
+    pub const BURVIXESE_BROADCASTERS: Self = Self(146);
+    pub const END_BURVIXESE_BROADCASTERS: Self = Self(146);
+    pub const BURV_BROADCASTERS_ON_SHIP: Self = Self(147);
+    pub const END_BURV_BROADCASTERS_ON_SHIP: Self = Self(147);
+    pub const UTWIG_BOMB: Self = Self(148);
+    pub const END_UTWIG_BOMB: Self = Self(148);
+    pub const UTWIG_BOMB_ON_SHIP: Self = Self(149);
+    pub const END_UTWIG_BOMB_ON_SHIP: Self = Self(149);
+    pub const AQUA_HELIX: Self = Self(150);
+    pub const END_AQUA_HELIX: Self = Self(150);
+    pub const AQUA_HELIX_ON_SHIP: Self = Self(151);
+    pub const END_AQUA_HELIX_ON_SHIP: Self = Self(151);
+    pub const SUN_DEVICE: Self = Self(152);
+    pub const END_SUN_DEVICE: Self = Self(152);
+    pub const SUN_DEVICE_ON_SHIP: Self = Self(153);
+    pub const END_SUN_DEVICE_ON_SHIP: Self = Self(153);
+    pub const TAALO_PROTECTOR: Self = Self(154);
+    pub const END_TAALO_PROTECTOR: Self = Self(154);
+    pub const TAALO_PROTECTOR_ON_SHIP: Self = Self(155);
+    pub const END_TAALO_PROTECTOR_ON_SHIP: Self = Self(155);
+    pub const SHIP_VAULT_UNLOCKED: Self = Self(156);
+    pub const END_SHIP_VAULT_UNLOCKED: Self = Self(156);
+    pub const SYREEN_SHUTTLE: Self = Self(157);
+    pub const END_SYREEN_SHUTTLE: Self = Self(157);
+    pub const PORTAL_KEY: Self = Self(158);
+    pub const END_PORTAL_KEY: Self = Self(158);
+    pub const PORTAL_KEY_ON_SHIP: Self = Self(159);
+    pub const END_PORTAL_KEY_ON_SHIP: Self = Self(159);
+    pub const VUX_BEAST: Self = Self(160);
+    pub const END_VUX_BEAST: Self = Self(160);
+    pub const VUX_BEAST_ON_SHIP: Self = Self(161);
+    pub const END_VUX_BEAST_ON_SHIP: Self = Self(161);
+    pub const TALKING_PET: Self = Self(162);
+    pub const END_TALKING_PET: Self = Self(162);
+    pub const TALKING_PET_ON_SHIP: Self = Self(163);
+    pub const END_TALKING_PET_ON_SHIP: Self = Self(163);
+    pub const MOONBASE_ON_SHIP: Self = Self(164);
+    pub const END_MOONBASE_ON_SHIP: Self = Self(164);
+    pub const KOHR_AH_FRENZY: Self = Self(165);
+    pub const END_KOHR_AH_FRENZY: Self = Self(165);
+    pub const KOHR_AH_VISITS: Self = Self(166);
+    pub const END_KOHR_AH_VISITS: Self = Self(167);
+    pub const KOHR_AH_BYES: Self = Self(168);
+    pub const END_KOHR_AH_BYES: Self = Self(168);
+    pub const SLYLANDRO_HOME_VISITS: Self = Self(169);
+    pub const END_SLYLANDRO_HOME_VISITS: Self = Self(171);
+    pub const DESTRUCT_CODE_ON_SHIP: Self = Self(172);
+    pub const END_DESTRUCT_CODE_ON_SHIP: Self = Self(172);
+    pub const ILWRATH_VISITS: Self = Self(173);
+    pub const END_ILWRATH_VISITS: Self = Self(175);
+    pub const ILWRATH_DECEIVED: Self = Self(176);
+    pub const END_ILWRATH_DECEIVED: Self = Self(176);
+    pub const FLAGSHIP_CLOAKED: Self = Self(177);
+    pub const END_FLAGSHIP_CLOAKED: Self = Self(177);
+    pub const MYCON_VISITS: Self = Self(178);
+    pub const END_MYCON_VISITS: Self = Self(180);
+    pub const MYCON_HOME_VISITS: Self = Self(181);
+    pub const END_MYCON_HOME_VISITS: Self = Self(183);
+    pub const MYCON_AMBUSH: Self = Self(184);
+    pub const END_MYCON_AMBUSH: Self = Self(184);
+    pub const MYCON_FELL_FOR_AMBUSH: Self = Self(185);
+    pub const END_MYCON_FELL_FOR_AMBUSH: Self = Self(185);
+    pub const GLOBAL_FLAGS_AND_DATA: Self = Self(186);
+    pub const END_GLOBAL_FLAGS_AND_DATA: Self = Self(193);
+    pub const ORZ_VISITS: Self = Self(194);
+    pub const END_ORZ_VISITS: Self = Self(196);
+    pub const TAALO_VISITS: Self = Self(197);
+    pub const END_TAALO_VISITS: Self = Self(199);
+    pub const ORZ_MANNER: Self = Self(200);
+    pub const END_ORZ_MANNER: Self = Self(201);
+    pub const PROBE_EXHIBITED_BUG: Self = Self(202);
+    pub const END_PROBE_EXHIBITED_BUG: Self = Self(202);
+    pub const CLEAR_SPINDLE_ON_SHIP: Self = Self(203);
+    pub const END_CLEAR_SPINDLE_ON_SHIP: Self = Self(203);
+    pub const URQUAN_VISITS: Self = Self(204);
+    pub const END_URQUAN_VISITS: Self = Self(206);
+    pub const PLAYER_HYPNOTIZED: Self = Self(207);
+    pub const END_PLAYER_HYPNOTIZED: Self = Self(207);
+    pub const VUX_VISITS: Self = Self(208);
+    pub const END_VUX_VISITS: Self = Self(210);
+    pub const VUX_HOME_VISITS: Self = Self(211);
+    pub const END_VUX_HOME_VISITS: Self = Self(213);
+    pub const ZEX_VISITS: Self = Self(214);
+    pub const END_ZEX_VISITS: Self = Self(216);
+    pub const ZEX_IS_DEAD: Self = Self(217);
+    pub const END_ZEX_IS_DEAD: Self = Self(217);
+    pub const KNOW_ZEX_WANTS_MONSTER: Self = Self(218);
+    pub const END_KNOW_ZEX_WANTS_MONSTER: Self = Self(218);
+    pub const UTWIG_VISITS: Self = Self(219);
+    pub const END_UTWIG_VISITS: Self = Self(221);
+    pub const UTWIG_HOME_VISITS: Self = Self(222);
+    pub const END_UTWIG_HOME_VISITS: Self = Self(224);
+    pub const BOMB_VISITS: Self = Self(225);
+    pub const END_BOMB_VISITS: Self = Self(227);
+    pub const ULTRON_CONDITION: Self = Self(228);
+    pub const END_ULTRON_CONDITION: Self = Self(230);
+    pub const UTWIG_HAVE_ULTRON: Self = Self(231);
+    pub const END_UTWIG_HAVE_ULTRON: Self = Self(231);
+    pub const BOMB_UNPROTECTED: Self = Self(232);
+    pub const END_BOMB_UNPROTECTED: Self = Self(232);
+    pub const TAALO_UNPROTECTED: Self = Self(233);
+    pub const END_TAALO_UNPROTECTED: Self = Self(233);
+    pub const TALKING_PET_VISITS: Self = Self(234);
+    pub const END_TALKING_PET_VISITS: Self = Self(236);
+    pub const TALKING_PET_HOME_VISITS: Self = Self(237);
+    pub const END_TALKING_PET_HOME_VISITS: Self = Self(239);
+    pub const UMGAH_ZOMBIE_BLOBBIES: Self = Self(240);
+    pub const END_UMGAH_ZOMBIE_BLOBBIES: Self = Self(240);
+    pub const KNOW_UMGAH_ZOMBIES: Self = Self(241);
+    pub const END_KNOW_UMGAH_ZOMBIES: Self = Self(241);
+    pub const ARILOU_VISITS: Self = Self(242);
+    pub const END_ARILOU_VISITS: Self = Self(244);
+    pub const ARILOU_HOME_VISITS: Self = Self(245);
+    pub const END_ARILOU_HOME_VISITS: Self = Self(247);
+    pub const KNOW_ARILOU_WANT_WRECK: Self = Self(248);
+    pub const END_KNOW_ARILOU_WANT_WRECK: Self = Self(248);
+    pub const ARILOU_CHECKED_UMGAH: Self = Self(249);
+    pub const END_ARILOU_CHECKED_UMGAH: Self = Self(250);
+    pub const PORTAL_SPAWNER: Self = Self(251);
+    pub const END_PORTAL_SPAWNER: Self = Self(251);
+    pub const PORTAL_SPAWNER_ON_SHIP: Self = Self(252);
+    pub const END_PORTAL_SPAWNER_ON_SHIP: Self = Self(252);
+    pub const UMGAH_VISITS: Self = Self(253);
+    pub const END_UMGAH_VISITS: Self = Self(255);
+    pub const UMGAH_HOME_VISITS: Self = Self(256);
+    pub const END_UMGAH_HOME_VISITS: Self = Self(258);
+    pub const MET_NORMAL_UMGAH: Self = Self(259);
+    pub const END_MET_NORMAL_UMGAH: Self = Self(259);
+    pub const SYREEN_HOME_VISITS: Self = Self(260);
+    pub const END_SYREEN_HOME_VISITS: Self = Self(262);
+    pub const SYREEN_SHUTTLE_ON_SHIP: Self = Self(263);
+    pub const END_SYREEN_SHUTTLE_ON_SHIP: Self = Self(263);
+    pub const KNOW_SYREEN_VAULT: Self = Self(264);
+    pub const END_KNOW_SYREEN_VAULT: Self = Self(264);
+    pub const EGG_CASE0_ON_SHIP: Self = Self(265);
+    pub const END_EGG_CASE0_ON_SHIP: Self = Self(265);
+    pub const SUN_DEVICE_UNGUARDED: Self = Self(266);
+    pub const END_SUN_DEVICE_UNGUARDED: Self = Self(266);
+    pub const ROSY_SPHERE_ON_SHIP: Self = Self(267);
+    pub const END_ROSY_SPHERE_ON_SHIP: Self = Self(267);
+    pub const CHMMR_HOME_VISITS: Self = Self(268);
+    pub const END_CHMMR_HOME_VISITS: Self = Self(270);
+    pub const CHMMR_EMERGING: Self = Self(271);
+    pub const END_CHMMR_EMERGING: Self = Self(271);
+    pub const CHMMR_UNLEASHED: Self = Self(272);
+    pub const END_CHMMR_UNLEASHED: Self = Self(272);
+    pub const CHMMR_BOMB_STATE: Self = Self(273);
+    pub const END_CHMMR_BOMB_STATE: Self = Self(274);
+    pub const DRUUGE_DISCLAIMER: Self = Self(275);
+    pub const END_DRUUGE_DISCLAIMER: Self = Self(275);
+    pub const YEHAT_VISITS: Self = Self(276);
+    pub const END_YEHAT_VISITS: Self = Self(278);
+    pub const YEHAT_REBEL_VISITS: Self = Self(279);
+    pub const END_YEHAT_REBEL_VISITS: Self = Self(281);
+    pub const YEHAT_HOME_VISITS: Self = Self(282);
+    pub const END_YEHAT_HOME_VISITS: Self = Self(284);
+    pub const YEHAT_CIVIL_WAR: Self = Self(285);
+    pub const END_YEHAT_CIVIL_WAR: Self = Self(285);
+    pub const YEHAT_ABSORBED_PKUNK: Self = Self(286);
+    pub const END_YEHAT_ABSORBED_PKUNK: Self = Self(286);
+    pub const YEHAT_SHIP_MONTH: Self = Self(287);
+    pub const END_YEHAT_SHIP_MONTH: Self = Self(290);
+    pub const YEHAT_SHIP_DAY: Self = Self(291);
+    pub const END_YEHAT_SHIP_DAY: Self = Self(295);
+    pub const YEHAT_SHIP_YEAR: Self = Self(296);
+    pub const END_YEHAT_SHIP_YEAR: Self = Self(300);
+    pub const CLEAR_SPINDLE: Self = Self(301);
+    pub const END_CLEAR_SPINDLE: Self = Self(301);
+    pub const PKUNK_VISITS: Self = Self(302);
+    pub const END_PKUNK_VISITS: Self = Self(304);
+    pub const PKUNK_HOME_VISITS: Self = Self(305);
+    pub const END_PKUNK_HOME_VISITS: Self = Self(307);
+    pub const PKUNK_SHIP_MONTH: Self = Self(308);
+    pub const END_PKUNK_SHIP_MONTH: Self = Self(311);
+    pub const PKUNK_SHIP_DAY: Self = Self(312);
+    pub const END_PKUNK_SHIP_DAY: Self = Self(316);
+    pub const PKUNK_SHIP_YEAR: Self = Self(317);
+    pub const END_PKUNK_SHIP_YEAR: Self = Self(321);
+    pub const PKUNK_MISSION: Self = Self(322);
+    pub const END_PKUNK_MISSION: Self = Self(324);
+    pub const SUPOX_VISITS: Self = Self(325);
+    pub const END_SUPOX_VISITS: Self = Self(327);
+    pub const SUPOX_HOME_VISITS: Self = Self(328);
+    pub const END_SUPOX_HOME_VISITS: Self = Self(330);
+    pub const THRADD_VISITS: Self = Self(331);
+    pub const END_THRADD_VISITS: Self = Self(333);
+    pub const THRADD_HOME_VISITS: Self = Self(334);
+    pub const END_THRADD_HOME_VISITS: Self = Self(336);
+    pub const HELIX_VISITS: Self = Self(337);
+    pub const END_HELIX_VISITS: Self = Self(339);
+    pub const HELIX_UNPROTECTED: Self = Self(340);
+    pub const END_HELIX_UNPROTECTED: Self = Self(340);
+    pub const THRADD_CULTURE: Self = Self(341);
+    pub const END_THRADD_CULTURE: Self = Self(342);
+    pub const THRADD_MISSION: Self = Self(343);
+    pub const END_THRADD_MISSION: Self = Self(345);
+    pub const DRUUGE_VISITS: Self = Self(346);
+    pub const END_DRUUGE_VISITS: Self = Self(348);
+    pub const DRUUGE_HOME_VISITS: Self = Self(349);
+    pub const END_DRUUGE_HOME_VISITS: Self = Self(351);
+    pub const ROSY_SPHERE: Self = Self(352);
+    pub const END_ROSY_SPHERE: Self = Self(352);
+    pub const SCANNED_MAIDENS: Self = Self(353);
+    pub const END_SCANNED_MAIDENS: Self = Self(353);
+    pub const SCANNED_FRAGMENTS: Self = Self(354);
+    pub const END_SCANNED_FRAGMENTS: Self = Self(354);
+    pub const SCANNED_CASTER: Self = Self(355);
+    pub const END_SCANNED_CASTER: Self = Self(355);
+    pub const SCANNED_SPAWNER: Self = Self(356);
+    pub const END_SCANNED_SPAWNER: Self = Self(356);
+    pub const SCANNED_ULTRON: Self = Self(357);
+    pub const END_SCANNED_ULTRON: Self = Self(357);
+    pub const ZOQFOT_INFO: Self = Self(358);
+    pub const END_ZOQFOT_INFO: Self = Self(359);
+    pub const ZOQFOT_HOSTILE: Self = Self(360);
+    pub const END_ZOQFOT_HOSTILE: Self = Self(360);
+    pub const ZOQFOT_HOME_VISITS: Self = Self(361);
+    pub const END_ZOQFOT_HOME_VISITS: Self = Self(363);
+    pub const MET_ZOQFOT: Self = Self(364);
+    pub const END_MET_ZOQFOT: Self = Self(364);
+    pub const ZOQFOT_DISTRESS: Self = Self(365);
+    pub const END_ZOQFOT_DISTRESS: Self = Self(366);
+    pub const EGG_CASE1_ON_SHIP: Self = Self(367);
+    pub const END_EGG_CASE1_ON_SHIP: Self = Self(367);
+    pub const EGG_CASE2_ON_SHIP: Self = Self(368);
+    pub const END_EGG_CASE2_ON_SHIP: Self = Self(368);
+    pub const MYCON_SUN_VISITS: Self = Self(369);
+    pub const END_MYCON_SUN_VISITS: Self = Self(371);
+    pub const ORZ_HOME_VISITS: Self = Self(372);
+    pub const END_ORZ_HOME_VISITS: Self = Self(374);
+    pub const MELNORME_FUEL_PROCEDURE: Self = Self(375);
+    pub const END_MELNORME_FUEL_PROCEDURE: Self = Self(375);
+    pub const MELNORME_TECH_PROCEDURE: Self = Self(376);
+    pub const END_MELNORME_TECH_PROCEDURE: Self = Self(376);
+    pub const MELNORME_INFO_PROCEDURE: Self = Self(377);
+    pub const END_MELNORME_INFO_PROCEDURE: Self = Self(377);
+    pub const MELNORME_TECH_STACK: Self = Self(378);
+    pub const END_MELNORME_TECH_STACK: Self = Self(381);
+    pub const MELNORME_EVENTS_INFO_STACK: Self = Self(382);
+    pub const END_MELNORME_EVENTS_INFO_STACK: Self = Self(386);
+    pub const MELNORME_ALIEN_INFO_STACK: Self = Self(387);
+    pub const END_MELNORME_ALIEN_INFO_STACK: Self = Self(391);
+    pub const MELNORME_HISTORY_INFO_STACK: Self = Self(392);
+    pub const END_MELNORME_HISTORY_INFO_STACK: Self = Self(396);
+    pub const RAINBOW_WORLD0: Self = Self(397);
+    pub const END_RAINBOW_WORLD0: Self = Self(404);
+    pub const RAINBOW_WORLD1: Self = Self(405);
+    pub const END_RAINBOW_WORLD1: Self = Self(406);
+    pub const MELNORME_RAINBOW_COUNT: Self = Self(407);
+    pub const END_MELNORME_RAINBOW_COUNT: Self = Self(410);
+    pub const USED_BROADCASTER: Self = Self(411);
+    pub const END_USED_BROADCASTER: Self = Self(411);
+    pub const BROADCASTER_RESPONSE: Self = Self(412);
+    pub const END_BROADCASTER_RESPONSE: Self = Self(412);
+    pub const IMPROVED_LANDER_SPEED: Self = Self(413);
+    pub const END_IMPROVED_LANDER_SPEED: Self = Self(413);
+    pub const IMPROVED_LANDER_CARGO: Self = Self(414);
+    pub const END_IMPROVED_LANDER_CARGO: Self = Self(414);
+    pub const IMPROVED_LANDER_SHOT: Self = Self(415);
+    pub const END_IMPROVED_LANDER_SHOT: Self = Self(415);
+    pub const MET_ORZ_BEFORE: Self = Self(416);
+    pub const END_MET_ORZ_BEFORE: Self = Self(416);
+    pub const YEHAT_REBEL_TOLD_PKUNK: Self = Self(417);
+    pub const END_YEHAT_REBEL_TOLD_PKUNK: Self = Self(417);
+    pub const PLAYER_HAD_SEX: Self = Self(418);
+    pub const END_PLAYER_HAD_SEX: Self = Self(418);
+    pub const UMGAH_BROADCASTERS_ON_SHIP: Self = Self(419);
+    pub const END_UMGAH_BROADCASTERS_ON_SHIP: Self = Self(419);
+    pub const LIGHT_MINERAL_LOAD: Self = Self(420);
+    pub const END_LIGHT_MINERAL_LOAD: Self = Self(422);
+    pub const MEDIUM_MINERAL_LOAD: Self = Self(423);
+    pub const END_MEDIUM_MINERAL_LOAD: Self = Self(425);
+    pub const HEAVY_MINERAL_LOAD: Self = Self(426);
+    pub const END_HEAVY_MINERAL_LOAD: Self = Self(428);
+    pub const STARBASE_BULLETS0: Self = Self(429);
+    pub const END_STARBASE_BULLETS0: Self = Self(436);
+    pub const STARBASE_BULLETS1: Self = Self(437);
+    pub const END_STARBASE_BULLETS1: Self = Self(444);
+    pub const STARBASE_BULLETS2: Self = Self(445);
+    pub const END_STARBASE_BULLETS2: Self = Self(452);
+    pub const STARBASE_BULLETS3: Self = Self(453);
+    pub const END_STARBASE_BULLETS3: Self = Self(460);
+    pub const STARBASE_MONTH: Self = Self(461);
+    pub const END_STARBASE_MONTH: Self = Self(464);
+    pub const STARBASE_DAY: Self = Self(465);
+    pub const END_STARBASE_DAY: Self = Self(469);
+    pub const CREW_SOLD_TO_DRUUGE0: Self = Self(470);
+    pub const END_CREW_SOLD_TO_DRUUGE0: Self = Self(477);
+    pub const CREW_PURCHASED0: Self = Self(478);
+    pub const END_CREW_PURCHASED0: Self = Self(485);
+    pub const CREW_PURCHASED1: Self = Self(486);
+    pub const END_CREW_PURCHASED1: Self = Self(493);
+    pub const URQUAN_PROTECTING_SAMATRA: Self = Self(494);
+    pub const END_URQUAN_PROTECTING_SAMATRA: Self = Self(494);
+    pub const THRADDASH_BODY_COUNT: Self = Self(495);
+    pub const END_THRADDASH_BODY_COUNT: Self = Self(499);
+    pub const UTWIG_SUPOX_MISSION: Self = Self(500);
+    pub const END_UTWIG_SUPOX_MISSION: Self = Self(502);
+    pub const SPATHI_INFO: Self = Self(503);
+    pub const END_SPATHI_INFO: Self = Self(505);
+    pub const ILWRATH_INFO: Self = Self(506);
+    pub const END_ILWRATH_INFO: Self = Self(507);
+    pub const ILWRATH_GODS_SPOKEN: Self = Self(508);
+    pub const END_ILWRATH_GODS_SPOKEN: Self = Self(511);
+    pub const ILWRATH_WORSHIP: Self = Self(512);
+    pub const END_ILWRATH_WORSHIP: Self = Self(513);
+    pub const ILWRATH_FIGHT_THRADDASH: Self = Self(514);
+    pub const END_ILWRATH_FIGHT_THRADDASH: Self = Self(514);
+    pub const READY_TO_CONFUSE_URQUAN: Self = Self(515);
+    pub const END_READY_TO_CONFUSE_URQUAN: Self = Self(515);
+    pub const URQUAN_HYPNO_VISITS: Self = Self(516);
+    pub const END_URQUAN_HYPNO_VISITS: Self = Self(516);
+    pub const MENTIONED_PET_COMPULSION: Self = Self(517);
+    pub const END_MENTIONED_PET_COMPULSION: Self = Self(517);
+    pub const URQUAN_INFO: Self = Self(518);
+    pub const END_URQUAN_INFO: Self = Self(519);
+    pub const KNOW_URQUAN_STORY: Self = Self(520);
+    pub const END_KNOW_URQUAN_STORY: Self = Self(521);
+    pub const MYCON_INFO: Self = Self(522);
+    pub const END_MYCON_INFO: Self = Self(525);
+    pub const MYCON_RAMBLE: Self = Self(526);
+    pub const END_MYCON_RAMBLE: Self = Self(530);
+    pub const KNOW_ABOUT_SHATTERED: Self = Self(531);
+    pub const END_KNOW_ABOUT_SHATTERED: Self = Self(532);
+    pub const MYCON_INSULTS: Self = Self(533);
+    pub const END_MYCON_INSULTS: Self = Self(535);
+    pub const MYCON_KNOW_AMBUSH: Self = Self(536);
+    pub const END_MYCON_KNOW_AMBUSH: Self = Self(536);
+    pub const SYREEN_INFO: Self = Self(537);
+    pub const END_SYREEN_INFO: Self = Self(538);
+    pub const KNOW_SYREEN_WORLD_SHATTERED: Self = Self(539);
+    pub const END_KNOW_SYREEN_WORLD_SHATTERED: Self = Self(539);
+    pub const SYREEN_KNOW_ABOUT_MYCON: Self = Self(540);
+    pub const END_SYREEN_KNOW_ABOUT_MYCON: Self = Self(540);
+    pub const TALKING_PET_INFO: Self = Self(541);
+    pub const END_TALKING_PET_INFO: Self = Self(543);
+    pub const TALKING_PET_SUGGESTIONS: Self = Self(544);
+    pub const END_TALKING_PET_SUGGESTIONS: Self = Self(546);
+    pub const LEARNED_TALKING_PET: Self = Self(547);
+    pub const END_LEARNED_TALKING_PET: Self = Self(547);
+    pub const DNYARRI_LIED: Self = Self(548);
+    pub const END_DNYARRI_LIED: Self = Self(548);
+    pub const SHIP_TO_COMPEL: Self = Self(549);
+    pub const END_SHIP_TO_COMPEL: Self = Self(549);
+    pub const ORZ_GENERAL_INFO: Self = Self(550);
+    pub const END_ORZ_GENERAL_INFO: Self = Self(551);
+    pub const ORZ_PERSONAL_INFO: Self = Self(552);
+    pub const END_ORZ_PERSONAL_INFO: Self = Self(554);
+    pub const ORZ_ANDRO_STATE: Self = Self(555);
+    pub const END_ORZ_ANDRO_STATE: Self = Self(556);
+    pub const REFUSED_ORZ_ALLIANCE: Self = Self(557);
+    pub const END_REFUSED_ORZ_ALLIANCE: Self = Self(557);
+    pub const PKUNK_MANNER: Self = Self(558);
+    pub const END_PKUNK_MANNER: Self = Self(559);
+    pub const PKUNK_ON_THE_MOVE: Self = Self(560);
+    pub const END_PKUNK_ON_THE_MOVE: Self = Self(560);
+    pub const PKUNK_FLEET: Self = Self(561);
+    pub const END_PKUNK_FLEET: Self = Self(562);
+    pub const PKUNK_MIGRATE: Self = Self(563);
+    pub const END_PKUNK_MIGRATE: Self = Self(564);
+    pub const PKUNK_RETURN: Self = Self(565);
+    pub const END_PKUNK_RETURN: Self = Self(565);
+    pub const PKUNK_WORRY: Self = Self(566);
+    pub const END_PKUNK_WORRY: Self = Self(567);
+    pub const PKUNK_INFO: Self = Self(568);
+    pub const END_PKUNK_INFO: Self = Self(570);
+    pub const PKUNK_WAR: Self = Self(571);
+    pub const END_PKUNK_WAR: Self = Self(572);
+    pub const PKUNK_FORTUNE: Self = Self(573);
+    pub const END_PKUNK_FORTUNE: Self = Self(575);
+    pub const PKUNK_MIGRATE_VISITS: Self = Self(576);
+    pub const END_PKUNK_MIGRATE_VISITS: Self = Self(578);
+    pub const PKUNK_REASONS: Self = Self(579);
+    pub const END_PKUNK_REASONS: Self = Self(582);
+    pub const PKUNK_SWITCH: Self = Self(583);
+    pub const END_PKUNK_SWITCH: Self = Self(583);
+    pub const PKUNK_SENSE_VICTOR: Self = Self(584);
+    pub const END_PKUNK_SENSE_VICTOR: Self = Self(584);
+    pub const KOHR_AH_REASONS: Self = Self(585);
+    pub const END_KOHR_AH_REASONS: Self = Self(586);
+    pub const KOHR_AH_PLEAD: Self = Self(587);
+    pub const END_KOHR_AH_PLEAD: Self = Self(588);
+    pub const KOHR_AH_INFO: Self = Self(589);
+    pub const END_KOHR_AH_INFO: Self = Self(590);
+    pub const KNOW_KOHR_AH_STORY: Self = Self(591);
+    pub const END_KNOW_KOHR_AH_STORY: Self = Self(592);
+    pub const KOHR_AH_SENSES_EVIL: Self = Self(593);
+    pub const END_KOHR_AH_SENSES_EVIL: Self = Self(593);
+    pub const URQUAN_SENSES_EVIL: Self = Self(594);
+    pub const END_URQUAN_SENSES_EVIL: Self = Self(594);
+    pub const SLYLANDRO_PROBE_VISITS: Self = Self(595);
+    pub const END_SLYLANDRO_PROBE_VISITS: Self = Self(597);
+    pub const SLYLANDRO_PROBE_THREAT: Self = Self(598);
+    pub const END_SLYLANDRO_PROBE_THREAT: Self = Self(599);
+    pub const SLYLANDRO_PROBE_WRONG: Self = Self(600);
+    pub const END_SLYLANDRO_PROBE_WRONG: Self = Self(601);
+    pub const SLYLANDRO_PROBE_ID: Self = Self(602);
+    pub const END_SLYLANDRO_PROBE_ID: Self = Self(603);
+    pub const SLYLANDRO_PROBE_INFO: Self = Self(604);
+    pub const END_SLYLANDRO_PROBE_INFO: Self = Self(605);
+    pub const SLYLANDRO_PROBE_EXIT: Self = Self(606);
+    pub const END_SLYLANDRO_PROBE_EXIT: Self = Self(607);
+    pub const UMGAH_HOSTILE: Self = Self(608);
+    pub const END_UMGAH_HOSTILE: Self = Self(608);
+    pub const UMGAH_EVIL_BLOBBIES: Self = Self(609);
+    pub const END_UMGAH_EVIL_BLOBBIES: Self = Self(609);
+    pub const UMGAH_MENTIONED_TRICKS: Self = Self(610);
+    pub const END_UMGAH_MENTIONED_TRICKS: Self = Self(611);
+    pub const BOMB_CARRIER: Self = Self(612);
+    pub const END_BOMB_CARRIER: Self = Self(612);
+    pub const THRADD_MANNER: Self = Self(613);
+    pub const END_THRADD_MANNER: Self = Self(613);
+    pub const THRADD_INTRO: Self = Self(614);
+    pub const END_THRADD_INTRO: Self = Self(615);
+    pub const THRADD_DEMEANOR: Self = Self(616);
+    pub const END_THRADD_DEMEANOR: Self = Self(618);
+    pub const THRADD_INFO: Self = Self(619);
+    pub const END_THRADD_INFO: Self = Self(620);
+    pub const THRADD_BODY_LEVEL: Self = Self(621);
+    pub const END_THRADD_BODY_LEVEL: Self = Self(622);
+    pub const THRADD_MISSION_VISITS: Self = Self(623);
+    pub const END_THRADD_MISSION_VISITS: Self = Self(623);
+    pub const THRADD_STACK_1: Self = Self(624);
+    pub const END_THRADD_STACK_1: Self = Self(626);
+    pub const THRADD_HOSTILE_STACK_2: Self = Self(627);
+    pub const END_THRADD_HOSTILE_STACK_2: Self = Self(627);
+    pub const THRADD_HOSTILE_STACK_3: Self = Self(628);
+    pub const END_THRADD_HOSTILE_STACK_3: Self = Self(628);
+    pub const THRADD_HOSTILE_STACK_4: Self = Self(629);
+    pub const END_THRADD_HOSTILE_STACK_4: Self = Self(629);
+    pub const THRADD_HOSTILE_STACK_5: Self = Self(630);
+    pub const END_THRADD_HOSTILE_STACK_5: Self = Self(630);
+    pub const CHMMR_STACK: Self = Self(631);
+    pub const END_CHMMR_STACK: Self = Self(632);
+    pub const ARILOU_MANNER: Self = Self(633);
+    pub const END_ARILOU_MANNER: Self = Self(634);
+    pub const NO_PORTAL_VISITS: Self = Self(635);
+    pub const END_NO_PORTAL_VISITS: Self = Self(635);
+    pub const ARILOU_STACK_1: Self = Self(636);
+    pub const END_ARILOU_STACK_1: Self = Self(637);
+    pub const ARILOU_STACK_2: Self = Self(638);
+    pub const END_ARILOU_STACK_2: Self = Self(638);
+    pub const ARILOU_STACK_3: Self = Self(639);
+    pub const END_ARILOU_STACK_3: Self = Self(640);
+    pub const ARILOU_STACK_4: Self = Self(641);
+    pub const END_ARILOU_STACK_4: Self = Self(641);
+    pub const ARILOU_STACK_5: Self = Self(642);
+    pub const END_ARILOU_STACK_5: Self = Self(643);
+    pub const ARILOU_INFO: Self = Self(644);
+    pub const END_ARILOU_INFO: Self = Self(645);
+    pub const ARILOU_HINTS: Self = Self(646);
+    pub const END_ARILOU_HINTS: Self = Self(647);
+    pub const DRUUGE_MANNER: Self = Self(648);
+    pub const END_DRUUGE_MANNER: Self = Self(648);
+    pub const DRUUGE_SPACE_INFO: Self = Self(649);
+    pub const END_DRUUGE_SPACE_INFO: Self = Self(650);
+    pub const DRUUGE_HOME_INFO: Self = Self(651);
+    pub const END_DRUUGE_HOME_INFO: Self = Self(652);
+    pub const DRUUGE_SALVAGE: Self = Self(653);
+    pub const END_DRUUGE_SALVAGE: Self = Self(653);
+    pub const KNOW_DRUUGE_SLAVERS: Self = Self(654);
+    pub const END_KNOW_DRUUGE_SLAVERS: Self = Self(655);
+    pub const FRAGMENTS_BOUGHT: Self = Self(656);
+    pub const END_FRAGMENTS_BOUGHT: Self = Self(657);
+    pub const ZEX_STACK_1: Self = Self(658);
+    pub const END_ZEX_STACK_1: Self = Self(659);
+    pub const ZEX_STACK_2: Self = Self(660);
+    pub const END_ZEX_STACK_2: Self = Self(661);
+    pub const ZEX_STACK_3: Self = Self(662);
+    pub const END_ZEX_STACK_3: Self = Self(663);
+    pub const VUX_INFO: Self = Self(664);
+    pub const END_VUX_INFO: Self = Self(665);
+    pub const VUX_STACK_1: Self = Self(666);
+    pub const END_VUX_STACK_1: Self = Self(669);
+    pub const VUX_STACK_2: Self = Self(670);
+    pub const END_VUX_STACK_2: Self = Self(671);
+    pub const VUX_STACK_3: Self = Self(672);
+    pub const END_VUX_STACK_3: Self = Self(673);
+    pub const VUX_STACK_4: Self = Self(674);
+    pub const END_VUX_STACK_4: Self = Self(675);
+    pub const SHOFIXTI_STACK4: Self = Self(676);
+    pub const END_SHOFIXTI_STACK4: Self = Self(677);
+    pub const YEHAT_REBEL_INFO: Self = Self(678);
+    pub const END_YEHAT_REBEL_INFO: Self = Self(680);
+    pub const YEHAT_ROYALIST_INFO: Self = Self(681);
+    pub const END_YEHAT_ROYALIST_INFO: Self = Self(681);
+    pub const YEHAT_ROYALIST_TOLD_PKUNK: Self = Self(682);
+    pub const END_YEHAT_ROYALIST_TOLD_PKUNK: Self = Self(682);
+    pub const NO_YEHAT_ALLY_HOME: Self = Self(683);
+    pub const END_NO_YEHAT_ALLY_HOME: Self = Self(683);
+    pub const NO_YEHAT_HELP_HOME: Self = Self(684);
+    pub const END_NO_YEHAT_HELP_HOME: Self = Self(684);
+    pub const NO_YEHAT_INFO: Self = Self(685);
+    pub const END_NO_YEHAT_INFO: Self = Self(685);
+    pub const NO_YEHAT_ALLY_SPACE: Self = Self(686);
+    pub const END_NO_YEHAT_ALLY_SPACE: Self = Self(687);
+    pub const NO_YEHAT_HELP_SPACE: Self = Self(688);
+    pub const END_NO_YEHAT_HELP_SPACE: Self = Self(689);
+    pub const ZOQFOT_KNOW_MASK: Self = Self(690);
+    pub const END_ZOQFOT_KNOW_MASK: Self = Self(693);
+    pub const SUPOX_HOSTILE: Self = Self(694);
+    pub const END_SUPOX_HOSTILE: Self = Self(694);
+    pub const SUPOX_INFO: Self = Self(695);
+    pub const END_SUPOX_INFO: Self = Self(695);
+    pub const SUPOX_WAR_NEWS: Self = Self(696);
+    pub const END_SUPOX_WAR_NEWS: Self = Self(697);
+    pub const SUPOX_ULTRON_HELP: Self = Self(698);
+    pub const END_SUPOX_ULTRON_HELP: Self = Self(698);
+    pub const SUPOX_STACK1: Self = Self(699);
+    pub const END_SUPOX_STACK1: Self = Self(701);
+    pub const SUPOX_STACK2: Self = Self(702);
+    pub const END_SUPOX_STACK2: Self = Self(703);
+    pub const UTWIG_HOSTILE: Self = Self(704);
+    pub const END_UTWIG_HOSTILE: Self = Self(704);
+    pub const UTWIG_INFO: Self = Self(705);
+    pub const END_UTWIG_INFO: Self = Self(705);
+    pub const UTWIG_WAR_NEWS: Self = Self(706);
+    pub const END_UTWIG_WAR_NEWS: Self = Self(707);
+    pub const UTWIG_STACK1: Self = Self(708);
+    pub const END_UTWIG_STACK1: Self = Self(710);
+    pub const UTWIG_STACK2: Self = Self(711);
+    pub const END_UTWIG_STACK2: Self = Self(712);
+    pub const BOMB_INFO: Self = Self(713);
+    pub const END_BOMB_INFO: Self = Self(713);
+    pub const BOMB_STACK1: Self = Self(714);
+    pub const END_BOMB_STACK1: Self = Self(715);
+    pub const BOMB_STACK2: Self = Self(716);
+    pub const END_BOMB_STACK2: Self = Self(717);
+    pub const SLYLANDRO_KNOW_BROKEN: Self = Self(718);
+    pub const END_SLYLANDRO_KNOW_BROKEN: Self = Self(718);
+    pub const PLAYER_KNOWS_PROBE: Self = Self(719);
+    pub const END_PLAYER_KNOWS_PROBE: Self = Self(719);
+    pub const PLAYER_KNOWS_PROGRAM: Self = Self(720);
+    pub const END_PLAYER_KNOWS_PROGRAM: Self = Self(720);
+    pub const PLAYER_KNOWS_EFFECTS: Self = Self(721);
+    pub const END_PLAYER_KNOWS_EFFECTS: Self = Self(721);
+    pub const PLAYER_KNOWS_PRIORITY: Self = Self(722);
+    pub const END_PLAYER_KNOWS_PRIORITY: Self = Self(722);
+    pub const SLYLANDRO_STACK1: Self = Self(723);
+    pub const END_SLYLANDRO_STACK1: Self = Self(725);
+    pub const SLYLANDRO_STACK2: Self = Self(726);
+    pub const END_SLYLANDRO_STACK2: Self = Self(726);
+    pub const SLYLANDRO_STACK3: Self = Self(727);
+    pub const END_SLYLANDRO_STACK3: Self = Self(728);
+    pub const SLYLANDRO_STACK4: Self = Self(729);
+    pub const END_SLYLANDRO_STACK4: Self = Self(730);
+    pub const SLYLANDRO_STACK5: Self = Self(731);
+    pub const END_SLYLANDRO_STACK5: Self = Self(731);
+    pub const SLYLANDRO_STACK6: Self = Self(732);
+    pub const END_SLYLANDRO_STACK6: Self = Self(732);
+    pub const SLYLANDRO_STACK7: Self = Self(733);
+    pub const END_SLYLANDRO_STACK7: Self = Self(734);
+    pub const SLYLANDRO_STACK8: Self = Self(735);
+    pub const END_SLYLANDRO_STACK8: Self = Self(736);
+    pub const SLYLANDRO_STACK9: Self = Self(737);
+    pub const END_SLYLANDRO_STACK9: Self = Self(738);
+    pub const SLYLANDRO_KNOW_EARTH: Self = Self(739);
+    pub const END_SLYLANDRO_KNOW_EARTH: Self = Self(739);
+    pub const SLYLANDRO_KNOW_EXPLORE: Self = Self(740);
+    pub const END_SLYLANDRO_KNOW_EXPLORE: Self = Self(740);
+    pub const SLYLANDRO_KNOW_GATHER: Self = Self(741);
+    pub const END_SLYLANDRO_KNOW_GATHER: Self = Self(741);
+    pub const SLYLANDRO_KNOW_URQUAN: Self = Self(742);
+    pub const END_SLYLANDRO_KNOW_URQUAN: Self = Self(743);
+    pub const RECALL_VISITS: Self = Self(744);
+    pub const END_RECALL_VISITS: Self = Self(745);
+    pub const SLYLANDRO_MULTIPLIER: Self = Self(746);
+    pub const END_SLYLANDRO_MULTIPLIER: Self = Self(748);
+    pub const KNOW_SPATHI_QUEST: Self = Self(749);
+    pub const END_KNOW_SPATHI_QUEST: Self = Self(749);
+    pub const KNOW_SPATHI_EVIL: Self = Self(750);
+    pub const END_KNOW_SPATHI_EVIL: Self = Self(750);
+    pub const BATTLE_PLANET: Self = Self(751);
+    pub const END_BATTLE_PLANET: Self = Self(758);
+    pub const ESCAPE_COUNTER: Self = Self(759);
+    pub const END_ESCAPE_COUNTER: Self = Self(766);
+    pub const CREW_SOLD_TO_DRUUGE1: Self = Self(767);
+    pub const END_CREW_SOLD_TO_DRUUGE1: Self = Self(774);
+    pub const PKUNK_DONE_WAR: Self = Self(775);
+    pub const END_PKUNK_DONE_WAR: Self = Self(775);
+    pub const SYREEN_STACK0: Self = Self(776);
+    pub const END_SYREEN_STACK0: Self = Self(777);
+    pub const SYREEN_STACK1: Self = Self(778);
+    pub const END_SYREEN_STACK1: Self = Self(779);
+    pub const SYREEN_STACK2: Self = Self(780);
+    pub const END_SYREEN_STACK2: Self = Self(781);
+    pub const REFUSED_ULTRON_AT_BOMB: Self = Self(782);
+    pub const END_REFUSED_ULTRON_AT_BOMB: Self = Self(782);
+    pub const NO_TRICK_AT_SUN: Self = Self(783);
+    pub const END_NO_TRICK_AT_SUN: Self = Self(783);
+    pub const SPATHI_STACK0: Self = Self(784);
+    pub const END_SPATHI_STACK0: Self = Self(785);
+    pub const SPATHI_STACK1: Self = Self(786);
+    pub const END_SPATHI_STACK1: Self = Self(786);
+    pub const SPATHI_STACK2: Self = Self(787);
+    pub const END_SPATHI_STACK2: Self = Self(787);
+    pub const ORZ_STACK0: Self = Self(788);
+    pub const END_ORZ_STACK0: Self = Self(788);
+    pub const ORZ_STACK1: Self = Self(789);
+    pub const END_ORZ_STACK1: Self = Self(789);
+    pub const SHOFIXTI_GRPOFFS0: Self = Self(790);
+    pub const END_SHOFIXTI_GRPOFFS0: Self = Self(797);
+    pub const SHOFIXTI_GRPOFFS1: Self = Self(798);
+    pub const END_SHOFIXTI_GRPOFFS1: Self = Self(805);
+    pub const SHOFIXTI_GRPOFFS2: Self = Self(806);
+    pub const END_SHOFIXTI_GRPOFFS2: Self = Self(813);
+    pub const SHOFIXTI_GRPOFFS3: Self = Self(814);
+    pub const END_SHOFIXTI_GRPOFFS3: Self = Self(821);
+    pub const ZOQFOT_GRPOFFS0: Self = Self(822);
+    pub const END_ZOQFOT_GRPOFFS0: Self = Self(829);
+    pub const ZOQFOT_GRPOFFS1: Self = Self(830);
+    pub const END_ZOQFOT_GRPOFFS1: Self = Self(837);
+    pub const ZOQFOT_GRPOFFS2: Self = Self(838);
+    pub const END_ZOQFOT_GRPOFFS2: Self = Self(845);
+    pub const ZOQFOT_GRPOFFS3: Self = Self(846);
+    pub const END_ZOQFOT_GRPOFFS3: Self = Self(853);
+    pub const MELNORME0_GRPOFFS0: Self = Self(854);
+    pub const END_MELNORME0_GRPOFFS0: Self = Self(861);
+    pub const MELNORME0_GRPOFFS1: Self = Self(862);
+    pub const END_MELNORME0_GRPOFFS1: Self = Self(869);
+    pub const MELNORME0_GRPOFFS2: Self = Self(870);
+    pub const END_MELNORME0_GRPOFFS2: Self = Self(877);
+    pub const MELNORME0_GRPOFFS3: Self = Self(878);
+    pub const END_MELNORME0_GRPOFFS3: Self = Self(885);
+    pub const MELNORME1_GRPOFFS0: Self = Self(886);
+    pub const END_MELNORME1_GRPOFFS0: Self = Self(893);
+    pub const MELNORME1_GRPOFFS1: Self = Self(894);
+    pub const END_MELNORME1_GRPOFFS1: Self = Self(901);
+    pub const MELNORME1_GRPOFFS2: Self = Self(902);
+    pub const END_MELNORME1_GRPOFFS2: Self = Self(909);
+    pub const MELNORME1_GRPOFFS3: Self = Self(910);
+    pub const END_MELNORME1_GRPOFFS3: Self = Self(917);
+    pub const MELNORME2_GRPOFFS0: Self = Self(918);
+    pub const END_MELNORME2_GRPOFFS0: Self = Self(925);
+    pub const MELNORME2_GRPOFFS1: Self = Self(926);
+    pub const END_MELNORME2_GRPOFFS1: Self = Self(933);
+    pub const MELNORME2_GRPOFFS2: Self = Self(934);
+    pub const END_MELNORME2_GRPOFFS2: Self = Self(941);
+    pub const MELNORME2_GRPOFFS3: Self = Self(942);
+    pub const END_MELNORME2_GRPOFFS3: Self = Self(949);
+    pub const MELNORME3_GRPOFFS0: Self = Self(950);
+    pub const END_MELNORME3_GRPOFFS0: Self = Self(957);
+    pub const MELNORME3_GRPOFFS1: Self = Self(958);
+    pub const END_MELNORME3_GRPOFFS1: Self = Self(965);
+    pub const MELNORME3_GRPOFFS2: Self = Self(966);
+    pub const END_MELNORME3_GRPOFFS2: Self = Self(973);
+    pub const MELNORME3_GRPOFFS3: Self = Self(974);
+    pub const END_MELNORME3_GRPOFFS3: Self = Self(981);
+    pub const MELNORME4_GRPOFFS0: Self = Self(982);
+    pub const END_MELNORME4_GRPOFFS0: Self = Self(989);
+    pub const MELNORME4_GRPOFFS1: Self = Self(990);
+    pub const END_MELNORME4_GRPOFFS1: Self = Self(997);
+    pub const MELNORME4_GRPOFFS2: Self = Self(998);
+    pub const END_MELNORME4_GRPOFFS2: Self = Self(1005);
+    pub const MELNORME4_GRPOFFS3: Self = Self(1006);
+    pub const END_MELNORME4_GRPOFFS3: Self = Self(1013);
+    pub const MELNORME5_GRPOFFS0: Self = Self(1014);
+    pub const END_MELNORME5_GRPOFFS0: Self = Self(1021);
+    pub const MELNORME5_GRPOFFS1: Self = Self(1022);
+    pub const END_MELNORME5_GRPOFFS1: Self = Self(1029);
+    pub const MELNORME5_GRPOFFS2: Self = Self(1030);
+    pub const END_MELNORME5_GRPOFFS2: Self = Self(1037);
+    pub const MELNORME5_GRPOFFS3: Self = Self(1038);
+    pub const END_MELNORME5_GRPOFFS3: Self = Self(1045);
+    pub const MELNORME6_GRPOFFS0: Self = Self(1046);
+    pub const END_MELNORME6_GRPOFFS0: Self = Self(1053);
+    pub const MELNORME6_GRPOFFS1: Self = Self(1054);
+    pub const END_MELNORME6_GRPOFFS1: Self = Self(1061);
+    pub const MELNORME6_GRPOFFS2: Self = Self(1062);
+    pub const END_MELNORME6_GRPOFFS2: Self = Self(1069);
+    pub const MELNORME6_GRPOFFS3: Self = Self(1070);
+    pub const END_MELNORME6_GRPOFFS3: Self = Self(1077);
+    pub const MELNORME7_GRPOFFS0: Self = Self(1078);
+    pub const END_MELNORME7_GRPOFFS0: Self = Self(1085);
+    pub const MELNORME7_GRPOFFS1: Self = Self(1086);
+    pub const END_MELNORME7_GRPOFFS1: Self = Self(1093);
+    pub const MELNORME7_GRPOFFS2: Self = Self(1094);
+    pub const END_MELNORME7_GRPOFFS2: Self = Self(1101);
+    pub const MELNORME7_GRPOFFS3: Self = Self(1102);
+    pub const END_MELNORME7_GRPOFFS3: Self = Self(1109);
+    pub const MELNORME8_GRPOFFS0: Self = Self(1110);
+    pub const END_MELNORME8_GRPOFFS0: Self = Self(1117);
+    pub const MELNORME8_GRPOFFS1: Self = Self(1118);
+    pub const END_MELNORME8_GRPOFFS1: Self = Self(1125);
+    pub const MELNORME8_GRPOFFS2: Self = Self(1126);
+    pub const END_MELNORME8_GRPOFFS2: Self = Self(1133);
+    pub const MELNORME8_GRPOFFS3: Self = Self(1134);
+    pub const END_MELNORME8_GRPOFFS3: Self = Self(1141);
+    pub const URQUAN_PROBE_GRPOFFS0: Self = Self(1142);
+    pub const END_URQUAN_PROBE_GRPOFFS0: Self = Self(1149);
+    pub const URQUAN_PROBE_GRPOFFS1: Self = Self(1150);
+    pub const END_URQUAN_PROBE_GRPOFFS1: Self = Self(1157);
+    pub const URQUAN_PROBE_GRPOFFS2: Self = Self(1158);
+    pub const END_URQUAN_PROBE_GRPOFFS2: Self = Self(1165);
+    pub const URQUAN_PROBE_GRPOFFS3: Self = Self(1166);
+    pub const END_URQUAN_PROBE_GRPOFFS3: Self = Self(1173);
+    pub const COLONY_GRPOFFS0: Self = Self(1174);
+    pub const END_COLONY_GRPOFFS0: Self = Self(1181);
+    pub const COLONY_GRPOFFS1: Self = Self(1182);
+    pub const END_COLONY_GRPOFFS1: Self = Self(1189);
+    pub const COLONY_GRPOFFS2: Self = Self(1190);
+    pub const END_COLONY_GRPOFFS2: Self = Self(1197);
+    pub const COLONY_GRPOFFS3: Self = Self(1198);
+    pub const END_COLONY_GRPOFFS3: Self = Self(1205);
+    pub const SAMATRA_GRPOFFS0: Self = Self(1206);
+    pub const END_SAMATRA_GRPOFFS0: Self = Self(1213);
+    pub const SAMATRA_GRPOFFS1: Self = Self(1214);
+    pub const END_SAMATRA_GRPOFFS1: Self = Self(1221);
+    pub const SAMATRA_GRPOFFS2: Self = Self(1222);
+    pub const END_SAMATRA_GRPOFFS2: Self = Self(1229);
+    pub const SAMATRA_GRPOFFS3: Self = Self(1230);
+    pub const END_SAMATRA_GRPOFFS3: Self = Self(1237);
+    pub const NUM_GAME_STATE_BITS: Self = Self(1238);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_0(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_0 {
+    pub const SUPER_MELEE: Self = Self(0);
+    pub const IN_LAST_BATTLE: Self = Self(1);
+    pub const IN_ENCOUNTER: Self = Self(2);
+    pub const IN_HYPERSPACE: Self = Self(3);
+    pub const IN_INTERPLANETARY: Self = Self(4);
+    pub const WON_LAST_BATTLE: Self = Self(5);
+    pub const IN_QUASISPACE: Self = Self(6);
+    pub const IN_PLANET_ORBIT: Self = Self(7);
+    pub const IN_STARBASE: Self = Self(8);
+    pub const CHECK_PAUSE: Self = Self(256);
+    pub const IN_BATTLE: Self = Self(512);
+    pub const START_ENCOUNTER: Self = Self(1024);
+    pub const START_INTERPLANETARY: Self = Self(2048);
+    pub const CHECK_LOAD: Self = Self(4096);
+    pub const CHECK_RESTART: Self = Self(8192);
+    pub const CHECK_ABORT: Self = Self(16384);
+}
+pub type ACTIVITY = UWORD;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct GAME_STATE {
+    pub glob_flags: BYTE,
+    pub CrewCost: BYTE,
+    pub FuelCost: BYTE,
+    pub ModuleCost: [BYTE; 20],
+    pub ElementWorth: [BYTE; 8],
+    pub DisplayArray: *mut PRIMITIVE,
+    pub CurrentActivity: ACTIVITY,
+    pub GameClock: CLOCK_STATE,
+    pub autopilot: POINT,
+    pub ip_location: POINT,
+    pub ShipStamp: STAMP,
+    pub ShipFacing: UWORD,
+    pub ip_planet: BYTE,
+    pub in_orbit: BYTE,
+    pub velocity: VELOCITY_DESC,
+    pub BattleGroupRef: DWORD,
+    pub avail_race_q: QUEUE,
+    pub npc_built_ship_q: QUEUE,
+    pub ip_group_q: QUEUE,
+    pub encounter_q: QUEUE,
+    pub built_ship_q: QUEUE,
+    pub GameState: [BYTE; 155],
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct GLOBDATA {
+    pub SIS_state: SIS_STATE,
+    pub Game_state: GAME_STATE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct star_desc {
+    pub star_pt: POINT,
+    pub Type: BYTE,
+    pub Index: BYTE,
+    pub Prefix: BYTE,
+    pub Postfix: BYTE,
+}
+pub type STAR_DESC = star_desc;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct menu_state {
+    pub InputFunc: Option<unsafe extern "C" fn(*mut menu_state) -> BOOLEAN>,
+    pub Initialized: SIZE,
+    pub CurState: BYTE,
+    pub CurFrame: FRAME,
+    pub CurString: STRING,
+    pub first_item: POINT,
+    pub delta_item: SIZE,
+    pub ModuleFrame: FRAME,
+    pub flash_rect0: RECT,
+    pub flash_rect1: RECT,
+    pub flash_frame0: FRAME,
+    pub flash_frame1: FRAME,
+    pub flashContext: *mut FlashContext,
+    pub hMusic: MUSIC_REF,
+    pub privData: *mut ::core::ffi::c_void,
+}
+pub type MENU_STATE = menu_state;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_1(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_1 {
+    pub const PM_SCAN: Self = Self(0);
+    pub const PM_STARMAP: Self = Self(1);
+    pub const PM_DEVICES: Self = Self(2);
+    pub const PM_CARGO: Self = Self(3);
+    pub const PM_ROSTER: Self = Self(4);
+    pub const PM_GAME_MENU: Self = Self(5);
+    pub const PM_NAVIGATE: Self = Self(6);
+    pub const PM_MIN_SCAN: Self = Self(7);
+    pub const PM_ENE_SCAN: Self = Self(8);
+    pub const PM_BIO_SCAN: Self = Self(9);
+    pub const PM_EXIT_SCAN: Self = Self(10);
+    pub const PM_AUTO_SCAN: Self = Self(11);
+    pub const PM_LAUNCH_LANDER: Self = Self(12);
+    pub const PM_SAVE_GAME: Self = Self(13);
+    pub const PM_LOAD_GAME: Self = Self(14);
+    pub const PM_QUIT_GAME: Self = Self(15);
+    pub const PM_CHANGE_SETTINGS: Self = Self(16);
+    pub const PM_EXIT_GAME_MENU: Self = Self(17);
+    pub const PM_CONVERSE: Self = Self(18);
+    pub const PM_ATTACK: Self = Self(19);
+    pub const PM_ENCOUNTER_GAME_MENU: Self = Self(20);
+    pub const PM_FUEL: Self = Self(21);
+    pub const PM_MODULE: Self = Self(22);
+    pub const PM_OUTFIT_GAME_MENU: Self = Self(23);
+    pub const PM_EXIT_OUTFIT: Self = Self(24);
+    pub const PM_CREW: Self = Self(25);
+    pub const PM_SHIPYARD_GAME_MENU: Self = Self(26);
+    pub const PM_EXIT_SHIPYARD: Self = Self(27);
+    pub const PM_SOUND_ON: Self = Self(28);
+    pub const PM_SOUND_OFF: Self = Self(29);
+    pub const PM_MUSIC_ON: Self = Self(30);
+    pub const PM_MUSIC_OFF: Self = Self(31);
+    pub const PM_CYBORG_OFF: Self = Self(32);
+    pub const PM_CYBORG_NORMAL: Self = Self(33);
+    pub const PM_CYBORG_DOUBLE: Self = Self(34);
+    pub const PM_CYBORG_SUPER: Self = Self(35);
+    pub const PM_CHANGE_CAPTAIN: Self = Self(36);
+    pub const PM_CHANGE_SHIP: Self = Self(37);
+    pub const PM_EXIT_SETTINGS: Self = Self(38);
+    pub const PM_ALT_SCAN: Self = Self(39);
+    pub const PM_ALT_STARMAP: Self = Self(40);
+    pub const PM_ALT_MANIFEST: Self = Self(41);
+    pub const PM_ALT_GAME_MENU: Self = Self(42);
+    pub const PM_ALT_NAVIGATE: Self = Self(43);
+    pub const PM_ALT_CARGO: Self = Self(44);
+    pub const PM_ALT_DEVICES: Self = Self(45);
+    pub const PM_ALT_ROSTER: Self = Self(46);
+    pub const PM_ALT_EXIT_MANIFEST: Self = Self(47);
+    pub const PM_ALT_MSCAN: Self = Self(48);
+    pub const PM_ALT_ESCAN: Self = Self(49);
+    pub const PM_ALT_BSCAN: Self = Self(50);
+    pub const PM_ALT_ASCAN: Self = Self(51);
+    pub const PM_ALT_DISPATCH: Self = Self(52);
+    pub const PM_ALT_EXIT_SCAN: Self = Self(53);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_2(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_2 {
+    pub const FIRST_ROCKY_WORLD: Self = Self(0);
+    pub const FIRST_SMALL_ROCKY_WORLD: Self = Self(0);
+    pub const OOLITE_WORLD: Self = Self(0);
+    pub const YTTRIC_WORLD: Self = Self(1);
+    pub const QUASI_DEGENERATE_WORLD: Self = Self(2);
+    pub const LANTHANIDE_WORLD: Self = Self(3);
+    pub const TREASURE_WORLD: Self = Self(4);
+    pub const UREA_WORLD: Self = Self(5);
+    pub const METAL_WORLD: Self = Self(6);
+    pub const RADIOACTIVE_WORLD: Self = Self(7);
+    pub const OPALESCENT_WORLD: Self = Self(8);
+    pub const CYANIC_WORLD: Self = Self(9);
+    pub const ACID_WORLD: Self = Self(10);
+    pub const ALKALI_WORLD: Self = Self(11);
+    pub const HALIDE_WORLD: Self = Self(12);
+    pub const GREEN_WORLD: Self = Self(13);
+    pub const COPPER_WORLD: Self = Self(14);
+    pub const CARBIDE_WORLD: Self = Self(15);
+    pub const ULTRAMARINE_WORLD: Self = Self(16);
+    pub const NOBLE_WORLD: Self = Self(17);
+    pub const AZURE_WORLD: Self = Self(18);
+    pub const CHONDRITE_WORLD: Self = Self(19);
+    pub const PURPLE_WORLD: Self = Self(20);
+    pub const SUPER_DENSE_WORLD: Self = Self(21);
+    pub const PELLUCID_WORLD: Self = Self(22);
+    pub const DUST_WORLD: Self = Self(23);
+    pub const CRIMSON_WORLD: Self = Self(24);
+    pub const CIMMERIAN_WORLD: Self = Self(25);
+    pub const INFRARED_WORLD: Self = Self(26);
+    pub const SELENIC_WORLD: Self = Self(27);
+    pub const AURIC_WORLD: Self = Self(28);
+    pub const LAST_SMALL_ROCKY_WORLD: Self = Self(28);
+    pub const FIRST_LARGE_ROCKY_WORLD: Self = Self(29);
+    pub const FLUORESCENT_WORLD: Self = Self(29);
+    pub const ULTRAVIOLET_WORLD: Self = Self(30);
+    pub const PLUTONIC_WORLD: Self = Self(31);
+    pub const RAINBOW_WORLD: Self = Self(32);
+    pub const SHATTERED_WORLD: Self = Self(33);
+    pub const SAPPHIRE_WORLD: Self = Self(34);
+    pub const ORGANIC_WORLD: Self = Self(35);
+    pub const XENOLITHIC_WORLD: Self = Self(36);
+    pub const REDUX_WORLD: Self = Self(37);
+    pub const PRIMORDIAL_WORLD: Self = Self(38);
+    pub const EMERALD_WORLD: Self = Self(39);
+    pub const CHLORINE_WORLD: Self = Self(40);
+    pub const MAGNETIC_WORLD: Self = Self(41);
+    pub const WATER_WORLD: Self = Self(42);
+    pub const TELLURIC_WORLD: Self = Self(43);
+    pub const HYDROCARBON_WORLD: Self = Self(44);
+    pub const IODINE_WORLD: Self = Self(45);
+    pub const VINYLOGOUS_WORLD: Self = Self(46);
+    pub const RUBY_WORLD: Self = Self(47);
+    pub const MAGMA_WORLD: Self = Self(48);
+    pub const MAROON_WORLD: Self = Self(49);
+    pub const LAST_LARGE_ROCKY_WORLD: Self = Self(49);
+    pub const FIRST_GAS_GIANT: Self = Self(50);
+    pub const BLU_GAS_GIANT: Self = Self(50);
+    pub const CYA_GAS_GIANT: Self = Self(51);
+    pub const GRN_GAS_GIANT: Self = Self(52);
+    pub const GRY_GAS_GIANT: Self = Self(53);
+    pub const ORA_GAS_GIANT: Self = Self(54);
+    pub const PUR_GAS_GIANT: Self = Self(55);
+    pub const RED_GAS_GIANT: Self = Self(56);
+    pub const VIO_GAS_GIANT: Self = Self(57);
+    pub const YEL_GAS_GIANT: Self = Self(58);
+    pub const LAST_GAS_GIANT: Self = Self(58);
+    pub const NUMBER_OF_PLANET_TYPES: Self = Self(59);
+    pub const WORLD_TYPE_SPECIAL: Self = Self(128);
+    pub const PLANET_SHIELDED: Self = Self(128);
+    pub const HIERARCHY_STARBASE: Self = Self(255);
+    pub const SA_MATRA: Self = Self(254);
+}
+pub type ELEMENT_FLAGS = UWORD;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct state {
+    pub location: POINT,
+    pub image: C2Rust_Unnamed_3,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct C2Rust_Unnamed_3 {
+    pub frame: FRAME,
+    pub farray: *mut FRAME,
+}
+pub type STATE = state;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct element {
+    pub pred: HELEMENT,
+    pub succ: HELEMENT,
+    pub preprocess_func: Option<ElementProcessFunc>,
+    pub postprocess_func: Option<ElementProcessFunc>,
+    pub collision_func: Option<ElementCollisionFunc>,
+    pub death_func: Option<ElementProcessFunc>,
+    pub playerNr: SIZE,
+    pub state_flags: ELEMENT_FLAGS,
+    pub c2rust_unnamed: C2Rust_Unnamed_8,
+    pub c2rust_unnamed_0: C2Rust_Unnamed_7,
+    pub c2rust_unnamed_1: C2Rust_Unnamed_6,
+    pub c2rust_unnamed_2: C2Rust_Unnamed_5,
+    pub c2rust_unnamed_3: C2Rust_Unnamed_4,
+    pub colorCycleIndex: BYTE,
+    pub velocity: VELOCITY_DESC,
+    pub IntersectControl: INTERSECT_CONTROL,
+    pub PrimIndex: COUNT,
+    pub current: STATE,
+    pub next: STATE,
+    pub pParent: *mut ::core::ffi::c_void,
+    pub hTarget: HELEMENT,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union C2Rust_Unnamed_4 {
+    pub thrust_wait: BYTE,
+    pub blast_offset: BYTE,
+    pub next_turn: BYTE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union C2Rust_Unnamed_5 {
+    pub turn_wait: BYTE,
+    pub sys_loc: BYTE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union C2Rust_Unnamed_6 {
+    pub mass_points: BYTE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union C2Rust_Unnamed_7 {
+    pub crew_level: COUNT,
+    pub hit_points: COUNT,
+    pub facing: COUNT,
+    pub cycle: COUNT,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union C2Rust_Unnamed_8 {
+    pub life_span: COUNT,
+    pub scan_node: COUNT,
+}
+pub type ElementProcessFunc = unsafe extern "C" fn(*mut ELEMENT) -> ();
+pub type ELEMENT = element;
+pub type ElementCollisionFunc = unsafe extern "C" fn(
+    *mut ELEMENT,
+    *mut POINT,
+    *mut ELEMENT,
+    *mut POINT,
+) -> ();
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct STARSHIP {
+    pub pred: HLINK,
+    pub succ: HLINK,
+    pub SpeciesID: SPECIES_ID,
+    pub captains_name_index: BYTE,
+    pub RaceDescPtr: *mut RACE_DESC,
+    pub crew_level: COUNT,
+    pub max_crew: COUNT,
+    pub ship_cost: BYTE,
+    pub index: COUNT,
+    pub race_strings: STRING,
+    pub icons: FRAME,
+    pub weapon_counter: BYTE,
+    pub special_counter: BYTE,
+    pub energy_counter: BYTE,
+    pub ship_input_state: BYTE,
+    pub cur_status_flags: STATUS_FLAGS,
+    pub old_status_flags: STATUS_FLAGS,
+    pub hShip: HELEMENT,
+    pub ShipFacing: COUNT,
+    pub playerNr: SIZE,
+    pub control: BYTE,
+}
+pub type STATUS_FLAGS = UWORD;
+pub type RACE_DESC = race_desc;
+#[derive(Copy, Clone)]
+#[repr(C, align(16))]
+pub struct race_desc {
+    pub ship_info: SHIP_INFO,
+    pub c2rust_padding: [u8; 12],
+    pub fleet: FLEET_STUFF,
+    pub c2rust_padding_0: [u8; 10],
+    pub characteristics: CHARACTERISTIC_STUFF,
+    pub c2rust_padding_1: [u8; 2],
+    pub ship_data: DATA_STUFF,
+    pub cyborg_control: INTEL_STUFF,
+    pub uninit_func: Option<UNINIT_FUNC>,
+    pub preprocess_func: Option<PREPROCESS_FUNC>,
+    pub postprocess_func: Option<POSTPROCESS_FUNC>,
+    pub init_weapon_func: Option<INIT_WEAPON_FUNC>,
+    pub data: *mut ::core::ffi::c_void,
+    pub CodeRef: *mut ::core::ffi::c_void,
+}
+pub type INIT_WEAPON_FUNC = unsafe extern "C" fn(*mut ELEMENT, *mut HELEMENT) -> COUNT;
+pub type POSTPROCESS_FUNC = unsafe extern "C" fn(*mut ELEMENT) -> ();
+pub type PREPROCESS_FUNC = unsafe extern "C" fn(*mut ELEMENT) -> ();
+pub type UNINIT_FUNC = unsafe extern "C" fn(*mut RACE_DESC) -> ();
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct INTEL_STUFF {
+    pub ManeuverabilityIndex: COUNT,
+    pub WeaponRange: COUNT,
+    pub intelligence_func: Option<IntelligenceFunc>,
+}
+pub type IntelligenceFunc = unsafe extern "C" fn(
+    *mut ELEMENT,
+    *mut EVALUATE_DESC,
+    COUNT,
+) -> ();
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct EVALUATE_DESC {
+    pub ObjectPtr: *mut ELEMENT,
+    pub facing: COUNT,
+    pub which_turn: COUNT,
+    pub MoveState: MOVEMENT_STATE,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct MOVEMENT_STATE(pub ::core::ffi::c_uint);
+impl MOVEMENT_STATE {
+    pub const PURSUE: Self = Self(0);
+    pub const AVOID: Self = Self(1);
+    pub const ENTICE: Self = Self(2);
+    pub const NO_MOVEMENT: Self = Self(3);
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct DATA_STUFF {
+    pub ship_rsc: [RESOURCE; 3],
+    pub weapon_rsc: [RESOURCE; 3],
+    pub special_rsc: [RESOURCE; 3],
+    pub captain_control: CAPTAIN_STUFF,
+    pub victory_ditty_rsc: RESOURCE,
+    pub ship_sounds_rsc: RESOURCE,
+    pub ship: [FRAME; 3],
+    pub weapon: [FRAME; 3],
+    pub special: [FRAME; 3],
+    pub victory_ditty: MUSIC_REF,
+    pub ship_sounds: SOUND,
+}
+pub type CAPTAIN_STUFF = captain_stuff;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct captain_stuff {
+    pub captain_rsc: RESOURCE,
+    pub background: FRAME,
+    pub turn: FRAME,
+    pub thrust: FRAME,
+    pub weapon: FRAME,
+    pub special: FRAME,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct CHARACTERISTIC_STUFF {
+    pub max_thrust: COUNT,
+    pub thrust_increment: COUNT,
+    pub energy_regeneration: BYTE,
+    pub weapon_energy_cost: BYTE,
+    pub special_energy_cost: BYTE,
+    pub energy_wait: BYTE,
+    pub turn_wait: BYTE,
+    pub thrust_wait: BYTE,
+    pub weapon_wait: BYTE,
+    pub special_wait: BYTE,
+    pub ship_mass: BYTE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct FLEET_STUFF {
+    pub strength: COUNT,
+    pub known_loc: POINT,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct SHIP_INFO {
+    pub ship_flags: UWORD,
+    pub ship_cost: BYTE,
+    pub crew_level: COUNT,
+    pub max_crew: COUNT,
+    pub energy_level: BYTE,
+    pub max_energy: BYTE,
+    pub race_strings_rsc: RESOURCE,
+    pub icons_rsc: RESOURCE,
+    pub melee_icon_rsc: RESOURCE,
+    pub race_strings: STRING,
+    pub icons: FRAME,
+    pub melee_icon: FRAME,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct SPECIES_ID(pub ::core::ffi::c_uint);
+impl SPECIES_ID {
+    pub const NO_ID: Self = Self(0);
+    pub const ARILOU_ID: Self = Self(1);
+    pub const CHMMR_ID: Self = Self(2);
+    pub const EARTHLING_ID: Self = Self(3);
+    pub const ORZ_ID: Self = Self(4);
+    pub const PKUNK_ID: Self = Self(5);
+    pub const SHOFIXTI_ID: Self = Self(6);
+    pub const SPATHI_ID: Self = Self(7);
+    pub const SUPOX_ID: Self = Self(8);
+    pub const THRADDASH_ID: Self = Self(9);
+    pub const UTWIG_ID: Self = Self(10);
+    pub const VUX_ID: Self = Self(11);
+    pub const YEHAT_ID: Self = Self(12);
+    pub const MELNORME_ID: Self = Self(13);
+    pub const DRUUGE_ID: Self = Self(14);
+    pub const ILWRATH_ID: Self = Self(15);
+    pub const MYCON_ID: Self = Self(16);
+    pub const SLYLANDRO_ID: Self = Self(17);
+    pub const UMGAH_ID: Self = Self(18);
+    pub const UR_QUAN_ID: Self = Self(19);
+    pub const ZOQFOTPIK_ID: Self = Self(20);
+    pub const SYREEN_ID: Self = Self(21);
+    pub const KOHR_AH_ID: Self = Self(22);
+    pub const ANDROSYNTH_ID: Self = Self(23);
+    pub const CHENJESU_ID: Self = Self(24);
+    pub const MMRNMHRM_ID: Self = Self(25);
+    pub const LAST_MELEE_ID: Self = Self(25);
+    pub const SIS_SHIP_ID: Self = Self(26);
+    pub const SA_MATRA_ID: Self = Self(27);
+    pub const UR_QUAN_PROBE_ID: Self = Self(28);
+    pub const NUM_SPECIES_ID: Self = Self(29);
+}
+pub type HSTARSHIP = HLINK;
+pub type HSHIPFRAG = HLINK;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct SHIP_FRAGMENT {
+    pub pred: HLINK,
+    pub succ: HLINK,
+    pub SpeciesID: SPECIES_ID,
+    pub captains_name_index: BYTE,
+    pub race_id: BYTE,
+    pub index: BYTE,
+    pub crew_level: COUNT,
+    pub max_crew: COUNT,
+    pub energy_level: BYTE,
+    pub max_energy: BYTE,
+    pub race_strings: STRING,
+    pub icons: FRAME,
+    pub melee_icon: FRAME,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_9(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_9 {
+    pub const ARILOU_SHIP: Self = Self(0);
+    pub const CHMMR_SHIP: Self = Self(1);
+    pub const HUMAN_SHIP: Self = Self(2);
+    pub const ORZ_SHIP: Self = Self(3);
+    pub const PKUNK_SHIP: Self = Self(4);
+    pub const SHOFIXTI_SHIP: Self = Self(5);
+    pub const SPATHI_SHIP: Self = Self(6);
+    pub const SUPOX_SHIP: Self = Self(7);
+    pub const THRADDASH_SHIP: Self = Self(8);
+    pub const UTWIG_SHIP: Self = Self(9);
+    pub const VUX_SHIP: Self = Self(10);
+    pub const YEHAT_SHIP: Self = Self(11);
+    pub const MELNORME_SHIP: Self = Self(12);
+    pub const DRUUGE_SHIP: Self = Self(13);
+    pub const ILWRATH_SHIP: Self = Self(14);
+    pub const MYCON_SHIP: Self = Self(15);
+    pub const SLYLANDRO_SHIP: Self = Self(16);
+    pub const UMGAH_SHIP: Self = Self(17);
+    pub const URQUAN_SHIP: Self = Self(18);
+    pub const ZOQFOTPIK_SHIP: Self = Self(19);
+    pub const SYREEN_SHIP: Self = Self(20);
+    pub const BLACK_URQUAN_SHIP: Self = Self(21);
+    pub const YEHAT_REBEL_SHIP: Self = Self(22);
+    pub const URQUAN_DRONE_SHIP: Self = Self(23);
+    pub const SAMATRA_SHIP: Self = Self(23);
+    pub const NUM_AVAILABLE_RACES: Self = Self(24);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_10(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_10 {
+    pub const HAIL: Self = Self(0);
+    pub const ATTACK: Self = Self(1);
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct InputContext {
+    pub handlers: *mut BattleInputHandlers,
+    pub playerNr: COUNT,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct BattleInputHandlers {
+    pub frameInput: BattleFrameInputFunction,
+    pub selectShip: SelectShipFunction,
+    pub battleEndReady: BattleEndReadyFunction,
+    pub deleteContext: DeleteInputContextFunction,
+}
+pub type DeleteInputContextFunction = Option<
+    unsafe extern "C" fn(*mut InputContext) -> (),
+>;
+pub type BattleEndReadyFunction = Option<
+    unsafe extern "C" fn(*mut InputContext) -> bool,
+>;
+pub type SelectShipFunction = Option<
+    unsafe extern "C" fn(*mut InputContext, *mut GETMELEE_STATE) -> BOOLEAN,
+>;
+pub type GETMELEE_STATE = getmelee_struct;
+pub type BattleFrameInputFunction = Option<
+    unsafe extern "C" fn(*mut InputContext, *mut STARSHIP) -> BATTLE_INPUT_STATE,
+>;
+pub type BATTLE_INPUT_STATE = UBYTE;
+pub type BattleFrameCallback = unsafe extern "C" fn() -> ();
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct log_Level(pub ::core::ffi::c_uint);
+impl log_Level {
+    pub const log_Nothing: Self = Self(0);
+    pub const log_User: Self = Self(1);
+    pub const log_Fatal: Self = Self(1);
+    pub const log_Error: Self = Self(2);
+    pub const log_Warning: Self = Self(3);
+    pub const log_Info: Self = Self(4);
+    pub const log_Debug: Self = Self(5);
+    pub const log_All: Self = Self(6);
+}
+pub type CONTROLLER_INPUT_STATE = _controller_input_state;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct _controller_input_state {
+    pub key: [[::core::ffi::c_int; 7]; 6],
+    pub menu: [::core::ffi::c_int; 24],
+}
+pub type MENU_SOUND_FLAGS = UWORD;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct CONTROL_TEMPLATE(pub ::core::ffi::c_uint);
+impl CONTROL_TEMPLATE {
+    pub const CONTROL_TEMPLATE_KB_1: Self = Self(0);
+    pub const CONTROL_TEMPLATE_KB_2: Self = Self(1);
+    pub const CONTROL_TEMPLATE_KB_3: Self = Self(2);
+    pub const CONTROL_TEMPLATE_JOY_1: Self = Self(3);
+    pub const CONTROL_TEMPLATE_JOY_2: Self = Self(4);
+    pub const CONTROL_TEMPLATE_JOY_3: Self = Self(5);
+    pub const NUM_TEMPLATES: Self = Self(6);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_11(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_11 {
+    pub const KEY_UP: Self = Self(0);
+    pub const KEY_DOWN: Self = Self(1);
+    pub const KEY_LEFT: Self = Self(2);
+    pub const KEY_RIGHT: Self = Self(3);
+    pub const KEY_WEAPON: Self = Self(4);
+    pub const KEY_SPECIAL: Self = Self(5);
+    pub const KEY_ESCAPE: Self = Self(6);
+    pub const NUM_KEYS: Self = Self(7);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_12(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_12 {
+    pub const KEY_PAUSE: Self = Self(0);
+    pub const KEY_EXIT: Self = Self(1);
+    pub const KEY_ABORT: Self = Self(2);
+    pub const KEY_DEBUG: Self = Self(3);
+    pub const KEY_FULLSCREEN: Self = Self(4);
+    pub const KEY_MENU_UP: Self = Self(5);
+    pub const KEY_MENU_DOWN: Self = Self(6);
+    pub const KEY_MENU_LEFT: Self = Self(7);
+    pub const KEY_MENU_RIGHT: Self = Self(8);
+    pub const KEY_MENU_SELECT: Self = Self(9);
+    pub const KEY_MENU_CANCEL: Self = Self(10);
+    pub const KEY_MENU_SPECIAL: Self = Self(11);
+    pub const KEY_MENU_PAGE_UP: Self = Self(12);
+    pub const KEY_MENU_PAGE_DOWN: Self = Self(13);
+    pub const KEY_MENU_HOME: Self = Self(14);
+    pub const KEY_MENU_END: Self = Self(15);
+    pub const KEY_MENU_ZOOM_IN: Self = Self(16);
+    pub const KEY_MENU_ZOOM_OUT: Self = Self(17);
+    pub const KEY_MENU_DELETE: Self = Self(18);
+    pub const KEY_MENU_BACKSPACE: Self = Self(19);
+    pub const KEY_MENU_EDIT_CANCEL: Self = Self(20);
+    pub const KEY_MENU_SEARCH: Self = Self(21);
+    pub const KEY_MENU_NEXT: Self = Self(22);
+    pub const KEY_MENU_ANY: Self = Self(23);
+    pub const NUM_MENU_KEYS: Self = Self(24);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_13(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_13 {
+    pub const STAR_STRING_BASE: Self = Self(0);
+    pub const DEVICE_STRING_BASE: Self = Self(133);
+    pub const CARGO_STRING_BASE: Self = Self(162);
+    pub const ELEMENTS_STRING_BASE: Self = Self(172);
+    pub const SCAN_STRING_BASE: Self = Self(305);
+    pub const STAR_NUMBER_BASE: Self = Self(361);
+    pub const PLANET_NUMBER_BASE: Self = Self(375);
+    pub const MONTHS_STRING_BASE: Self = Self(408);
+    pub const FEEDBACK_STRING_BASE: Self = Self(420);
+    pub const STARBASE_STRING_BASE: Self = Self(422);
+    pub const ENCOUNTER_STRING_BASE: Self = Self(427);
+    pub const NAVIGATION_STRING_BASE: Self = Self(435);
+    pub const NAMING_STRING_BASE: Self = Self(441);
+    pub const MELEE_STRING_BASE: Self = Self(445);
+    pub const SAVEGAME_STRING_BASE: Self = Self(454);
+    pub const OPTION_STRING_BASE: Self = Self(459);
+    pub const QUITMENU_STRING_BASE: Self = Self(464);
+    pub const STATUS_STRING_BASE: Self = Self(467);
+    pub const FLAGSHIP_STRING_BASE: Self = Self(473);
+    pub const ORBITSCAN_STRING_BASE: Self = Self(486);
+    pub const MAINMENU_STRING_BASE: Self = Self(505);
+    pub const NETMELEE_STRING_BASE: Self = Self(560);
+    pub const GAMESTR_COUNT: Self = Self(579);
+}
+#[inline]
+unsafe extern "C" fn LockLink(mut pq: *const QUEUE, mut h: HLINK) -> *mut LINK {
+    if !h.is_null() {
+        (!(*pq).pq_tab.is_null() && h as *mut BYTE >= (*pq).pq_tab
+            && (h as *mut BYTE)
+                < (*pq)
+                    .pq_tab
+                    .offset(
+                        ((*pq).object_size as ::core::ffi::c_int
+                            * (*pq).num_objects as ::core::ffi::c_int) as isize,
+                    )
+            || {
+                __assert_fail(
+                    b"pq->pq_tab && (BYTE*)h >= pq->pq_tab && (BYTE*)h < pq->pq_tab + pq->object_size * pq->num_objects\0"
+                        .as_ptr() as *const ::core::ffi::c_char,
+                    b"src/uqm/displist.h\0"
+                        .as_ptr() as *const ::core::ffi::c_char,
+                    77 as ::core::ffi::c_int,
+                    b"LockLink\0".as_ptr() as *const ::core::ffi::c_char,
+                );
+                0 as ::core::ffi::c_int != 0
+            }) as ::core::ffi::c_int;
+    }
+    return h as *mut LINK;
+}
+#[inline]
+unsafe extern "C" fn UnlockLink(mut pq: *const QUEUE, mut h: HLINK) {
+    if !h.is_null() {
+        (!(*pq).pq_tab.is_null() && h as *mut BYTE >= (*pq).pq_tab
+            && (h as *mut BYTE)
+                < (*pq)
+                    .pq_tab
+                    .offset(
+                        ((*pq).object_size as ::core::ffi::c_int
+                            * (*pq).num_objects as ::core::ffi::c_int) as isize,
+                    )
+            || {
+                __assert_fail(
+                    b"pq->pq_tab && (BYTE*)h >= pq->pq_tab && (BYTE*)h < pq->pq_tab + pq->object_size * pq->num_objects\0"
+                        .as_ptr() as *const ::core::ffi::c_char,
+                    b"src/uqm/displist.h\0"
+                        .as_ptr() as *const ::core::ffi::c_char,
+                    88 as ::core::ffi::c_int,
+                    b"UnlockLink\0".as_ptr() as *const ::core::ffi::c_char,
+                );
+                0 as ::core::ffi::c_int != 0
+            }) as ::core::ffi::c_int;
+    }
+}
+#[inline]
+unsafe extern "C" fn colorFromRgb15(mut r: BYTE, mut g: BYTE, mut b: BYTE) -> Color {
+    let mut c: Color = Color { r: 0, g: 0, b: 0, a: 0 };
+    c.r = ((r as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+        | r as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE;
+    c.g = ((g as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+        | g as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE;
+    c.b = ((b as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+        | b as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE;
+    c.a = 0xff as BYTE;
+    return c;
+}
+unsafe extern "C" fn DoSelectAction(mut pMS: *mut MENU_STATE) -> BOOLEAN {
+    SetMenuSounds(
+        (((1 as ::core::ffi::c_int) << 0 as ::core::ffi::c_int) as MENU_SOUND_FLAGS
+            as ::core::ffi::c_int
+            | ((1 as ::core::ffi::c_int) << 1 as ::core::ffi::c_int) as MENU_SOUND_FLAGS
+                as ::core::ffi::c_int
+            | ((1 as ::core::ffi::c_int) << 2 as ::core::ffi::c_int) as MENU_SOUND_FLAGS
+                as ::core::ffi::c_int
+            | ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as MENU_SOUND_FLAGS
+                as ::core::ffi::c_int) as MENU_SOUND_FLAGS,
+        ((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int) as MENU_SOUND_FLAGS,
+    );
+    if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+        & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int != 0
+    {
+        (*pMS).CurState = (C2Rust_Unnamed_10::ATTACK.0 as ::core::ffi::c_int
+            + 1 as ::core::ffi::c_int) as BYTE;
+        return BOOLEAN::FALSE;
+    }
+    if (*pMS).Initialized == 0 {
+        (*pMS).Initialized = BOOLEAN::TRUE.0 as ::core::ffi::c_int as SIZE;
+        (*pMS).InputFunc = Some(
+            DoSelectAction as unsafe extern "C" fn(*mut MENU_STATE) -> BOOLEAN,
+        ) as Option<unsafe extern "C" fn(*mut menu_state) -> BOOLEAN>;
+    } else if PulsedInputState
+        .menu[C2Rust_Unnamed_12::KEY_MENU_SELECT.0 as ::core::ffi::c_int as usize] != 0
+    {
+        match (*pMS).CurState as ::core::ffi::c_int {
+            0 | 1 => {
+                if GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
+                    == C2Rust_Unnamed_0::IN_LAST_BATTLE.0 as ::core::ffi::c_int
+                {
+                    (*pMS).CurState = C2Rust_Unnamed_10::HAIL.0 as ::core::ffi::c_int
+                        as BYTE;
+                }
+                return BOOLEAN::FALSE;
+            }
+            2 => {
+                if GameOptions().0 == 0 {
+                    return BOOLEAN::FALSE;
+                }
+                DrawMenuStateStrings(
+                    C2Rust_Unnamed_1::PM_CONVERSE.0 as ::core::ffi::c_int as BYTE,
+                    (*pMS).CurState as SWORD,
+                );
+                SetFlashRect(
+                    ::core::ptr::with_exposed_provenance_mut::<
+                        RECT,
+                    >(!(0 as ::core::ffi::c_long) as usize),
+                );
+            }
+            _ => {
+                printf(
+                    b"Unknown option: %d\n\0".as_ptr() as *const ::core::ffi::c_char,
+                    (*pMS).CurState as ::core::ffi::c_int,
+                );
+            }
+        }
+    }
+    DoMenuChooser(pMS, C2Rust_Unnamed_1::PM_CONVERSE.0 as ::core::ffi::c_int as BYTE);
+    return BOOLEAN::TRUE;
+}
+unsafe extern "C" fn GetShipFragQueueForPlayer(mut playerNr: COUNT) -> *mut QUEUE {
+    if playerNr as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+        return &raw mut GlobData.Game_state.built_ship_q
+    } else {
+        return &raw mut GlobData.Game_state.npc_built_ship_q
+    };
+}
+#[no_mangle]
+pub unsafe extern "C" fn BuildBattle(mut which_player: COUNT) {
+    let mut pQueue: *mut QUEUE = ::core::ptr::null_mut::<QUEUE>();
+    let mut hStarShip: HSHIPFRAG = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut hNextShip: HSHIPFRAG = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut hBuiltShip: HSTARSHIP = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut BuiltShipPtr: *mut STARSHIP = ::core::ptr::null_mut::<STARSHIP>();
+    EncounterRace = -1 as SIZE;
+    if GlobData.Game_state.npc_built_ship_q.head.is_null() {
+        setGameState(
+            &raw mut GlobData.Game_state.GameState as *mut BYTE,
+            C2Rust_Unnamed::BATTLE_SEGUE.0 as ::core::ffi::c_int,
+            C2Rust_Unnamed::END_BATTLE_SEGUE.0 as ::core::ffi::c_int,
+            0 as BYTE,
+        );
+        return;
+    }
+    if which_player as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
+        match GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int {
+            1 => {
+                load_gravity_well(
+                    C2Rust_Unnamed_2::NUMBER_OF_PLANET_TYPES.0 as ::core::ffi::c_int
+                        as BYTE,
+                );
+            }
+            3 => {
+                load_gravity_well(
+                    (TFB_Random() as COUNT as ::core::ffi::c_int
+                        % C2Rust_Unnamed_2::NUMBER_OF_PLANET_TYPES.0
+                            as ::core::ffi::c_int) as BYTE,
+                );
+            }
+            _ => {
+                setGameState(
+                    &raw mut GlobData.Game_state.GameState as *mut BYTE,
+                    C2Rust_Unnamed::ESCAPE_COUNTER.0 as ::core::ffi::c_int,
+                    C2Rust_Unnamed::END_ESCAPE_COUNTER.0 as ::core::ffi::c_int,
+                    110 as BYTE,
+                );
+                load_gravity_well(
+                    getGameState(
+                        &raw mut GlobData.Game_state.GameState as *mut BYTE,
+                        C2Rust_Unnamed::BATTLE_PLANET.0 as ::core::ffi::c_int,
+                        C2Rust_Unnamed::END_BATTLE_PLANET.0 as ::core::ffi::c_int,
+                    ),
+                );
+            }
+        }
+    }
+    pQueue = GetShipFragQueueForPlayer(which_player);
+    ReinitQueue((&raw mut race_q as *mut QUEUE).offset(which_player as isize));
+    hStarShip = (*pQueue).head as HSHIPFRAG;
+    while !hStarShip.is_null() {
+        let mut FragPtr: *mut SHIP_FRAGMENT = ::core::ptr::null_mut::<SHIP_FRAGMENT>();
+        FragPtr = LockShipFrag(pQueue, hStarShip);
+        hNextShip = (*FragPtr).succ as HSHIPFRAG;
+        hBuiltShip = Build(
+            (&raw mut race_q as *mut QUEUE).offset(which_player as isize),
+            SPECIES_ID(
+                if (*FragPtr).race_id as ::core::ffi::c_int
+                    == C2Rust_Unnamed_9::SAMATRA_SHIP.0 as ::core::ffi::c_int
+                {
+                    SPECIES_ID::SA_MATRA_ID.0
+                } else {
+                    (*FragPtr).SpeciesID.0
+                },
+            ),
+        ) as HSTARSHIP;
+        if !hBuiltShip.is_null() {
+            BuiltShipPtr = LockStarShip(
+                (&raw mut race_q as *mut QUEUE).offset(which_player as isize),
+                hBuiltShip,
+            );
+            (*BuiltShipPtr).captains_name_index = (*FragPtr).captains_name_index;
+            (*BuiltShipPtr).playerNr = which_player as SIZE;
+            if (*FragPtr).crew_level as ::core::ffi::c_int
+                != !(0 as ::core::ffi::c_int) as COUNT as ::core::ffi::c_int
+            {
+                (*BuiltShipPtr).crew_level = (*FragPtr).crew_level;
+            } else {
+                (*BuiltShipPtr).crew_level = (*FragPtr).max_crew;
+            }
+            (*BuiltShipPtr).max_crew = (*FragPtr).max_crew;
+            (*BuiltShipPtr).race_strings = (*FragPtr).race_strings;
+            (*BuiltShipPtr).icons = (*FragPtr).icons;
+            (*BuiltShipPtr).index = (*FragPtr).index as COUNT;
+            (*BuiltShipPtr).ship_cost = 0 as BYTE;
+            (*BuiltShipPtr).RaceDescPtr = ::core::ptr::null_mut::<RACE_DESC>();
+            UnlockLink(
+                (&raw mut race_q as *mut QUEUE).offset(which_player as isize),
+                hBuiltShip,
+            );
+        }
+        UnlockLink(pQueue, hStarShip);
+        hStarShip = hNextShip;
+    }
+    if which_player as ::core::ffi::c_int == 0 as ::core::ffi::c_int
+        && {
+            hBuiltShip = Build(
+                (&raw mut race_q as *mut QUEUE).offset(0isize),
+                SPECIES_ID::SIS_SHIP_ID,
+            ) as HSTARSHIP;
+            !hBuiltShip.is_null()
+        }
+    {
+        BuiltShipPtr = LockStarShip(
+            (&raw mut race_q as *mut QUEUE).offset(0isize),
+            hBuiltShip,
+        );
+        (*BuiltShipPtr).captains_name_index = 0 as BYTE;
+        (*BuiltShipPtr).playerNr = 0 as SIZE;
+        (*BuiltShipPtr).crew_level = 0 as COUNT;
+        (*BuiltShipPtr).max_crew = 0 as COUNT;
+        (*BuiltShipPtr).race_strings = ::core::ptr::null_mut::<
+            STRING_TABLE_ENTRY_DESC,
+        >();
+        (*BuiltShipPtr).icons = ::core::ptr::null_mut::<FRAME_DESC>();
+        (*BuiltShipPtr).index = -1 as ::core::ffi::c_int as COUNT;
+        (*BuiltShipPtr).ship_cost = 0 as BYTE;
+        (*BuiltShipPtr).energy_counter = 42 as BYTE;
+        (*BuiltShipPtr).RaceDescPtr = ::core::ptr::null_mut::<RACE_DESC>();
+        UnlockLink((&raw mut race_q as *mut QUEUE).offset(0isize), hBuiltShip);
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn FleetIsInfinite(mut playerNr: COUNT) -> BOOLEAN {
+    let mut pQueue: *mut QUEUE = ::core::ptr::null_mut::<QUEUE>();
+    let mut hShipFrag: HSHIPFRAG = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut FragPtr: *mut SHIP_FRAGMENT = ::core::ptr::null_mut::<SHIP_FRAGMENT>();
+    let mut ret: BOOLEAN = BOOLEAN::FALSE;
+    pQueue = GetShipFragQueueForPlayer(playerNr);
+    hShipFrag = (*pQueue).head as HSHIPFRAG;
+    if hShipFrag.is_null() {
+        return BOOLEAN::FALSE;
+    }
+    FragPtr = LockShipFrag(pQueue, hShipFrag);
+    ret = BOOLEAN(
+        ((*FragPtr).crew_level as ::core::ffi::c_int
+            == !(0 as ::core::ffi::c_int) as COUNT as ::core::ffi::c_int)
+            as ::core::ffi::c_int as ::core::ffi::c_uint,
+    );
+    UnlockLink(pQueue, hShipFrag);
+    return ret;
+}
+#[no_mangle]
+pub unsafe extern "C" fn UpdateShipFragCrew(mut StarShipPtr: *mut STARSHIP) {
+    let mut frag_q: *mut QUEUE = ::core::ptr::null_mut::<QUEUE>();
+    let mut hShipFrag: HSHIPFRAG = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut hNextFrag: HSHIPFRAG = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut frag: *mut SHIP_FRAGMENT = ::core::ptr::null_mut::<SHIP_FRAGMENT>();
+    let mut ship_q: *mut QUEUE = ::core::ptr::null_mut::<QUEUE>();
+    let mut hStarShip: HSTARSHIP = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut hNextShip: HSTARSHIP = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut ship: *mut STARSHIP = ::core::ptr::null_mut::<STARSHIP>();
+    frag_q = GetShipFragQueueForPlayer((*StarShipPtr).playerNr as COUNT);
+    ship_q = (&raw mut race_q as *mut QUEUE).offset((*StarShipPtr).playerNr as isize);
+    hShipFrag = (*frag_q).head as HSHIPFRAG;
+    hStarShip = (*ship_q).head as HSTARSHIP;
+    while !hShipFrag.is_null() && !hStarShip.is_null() {
+        ship = LockStarShip(ship_q, hStarShip);
+        hNextShip = (*ship).succ as HSTARSHIP;
+        frag = LockShipFrag(frag_q, hShipFrag);
+        hNextFrag = (*frag).succ as HSHIPFRAG;
+        if ship == StarShipPtr {
+            ((*frag).crew_level as ::core::ffi::c_int
+                != !(0 as ::core::ffi::c_int) as COUNT as ::core::ffi::c_int
+                || {
+                    __assert_fail(
+                        b"frag->crew_level != INFINITE_FLEET\0".as_ptr()
+                            as *const ::core::ffi::c_char,
+                        b"src/uqm/encount.c\0"
+                            .as_ptr() as *const ::core::ffi::c_char,
+                        240 as ::core::ffi::c_int,
+                        b"UpdateShipFragCrew\0".as_ptr() as *const ::core::ffi::c_char,
+                    );
+                    0 as ::core::ffi::c_int != 0
+                }) as ::core::ffi::c_int;
+            (*frag).crew_level = (*ship).crew_level;
+            UnlockLink(frag_q, hShipFrag);
+            UnlockLink(ship_q, hStarShip);
+            break;
+        } else {
+            UnlockLink(frag_q, hShipFrag);
+            UnlockLink(ship_q, hStarShip);
+            hShipFrag = hNextFrag;
+            hStarShip = hNextShip;
+        }
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn InitEncounter() -> COUNT {
+    let mut i: COUNT = 0;
+    let mut SegueFrame: FRAME = ::core::ptr::null_mut::<FRAME_DESC>();
+    let mut s: STAMP = STAMP {
+        origin: POINT { x: 0, y: 0 },
+        frame: ::core::ptr::null_mut::<FRAME_DESC>(),
+    };
+    let mut t: TEXT = TEXT {
+        baseline: POINT { x: 0, y: 0 },
+        pStr: ::core::ptr::null::<UNICODE>(),
+        align: TEXT_ALIGN::ALIGN_LEFT,
+        CharCount: 0,
+    };
+    extern "C" {
+        static mut planet: [FRAME; 0];
+    }
+    let mut MR: MUSIC_REF = ::core::ptr::null_mut::<*mut TFB_SoundSample>();
+    SetContext(SpaceContext);
+    SetContextFont(TinyFont);
+    MR = LoadMusicInstance(b"music.redalert\0".as_ptr() as RESOURCE);
+    PlayMusic(MR, BOOLEAN::FALSE, 1 as BYTE);
+    SegueFrame = CaptureDrawable(
+        LoadGraphicInstance(b"graphics.segue\0".as_ptr() as RESOURCE) as DRAWABLE,
+    );
+    WaitForSoundEnd(!(0 as ::core::ffi::c_int) as COUNT);
+    StopMusic();
+    DestroyMusic(MR);
+    s.origin.y = 0 as COORD;
+    s.origin.x = s.origin.y;
+    SetTransitionSource(::core::ptr::null::<RECT>());
+    BatchGraphics();
+    SetContextBackGroundColor(colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE));
+    ClearDrawable();
+    s.frame = SegueFrame;
+    DrawStamp(&raw mut s);
+    t.baseline.x = ((ScreenWidth - 64 as ::core::ffi::c_int
+        - 0 as ::core::ffi::c_int * 2 as ::core::ffi::c_int - 14 as ::core::ffi::c_int
+        >> 1 as ::core::ffi::c_int) + 1 as ::core::ffi::c_int) as COORD;
+    t.baseline.y = 10 as COORD;
+    t.align = TEXT_ALIGN::ALIGN_CENTER;
+    SetContextFont(MicroFont);
+    SetContextForeGroundColor(colorFromRgb15(0 as BYTE, 0 as BYTE, 0x14 as BYTE));
+    if inHQSpace().0 != 0 {
+        t.pStr = GetStringAddress(
+            SetAbsStringTableIndex(
+                GameStrings,
+                (C2Rust_Unnamed_13::ENCOUNTER_STRING_BASE.0 as ::core::ffi::c_int
+                    + 0 as ::core::ffi::c_int) as COUNT,
+            ),
+        );
+        t.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+        font_DrawText(&raw mut t);
+        t.baseline.y = (t.baseline.y as ::core::ffi::c_int + 12 as ::core::ffi::c_int)
+            as COORD;
+        t.pStr = GetStringAddress(
+            SetAbsStringTableIndex(
+                GameStrings,
+                (C2Rust_Unnamed_13::ENCOUNTER_STRING_BASE.0 as ::core::ffi::c_int
+                    + 1 as ::core::ffi::c_int) as COUNT,
+            ),
+        );
+        t.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+        font_DrawText(&raw mut t);
+    } else {
+        let mut buf: [UNICODE; 256] = [0; 256];
+        t.pStr = GetStringAddress(
+            SetAbsStringTableIndex(
+                GameStrings,
+                (C2Rust_Unnamed_13::ENCOUNTER_STRING_BASE.0 as ::core::ffi::c_int
+                    + 2 as ::core::ffi::c_int) as COUNT,
+            ),
+        );
+        t.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+        font_DrawText(&raw mut t);
+        t.baseline.y = (t.baseline.y as ::core::ffi::c_int + 12 as ::core::ffi::c_int)
+            as COORD;
+        GetClusterName(CurStarDescPtr, &raw mut buf as *mut UNICODE);
+        t.pStr = &raw mut buf as *mut UNICODE;
+        t.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+        font_DrawText(&raw mut t);
+        t.baseline.y = (t.baseline.y as ::core::ffi::c_int + 12 as ::core::ffi::c_int)
+            as COORD;
+        t.pStr = &raw mut GlobData.SIS_state.PlanetName as *mut UNICODE;
+        t.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+        font_DrawText(&raw mut t);
+    }
+    DrawSISMessage(::core::ptr::null::<UNICODE>());
+    s.origin.x = (ScreenWidth - 64 as ::core::ffi::c_int
+        - 0 as ::core::ffi::c_int * 2 as ::core::ffi::c_int - 14 as ::core::ffi::c_int
+        >> 1 as ::core::ffi::c_int) as COORD;
+    s.origin.y = (ScreenHeight - 0 as ::core::ffi::c_int * 2 as ::core::ffi::c_int
+        - 13 as ::core::ffi::c_int >> 1 as ::core::ffi::c_int) as COORD;
+    s.frame = *(&raw mut planet as *mut FRAME).offset(0isize);
+    DrawStamp(&raw mut s);
+    if GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
+        != C2Rust_Unnamed_0::IN_LAST_BATTLE.0 as ::core::ffi::c_int
+    {
+        let mut hStarShip: HSHIPFRAG = ::core::ptr::null_mut::<::core::ffi::c_void>();
+        let mut hNextShip: HSHIPFRAG = ::core::ptr::null_mut::<::core::ffi::c_void>();
+        let mut display_pt: [POINT; 10] = [
+            point {
+                x: 10 as COORD,
+                y: 51 as COORD,
+            },
+            point {
+                x: -10 as COORD,
+                y: 51 as COORD,
+            },
+            point {
+                x: 33 as COORD,
+                y: 40 as COORD,
+            },
+            point {
+                x: -33 as COORD,
+                y: 40 as COORD,
+            },
+            point {
+                x: 49 as COORD,
+                y: 18 as COORD,
+            },
+            point {
+                x: -49 as COORD,
+                y: 18 as COORD,
+            },
+            point {
+                x: 52 as COORD,
+                y: -6 as COORD,
+            },
+            point {
+                x: -52 as COORD,
+                y: -6 as COORD,
+            },
+            point {
+                x: 44 as COORD,
+                y: -27 as COORD,
+            },
+            point {
+                x: -44 as COORD,
+                y: -27 as COORD,
+            },
+        ];
+        hStarShip = GlobData.Game_state.npc_built_ship_q.head as HSHIPFRAG;
+        i = 0 as COUNT;
+        while !hStarShip.is_null()
+            && (i as ::core::ffi::c_int) < 60 as ::core::ffi::c_int
+        {
+            let mut r: RECT = RECT {
+                corner: POINT { x: 0, y: 0 },
+                extent: EXTENT { width: 0, height: 0 },
+            };
+            let mut FragPtr: *mut SHIP_FRAGMENT = ::core::ptr::null_mut::<
+                SHIP_FRAGMENT,
+            >();
+            FragPtr = LockShipFrag(
+                &raw mut GlobData.Game_state.npc_built_ship_q,
+                hStarShip,
+            );
+            if (*FragPtr).crew_level as ::core::ffi::c_int
+                != !(0 as ::core::ffi::c_int) as COUNT as ::core::ffi::c_int
+            {
+                hNextShip = (*FragPtr).succ as HSHIPFRAG;
+            } else {
+                hNextShip = hStarShip;
+            }
+            s.origin = display_pt[(i as usize)
+                .wrapping_rem(
+                    ::core::mem::size_of::<[POINT; 10]>()
+                        .wrapping_div(::core::mem::size_of::<POINT>()),
+                )];
+            if i as usize
+                >= ::core::mem::size_of::<[POINT; 10]>()
+                    .wrapping_div(::core::mem::size_of::<POINT>())
+            {
+                let mut angle: COUNT = 0;
+                let mut radius: COUNT = 0;
+                radius = (square_root(
+                    (s.origin.x as ::core::ffi::c_long
+                        * s.origin.x as ::core::ffi::c_long
+                        + s.origin.y as ::core::ffi::c_long
+                            * s.origin.y as ::core::ffi::c_long) as DWORD,
+                ) as usize)
+                    .wrapping_add(
+                        (i as usize)
+                            .wrapping_div(
+                                ::core::mem::size_of::<[POINT; 10]>()
+                                    .wrapping_div(::core::mem::size_of::<POINT>()),
+                            )
+                            .wrapping_mul(18usize),
+                    ) as COUNT;
+                angle = ARCTAN(s.origin.x, s.origin.y);
+                s.origin.x = (*(&raw mut sinetab as *mut SIZE)
+                    .offset(
+                        (angle as ::core::ffi::c_int
+                            + ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int
+                                >> 2 as ::core::ffi::c_int)
+                            & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                                - 1 as ::core::ffi::c_int) as COUNT as isize,
+                    ) as ::core::ffi::c_long * radius as ::core::ffi::c_long
+                    >> 14 as ::core::ffi::c_int) as SIZE as COORD;
+                s.origin.y = (*(&raw mut sinetab as *mut SIZE)
+                    .offset(
+                        (angle as ::core::ffi::c_int
+                            & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                                - 1 as ::core::ffi::c_int) as COUNT as isize,
+                    ) as ::core::ffi::c_long * radius as ::core::ffi::c_long
+                    >> 14 as ::core::ffi::c_int) as SIZE as COORD;
+            }
+            s.frame = SetAbsFrameIndex((*FragPtr).icons, 0 as COUNT);
+            GetFrameRect(s.frame, &raw mut r);
+            s.origin.x = (s.origin.x as ::core::ffi::c_int
+                + ((ScreenWidth - 64 as ::core::ffi::c_int
+                    - 0 as ::core::ffi::c_int * 2 as ::core::ffi::c_int
+                    - 14 as ::core::ffi::c_int >> 1 as ::core::ffi::c_int)
+                    - (r.extent.width as ::core::ffi::c_int >> 1 as ::core::ffi::c_int)))
+                as COORD;
+            s.origin.y = (s.origin.y as ::core::ffi::c_int
+                + ((ScreenHeight - 0 as ::core::ffi::c_int * 2 as ::core::ffi::c_int
+                    - 13 as ::core::ffi::c_int >> 1 as ::core::ffi::c_int)
+                    - (r.extent.height as ::core::ffi::c_int
+                        >> 1 as ::core::ffi::c_int))) as COORD;
+            DrawStamp(&raw mut s);
+            UnlockLink(&raw mut GlobData.Game_state.npc_built_ship_q, hStarShip);
+            hStarShip = hNextShip;
+            i = i.wrapping_add(1);
+        }
+    }
+    UnbatchGraphics();
+    DestroyDrawable(ReleaseDrawable(SegueFrame));
+    ScreenTransition(3 as ::core::ffi::c_int, ::core::ptr::null::<RECT>());
+    let mut MenuState: MENU_STATE = MENU_STATE {
+        InputFunc: None,
+        Initialized: 0,
+        CurState: 0,
+        CurFrame: ::core::ptr::null_mut::<FRAME_DESC>(),
+        CurString: ::core::ptr::null_mut::<STRING_TABLE_ENTRY_DESC>(),
+        first_item: POINT { x: 0, y: 0 },
+        delta_item: 0,
+        ModuleFrame: ::core::ptr::null_mut::<FRAME_DESC>(),
+        flash_rect0: RECT {
+            corner: POINT { x: 0, y: 0 },
+            extent: EXTENT { width: 0, height: 0 },
+        },
+        flash_rect1: RECT {
+            corner: POINT { x: 0, y: 0 },
+            extent: EXTENT { width: 0, height: 0 },
+        },
+        flash_frame0: ::core::ptr::null_mut::<FRAME_DESC>(),
+        flash_frame1: ::core::ptr::null_mut::<FRAME_DESC>(),
+        flashContext: ::core::ptr::null_mut::<FlashContext>(),
+        hMusic: ::core::ptr::null_mut::<*mut TFB_SoundSample>(),
+        privData: ::core::ptr::null_mut::<::core::ffi::c_void>(),
+    };
+    MenuState.InputFunc = Some(
+        DoSelectAction as unsafe extern "C" fn(*mut MENU_STATE) -> BOOLEAN,
+    ) as Option<unsafe extern "C" fn(*mut menu_state) -> BOOLEAN>;
+    MenuState.Initialized = BOOLEAN::FALSE.0 as ::core::ffi::c_int as SIZE;
+    MenuState.CurState = C2Rust_Unnamed_10::HAIL.0 as ::core::ffi::c_int as BYTE;
+    DrawMenuStateStrings(
+        C2Rust_Unnamed_1::PM_CONVERSE.0 as ::core::ffi::c_int as BYTE,
+        MenuState.CurState as SWORD,
+    );
+    SetFlashRect(
+        ::core::ptr::with_exposed_provenance_mut::<RECT>(!(0 as ::core::ffi::c_long) as usize),
+    );
+    DoInput(&raw mut MenuState as *mut ::core::ffi::c_void, BOOLEAN::TRUE);
+    SetFlashRect(::core::ptr::null::<RECT>());
+    return MenuState.CurState as COUNT;
+}
+unsafe extern "C" fn DrawFadeText(
+    mut str1: *const UNICODE,
+    mut str2: *const UNICODE,
+    mut fade_in: BOOLEAN,
+    mut pRect: *mut RECT,
+) {
+    let mut i: SIZE = 0;
+    let mut TimeIn: DWORD = 0;
+    let mut t1: TEXT = TEXT {
+        baseline: POINT { x: 0, y: 0 },
+        pStr: ::core::ptr::null::<UNICODE>(),
+        align: TEXT_ALIGN::ALIGN_LEFT,
+        CharCount: 0,
+    };
+    let mut t2: TEXT = TEXT {
+        baseline: POINT { x: 0, y: 0 },
+        pStr: ::core::ptr::null::<UNICODE>(),
+        align: TEXT_ALIGN::ALIGN_LEFT,
+        CharCount: 0,
+    };
+    static mut fade_cycle: [Color; 7] = [
+        Color {
+            r: ((0xa as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0xa as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            g: ((0xa as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0xa as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            b: ((0xa as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0xa as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            a: 0xff as BYTE,
+        },
+        Color {
+            r: ((0x9 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x9 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            g: ((0x9 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x9 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            b: ((0x9 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x9 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            a: 0xff as BYTE,
+        },
+        Color {
+            r: ((0x8 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x8 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            g: ((0x8 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x8 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            b: ((0x8 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x8 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            a: 0xff as BYTE,
+        },
+        Color {
+            r: ((0x6 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x6 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            g: ((0x6 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x6 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            b: ((0x6 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x6 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            a: 0xff as BYTE,
+        },
+        Color {
+            r: ((0x5 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x5 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            g: ((0x5 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x5 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            b: ((0x5 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x5 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            a: 0xff as BYTE,
+        },
+        Color {
+            r: ((0x4 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x4 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            g: ((0x4 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x4 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            b: ((0x4 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x4 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            a: 0xff as BYTE,
+        },
+        Color {
+            r: ((0x3 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x3 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            g: ((0x3 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x3 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            b: ((0x3 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                | 0x3 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+            a: 0xff as BYTE,
+        },
+    ];
+    t1.baseline.x = ((*pRect).corner.x as ::core::ffi::c_int + 100 as ::core::ffi::c_int)
+        as COORD;
+    t1.baseline.y = ((*pRect).corner.y as ::core::ffi::c_int + 45 as ::core::ffi::c_int)
+        as COORD;
+    t1.align = TEXT_ALIGN::ALIGN_CENTER;
+    t1.pStr = str1;
+    t1.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+    t2 = t1;
+    t2.baseline.y = (t2.baseline.y as ::core::ffi::c_int + 11 as ::core::ffi::c_int)
+        as COORD;
+    t2.pStr = str2;
+    FlushInput();
+    TimeIn = GetTimeCounter() as DWORD;
+    if fade_in.0 != 0 {
+        i = 0 as SIZE;
+        while (i as ::core::ffi::c_int)
+            < ::core::mem::size_of::<[Color; 7]>()
+                .wrapping_div(::core::mem::size_of::<Color>()) as SIZE
+                as ::core::ffi::c_int
+        {
+            if AnyButtonPress(BOOLEAN::TRUE).0 != 0 {
+                i = ::core::mem::size_of::<[Color; 7]>()
+                    .wrapping_div(::core::mem::size_of::<Color>())
+                    .wrapping_sub(1usize) as SIZE;
+            }
+            SetContextForeGroundColor(fade_cycle[i as usize]);
+            font_DrawText(&raw mut t1);
+            font_DrawText(&raw mut t2);
+            SleepThreadUntil(
+                TimeIn
+                    .wrapping_add(
+                        (840 as ::core::ffi::c_int / 20 as ::core::ffi::c_int)
+                            as TimeCount,
+                    ),
+            );
+            TimeIn = GetTimeCounter() as DWORD;
+            i += 1;
+        }
+    } else {
+        i = ::core::mem::size_of::<[Color; 7]>()
+            .wrapping_div(::core::mem::size_of::<Color>())
+            .wrapping_sub(1usize) as SIZE;
+        while (i as ::core::ffi::c_int) >= 0 as ::core::ffi::c_int {
+            if AnyButtonPress(BOOLEAN::TRUE).0 != 0 {
+                i = 0 as SIZE;
+            }
+            SetContextForeGroundColor(fade_cycle[i as usize]);
+            font_DrawText(&raw mut t1);
+            font_DrawText(&raw mut t2);
+            SleepThreadUntil(
+                TimeIn
+                    .wrapping_add(
+                        (840 as ::core::ffi::c_int / 20 as ::core::ffi::c_int)
+                            as TimeCount,
+                    ),
+            );
+            TimeIn = GetTimeCounter() as DWORD;
+            i -= 1;
+        }
+        SetContextForeGroundColor(colorFromRgb15(0xa as BYTE, 0xa as BYTE, 0xa as BYTE));
+        font_DrawText(&raw mut t1);
+        font_DrawText(&raw mut t2);
+    };
+}
+#[no_mangle]
+pub unsafe extern "C" fn UninitEncounter() -> COUNT {
+    let mut ships_killed: COUNT = 0;
+    ships_killed = 0 as COUNT;
+    free_gravity_well();
+    if !(GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+        & (C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int
+            | C2Rust_Unnamed_0::CHECK_LOAD.0 as ::core::ffi::c_int) != 0
+        || GlobData.SIS_state.CrewEnlisted as ::core::ffi::c_int
+            == !(0 as ::core::ffi::c_int) as COUNT as ::core::ffi::c_int
+        || GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
+            == C2Rust_Unnamed_0::IN_LAST_BATTLE.0 as ::core::ffi::c_int
+        || GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
+            == C2Rust_Unnamed_0::WON_LAST_BATTLE.0 as ::core::ffi::c_int)
+    {
+        if getGameState(
+            &raw mut GlobData.Game_state.GameState as *mut BYTE,
+            C2Rust_Unnamed::BATTLE_SEGUE.0 as ::core::ffi::c_int,
+            C2Rust_Unnamed::END_BATTLE_SEGUE.0 as ::core::ffi::c_int,
+        ) as ::core::ffi::c_int == 0 as ::core::ffi::c_int
+        {
+            ReinitQueue((&raw mut race_q as *mut QUEUE).offset(0isize));
+            ReinitQueue((&raw mut race_q as *mut QUEUE).offset(1isize));
+        } else {
+            let mut Sleepy: BOOLEAN = BOOLEAN::FALSE;
+            let mut VictoryState: SIZE = 0;
+            let mut RecycleAmount: COUNT = 0 as COUNT;
+            let mut i: SIZE = 0;
+            let mut r: RECT = RECT {
+                corner: POINT { x: 0, y: 0 },
+                extent: EXTENT { width: 0, height: 0 },
+            };
+            let mut scavenge_r: RECT = rect {
+                corner: point {
+                    x: 0 as COORD,
+                    y: 0 as COORD,
+                },
+                extent: extent {
+                    width: 0 as COORD,
+                    height: 0 as COORD,
+                },
+            };
+            let mut t: TEXT = TEXT {
+                baseline: POINT { x: 0, y: 0 },
+                pStr: ::core::ptr::null::<UNICODE>(),
+                align: TEXT_ALIGN::ALIGN_LEFT,
+                CharCount: 0,
+            };
+            let mut ship_s: STAMP = STAMP {
+                origin: POINT { x: 0, y: 0 },
+                frame: ::core::ptr::null_mut::<FRAME_DESC>(),
+            };
+            let mut str1: *const UNICODE = ::core::ptr::null::<UNICODE>();
+            let mut str2: *const UNICODE = ::core::ptr::null::<UNICODE>();
+            let mut prevMsgMode: StatMsgMode = StatMsgMode::SMM_UNDEFINED;
+            let mut buf: [UNICODE; 80] = [0; 80];
+            let mut hStarShip: HSHIPFRAG = ::core::ptr::null_mut::<
+                ::core::ffi::c_void,
+            >();
+            let mut FragPtr: *mut SHIP_FRAGMENT = ::core::ptr::null_mut::<
+                SHIP_FRAGMENT,
+            >();
+            static mut fade_ship_cycle: [Color; 10] = [
+                Color {
+                    r: ((0x7 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x7 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    g: ((0 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    b: ((0 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    a: 0xff as BYTE,
+                },
+                Color {
+                    r: ((0xf as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0xf as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    g: ((0 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    b: ((0 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    a: 0xff as BYTE,
+                },
+                Color {
+                    r: ((0x17 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x17 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    g: ((0 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    b: ((0 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    a: 0xff as BYTE,
+                },
+                Color {
+                    r: ((0x1f as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x1f as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    g: ((0xa as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0xa as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    b: ((0xa as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0xa as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    a: 0xff as BYTE,
+                },
+                Color {
+                    r: ((0x1f as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x1f as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    g: ((0x14 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x14 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    b: ((0x14 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x14 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    a: 0xff as BYTE,
+                },
+                Color {
+                    r: ((0x1f as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x1f as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    g: ((0x1f as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x1f as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    b: ((0x1f as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x1f as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    a: 0xff as BYTE,
+                },
+                Color {
+                    r: ((0x1f as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x1f as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    g: ((0x14 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x14 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    b: ((0x14 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x14 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    a: 0xff as BYTE,
+                },
+                Color {
+                    r: ((0x1f as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x1f as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    g: ((0xa as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0xa as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    b: ((0xa as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0xa as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    a: 0xff as BYTE,
+                },
+                Color {
+                    r: ((0x1b as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x1b as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    g: ((0 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    b: ((0 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    a: 0xff as BYTE,
+                },
+                Color {
+                    r: ((0x17 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0x17 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    g: ((0 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    b: ((0 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
+                        | 0 as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE,
+                    a: 0xff as BYTE,
+                },
+            ];
+            let mut race_bounty: [COUNT; 23] = [
+                1600 as COUNT,
+                3000 as COUNT,
+                1100 as COUNT,
+                2300 as COUNT,
+                2000 as COUNT,
+                500 as COUNT,
+                1800 as COUNT,
+                1600 as COUNT,
+                1000 as COUNT,
+                2200 as COUNT,
+                1200 as COUNT,
+                2300 as COUNT,
+                3600 as COUNT,
+                1700 as COUNT,
+                1000 as COUNT,
+                2100 as COUNT,
+                4400 as COUNT,
+                700 as COUNT,
+                3000 as COUNT,
+                600 as COUNT,
+                1300 as COUNT,
+                3000 as COUNT,
+                2300 as COUNT,
+            ];
+            setGameState(
+                &raw mut GlobData.Game_state.GameState as *mut BYTE,
+                C2Rust_Unnamed::BATTLE_SEGUE.0 as ::core::ffi::c_int,
+                C2Rust_Unnamed::END_BATTLE_SEGUE.0 as ::core::ffi::c_int,
+                0 as BYTE,
+            );
+            setGameState(
+                &raw mut GlobData.Game_state.GameState as *mut BYTE,
+                C2Rust_Unnamed::BOMB_CARRIER.0 as ::core::ffi::c_int,
+                C2Rust_Unnamed::END_BOMB_CARRIER.0 as ::core::ffi::c_int,
+                0 as BYTE,
+            );
+            VictoryState = (if battle_counter[1usize] as ::core::ffi::c_int != 0
+                || battle_counter[0usize] == 0
+                || getGameState(
+                    &raw mut GlobData.Game_state.GameState as *mut BYTE,
+                    C2Rust_Unnamed::URQUAN_PROTECTING_SAMATRA.0 as ::core::ffi::c_int,
+                    C2Rust_Unnamed::END_URQUAN_PROTECTING_SAMATRA.0 as ::core::ffi::c_int,
+                ) as ::core::ffi::c_int != 0
+            {
+                0 as ::core::ffi::c_int
+            } else {
+                1 as ::core::ffi::c_int
+            }) as SIZE;
+            hStarShip = GlobData.Game_state.npc_built_ship_q.head as HSHIPFRAG;
+            FragPtr = LockShipFrag(
+                &raw mut GlobData.Game_state.npc_built_ship_q,
+                hStarShip,
+            );
+            EncounterRace = (*FragPtr).race_id as SIZE;
+            if GetStarShipFromIndex(
+                    &raw mut GlobData.Game_state.avail_race_q,
+                    EncounterRace as COUNT,
+                )
+                .is_null()
+            {
+                VictoryState = -1 as SIZE;
+                InitSISContexts();
+            }
+            UnlockLink(&raw mut GlobData.Game_state.npc_built_ship_q, hStarShip);
+            prevMsgMode = SetStatusMessageMode(StatMsgMode::SMM_RES_UNITS);
+            ship_s.origin.x = 0 as COORD;
+            ship_s.origin.y = 0 as COORD;
+            Sleepy = BOOLEAN::TRUE;
+            i = 0 as SIZE;
+            while (i as ::core::ffi::c_int) < 2 as ::core::ffi::c_int {
+                let mut pQueue: *mut QUEUE = ::core::ptr::null_mut::<QUEUE>();
+                let mut hNextShip: HSHIPFRAG = ::core::ptr::null_mut::<
+                    ::core::ffi::c_void,
+                >();
+                if i as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
+                    pQueue = &raw mut GlobData.Game_state.built_ship_q;
+                } else {
+                    if (VictoryState as ::core::ffi::c_int) < 0 as ::core::ffi::c_int {
+                        VictoryState = 0 as SIZE;
+                    } else {
+                        DrawSISFrame();
+                        DrawSISMessage(::core::ptr::null::<UNICODE>());
+                        if inHQSpace().0 != 0 {
+                            DrawHyperCoords(GlobData.Game_state.ShipStamp.origin);
+                        } else if GlobData.Game_state.ip_planet as ::core::ffi::c_int
+                            == 0 as ::core::ffi::c_int
+                        {
+                            DrawHyperCoords((*CurStarDescPtr).star_pt);
+                        } else {
+                            DrawSISTitle(
+                                &raw mut GlobData.SIS_state.PlanetName as *mut UNICODE,
+                            );
+                        }
+                        SetContext(SpaceContext);
+                        if VictoryState != 0 {
+                            DrawArmadaPickShip(BOOLEAN::TRUE, &raw mut scavenge_r);
+                        }
+                    }
+                    pQueue = &raw mut GlobData.Game_state.npc_built_ship_q;
+                }
+                ReinitQueue(
+                    (&raw mut race_q as *mut QUEUE)
+                        .offset(
+                            (2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int
+                                - i as ::core::ffi::c_int) as isize,
+                        ),
+                );
+                hStarShip = (*pQueue).head as HSHIPFRAG;
+                while !hStarShip.is_null() {
+                    FragPtr = LockShipFrag(pQueue, hStarShip);
+                    hNextShip = (*FragPtr).succ as HSHIPFRAG;
+                    if (*FragPtr).crew_level as ::core::ffi::c_int
+                        == 0 as ::core::ffi::c_int
+                        || VictoryState as ::core::ffi::c_int != 0
+                            && i as ::core::ffi::c_int
+                                == 2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int
+                    {
+                        if i as ::core::ffi::c_int
+                            == 2 as ::core::ffi::c_int - 1 as ::core::ffi::c_int
+                        {
+                            ships_killed = ships_killed.wrapping_add(1);
+                            if VictoryState != 0 {
+                                let mut j: COUNT = 0;
+                                if ships_killed as ::core::ffi::c_int
+                                    == 1 as ::core::ffi::c_int
+                                {
+                                    RecycleAmount = 0 as COUNT;
+                                    DrawStatusMessage(::core::ptr::null::<UNICODE>());
+                                    ship_s.origin.x = (scavenge_r.corner.x as ::core::ffi::c_int
+                                        + 32 as ::core::ffi::c_int) as COORD;
+                                    ship_s.origin.y = (scavenge_r.corner.y as ::core::ffi::c_int
+                                        + 56 as ::core::ffi::c_int) as COORD;
+                                    ship_s.frame = IncFrameIndex((*FragPtr).icons);
+                                    DrawStamp(&raw mut ship_s);
+                                    SetContextForeGroundColor(
+                                        colorFromRgb15(0x8 as BYTE, 0x8 as BYTE, 0x8 as BYTE),
+                                    );
+                                    SetContextFont(TinyFont);
+                                    utf8StringCopy(
+                                        &raw mut buf as *mut ::core::ffi::c_char,
+                                        ::core::mem::size_of::<[UNICODE; 80]>() as size_t,
+                                        GetStringAddress((*FragPtr).race_strings)
+                                            as *const ::core::ffi::c_char,
+                                    );
+                                    strupr(&raw mut buf as *mut ::core::ffi::c_char);
+                                    t.baseline.x = (scavenge_r.corner.x as ::core::ffi::c_int
+                                        + 100 as ::core::ffi::c_int) as COORD;
+                                    t.baseline.y = (scavenge_r.corner.y as ::core::ffi::c_int
+                                        + 68 as ::core::ffi::c_int) as COORD;
+                                    t.align = TEXT_ALIGN::ALIGN_CENTER;
+                                    t.pStr = &raw mut buf as *mut UNICODE;
+                                    t.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+                                    font_DrawText(&raw mut t);
+                                    t.baseline.y = (t.baseline.y as ::core::ffi::c_int
+                                        + 6 as ::core::ffi::c_int) as COORD;
+                                    t.pStr = GetStringAddress(
+                                        SetAbsStringTableIndex(
+                                            GameStrings,
+                                            (C2Rust_Unnamed_13::ENCOUNTER_STRING_BASE.0
+                                                as ::core::ffi::c_int + 3 as ::core::ffi::c_int) as COUNT,
+                                        ),
+                                    );
+                                    t.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+                                    font_DrawText(&raw mut t);
+                                    ship_s.frame = (*FragPtr).icons;
+                                    SetContextFont(MicroFont);
+                                    str1 = GetStringAddress(
+                                        SetAbsStringTableIndex(
+                                            GameStrings,
+                                            (C2Rust_Unnamed_13::ENCOUNTER_STRING_BASE.0
+                                                as ::core::ffi::c_int + 4 as ::core::ffi::c_int) as COUNT,
+                                        ),
+                                    );
+                                    str2 = GetStringAddress(
+                                        SetAbsStringTableIndex(
+                                            GameStrings,
+                                            (C2Rust_Unnamed_13::ENCOUNTER_STRING_BASE.0
+                                                as ::core::ffi::c_int + 5 as ::core::ffi::c_int) as COUNT,
+                                        ),
+                                    );
+                                    DrawFadeText(
+                                        str1,
+                                        str2,
+                                        BOOLEAN::TRUE,
+                                        &raw mut scavenge_r,
+                                    );
+                                }
+                                r.corner.y = (scavenge_r.corner.y as ::core::ffi::c_int
+                                    + 9 as ::core::ffi::c_int) as COORD;
+                                r.extent.height = 22 as COORD;
+                                SetContextForeGroundColor(
+                                    colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE),
+                                );
+                                r.extent.width = 34 as COORD;
+                                r.corner.x = (scavenge_r.corner.x as ::core::ffi::c_int
+                                    + scavenge_r.extent.width as ::core::ffi::c_int
+                                    - (10 as ::core::ffi::c_int
+                                        + r.extent.width as ::core::ffi::c_int)) as COORD;
+                                DrawFilledRectangle(&raw mut r);
+                                j = (race_bounty[EncounterRace as usize]
+                                    as ::core::ffi::c_int >> 3 as ::core::ffi::c_int) as COUNT;
+                                RecycleAmount = (RecycleAmount as ::core::ffi::c_int
+                                    + j as ::core::ffi::c_int) as COUNT;
+                                sprintf(
+                                    &raw mut buf as *mut ::core::ffi::c_char,
+                                    b"%u\0".as_ptr() as *const ::core::ffi::c_char,
+                                    RecycleAmount as ::core::ffi::c_int,
+                                );
+                                t.baseline.x = (r.corner.x as ::core::ffi::c_int
+                                    + r.extent.width as ::core::ffi::c_int
+                                    - 1 as ::core::ffi::c_int) as COORD;
+                                t.baseline.y = (r.corner.y as ::core::ffi::c_int
+                                    + 14 as ::core::ffi::c_int) as COORD;
+                                t.align = TEXT_ALIGN::ALIGN_RIGHT;
+                                t.pStr = &raw mut buf as *mut UNICODE;
+                                t.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+                                SetContextForeGroundColor(
+                                    colorFromRgb15(0 as BYTE, 0 as BYTE, 0x18 as BYTE),
+                                );
+                                font_DrawText(&raw mut t);
+                                DeltaSISGauges(
+                                    0 as SIZE,
+                                    0 as SIZE,
+                                    j as ::core::ffi::c_int,
+                                );
+                                let c2rust_fresh0 = VictoryState;
+                                VictoryState += 1;
+                                if (c2rust_fresh0 as ::core::ffi::c_int
+                                    - 1 as ::core::ffi::c_int) % 5 as ::core::ffi::c_int != 0
+                                {
+                                    ship_s.origin.x = (ship_s.origin.x as ::core::ffi::c_int
+                                        + 17 as ::core::ffi::c_int) as COORD;
+                                } else {
+                                    SetContextForeGroundColor(
+                                        colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE),
+                                    );
+                                    r.corner.x = (scavenge_r.corner.x as ::core::ffi::c_int
+                                        + 10 as ::core::ffi::c_int) as COORD;
+                                    r.extent.width = 104 as COORD;
+                                    DrawFilledRectangle(&raw mut r);
+                                    ship_s.origin.x = (r.corner.x as ::core::ffi::c_int
+                                        + 2 as ::core::ffi::c_int) as COORD;
+                                    ship_s.origin.y = (scavenge_r.corner.y as ::core::ffi::c_int
+                                        + 12 as ::core::ffi::c_int) as COORD;
+                                }
+                                if Sleepy.0 != 0 {
+                                    let mut Time: TimeCount = GetTimeCounter();
+                                    j = 0 as COUNT;
+                                    while (j as usize)
+                                        < ::core::mem::size_of::<[Color; 10]>()
+                                            .wrapping_div(::core::mem::size_of::<Color>())
+                                    {
+                                        Sleepy = BOOLEAN(
+                                            (BOOLEAN(
+                                                    (AnyButtonPress(BOOLEAN::TRUE).0 == 0) as ::core::ffi::c_int
+                                                        as ::core::ffi::c_uint,
+                                                )
+                                                .0 != 0
+                                                && GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+                                                    & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int
+                                                    == 0) as ::core::ffi::c_int as ::core::ffi::c_uint,
+                                        );
+                                        if Sleepy.0 == 0 {
+                                            break;
+                                        }
+                                        SetContextForeGroundColor(fade_ship_cycle[j as usize]);
+                                        DrawFilledStamp(&raw mut ship_s);
+                                        SleepThreadUntil(
+                                            Time
+                                                .wrapping_add(
+                                                    (840 as ::core::ffi::c_int / 15 as ::core::ffi::c_int)
+                                                        as TimeCount,
+                                                ),
+                                        );
+                                        Time = GetTimeCounter();
+                                        j = j.wrapping_add(1);
+                                    }
+                                }
+                                DrawStamp(&raw mut ship_s);
+                            }
+                        }
+                        UnlockLink(pQueue, hStarShip);
+                        RemoveQueue(pQueue, hStarShip);
+                        FreeLink(pQueue, hStarShip);
+                    } else {
+                        UnlockLink(pQueue, hStarShip);
+                    }
+                    hStarShip = hNextShip;
+                }
+                i += 1;
+            }
+            SetStatusMessageMode(prevMsgMode);
+            if VictoryState != 0 {
+                WaitForAnyButton(
+                    BOOLEAN::TRUE,
+                    (840 as ::core::ffi::c_int * 3 as ::core::ffi::c_int) as TimePeriod,
+                    BOOLEAN::FALSE,
+                );
+                if CurrentInputState
+                    .key[(*(&raw mut PlayerControls as *mut CONTROL_TEMPLATE)
+                    .offset(0isize))
+                    .0
+                    as usize][C2Rust_Unnamed_11::KEY_ESCAPE.0 as ::core::ffi::c_int
+                    as usize] == 0
+                {
+                    DrawFadeText(str1, str2, BOOLEAN::FALSE, &raw mut scavenge_r);
+                    if CurrentInputState
+                        .key[(*(&raw mut PlayerControls as *mut CONTROL_TEMPLATE)
+                        .offset(0isize))
+                        .0
+                        as usize][C2Rust_Unnamed_11::KEY_ESCAPE.0 as ::core::ffi::c_int
+                        as usize] == 0
+                    {
+                        SetContextForeGroundColor(
+                            colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE),
+                        );
+                        r.corner.x = (scavenge_r.corner.x as ::core::ffi::c_int
+                            + 10 as ::core::ffi::c_int) as COORD;
+                        r.extent.width = 132 as COORD;
+                        DrawFilledRectangle(&raw mut r);
+                        sprintf(
+                            &raw mut buf as *mut ::core::ffi::c_char,
+                            b"%u %s\0".as_ptr() as *const ::core::ffi::c_char,
+                            RecycleAmount as ::core::ffi::c_int,
+                            GetStringAddress(
+                                SetAbsStringTableIndex(
+                                    GameStrings,
+                                    (C2Rust_Unnamed_13::STATUS_STRING_BASE.0
+                                        as ::core::ffi::c_int + 1 as ::core::ffi::c_int) as COUNT,
+                                ),
+                            ),
+                        );
+                        t.baseline.x = (r.corner.x as ::core::ffi::c_int
+                            + (r.extent.width as ::core::ffi::c_int
+                                >> 1 as ::core::ffi::c_int)) as COORD;
+                        t.baseline.y = (r.corner.y as ::core::ffi::c_int
+                            + 14 as ::core::ffi::c_int) as COORD;
+                        t.align = TEXT_ALIGN::ALIGN_CENTER;
+                        t.pStr = &raw mut buf as *mut UNICODE;
+                        t.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+                        SetContextForeGroundColor(
+                            colorFromRgb15(0 as BYTE, 0 as BYTE, 0x18 as BYTE),
+                        );
+                        font_DrawText(&raw mut t);
+                        str1 = GetStringAddress(
+                            SetAbsStringTableIndex(
+                                GameStrings,
+                                (C2Rust_Unnamed_13::ENCOUNTER_STRING_BASE.0
+                                    as ::core::ffi::c_int + 6 as ::core::ffi::c_int) as COUNT,
+                            ),
+                        );
+                        str2 = GetStringAddress(
+                            SetAbsStringTableIndex(
+                                GameStrings,
+                                (C2Rust_Unnamed_13::ENCOUNTER_STRING_BASE.0
+                                    as ::core::ffi::c_int + 7 as ::core::ffi::c_int) as COUNT,
+                            ),
+                        );
+                        DrawFadeText(str1, str2, BOOLEAN::TRUE, &raw mut scavenge_r);
+                        WaitForAnyButton(
+                            BOOLEAN::TRUE,
+                            (840 as ::core::ffi::c_int * 2 as ::core::ffi::c_int)
+                                as TimePeriod,
+                            BOOLEAN::FALSE,
+                        );
+                        if CurrentInputState
+                            .key[(*(&raw mut PlayerControls as *mut CONTROL_TEMPLATE)
+                            .offset(0isize))
+                            .0
+                            as usize][C2Rust_Unnamed_11::KEY_ESCAPE.0
+                            as ::core::ffi::c_int as usize] == 0
+                        {
+                            DrawFadeText(
+                                str1,
+                                str2,
+                                BOOLEAN::FALSE,
+                                &raw mut scavenge_r,
+                            );
+                        }
+                    }
+                }
+                DrawStatusMessage(::core::ptr::null::<UNICODE>());
+            }
+            if ships_killed as ::core::ffi::c_int != 0
+                && EncounterRace as ::core::ffi::c_int
+                    == C2Rust_Unnamed_9::THRADDASH_SHIP.0 as ::core::ffi::c_int
+                && getGameState(
+                    &raw mut GlobData.Game_state.GameState as *mut BYTE,
+                    C2Rust_Unnamed::THRADD_MANNER.0 as ::core::ffi::c_int,
+                    C2Rust_Unnamed::END_THRADD_MANNER.0 as ::core::ffi::c_int,
+                ) == 0
+            {
+                ships_killed = (ships_killed as ::core::ffi::c_int
+                    + getGameState(
+                        &raw mut GlobData.Game_state.GameState as *mut BYTE,
+                        C2Rust_Unnamed::THRADDASH_BODY_COUNT.0 as ::core::ffi::c_int,
+                        C2Rust_Unnamed::END_THRADDASH_BODY_COUNT.0 as ::core::ffi::c_int,
+                    ) as ::core::ffi::c_int) as COUNT;
+                if ships_killed as ::core::ffi::c_int > 25 as ::core::ffi::c_int {
+                    ships_killed = 25 as COUNT;
+                }
+                setGameState(
+                    &raw mut GlobData.Game_state.GameState as *mut BYTE,
+                    C2Rust_Unnamed::THRADDASH_BODY_COUNT.0 as ::core::ffi::c_int,
+                    C2Rust_Unnamed::END_THRADDASH_BODY_COUNT.0 as ::core::ffi::c_int,
+                    ships_killed as BYTE,
+                );
+            }
+        }
+    }
+    return ships_killed;
+}
+#[no_mangle]
+pub unsafe extern "C" fn EncounterBattle() {
+    let mut OldActivity: ACTIVITY = 0;
+    extern "C" {
+        static mut nth_frame: UWORD;
+    }
+    let mut savedPlayerInput: *mut InputContext = ::core::ptr::null_mut::<
+        InputContext,
+    >();
+    setGameState(
+        &raw mut GlobData.Game_state.GameState as *mut BYTE,
+        C2Rust_Unnamed::BATTLE_SEGUE.0 as ::core::ffi::c_int,
+        C2Rust_Unnamed::END_BATTLE_SEGUE.0 as ::core::ffi::c_int,
+        1 as BYTE,
+    );
+    OldActivity = GlobData.Game_state.CurrentActivity;
+    if OldActivity as BYTE as ::core::ffi::c_int
+        == C2Rust_Unnamed_0::IN_LAST_BATTLE.0 as ::core::ffi::c_int
+    {
+        GlobData.Game_state.CurrentActivity = (((0 as ::core::ffi::c_int as BYTE
+            as ::core::ffi::c_int) << 8 as ::core::ffi::c_int) as UWORD
+            as ::core::ffi::c_int
+            | C2Rust_Unnamed_0::IN_LAST_BATTLE.0 as ::core::ffi::c_int as BYTE
+                as ::core::ffi::c_int) as ACTIVITY;
+    } else {
+        GlobData.Game_state.CurrentActivity = (((0 as ::core::ffi::c_int as BYTE
+            as ::core::ffi::c_int) << 8 as ::core::ffi::c_int) as UWORD
+            as ::core::ffi::c_int
+            | C2Rust_Unnamed_0::IN_ENCOUNTER.0 as ::core::ffi::c_int as BYTE
+                as ::core::ffi::c_int) as ACTIVITY;
+    }
+    WaitForSoundEnd(!(0 as ::core::ffi::c_int) as COUNT);
+    if GlobData.Game_state.glob_flags as ::core::ffi::c_int
+        & (1 as ::core::ffi::c_int) << 5 as ::core::ffi::c_int != 0
+    {
+        let mut cur_speed: BYTE = 0;
+        cur_speed = ((GlobData.Game_state.glob_flags as ::core::ffi::c_int
+            & (((1 as ::core::ffi::c_int) << 2 as ::core::ffi::c_int)
+                - 1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int) as BYTE
+            as ::core::ffi::c_int >> 6 as ::core::ffi::c_int) as BYTE;
+        if cur_speed as ::core::ffi::c_int == 1 as ::core::ffi::c_int {
+            cur_speed = 0 as BYTE;
+        } else if cur_speed as ::core::ffi::c_int == 2 as ::core::ffi::c_int {
+            cur_speed = cur_speed.wrapping_add(1);
+        } else {
+            cur_speed = !(0 as ::core::ffi::c_int) as BYTE;
+        }
+        nth_frame = (((cur_speed as ::core::ffi::c_int) << 8 as ::core::ffi::c_int)
+            as UWORD as ::core::ffi::c_int
+            | 1 as ::core::ffi::c_int as BYTE as ::core::ffi::c_int) as UWORD;
+        *(&raw mut PlayerControl as *mut BYTE).offset(0isize) = (((1
+            as ::core::ffi::c_int) << 1 as ::core::ffi::c_int) as BYTE
+            as ::core::ffi::c_int
+            | ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int) as BYTE;
+        savedPlayerInput = *(&raw mut PlayerInput as *mut *mut InputContext)
+            .offset(0isize);
+        *(&raw mut PlayerInput as *mut *mut InputContext).offset(0isize) = ::core::ptr::null_mut::<
+            InputContext,
+        >();
+        if !SetPlayerInput(0 as COUNT) {
+            log_add(
+                log_Level::log_Fatal,
+                b"Could not set cyborg player input.\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+            );
+            explode();
+        }
+    }
+    GameSounds = CaptureStringTable(
+        LoadSoundInstance(b"sounds.battle\0".as_ptr() as RESOURCE),
+    ) as SOUND;
+    Battle(None);
+    DestroySound(ReleaseStringTable(GameSounds));
+    GameSounds = ::core::ptr::null_mut::<STRING_TABLE_ENTRY_DESC>();
+    if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+        & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int != 0
+    {
+        GlobData.SIS_state.CrewEnlisted = !(0 as ::core::ffi::c_int) as COUNT;
+    }
+    if GlobData.Game_state.glob_flags as ::core::ffi::c_int
+        & (1 as ::core::ffi::c_int) << 5 as ::core::ffi::c_int != 0
+    {
+        nth_frame = (((0 as ::core::ffi::c_int as BYTE as ::core::ffi::c_int)
+            << 8 as ::core::ffi::c_int) as UWORD as ::core::ffi::c_int
+            | 0 as ::core::ffi::c_int as BYTE as ::core::ffi::c_int) as UWORD;
+        *(&raw mut PlayerControl as *mut BYTE).offset(0isize) = (((1
+            as ::core::ffi::c_int) << 0 as ::core::ffi::c_int) as BYTE
+            as ::core::ffi::c_int
+            | ((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int) as BYTE
+                as ::core::ffi::c_int) as BYTE;
+        ClearPlayerInput(0 as COUNT);
+        *(&raw mut PlayerInput as *mut *mut InputContext).offset(0isize) = savedPlayerInput;
+    }
+    GlobData.Game_state.CurrentActivity = OldActivity;
+}
+#[inline]
+unsafe extern "C" fn LockStarShip(
+    mut pq: *const QUEUE,
+    mut h: HSTARSHIP,
+) -> *mut STARSHIP {
+    ((*pq).object_size as usize == ::core::mem::size_of::<STARSHIP>()
+        || {
+            __assert_fail(
+                b"GetLinkSize (pq) == sizeof (STARSHIP)\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+                b"src/uqm/races.h\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                293 as ::core::ffi::c_int,
+                b"LockStarShip\0".as_ptr() as *const ::core::ffi::c_char,
+            );
+            0 as ::core::ffi::c_int != 0
+        }) as ::core::ffi::c_int;
+    return LockLink(pq, h) as *mut STARSHIP;
+}
+#[inline]
+unsafe extern "C" fn LockShipFrag(
+    mut pq: *const QUEUE,
+    mut h: HSHIPFRAG,
+) -> *mut SHIP_FRAGMENT {
+    ((*pq).object_size as usize == ::core::mem::size_of::<SHIP_FRAGMENT>()
+        || {
+            __assert_fail(
+                b"GetLinkSize (pq) == sizeof (SHIP_FRAGMENT)\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+                b"src/uqm/races.h\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                329 as ::core::ffi::c_int,
+                b"LockShipFrag\0".as_ptr() as *const ::core::ffi::c_char,
+            );
+            0 as ::core::ffi::c_int != 0
+        }) as ::core::ffi::c_int;
+    return LockLink(pq, h) as *mut SHIP_FRAGMENT;
+}
+#[inline]
+unsafe extern "C" fn explode() -> ! {
+    abort();
+}

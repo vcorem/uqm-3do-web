@@ -200,13 +200,29 @@ test('excessive message rates close the sending connection and its room', async 
 });
 
 test('ordinary ping responses and browser heartbeat pongs remain functional', async t => {
-  const { pair } = await fixture(t, { heartbeatMs: 50 });
+  const { pair } = await fixture(t, { heartbeatMs: 250 });
   const { host, guest } = await pair();
   const payload = Buffer.from('diagnostic ping');
   const reply = new Promise(resolve => host.ws.once('pong', resolve));
   host.ws.ping(payload);
   assert.deepEqual(await reply, payload);
-  await pause(180);
+  // Observe the server's actual heartbeat traffic instead of assuming that
+  // several timer ticks occurred during a fixed sleep on a busy build host.
+  const heartbeats = socket => new Promise((resolve, reject) => {
+    let observed = 0;
+    const finish = error => {
+      clearTimeout(timer);
+      socket.off('ping', onPing);
+      socket.off('close', onClose);
+      if (error) reject(error); else resolve();
+    };
+    const onPing = () => { if (++observed === 3) finish(); };
+    const onClose = () => finish(new Error('Peer closed before three heartbeat pings'));
+    const timer = setTimeout(() => finish(new Error(`Only ${observed} heartbeat pings observed`)), 5000);
+    socket.on('ping', onPing);
+    socket.once('close', onClose);
+  });
+  await Promise.all([heartbeats(host.ws), heartbeats(guest.ws)]);
   host.ws.send(Buffer.from('heartbeat survived'));
   assert.deepEqual(await guest.next(), Buffer.from('heartbeat survived'));
   assert.equal(host.closed, null);

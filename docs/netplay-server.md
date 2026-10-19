@@ -4,25 +4,26 @@ Status: private alpha. Two browser pages have completed local online-combat
 checks; two physical computers and public hosting have not been validated.
 See [the validation record](validation.md) for the scope of the evidence.
 
-The Node server serves the built game and connects exactly two players in each private room. It relays ordered binary game data; the original UQM engine validates its own protocol and synchronizes the match. It does not proxy TCP connections or connect to arbitrary destinations.
+The Rust server serves the built game and connects exactly two players in each private room. It relays ordered binary game data; the UQM engine validates its own protocol and synchronizes the match. It does not proxy TCP connections or connect to arbitrary destinations. The previous Node server remains available as a reference implementation.
 
 ## Run locally
 
-Requires Node.js 22 or newer. From the project directory:
+Requires Node.js 22 or newer for the development launcher and Rust 1.85.1,
+as described in [the Rust build guide](rust-port.md). From the project directory:
 
 ```sh
 npm ci
 npm start
 ```
 
-Open `http://127.0.0.1:9999/`. The game must already be built in `dist/` using `scripts/build-web.sh`. The server sends the COOP/COEP headers required for WebAssembly threads. If the older Python preview is using port 9999, use `npm start -- --port 10000` and open that port. The Python preview and the legacy nginx Docker image do not provide multiplayer rooms; use this Node server for Online Melee.
+Open `http://127.0.0.1:9999/`. The game must already be built in `dist/` using `scripts/build-web.sh`. The first start compiles the Rust relay. The server sends the COOP/COEP headers required for WebAssembly threads. If the older Python preview is using port 9999, use `npm start -- --port 10000` and open that port. The Python preview and the legacy nginx Docker image do not provide multiplayer rooms; use this relay for Online Melee. Once built, `rust/target/release/uqm-relay` runs directly without Node or Cargo. Use `npm run start:node` for the Node reference server.
 
 ```sh
 npm test
 ```
 
 The server tests use actual WebSocket clients and ephemeral loopback ports. They cover pairing, bidirectional exact byte order, deterministic delay/jitter, isolation between rooms, URL/origin validation, duplicate roles, early/invalid/oversized data, queue bounds, rate limits, disconnects, room expiry, heartbeat, ping/pong flooding and paused-reader backpressure, and static file traversal protection. They do not establish that a full UQM match remains synchronized; that requires the game integration tests and real browser play. After a full
-build, `npx playwright install chromium` and `npm run test:browser` run the
+build, `npx playwright install chromium` and `UQM_RELAY=rust npm run test:browser` run the
 real game in two independent Chromium processes with a temporary relay,
 including simulated delay/jitter and abrupt peer disconnects. Results are
 written to `test-results/browser/`; see [validation](validation.md).
@@ -68,7 +69,7 @@ npm start -- --host 127.0.0.1 --port 9999 --origin https://game.example
 
 No public deployment or release has been performed as part of adding this server.
 
-## Integration-test API
+## Node reference integration-test API
 
 ```js
 import { createNetplayServer } from './server/netplay.mjs';

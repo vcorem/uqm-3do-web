@@ -26,7 +26,7 @@ main README, then run:
 
 ```sh
 BUILD_OUTPUT="$PWD/.tools/editions-dist" ./scripts/build-editions.sh
-node server/netplay.mjs --dist .tools/editions-dist --port 10001
+npm start -- --dist .tools/editions-dist --port 10001
 ```
 
 Open `http://127.0.0.1:10001/`. Choose an edition, then click its Launch button

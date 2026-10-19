@@ -1,0 +1,20 @@
+--- a/src/libs/math/Makeinfo
++++ b/src/libs/math/Makeinfo
+@@ -1,2 +1,5 @@
+ uqm_CFILES="random.c random2.c sqrt.c"
++if [ "${UQM_RUST_CORE:-0}" = 1 ]; then
++	uqm_CFILES="rust_config.c"
++fi
+ uqm_HFILES="mthintrn.h random.h"
+--- a/build/unix/build.config
++++ b/build/unix/build.config
+@@ -453,6 +453,9 @@
+ }
+ 
+ uqm_process_config() {
++	if [ "${UQM_RUST_CORE:-0}" = 1 ]; then
++		LDFLAGS_FINAL="$LDFLAGS_FINAL $UQM_RUST_LIB"
++	fi
+ 	menu_process MENU main
+ 
+ 	# Set INSTALL_LIBDIR, INSTALL_BINDIR, and INSTALL_SHAREDIR to the specified

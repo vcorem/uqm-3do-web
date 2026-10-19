@@ -1,0 +1,22 @@
+/* Compile the unchanged upstream C implementations into a separate namespace. */
+#define TFB_Random oracle_TFB_Random
+#define TFB_SeedRandom oracle_TFB_SeedRandom
+#define RandomContext_New oracle_RandomContext_New
+#define RandomContext_Delete oracle_RandomContext_Delete
+#define RandomContext_Copy oracle_RandomContext_Copy
+#define RandomContext_Random oracle_RandomContext_Random
+#define RandomContext_SeedRandom oracle_RandomContext_SeedRandom
+#define RandomContext_GetSeed oracle_RandomContext_GetSeed
+#define RandomContext_Set oracle_RandomContext_Set
+#define RandomContext_FastRandom oracle_RandomContext_FastRandom
+#define RangeMinMax oracle_RangeMinMax
+#define printBits oracle_printBits
+#define square_root oracle_square_root
+#define crc32b oracle_crc32b
+#define crcTable oracle_crcTable
+#define crc_init oracle_crc_init
+#define crc_processBytes oracle_crc_processBytes
+#define crc_processUint8 oracle_crc_processUint8
+#define crc_processUint16 oracle_crc_processUint16
+#define crc_processUint32 oracle_crc_processUint32
+#define crc_finish oracle_crc_finish

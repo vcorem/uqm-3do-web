@@ -1,0 +1,19 @@
+[package]
+name = "uqm-core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "GPL-2.0-or-later"
+description = "Deterministic UQM engine routines with the original C ABI"
+
+[lib]
+name = "uqm_core"
+crate-type = ["rlib", "staticlib"]
+doctest = false
+
+[dependencies]
+
+[features]
+default = []
+# MegaMod HD's configurable planet RNG and additional math API.
+hd = []

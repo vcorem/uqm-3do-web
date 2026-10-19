@@ -19,9 +19,12 @@ dist/
 __pycache__/
 
 # Node relay dependencies and browser test artifacts
-node_modules/
+node_modules
 test-results/
 playwright-report/
 
 # Local copy of the patched Emscripten runtime
 /sc2/wasm/compat/
+
+# Rust build outputs (toolchains remain under .tools/)
+target/

@@ -1,0 +1,19 @@
+--- a/src/libs/graphics/Makeinfo
++++ b/src/libs/graphics/Makeinfo
+@@ -5,6 +5,16 @@
+ 		font.c frame.c gfx_common.c intersec.c loaddisp.c
+ 		pixmap.c resgfx.c tfb_draw.c tfb_prim.c widgets.c"
++if [ "${UQM_RUST_CORE:-0}" = 1 ]; then
++	uqm_rust_cfiles=""
++	for uqm_rust_source in $uqm_CFILES; do
++		case "$uqm_rust_source" in
++			bbox.c|boxint.c|clipline.c) ;;
++			*) uqm_rust_cfiles="$uqm_rust_cfiles $uqm_rust_source" ;;
++		esac
++	done
++	uqm_CFILES="$uqm_rust_cfiles"
++fi
+ 
+ uqm_HFILES="bbox.h cmap.h context.h dcqueue.h drawable.h drawcmd.h font.h
+ 		gfx_common.h gfxintrn.h prim.h tfb_draw.h tfb_prim.h widgets.h"
+ 

@@ -1,2 +1,5 @@
 uqm_CFILES="random.c random2.c sqrt.c"
+if [ "${UQM_RUST_CORE:-0}" = 1 ]; then
+	uqm_CFILES=""
+fi
 uqm_HFILES="mthintrn.h random.h"

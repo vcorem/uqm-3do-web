@@ -1,0 +1,90 @@
+{
+  "lib.rs": {
+    "before": 9040,
+    "after": 9297
+  },
+  "src/libs/graphics/gfxload.rs": {
+    "before": 46051,
+    "after": 46057
+  },
+  "src/libs/graphics/sdl/rotozoom.rs": {
+    "before": 44382,
+    "after": 44411
+  },
+  "src/libs/resource/filecntl.rs": {
+    "before": 6980,
+    "after": 6998
+  },
+  "src/libs/sound/mixer/mixer.rs": {
+    "before": 77419,
+    "after": 77581
+  },
+  "src/libs/sound/music.rs": {
+    "before": 42031,
+    "after": 42085
+  },
+  "src/libs/sound/trackplayer.rs": {
+    "before": 62566,
+    "after": 62578
+  },
+  "src/libs/threads/pthread/posixthreads.rs": {
+    "before": 25456,
+    "after": 25462
+  },
+  "src/uqm/encount.rs": {
+    "before": 132506,
+    "after": 132518
+  },
+  "src/uqm/gameopt.rs": {
+    "before": 204632,
+    "after": 204656
+  },
+  "src/uqm/hyper.rs": {
+    "before": 206206,
+    "after": 206218
+  },
+  "src/uqm/outfit.rs": {
+    "before": 139532,
+    "after": 139574
+  },
+  "src/uqm/planets/planets.rs": {
+    "before": 69545,
+    "after": 69563
+  },
+  "src/uqm/planets/pstarmap.rs": {
+    "before": 307744,
+    "after": 307756
+  },
+  "src/uqm/planets/scan.rs": {
+    "before": 165201,
+    "after": 165213
+  },
+  "src/uqm/planets/solarsys.rs": {
+    "before": 269253,
+    "after": 269271
+  },
+  "src/uqm/process.rs": {
+    "before": 135033,
+    "after": 135039
+  },
+  "src/uqm/ship.rs": {
+    "before": 77098,
+    "after": 77104
+  },
+  "src/uqm/shipyard.rs": {
+    "before": 207486,
+    "after": 207516
+  },
+  "src/uqm/sis.rs": {
+    "before": 190617,
+    "after": 190647
+  },
+  "src/uqm/sounds.rs": {
+    "before": 16259,
+    "after": 16265
+  },
+  "src/uqm/tactrans.rs": {
+    "before": 92013,
+    "after": 92031
+  }
+}

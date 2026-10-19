@@ -1,0 +1,9 @@
+#define sinetab oracle_sinetab
+#define ARCTAN oracle_ARCTAN
+#define GetCurrentVelocityComponents oracle_GetCurrentVelocityComponents
+#define GetNextVelocityComponents oracle_GetNextVelocityComponents
+#define SetVelocityVector oracle_SetVelocityVector
+#define SetVelocityComponents oracle_SetVelocityComponents
+#define DeltaVelocityComponents oracle_DeltaVelocityComponents
+#define GetCurrentVelocityComponentsSdword oracle_GetCurrentVelocityComponentsSdword
+#define GetNextVelocityComponentsSdword oracle_GetNextVelocityComponentsSdword

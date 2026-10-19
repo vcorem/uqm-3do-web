@@ -1,0 +1,25 @@
+[workspace]
+members = [
+]
+[package]
+name = "uqm-engine-hd"
+authors = ["The Ur-Quan Masters contributors"]
+license = "GPL-2.0-only"
+version = "0.1.0"
+publish = false
+edition = "2021"
+autobins = false
+
+[lib]
+name = "uqm_engine_hd"
+path = "lib.rs"
+crate-type = ["staticlib", "rlib"]
+[dependencies]
+uqm-core = { path = "../uqm-core", features = ["hd"] }
+
+
+[profile.release]
+panic = "abort"
+strip = "debuginfo"
+[profile.dev]
+panic = "abort"
