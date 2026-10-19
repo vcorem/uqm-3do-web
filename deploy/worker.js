@@ -15,7 +15,9 @@ const PART = /\.data\.p\d{3}$/;
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.hostname !== CANONICAL_HOST && url.hostname.endsWith(CANONICAL_HOST)) {
+    // The game needs a secure context, and the bare domain is the only origin.
+    if (url.hostname.endsWith(CANONICAL_HOST) && (url.protocol !== 'https:' || url.hostname !== CANONICAL_HOST)) {
+      url.protocol = 'https:';
       url.hostname = CANONICAL_HOST;
       return Response.redirect(url.toString(), 301);
     }
