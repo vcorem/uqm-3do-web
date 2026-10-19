@@ -13,12 +13,12 @@ handles browser APIs and the launcher. This is not a memory-safe rewrite.
 See [Rust scope, build requirements and validation](docs/rust-port.md).
 
 **Status: private alpha.** The campaign, local Melee and private two-player
-Online Melee run in the browser. Original online combat has been exercised in two
+Online Melee run in the browser. Original and HD online combat have been exercised in two
 independent browser processes on one computer, including full fleet matches,
 rematches, simulated delay and disconnect recovery, with matching simulation
 checksums and no observed mismatch. Two separate computers over the internet
 and the complete 3DO fidelity checklist are still unverified. No public
-release or deployment has been made.
+release or deployment of this Rust branch has been made.
 
 The original ships, physics and artwork remain in place. On this branch,
 the game implementations compile from Rust to WebAssembly.
