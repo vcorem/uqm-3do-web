@@ -274,11 +274,12 @@ test('maximum-size binary frames are forwarded intact', async t => {
 test('excessive message rates close the sending connection and its room', async t => {
   const { pair } = await defaultWorker(t);
   const { host, guest } = await pair();
-  for (let n = 0; n < 1001; n++) host.ws.send(Buffer.from([n & 255]));
+  // 17 maximum-size frames pass 1 MiB in a few milliseconds. 1,001 tiny frames can
+  // spread over two one-second windows on a slow CI runner and never trip the limit.
+  for (let n = 0; n < 17; n++) host.ws.send(randomBytes(65536));
   assert.match((await host.next(value => value.type === 'error')).message, /rate exceeded/);
   assert.equal((await guest.next(value => value.type === 'peer-left')).type, 'peer-left');
   await Promise.all([host.closure, guest.closure]);
-  console.log(guest.closed, host.closed, (await defaultWorker(t)).log);
 });
 
 test('client pings are answered by the runtime and do not end the room', async t => {
