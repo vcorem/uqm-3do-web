@@ -21,7 +21,8 @@ if [[ "$edition" == hd ]]; then
   environment=(-DUQM_TEST_HD=1)
 fi
 environment+=(-include "$root/tests/rust/velocity-environment.h")
-includes=("-I$root/tests/rust/include" "-I$source_root")
+# build.sh writes config_unix.h in the source checkout root, beside src/.
+includes=("-I$root/tests/rust/include" "-I$source_root" "-I$(dirname "$source_root")")
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$root/rust/target}"
 if [[ "$CARGO_TARGET_DIR" != /* ]]; then
   export CARGO_TARGET_DIR="$root/$CARGO_TARGET_DIR"

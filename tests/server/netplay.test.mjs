@@ -479,6 +479,7 @@ test('static serving isolates WASM, preserves files, supports HEAD, and blocks t
   await mkdir(path.join(dist, 'folder'));
   await writeFile(path.join(dist, 'index.html'), '<canvas>game</canvas>');
   await writeFile(path.join(dist, 'game.wasm'), Buffer.from([0, 97, 115, 109]));
+  for (const extension of ['glb', 'ogg', 'wav']) await writeFile(path.join(dist, `asset.${extension}`), 'fixture');
   await writeFile(path.join(temp, 'secret.txt'), 'outside');
   await writeFile(path.join(dist, '.secret'), 'hidden');
   await symlink(path.join(temp, 'secret.txt'), path.join(dist, 'linked.txt'));
@@ -491,6 +492,9 @@ test('static serving isolates WASM, preserves files, supports HEAD, and blocks t
   const wasm = await request(origin, '/game.wasm');
   assert.equal(wasm.headers['content-type'], 'application/wasm');
   assert.deepEqual(wasm.body, Buffer.from([0, 97, 115, 109]));
+  for (const [extension, contentType] of [['glb', 'model/gltf-binary'], ['ogg', 'audio/ogg'], ['wav', 'audio/wav']]) {
+    assert.equal((await request(origin, `/asset.${extension}`)).headers['content-type'], contentType);
+  }
   const head = await request(origin, '/game.wasm', 'HEAD');
   assert.equal(head.status, 200);
   assert.equal(head.headers['content-length'], '4');
@@ -500,4 +504,42 @@ test('static serving isolates WASM, preserves files, supports HEAD, and blocks t
     assert.equal((await request(origin, url)).status, 404, url);
   }
   assert.equal((await request(origin, '/', 'POST')).status, 405);
+});
+
+
+test('Cosmo Clash rooms isolate active and retired identities from Original and HD', async t => {
+  const {client} = await fixture(t);
+  const id = roomId();
+  const keys = [id, `hd/${id}`, `cosmoclash/${id}`];
+  const hosts = [], guests = [];
+  for (const key of keys) { const host = client(key, 'host'); assert.equal((await host.next()).type, 'waiting'); hosts.push(host); }
+  for (let i = 0; i < keys.length; i++) {
+    const guest = client(keys[i], 'guest'); guests.push(guest);
+    assert.equal((await guest.next()).type, 'waiting');
+    assert.equal((await hosts[i].next()).type, 'ready'); assert.equal((await guest.next()).type, 'ready');
+  }
+  for (let i = 0; i < keys.length; i++) hosts[i].ws.send(Buffer.from(`edition ${i}`));
+  for (let i = 0; i < keys.length; i++) assert.deepEqual(await guests[i].next(), Buffer.from(`edition ${i}`));
+  hosts[2].ws.close(); assert.equal((await guests[2].next()).type, 'peer-left');
+  await Promise.all([hosts[2].closure, guests[2].closure]);
+  const retired = client(keys[2], 'host'); assert.match((await retired.next()).message, /expired/); await retired.closure;
+  for (let i = 0; i < 2; i++) {
+    hosts[i].ws.send(Buffer.from(`still connected ${i}`)); assert.deepEqual(await guests[i].next(), Buffer.from(`still connected ${i}`));
+    assert.equal(hosts[i].closed, null); assert.equal(guests[i].closed, null);
+  }
+});
+
+test('Cosmo Clash room URLs stay strict and share room and retired-ID limits', async t => {
+  const {client} = await fixture(t);
+  for (const url of [
+    '/netplay/cosmoclash/short?role=host', `/netplay/cosmoclash/${'A'.repeat(32)}?role=host`,
+    `/netplay/CosmoClash/${roomId()}?role=host`, `/netplay/cosmoclash/hd/${roomId()}?role=host`,
+    `/netplay/cosmoclash/${roomId()}?role=host&role=guest`, `/netplay/cosmoclash/${roomId()}/?role=host`,
+    `/netplay/cosmoclash%2f${roomId()}?role=host`, `/netplay/cosmoclash/${roomId()}?role=owner`,
+  ]) { const bad = client(null, null, {}, url); assert.equal((await bad.next()).type, 'error'); await bad.closure; }
+  const bounded = await fixture(t, {maxRooms: 1, maxRoomIds: 1});
+  const host = bounded.client(`cosmoclash/${roomId()}`, 'host'); assert.equal((await host.next()).type, 'waiting');
+  const full = bounded.client(roomId(), 'host'); assert.match((await full.next()).message, /limit/); await full.closure;
+  host.ws.close(); await host.closure;
+  const retiredFull = bounded.client(`hd/${roomId()}`, 'host'); assert.match((await retiredFull.next()).message, /limit/); await retiredFull.closure;
 });

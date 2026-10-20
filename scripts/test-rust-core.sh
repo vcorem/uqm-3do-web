@@ -39,7 +39,8 @@ sources=(
   "$source_root/libs/math/sqrt.c"
   "$source_root/uqm/supermelee/netplay/crc.c"
 )
-includes=("-I$root/tests/rust/include" "-I$source_root")
+# build.sh writes config_unix.h in the source checkout root, beside src/.
+includes=("-I$root/tests/rust/include" "-I$source_root" "-I$(dirname "$source_root")")
 
 compile_oracle() {
   local compiler="$1" output="$2"

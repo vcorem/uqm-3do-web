@@ -20,7 +20,7 @@ function integer(value, fallback, min, max, name) {
 }
 
 // Same URL contract as the Cloudflare relay (deploy/netplay.js).
-const ROOM_PATH = /^\/netplay\/(?:(hd)\/)?([0-9a-f]{32})$/;
+const ROOM_PATH = /^\/netplay\/(?:(hd|cosmoclash)\/)?([0-9a-f]{32})$/;
 const QUERY_PART = /^(role|name|engine)=([^&]*)$/;
 const LOBBY_URL = /^\/netplay\/lobby\?edition=(original|hd)$/;
 const INVALID_ROOM = 'Invalid room URL or role.';

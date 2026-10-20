@@ -1,0 +1,73 @@
+name: Cosmo Clash Rust and netplay
+on:
+  push:
+    branches: [main, 'codex/**']
+    paths:
+      - 'cosmoclash/**'
+      - 'rust/uqm-relay/**'
+      - 'rust/Cargo.*'
+      - 'rust-toolchain.toml'
+      - 'server/netplay.mjs'
+      - 'tests/server/**'
+      - 'tests/helpers/rust-relay.mjs'
+      - 'scripts/*rust*.sh'
+      - 'package*.json'
+      - '.github/workflows/cosmoclash.yml'
+  pull_request:
+    paths:
+      - 'cosmoclash/**'
+      - 'rust/uqm-relay/**'
+      - 'rust/Cargo.*'
+      - 'rust-toolchain.toml'
+      - 'server/netplay.mjs'
+      - 'tests/server/**'
+      - 'tests/helpers/rust-relay.mjs'
+      - 'scripts/*rust*.sh'
+      - 'package*.json'
+      - '.github/workflows/cosmoclash.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cosmoclash-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cosmoclash/package-lock.json
+      - name: Install locked dependencies and Rust target
+        run: |
+          npm ci
+          npm ci --prefix cosmoclash
+          rustup toolchain install 1.85.1 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
+      - name: Build and test the Rust gameplay engine
+        run: |
+          cargo fmt --manifest-path cosmoclash/rust/Cargo.toml --all -- --check
+          cargo test --manifest-path cosmoclash/rust/Cargo.toml --locked
+          cargo build --manifest-path cosmoclash/rust/Cargo.toml --bin cosmo-jsonl --locked
+          cargo clippy --manifest-path cosmoclash/rust/Cargo.toml --all-targets --locked -- -D warnings
+      - name: Compare gameplay and AI with the TypeScript source
+        run: |
+          npm run test:provenance --prefix cosmoclash
+          npm test --prefix cosmoclash
+      - name: Build production browser game and verify Wasm against native Rust
+        run: |
+          npm run build --prefix cosmoclash
+          node cosmoclash/tests/wasm.mjs
+      - name: Verify existing UQM and new Cosmo Clash relay behavior
+        run: npm test
+      - name: Test actual two-browser combat, fleets, rematches and disconnects
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:browser --prefix cosmoclash

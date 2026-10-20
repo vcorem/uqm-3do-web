@@ -1,5 +1,9 @@
 # The Ur-Quan Masters — 3DO Web Edition
 
+This branch also includes [Cosmo Clash](cosmoclash/README.md), with a Rust
+WebAssembly game engine and private online fleet battles. Its source, assets,
+build, and validation are kept in the `cosmoclash/` directory.
+
 A local WebAssembly port of UQM 0.8.0, based on
 [intgr/uqm-wasm](https://github.com/intgr/uqm-wasm), upstream commit
 `daadbb540a8c46f09dcdb0080b4212fb33e6cb94` (2023-12-10).
