@@ -17,7 +17,7 @@ The art keeps the licence of the content it comes from (see COPYING.txt
 and, for HD, content-licenses.txt next to the page).
 """
 import argparse
-import io
+import base64
 import json
 import struct
 import zipfile
@@ -168,6 +168,7 @@ class Content:
     def __init__(self, edition, path):
         self.edition = edition
         path = Path(path)
+        self.path = path
         self.zip = None
         if edition == 'original':
             self.root = path / 'base'
@@ -200,6 +201,18 @@ class Content:
 
     def image(self, name):
         return read_png(self.read(name))
+
+    def base(self, name):
+        """A file of the base content (HD: the MegaMod base package), or None."""
+        try:
+            if self.edition == 'original':
+                return (self.root / name).read_bytes()
+            for package in (self.path / 'packages' / 'mm-0.8.5-content.uqm', self.path.parent / 'packages' / 'mm-0.8.5-content.uqm'):
+                if package.is_file():
+                    return zipfile.ZipFile(package).read('base/' + name)
+        except (OSError, KeyError):
+            pass
+        return None
 
 # ---------------------------------------------------------------- fonts
 
@@ -510,11 +523,17 @@ def build(edition, content_path, output):
         'version': 1, 'edition': edition, 'scale': scale,
         'images': {'atlas': 'online-art.png', 'stars': 'online-stars.png', 'title': 'online-title.png'},
         'sprites': {name: places[name] for name in ('title', 'battle', 'battleHi')},
+        # The menu sounds (menu.snd: move, success, failure, invoked), small 8-bit WAV files.
+        'sounds': {},
         'fonts': {},
         'source': ('Original UQM content (sc2/content): fonts, Super-Melee title lettering and star field, title picture.'
                    if edition == 'original' else
                    'UQM MegaMod HD content (mm-0.8.5-hd-content.uqm): fonts, title lettering and gradient, star field, title picture.'),
     }
+    for key, name in (('move', 'menusnd01.wav'), ('success', 'menusnd02.wav'), ('failure', 'menusnd03.wav'), ('invoked', 'menusnd04.wav')):
+        data = content.base('ui/' + name)
+        if data and len(data) < 65536:
+            meta['sounds'][key] = 'data:audio/wav;base64,' + base64.b64encode(data).decode('ascii')
     for role, font in fonts.items():
         glyphs = {}
         for code in sorted(font['glyphs']):

@@ -16,7 +16,7 @@ const idleMs = Number(process.env.UQM_IDLE_MS ?? 300000);
 assert.ok(browsers[browserType], 'Unsupported UQM_BROWSER');
 assert.ok(Number.isSafeInteger(idleMs) && idleMs >= 0 && idleMs <= 3600000,
   'UQM_IDLE_MS must be an integer from 0 to 3600000');
-assert.match(await readFile(path.join(dist, 'index.html'), 'utf8'), /Launch HD game/,
+assert.match(await readFile(path.join(dist, 'index.html'), 'utf8'), /edition: 'hd'/,
   'UQM_DIST must contain the standalone HD build, not the combined edition chooser');
 await mkdir(out, { recursive: true });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -40,7 +40,7 @@ async function checkHealth() {
   const state = await guarded(page.evaluate(() => ({
     aborted: typeof ABORT !== 'undefined' && ABORT,
     exitStatus: typeof Module === 'object' ? Module.exitStatus : undefined,
-    failed: document.getElementById('start')?.textContent === 'Unable to start',
+    failed: /^Unable to start/.test(document.getElementById('status')?.textContent || ''),
     status: document.getElementById('status')?.textContent || '',
     log: document.getElementById('log')?.textContent || '',
   })));
@@ -164,7 +164,7 @@ try {
   })().catch(error => { if (monitoring) fail(error); });
   await guarded(page.waitForFunction(() => typeof runtimeReady !== 'undefined' && runtimeReady,
     null, { timeout: 240000 }));
-  await guarded(page.getByRole('button', { name: 'Launch HD game', exact: true }).click());
+  await guarded(page.getByRole('button', { name: 'Play', exact: true }).click());
   report.stage = 'main-menu';
   await waitForScreen('mainMenu');
   report.canvas = await guarded(page.locator('#canvas').evaluate(canvas => ({

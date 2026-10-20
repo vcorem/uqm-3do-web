@@ -105,7 +105,10 @@
         }
         function notice(text, kind) {
             state.notice = text ? { text, kind: kind || 'info', at: now() } : null;
+            if (text && kind === 'error') sound('failure');
         }
+        // The game's menu sounds (menu.snd): move, success, failure, invoked.
+        function sound(name) { if (env.sound) env.sound(name); }
         // The first choice is a user gesture: the frame goes full screen then.
         function gesture() {
             if (state.asked) return;
@@ -227,6 +230,7 @@
             }
             if (state.room !== room || room.closing) return;
             if (event.state === 'ready') {
+                sound('invoked');
                 state.countdownEnd = now() + COUNTDOWN_MS;
                 show('found', 'cancel');
                 scheduleCountdown();
@@ -297,6 +301,7 @@
         function activate(id) {
             if (!id || !state.items.includes(id)) return;
             gesture();
+            if (id !== 'open' && id !== 'name') sound('success');
             if (id === 'play') {
                 if (state.ready || env.game.ready()) { state.pendingPlay = false; show('hidden'); env.game.start(null); }
                 else { state.pendingPlay = true; changed(); }
@@ -313,7 +318,8 @@
                 show('name', 'name');
             } else if (id === 'open' || id === 'name') {
                 const checked = cleanName(state.name);
-                if (!checked.ok) { state.nameError = checked.error; state.focus = 'name'; changed(); return; }
+                if (!checked.ok) { sound('failure'); state.nameError = checked.error; state.focus = 'name'; changed(); return; }
+                sound('success');
                 state.name = checked.name;
                 if (env.storage) env.storage.set(NAME_KEY, checked.name);
                 connect('host', env.netplay.createToken(), checked.name);
@@ -365,7 +371,9 @@
             if (!items.length) return;
             state.touched = true;
             const index = items.indexOf(state.focus);
-            state.focus = items[(index + delta + items.length) % items.length];
+            const next = items[(index + delta + items.length) % items.length];
+            if (next !== state.focus) sound('move');
+            state.focus = next;
             changed();
         }
         // Lobby: Left/Right jump between the room list and the buttons.
@@ -376,6 +384,7 @@
             if (direction > 0 && String(state.focus).startsWith('room:')) { state.lastRoom = state.focus; state.focus = 'create'; }
             else if (direction < 0 && !String(state.focus).startsWith('room:') && rooms.length) state.focus = rooms.includes(state.lastRoom) ? state.lastRoom : rooms[0];
             else return;
+            sound('move');
             changed();
         }
         function key(name) {
@@ -450,6 +459,9 @@
             },
             close() { closeRoom(); stopLobby(); },
             tick() { changed(); },
+            // Scripted play (remote tests): a room with a known token.
+            host(name, token) { const checked = cleanName(name); if (checked.ok) connect('host', token || env.netplay.createToken(), checked.name); },
+            join(token, name) { if (TOKEN.test(String(token))) connect('guest', String(token), name || ''); },
         };
         changed();
         return api;
@@ -679,13 +691,14 @@
             'Pick an open room, or create your own and wait.', 'The battle starts by itself when you are both ready.'];
         function drawStart(state, t) {
             image('title', 0, 0, W, H);
-            gradientShade(edition === 'hd' ? 92 : 100, 170, 0.85);
-            rect(0, 170, W, H - 170, [0, 0, 0], 0.85);
+            gradientShade(edition === 'hd' ? 118 : 100, 172, 0.85);
+            rect(0, 172, W, H - 172, [0, 0, 0], 0.85);
             const menu = MENU[edition];
             const items = [['play', 'Play'], ['online', 'Online Melee']];
             const mh = lineHeight('menu');
             const step = edition === 'hd' ? mh - 1 : mh + 4;
-            const top = edition === 'hd' ? 108 : 128;
+            // Under the title logo (HD: under "HD MEGAMOD").
+            const top = edition === 'hd' ? 135 : 128;
             items.forEach(([id, label], i) => {
                 const y = top + i * step;
                 const hi = state.focus === id;
@@ -834,7 +847,14 @@
             return { x, y, w, h };
         }
         function battle(x, y, hi, alpha) {
-            return sprite(hi ? 'battleHi' : 'battle', x, y, alpha);
+            const size = sprite(hi ? 'battleHi' : 'battle', x, y, alpha);
+            // HD draws the BATTLE! label over the picture; Original has it in the picture.
+            if (edition === 'hd' && size.w) {
+                if (alpha !== undefined) ctx.globalAlpha = alpha;
+                text('label', 'BATTLE!', x + size.w / 2, y + size.h - lineHeight('label') - 4, hi ? [240, 80, 240] : [190, 40, 190], 'center');
+                ctx.globalAlpha = 1;
+            }
+            return size;
         }
         function drawWaiting(state, t, now) {
             lobbyFrame(state);
@@ -1008,6 +1028,42 @@
         '.screen:fullscreen .uqm-online-corner { top: calc(50% - min(50vh, 37.5vw) + min(1.667vh, 1.25vw)); right: calc(50% - min(50vw, 66.667vh) + min(1.25vw, 1.667vh)); width: min(16.875vw, 22.5vh); }',
     ].join('\n');
 
+    // The game's menu sounds, through Web Audio once the player has pressed a key or clicked.
+    function createSounds(win) {
+        let context = null, allowed = false, sources = {};
+        const buffers = {};
+        const allow = () => { allowed = true; };
+        win.addEventListener('keydown', allow, true);
+        win.addEventListener('pointerdown', allow, true);
+        function decode(name) {
+            if (!buffers[name]) {
+                buffers[name] = win.fetch(sources[name]).then(response => response.arrayBuffer())
+                    .then(data => new Promise((resolve, reject) => context.decodeAudioData(data, resolve, reject))).catch(() => null);
+            }
+            return buffers[name];
+        }
+        return {
+            load(map) { sources = map || {}; },
+            play(name) {
+                const Context = win.AudioContext || win.webkitAudioContext;
+                if (!sources[name] || !Context || (!context && !allowed)) return;
+                try {
+                    if (!context) { context = new Context(); Object.keys(sources).forEach(decode); }
+                    if (context.state === 'suspended') context.resume().catch(() => {});
+                    decode(name).then(buffer => {
+                        if (!buffer) return;
+                        const source = context.createBufferSource();
+                        const gain = context.createGain();
+                        gain.gain.value = 0.45;
+                        source.buffer = buffer;
+                        source.connect(gain);
+                        gain.connect(context.destination);
+                        source.start();
+                    });
+                } catch (_) { /* No sound. */ }
+            },
+        };
+    }
     function loadImage(src) {
         return new Promise((resolve, reject) => {
             const image = new root.Image();
@@ -1077,6 +1133,7 @@
             set(key, value) { try { options.storage().setItem(key, value); } catch (_) { /* Private mode. */ } },
         };
         let renderer = null, frame = 0, hits = new Map(), hitSignature = '', input = null, lastScreen = null;
+        const sounds = createSounds(win);
         const startedAt = win.performance ? win.performance.now() : Date.now();
 
         function fullscreen() {
@@ -1114,6 +1171,7 @@
                 } catch (_) { /* Keep the address. */ }
             },
             focusGame() { win.setTimeout(() => { if (overlay.hidden) gameCanvas.focus(); }, 0); },
+            sound: name => sounds.play(name),
             changed: () => schedule(),
         });
         const state = controller.state;
@@ -1237,9 +1295,10 @@
         }
         loadArt(options.artBase || win.location.href).then(data => {
             artData = data;
+            sounds.load(data.art.sounds);
             renderer = createRenderer(canvas, data.art, data.images, {
                 edition, now: () => Date.now(), started: options.game.started,
-                startSteps: options.startSteps, zoom: edition === 'hd' ? { menu: 0.78 } : null,
+                startSteps: options.startSteps, zoom: edition === 'hd' ? { menu: 0.62 } : null,
                 caret: () => {
                     if (!input) return { start: Array.from(state.name).length };
                     const value = input.value;

@@ -35,6 +35,7 @@ function harness({ started = false, ready = false, screen, hook = false, lobby =
         return watch;
     };
     const store = new Map();
+    const sounds = [];
     const env = {
         edition: 'original', engine: 'rust', now: () => clock, random: () => 0.5,
         setTimeout(fn, ms) { const id = nextId++; timers.push({ id, fn, at: clock + ms }); return id; },
@@ -44,11 +45,12 @@ function harness({ started = false, ready = false, screen, hook = false, lobby =
         fullscreen: () => calls.push('fullscreen'), reload: online => calls.push('reload:' + online),
         copy: text => { calls.push('copy:' + text); return Promise.resolve(); },
         clearInvite: () => calls.push('clear-invite'), focusGame: () => calls.push('focus-game'),
+        sound: name => sounds.push(name),
         changed: () => {},
     };
     const ui = online.createController(env);
     return {
-        ui, state: ui.state, game, calls, clients, watches, store,
+        ui, state: ui.state, game, calls, clients, watches, store, sounds,
         advance(ms) {
             const end = clock + ms;
             for (;;) {
@@ -348,6 +350,23 @@ test('invite links ask once, then join; copy link; no lobby support; failure and
     const e = harness({ started: true });
     e.ui.exited('Reload this page to play again.');
     assert.equal(e.state.message.say, 'Game closed. Reload this page to play again.');
+});
+
+test('the menu plays the game sounds: move, success, failure, invoked', () => {
+    const h = harness();
+    h.ui.key('ArrowDown');
+    h.ui.key('Enter');
+    assert.deepEqual(h.sounds, ['move', 'success']);
+    h.ui.focus('back');
+    assert.deepEqual(h.sounds, ['move', 'success'], 'pointer focus is silent');
+    h.ui.activate('create');
+    h.ui.setName('');
+    h.ui.activate('open');
+    assert.deepEqual(h.sounds.slice(-1), ['failure']);
+    h.ui.setName('Room');
+    h.ui.activate('open');
+    h.clients[0].status('ready', 'Opponent connected.');
+    assert.deepEqual(h.sounds.slice(-2), ['success', 'invoked']);
 });
 
 test('both page shells use the in-frame UI, not the old Online Melee section', () => {

@@ -67,14 +67,18 @@ The first start compiles the Rust relay. `npm run start:node` runs the retained
 Node reference server for comparison.
 
 Open **http://127.0.0.1:10000/** and choose an edition if using the combined
-package. Create a room on that edition's page, copy its invite, then open the
-invite in a second browser page and click **Join room**. When both players are
-connected and the game has loaded, each clicks **Launch online Melee**. In the
-Melee screen, configure the fleets, confirm Start Melee on both sides
-and choose ships. The host controls the bottom fleet; the guest controls the
-top fleet. Both use the player-one keyboard template; HD uses the arrow-key
-controls. An HD invitation preserves the HD page address, so its recipient
-launches the matching engine.
+package. On the start screen inside the game frame, choose **Online Melee**
+(the frame goes full screen). Choose **Create room**, give the room a name and
+wait. The other player chooses **Online Melee** in a second browser page, sees
+the room in the live list and picks it with the arrows and Enter (or a click).
+After a short countdown the Melee screen opens on both sides, still in full
+screen. Configure the fleets, confirm Start Melee on both sides and choose
+ships. The host controls the bottom fleet; the guest controls the top fleet.
+Both use the player-one keyboard template; HD uses the arrow-key controls.
+**Copy link** on the waiting screen gives a private invite link instead; it
+opens the same lobby and joins after one click. From the game's main menu,
+the **Online Melee** corner button or the **O** key opens the lobby again.
+See [the in-frame start screen and lobby](docs/online-ui.md).
 
 Original rooms connect to `/netplay/<room>` and HD rooms connect to
 `/netplay/hd/<room>`. One relay serves both, with separate room identities and
@@ -84,9 +88,9 @@ Rooms use the original UQM netplay protocol and simulation over an ordered
 WebSocket relay, with a three-frame default input delay. Browser callbacks
 queue network bytes; the game reads them during its normal input polling.
 The Diagnostics panel shows the connection, engine state and simulation
-checksum counts. Leaving or losing either connection ends the room; reload
-and create a new invite for another online session. Local **Launch game**
-continues to open the campaign and local Melee normally.
+checksum counts. Leaving or losing either connection ends the room; the lobby
+comes back by itself for the next match. **Play** on the start screen opens
+the campaign and local Melee normally.
 
 The invite contains a private room code in its URL fragment. Anyone with it
 can take the guest slot, so share it only with the intended opponent. A
@@ -125,8 +129,8 @@ Emscripten **3.1.50** is pinned in `.emscripten-version`; the build script
 rejects other versions. The first build downloads and compiles SDL2,
 libpng, Ogg/Vorbis and zlib.
 
-Open **http://127.0.0.1:9999** and wait for **Launch game**. Clicking it enables
-the game and browser audio. Select Super Melee in the original menu.
+Open **http://127.0.0.1:9999** and choose **Play** on the start screen. It works
+while the game downloads and starts it when it is ready, with browser audio. Select Super Melee in the original menu.
 The preview server binds to loopback only. Stop it with Ctrl-C.
 Use `python3 scripts/serve.py --port 10000` for another port.
 

@@ -26,9 +26,8 @@ fatal.catch(() => {});
 async function waitForGame(target, timeout) {
   await Promise.race([page.waitForFunction(target => {
     const module = typeof Module === 'object' ? Module : {};
-    const button = document.getElementById('start');
-    const failed = button?.textContent === 'Unable to start' || module.exitStatus !== undefined ||
-      (button?.hidden && document.getElementById('status')?.textContent.includes('Game closed'));
+    const failed = /^Unable to start/.test(document.getElementById('status')?.textContent || '') || module.exitStatus !== undefined ||
+      document.getElementById('status')?.textContent.includes('Game closed');
     return failed || (target === 'runtime'
       ? typeof runtimeReady !== 'undefined' && runtimeReady
       : module.gameScreen === target);
@@ -37,7 +36,7 @@ async function waitForGame(target, timeout) {
     runtimeReady: typeof runtimeReady !== 'undefined' && runtimeReady,
     screen: typeof Module === 'object' ? Module.gameScreen : undefined,
     status: document.getElementById('status')?.textContent,
-    failed: document.getElementById('start')?.textContent === 'Unable to start',
+    failed: /^Unable to start/.test(document.getElementById('status')?.textContent || ''),
     exited: typeof Module === 'object' && Module.exitStatus !== undefined,
   }));
   assert.ok(!state.failed && !state.exited && !state.status?.includes('Game closed'),
@@ -121,7 +120,7 @@ try {
     await new Promise((resolve, reject) => FS.syncfs(false, e => e ? reject(e) : resolve()));
   }, Array.from(fixture));
   assert.ok(!report.requests.some(p => p.startsWith('/hd/')), 'Original selection downloaded HD');
-  await page.getByRole('button', { name: 'Launch game', exact: true }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await waitForGame('mainMenu', 120000);
   await page.locator('#canvas').screenshot({ path: path.join(out, 'original-menu.png') });
   await chooseEditionWithKeyboard();
@@ -141,7 +140,7 @@ try {
   assert.match(report.hd.config, /^resolutionfactor = INT32:2$/m);
   assert.match(report.hd.config, /^subtitles = BOOLEAN:true$/m);
   assert.ok(report.hd.archives.includes('mm-0.8.5-hd-content.uqm'));
-  await page.getByRole('button', { name: 'Launch HD game', exact: true }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await waitForGame('mainMenu', 90000);
   await sleep(1500);
   report.hd.render = await page.evaluate(() => ({ width: canvas.width, height: canvas.height,
@@ -183,7 +182,7 @@ try {
   await page.reload();
   await waitForGame('runtime', 240000);
   assert.equal(await page.evaluate(() => FS.readFile('/home/web_user/.uqm-hd/edition-check.txt', { encoding: 'utf8' })), 'hd-only');
-  await page.getByRole('button', { name: 'Launch HD game', exact: true }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await waitForGame('mainMenu', 90000);
   await chooseEditionWithKeyboard();
   // The chooser restores preferences in a deferred script after navigation.
@@ -204,8 +203,8 @@ try {
   if (offersRust) {
     report.rust = {};
     for (const [edition, folder, saveDir, button] of [
-      ['original', 'original-rust', '/home/web_user/.uqm-rust', 'Launch game'],
-      ['hd', 'hd-rust', '/home/web_user/.uqm-hd-rust', 'Launch HD game']]) {
+      ['original', 'original-rust', '/home/web_user/.uqm-rust', 'Play'],
+      ['hd', 'hd-rust', '/home/web_user/.uqm-hd-rust', 'Play']]) {
       await page.goto(origin);
       await page.waitForFunction(() => typeof UQMEditions === 'object');
       await page.locator('#engine-rust').check();
