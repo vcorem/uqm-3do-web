@@ -85,8 +85,7 @@ async function keyboardFlow(edition, viewport) {
   await press(host, 'ArrowDown');
   await shot(host, 'start-online');
   await press(host, 'Enter');
-  s = await until(host, s => s.screen === 'lobby' && s.lobby === 'open', 'lobby open');
-  assert.equal(s.fullscreen, true, 'The first choice puts the frame in full screen');
+  s = await until(host, s => s.screen === 'lobby' && s.lobby === 'open' && s.fullscreen, 'lobby open in full screen');
   await shot(host, 'lobby-empty');
   const now = Date.now();
   const fake = [["Zelnick's room", 'c', 5000], ['Ur-Quan Kzer-Za', 'rust', 125000], ['Spathi fan club 2026!!', 'c', 400000], ['חדר של גיא', 'c', 30000]];
@@ -208,7 +207,7 @@ async function otherScreens(edition, viewport) {
   await shot(invited, 'invite');
   await invited.page.locator('.uqm-online-hit[data-id="join"]').click();
   await until(invited, s => s.screen === 'found' || s.screen === 'hidden', 'invite joins');
-  assert.equal((await ui(invited)).fullscreen, true);
+  await until(invited, s => s.fullscreen, 'the invite click puts the frame in full screen');
   await noErrors(host, invited);
   await host.context.close();
   await invited.context.close();
