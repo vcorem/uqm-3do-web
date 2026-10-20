@@ -1,9 +1,9 @@
 # Cosmo Clash — Rust WebAssembly and Online Melee
 
-A separate game inside the UQM repository, on branch `codex/cosmoclash-rust-netplay`.
-The original Cosmo Clash models, textures, sounds, three ships, AI difficulties,
-and local gauntlet are retained. Private online fleet battles use the existing
-Rust relay with a separate room namespace.
+A separate game inside the UQM repository: the third game of the site, at
+`urquanmasters.org/cosmoclash/`. The original Cosmo Clash models, textures,
+sounds, three ships, AI difficulties and local gauntlet are retained. Online
+fleet battles use the site's relay with a separate room namespace and room list.
 
 The simulation runs in Rust compiled to WebAssembly: ship movement, weapons,
 morphing, frost shields, slime, collisions, gravity, wrap-around, camera tracking,
@@ -12,7 +12,7 @@ browser input/audio, menus, fleet transitions, and the WebSocket connection.
 The original TypeScript gameplay classes remain as independent test references;
 the production battle loop does not invoke them.
 
-## Build and play
+## Build and play locally
 
 Requirements: Node.js 22.12+, Python 3, Bash, and Rust 1.85.1. From the repository root:
 
@@ -21,25 +21,34 @@ npm ci
 npm ci --prefix cosmoclash
 rustup target add wasm32-unknown-unknown --toolchain 1.85.1
 npm run build --prefix cosmoclash
-npm start --prefix cosmoclash -- --port 10000
+npm start --prefix cosmoclash
 ```
 
-Open `http://127.0.0.1:10000`. This port keeps the existing UQM preview separate.
-The game has **Play vs Computer**, **Two Players · Same Computer**, and
-**Online Melee** modes. Use the arrow keys to fly, `/` to fire, `.` for the special
-ability, and `M` to mute. The second local player uses W/A/D, Space, and Shift.
-Both online players use the first player's controls on their own computer.
+Open `http://127.0.0.1:10000/cosmoclash/` (the address `/` goes there too).
+`npm start` serves the build at `/cosmoclash/`, as on the site, and online play at
+`/netplay/` on the same host: the site's Node relay (`server/netplay.mjs`) with the
+Cosmo Clash room list. Options: `-- --port 10000 --host 127.0.0.1 --relay node|rust`.
+`--relay rust` uses the Rust relay, which has no room list: the game then offers
+private rooms with an invite link. To play online on one computer, open the
+address in two browser windows.
 
-For online play, create a room, share its invitation, and have your friend click
-**Join room**. Select one to three different ships; the order shown is the order
-of battle. Both players click **Ready**. Losing a ship advances that player's
-fleet. Ships reset for each battle, matching the local round reset behavior.
-A fleet defeat offers a mutually accepted rematch. Leaving closes that room;
-create a new room to reconnect.
+The main menu has **Play vs Computer**, **Two Players · Same Computer** and
+**Online Melee**. Arrows choose, Enter or a click starts; the first choice puts the
+game in full screen. Fly with the arrow keys, `/` fires, `.` is the special
+ability, `M` mutes. The second local player uses W/A/D, Space and Shift. Both online
+players use the first player's keys on their own computer. Esc pauses a local
+battle and asks before it leaves an online match.
 
-For development, `npm run dev --prefix cosmoclash` provides Vite. The production
-server above also serves the WebSocket relay; the Vite development server needs
-its proxy configuration and a separate relay process.
+**Online Melee** shows the open rooms. Pick one to play, or **Create room**, give it
+a name and wait: the match starts when someone joins (**Copy invite link** is there
+too). Each player then picks one to three ships in the 3D ship choice; the numbers
+are the order of battle. **Ready** when the fleet is complete. A destroyed ship
+brings the next ship of that fleet; a destroyed fleet ends the match. **Rematch**
+needs both players. All screens are in the game; see [docs/online.md](docs/online.md).
+
+For development, run `npm start --prefix cosmoclash` (the relay and the room
+list on port 10000) and `npm run dev --prefix cosmoclash`; open
+`http://127.0.0.1:5173/cosmoclash/`. Vite sends `/netplay/` to port 10000.
 
 ## Verify
 
@@ -55,10 +64,18 @@ npm run test:browser --prefix cosmoclash
 ```
 
 `npm test --prefix cosmoclash` builds the native Rust JSONL test driver, runs the
-upstream test suite and compares real TypeScript gameplay and AI with Rust.
+upstream test suite and compares real TypeScript gameplay and AI with Rust. It
+also tests the room-name rule (the shared UQM cases), the room list client, the
+room client, the online screens' state machine and view, and the room list
+through the real Node and Rust relays.
 Wasm tests compare independent Wasm instances and native Rust, and reject invalid
-ABI requests. Browser tests use two independent browser processes and the actual
-Rust relay, with real keyboard controls, state checksums and asset loading.
+ABI requests. Browser tests use independent browser processes and real relays,
+with real keyboard and mouse input, state checksums and asset loading:
+`tests/browser/solo.mjs` (local play), `tests/browser/game.mjs` (full fleet match,
+rematch, jitter and disconnect through the Rust relay with an invite link) and
+`tests/browser/online-ui.mjs` (`npm run test:online-ui`: the in-game lobby with
+the room list, saving every screen at 1280x720, 1024x768 and 1920x1080 in
+`test-results/online-ui/`).
 On macOS the browser runner defaults to installed Google Chrome; set `CHROME_BIN`
 to select another executable. Linux uses Playwright Chromium.
 
@@ -76,6 +93,7 @@ their own licenses; this import does not change them.
 
 The original [README](reference/UPSTREAM-README.md), entry point, and a SHA-256
 manifest of every imported source and asset are preserved in `reference/`.
-`CLAUDE.md` and `docs/` are historical upstream documentation and can describe
-its previous TypeScript implementation. The executable source and comparison
-tests, rather than older prose values, define the behavior of this port.
+`CLAUDE.md` and `docs/` (except `docs/online.md`) are historical upstream
+documentation and can describe its previous TypeScript implementation. The
+executable source and comparison tests, rather than older prose values, define
+the behavior of this port.
