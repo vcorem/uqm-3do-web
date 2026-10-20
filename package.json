@@ -17,6 +17,7 @@
     "test": "node --test sc2/wasm/tests/*.test.cjs tests/server/*.test.mjs tests/web/*.test.cjs",
     "test:worker": "node --test --test-concurrency=1 --test-reporter=spec tests/worker/*.test.mjs",
     "test:browser": "node tests/browser/netplay.mjs",
+    "test:netplay-hook": "node tests/browser/netplay-hook.mjs",
     "test:subtitles": "node tests/browser/subtitles.mjs",
     "test:editions": "node tests/browser/editions.mjs",
     "test:hd-campaign": "node tests/browser/hd-campaign.mjs",
