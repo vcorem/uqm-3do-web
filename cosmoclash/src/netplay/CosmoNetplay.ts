@@ -9,7 +9,11 @@
  * listed host sends the text "ping" every 30 s and the relay answers "pong".
  *
  * Protocol 2: while the players choose, a fleet packet has 0 to 3 ships (the
- * picks so far, so that the other player sees the progress); Ready needs 1 to 3. */
+ * picks so far, so that the other player sees the progress); Ready needs 1 to 3.
+ * A ready player can take Ready back ("Change fleet"): the host decides, because
+ * only the host starts the match (see unready()). While the players choose and
+ * on the result screen, each peer sends a small "beat" packet every 20 s, so a
+ * silent opponent is found in 2 minutes and a slow choice is not a lost one. */
 import { roomName } from './roomName';
 import { BASE } from '@/base';
 export const PROTOCOL_VERSION = 2;
@@ -19,6 +23,11 @@ const MAX_BUFFERED = 65536;
 const MAX_TICK = 86400000;
 const CONNECT_MS = 12000;
 export const KEEPALIVE_MS = 30000;
+/** Fleet choice and result: a beat packet this often, and the limit without any packet. */
+export const BEAT_MS = 20000;
+export const QUIET_PEER_MS = 120000;
+/** The relay's text when the other socket closed: the opponent left. Other peer-left texts say why the room ended. */
+const OTHER_LEFT = 'The other player disconnected.';
 // Longer than the longest relay wait (10 min for a listed room): the relay closes rooms itself.
 const ROOM_WAIT_MS = 11 * 60000;
 const ROOM_TOKEN = /^[0-9a-f]{32}$/;
@@ -34,6 +43,8 @@ export interface NetplayState {
   name: string;
   /** The other player's first fleet packet came (its picks are in peerFleet). */
   peerFleetKnown: boolean;
+  /** A guest asked to take Ready back and waits for the host's answer. */
+  changing: boolean;
 }
 export interface SocketLike {
   binaryType: string; readyState: number; bufferedAmount: number;
@@ -47,6 +58,7 @@ export interface NetplayOptions {
   randomSeed?: () => number;
   timeoutMs?: number;
   keepaliveMs?: number;
+  beatMs?: number;
   /** The fleet before the player picks (protocol 2: none). */
   initialFleet?: number[];
   onState?: (state: NetplayState) => void;
@@ -104,6 +116,8 @@ export class CosmoNetplay {
   private localFleet: number[];
   private peerFleet: number[] = [];
   private peerFleetKnown = false;
+  private changing = false;
+  private lastSentAt = Date.now();
   private name = '';
   private keepTimer: ReturnType<typeof setTimeout> | null = null;
   private answered = true;
@@ -137,7 +151,7 @@ export class CosmoNetplay {
     return {phase: this.phase, message: this.message, role: this.role, room: this.room, round: this.round, tick: this.tick,
       localFleet: [...this.localFleet], peerFleet: [...this.peerFleet], localReady: this.localReady, peerReady: this.peerReady,
       localRematch: this.localRematch, peerRematch: this.peerRematch, verifiedChecksums: this.verifiedChecksums,
-      name: this.name, peerFleetKnown: this.peerFleetKnown};
+      name: this.name, peerFleetKnown: this.peerFleetKnown, changing: this.changing};
   }
   private emit(phase = this.phase, message = this.message): void {
     this.phase = phase; this.message = message; this.options.onState?.(this.state);
@@ -161,10 +175,13 @@ export class CosmoNetplay {
       if (this.phase === 'connecting') { if (now - started > (this.options.timeoutMs ?? CONNECT_MS)) this.fail('Could not connect to online play on this server.'); return; }
       // The relay closes a room that waits too long, with its own message.
       if (this.phase === 'waiting') { if (now - this.waitingSince > (this.options.timeoutMs ?? ROOM_WAIT_MS)) this.fail('Nobody joined before the room expired.'); return; }
+      // No game data while the players choose or read the result: a beat says that this peer is still here.
       const patient = ['lobby', 'ended'].includes(this.phase);
-      const timeout = this.options.timeoutMs ?? (patient ? 300000 : 20000);
+      if (patient && now - this.lastSentAt >= (this.options.beatMs ?? BEAT_MS)) this.send({type: 'beat', round: this.round});
+      if (['closed', 'error'].includes(this.phase)) return;
+      const timeout = this.options.timeoutMs ?? (patient ? QUIET_PEER_MS : 20000);
       if (now - this.lastPeerAt > timeout) this.fail('Your opponent stopped responding.');
-    }, 1000);
+    }, Math.min(1000, this.options.beatMs ?? BEAT_MS));
   }
   /** A listed host pings while its socket is open; a ping without an answer means a lost connection. */
   private keepalive(): void {
@@ -189,6 +206,17 @@ export class CosmoNetplay {
   ready(): void {
     if (this.phase !== 'lobby' || this.localReady || !validFleet(this.localFleet)) return;
     this.localReady = true; this.send({type: 'ready', round: this.round}); this.emit(); this.tryStart();
+  }
+  /**
+   * Take Ready back ("Change fleet"), before the match starts. Only the host
+   * starts the match, so the host decides: a host is not ready at once; a guest
+   * asks and is not ready when the host answers "unready-ok". When the host has
+   * already sent "start", the start wins and the host ignores the request.
+   */
+  unready(): void {
+    if (this.phase !== 'lobby' || !this.localReady || this.changing) return;
+    if (this.role === 'host') { this.localReady = false; this.send({type: 'unready', round: this.round}); this.emit(); return; }
+    this.changing = true; this.send({type: 'unready', round: this.round}); this.emit();
   }
   /** Call once per fixed 1/60-second simulation opportunity. Never synthesize remote input. */
   advance(input: number): boolean {
@@ -241,7 +269,7 @@ export class CosmoNetplay {
     if (!this.socket || this.socket.readyState !== 1) { this.fail('The connection is no longer available.'); return; }
     const bytes = new TextEncoder().encode(JSON.stringify(packet));
     if (bytes.length > MAX_PACKET || this.socket.bufferedAmount + bytes.length > MAX_BUFFERED) { this.fail('The connection is too slow to continue safely.'); return; }
-    try { this.socket.send(bytes); } catch { this.fail('Game data could not be sent.'); }
+    try { this.socket.send(bytes); this.lastSentAt = Date.now(); } catch { this.fail('Game data could not be sent.'); }
   }
   private receive(data: unknown): void {
     if (['closed', 'error'].includes(this.phase)) return;
@@ -276,7 +304,9 @@ export class CosmoNetplay {
     } else if (p.type === 'ready' && this.phase === 'waiting') {
       this.fail('The room assigned an unexpected player role.');
     } else if (['peer-left', 'error'].includes(p.type) && typeof p.message === 'string' && p.message.length <= 512) {
-      this.stop(p.type === 'error' ? 'error' : 'closed', p.type === 'peer-left' ? 'Your opponent left the room.' : p.message);
+      // peer-left also comes to both players when the relay ends the room (it stops, the room is too old or idle).
+      if (p.type === 'error') this.stop('error', p.message);
+      else this.stop('closed', !p.message.trim() || p.message === OTHER_LEFT ? 'Your opponent left the room.' : `The room closed. ${p.message}`);
     } else if (p.type === 'peer-left' || p.type === 'closed') {
       this.stop('closed', 'Your opponent left the room.');
     } else throw new Error();
@@ -289,6 +319,11 @@ export class CosmoNetplay {
       this.send({type: 'fleet', round: this.round, ships: this.localFleet});
       if (this.phase === 'lobby') this.emit('lobby', 'Choose your fleet, then select Ready.'); return;
     }
+    if (p.type === 'beat') {
+      // The other peer may still send a beat of the last round just after a rematch.
+      if (!this.hello || !shape(p, ['type', 'round']) || !integer(p.round, MAX_TICK) || (p.round !== this.round && p.round !== this.round - 1)) throw new Error();
+      return;
+    }
     if (!this.hello || p.round !== this.round) throw new Error();
     switch (p.type) {
       case 'fleet':
@@ -297,9 +332,23 @@ export class CosmoNetplay {
       case 'ready':
         if (this.phase !== 'lobby' || this.peerReady || !validFleet(this.peerFleet) || !shape(p, ['type', 'round'])) throw new Error();
         this.peerReady = true; this.emit(); this.tryStart(); break;
+      case 'unready':
+        if (!shape(p, ['type', 'round'])) throw new Error();
+        // The host sent "start" before this request came: the start wins.
+        if (this.role === 'host' && this.phase === 'starting') break;
+        if (this.phase !== 'lobby' || !this.peerReady) throw new Error();
+        this.peerReady = false;
+        if (this.role === 'host') this.send({type: 'unready-ok', round: this.round});
+        if (this.phase === 'lobby') this.emit();
+        break;
+      case 'unready-ok':
+        if (this.role !== 'guest' || this.phase !== 'lobby' || !this.changing || !shape(p, ['type', 'round'])) throw new Error();
+        this.changing = false; this.localReady = false; this.emit(); break;
       case 'start': {
         const fleets = [this.peerFleet, this.localFleet];
         if (this.role !== 'guest' || this.phase !== 'lobby' || !this.localReady || !this.peerReady || !shape(p, ['type', 'round', 'seed', 'fleets']) || !integer(p.seed, 0xffffffff) || !same(p.fleets, fleets)) throw new Error();
+        // A "Change fleet" request crossed this start: the match starts with the fleet that was ready.
+        this.changing = false;
         this.pendingStart = {round: this.round, seed: p.seed, fleets: [this.peerFleet.slice(), this.localFleet.slice()], localPlayer: 1};
         this.emit('starting', 'Starting the match…'); this.send({type: 'ack', round: this.round}); break;
       }
@@ -352,7 +401,7 @@ export class CosmoNetplay {
   private tryRematch(): void {
     if (!this.localRematch || !this.peerRematch) return;
     this.round++; this.tick = 0; this.sendTick = INPUT_DELAY; this.receiveTick = INPUT_DELAY;
-    this.localReady = false; this.peerReady = false; this.localRematch = false; this.peerRematch = false; this.peerFleetKnown = false;
+    this.localReady = false; this.peerReady = false; this.localRematch = false; this.peerRematch = false; this.peerFleetKnown = false; this.changing = false;
     this.localFinish = null; this.peerFinish = null; this.pendingStart = null;
     this.localInputs.clear(); this.peerInputs.clear(); this.localChecksums.clear(); this.peerChecksums.clear();
     this.lastLocalChecksum = -1; this.lastPeerChecksum = -1; this.verifiedChecksums = 0;

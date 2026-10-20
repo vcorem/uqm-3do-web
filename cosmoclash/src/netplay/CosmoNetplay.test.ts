@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 // These adapters run the real relay implementations, not mocked transports.
 // @ts-ignore JavaScript relay contract is exercised at runtime.
 import { createNetplayServer } from '../../../server/netplay.mjs';
@@ -7,7 +7,7 @@ import { createNetplayServer } from '../../../server/netplay.mjs';
 import { createRustRelay } from '../../../tests/helpers/rust-relay.mjs';
 // @ts-ignore ws is provided by the repository's root dependencies.
 import { WebSocket } from 'ws';
-import { CosmoNetplay, createRoomId, invitationURL, parseRoom, readInvite, roomURL, PROTOCOL_VERSION, INPUT_DELAY, type Frame, type SocketLike } from './CosmoNetplay';
+import { CosmoNetplay, createRoomId, invitationURL, parseRoom, readInvite, roomURL, PROTOCOL_VERSION, INPUT_DELAY, BEAT_MS, QUIET_PEER_MS, type Frame, type NetplayOptions, type SocketLike } from './CosmoNetplay';
 const cleanup: (() => Promise<void> | void)[] = [];
 afterEach(async () => { for (const fn of cleanup.splice(0).reverse()) await fn(); });
 const sleep = (ms = 2) => new Promise(resolve => setTimeout(resolve, ms));
@@ -15,7 +15,7 @@ async function until(predicate: () => boolean, detail: () => unknown = () => '',
   const end = Date.now() + ms;
   while (!predicate()) { if (Date.now() >= end) throw new Error(`Timed out: ${JSON.stringify(detail())}`); await sleep(); }
 }
-async function pair(kind = 'node', jitter = false, guestBuild = 'test-rust-v1') {
+async function pair(kind = 'node', jitter = false, guestBuild = 'test-rust-v1', extra: Partial<NetplayOptions> = {}) {
   const app = (kind === 'rust' ? createRustRelay : createNetplayServer)({distDir: false, latencyPatternMs: jitter ? [20, 0, 9, 2] : [0]});
   const address = await app.listen(0); cleanup.push(() => app.close());
   const origin = `http://127.0.0.1:${address.port}`; const room = createRoomId();
@@ -23,7 +23,7 @@ async function pair(kind = 'node', jitter = false, guestBuild = 'test-rust-v1') 
   let peers: CosmoNetplay[] = [];
   let endAt = -1; let corruptHash = false;
   peers = [0, 1].map(index => new CosmoNetplay({
-    buildId: index ? guestBuild : 'test-rust-v1', randomSeed: () => 123456789,
+    buildId: index ? guestBuild : 'test-rust-v1', randomSeed: () => 123456789, ...extra,
     socketFactory: url => { const ws = new WebSocket(url, {origin}); sockets[index] = ws; return ws as SocketLike; },
     onStart: value => { starts[index].push(value); frames[index] = []; },
     onFrame: frame => {
@@ -252,4 +252,128 @@ it('a failed GO send never starts either simulation', async () => {
   await until(() => p.peers[0].state.phase === 'error', p.states);
   await until(() => p.peers[1].state.phase === 'closed', p.states);
   expect(p.starts).toEqual([[], []]);
+});
+
+describe.each(['node', 'rust'])('beats and Change fleet through the real %s relay', kind => {
+  it('a slow fleet choice and a long look at the result stay open with beats; without them the room ends', async () => {
+    const p = await pair(kind, false, 'test-rust-v1', { beatMs: 40, timeoutMs: 500 });
+    await sleep(1200);
+    expect(p.peers.map(peer => peer.state.phase)).toEqual(['lobby', 'lobby']);
+    p.endAt(59); await p.start(); await p.pump(60);
+    await until(() => p.peers.every(peer => peer.state.phase === 'ended'), p.states);
+    await sleep(1200);
+    expect(p.peers.map(peer => peer.state.phase)).toEqual(['ended', 'ended']);
+    p.peers.forEach(peer => peer.rematch());
+    await until(() => p.peers.every(peer => peer.state.phase === 'lobby' && peer.state.round === 1), p.states);
+    const q = await pair(kind, false, 'test-rust-v1', { beatMs: 600000, timeoutMs: 500 });
+    await until(() => q.peers.some(peer => peer.state.phase === 'error'), q.states, 4000);
+    expect(q.peers.map(peer => peer.state.message)).toContain('Your opponent stopped responding.');
+  }, 20000);
+  it('the host and the guest take Ready back; then the match starts with the new fleets', async () => {
+    const p = await pair(kind);
+    p.peers[0].chooseFleet([0]); p.peers[0].ready();
+    await until(() => p.peers[1].state.peerReady, p.states);
+    p.peers[0].unready();
+    expect(p.peers[0].state.localReady).toBe(false);
+    await until(() => !p.peers[1].state.peerReady, p.states);
+    p.peers[1].chooseFleet([1]); p.peers[1].ready();
+    await until(() => p.peers[0].state.peerReady, p.states);
+    p.peers[1].unready();
+    expect(p.peers[1].state).toMatchObject({ localReady: true, changing: true });
+    await until(() => !p.peers[1].state.localReady && !p.peers[1].state.changing && !p.peers[0].state.peerReady, p.states);
+    p.peers[1].chooseFleet([2, 1]);
+    await until(() => p.peers[0].state.peerFleet.join() === '2,1', p.states);
+    p.peers.forEach(peer => peer.ready());
+    await until(() => p.peers.every(peer => peer.state.phase === 'playing') || p.peers.some(peer => peer.state.phase === 'error'), p.states);
+    expect(p.starts[0][0].fleets).toEqual([[0], [2, 1]]);
+    expect(p.starts[1][0].fleets).toEqual([[0], [2, 1]]);
+  });
+});
+
+/** A host or a guest in the fleet choice against a scripted relay; the other player picked one ship. */
+function inLobby(role: 'host' | 'guest') {
+  const p = scripted({ role });
+  p.relay({ type: 'waiting' }); p.relay({ type: 'ready', role });
+  p.game({ type: 'hello', version: 2, build: 'scripted', role: role === 'host' ? 'guest' : 'host', delay: INPUT_DELAY });
+  p.game({ type: 'fleet', round: 0, ships: [1] });
+  return p;
+}
+const sentTypes = (p: ReturnType<typeof scripted>, type: string) => p.sent.filter(item => typeof item === 'object' && item.type === type);
+it('Change fleet: a host takes Ready back at once and answers a guest; a start that crossed the request wins', () => {
+  const h = inLobby('host');
+  h.peer.chooseFleet([0]); h.peer.ready();
+  h.peer.unready();
+  expect(h.peer.state).toMatchObject({ localReady: false, changing: false });
+  expect(h.sent.at(-1)).toEqual({ type: 'unready', round: 0 });
+  h.peer.chooseFleet([2]); expect(h.peer.state.localFleet).toEqual([2]);
+  h.game({ type: 'ready', round: 0 }); expect(h.peer.state.peerReady).toBe(true);
+  h.game({ type: 'unready', round: 0 });
+  expect(h.peer.state.peerReady).toBe(false);
+  expect(h.sent.at(-1)).toEqual({ type: 'unready-ok', round: 0 });
+  h.game({ type: 'fleet', round: 0, ships: [0, 1] }); expect(h.peer.state.peerFleet).toEqual([0, 1]);
+  h.game({ type: 'ready', round: 0 }); h.peer.ready();
+  expect(h.peer.state.phase).toBe('starting');
+  h.game({ type: 'unready', round: 0 });
+  expect(h.peer.state.phase).toBe('starting');
+  // Not ready, nothing to take back: refused.
+  const bad = inLobby('host'); bad.game({ type: 'unready', round: 0 }); expect(bad.peer.state.phase).toBe('error');
+  const late = inLobby('host'); late.game({ type: 'unready-ok', round: 0 }); expect(late.peer.state.phase).toBe('error');
+});
+it('Change fleet: a guest asks, keeps its fleet until the host answers, and starts when the start crossed the request', () => {
+  const g = inLobby('guest');
+  g.peer.chooseFleet([2]); g.peer.ready();
+  g.peer.unready();
+  expect(g.peer.state).toMatchObject({ localReady: true, changing: true });
+  g.peer.chooseFleet([0]); expect(g.peer.state.localFleet).toEqual([2]);
+  g.peer.unready(); expect(sentTypes(g, 'unready')).toHaveLength(1);
+  g.game({ type: 'unready-ok', round: 0 });
+  expect(g.peer.state).toMatchObject({ localReady: false, changing: false });
+  // The host's own Change fleet.
+  g.game({ type: 'ready', round: 0 }); expect(g.peer.state.peerReady).toBe(true);
+  g.game({ type: 'unready', round: 0 }); expect(g.peer.state.peerReady).toBe(false);
+  const c = inLobby('guest');
+  c.peer.chooseFleet([2]); c.peer.ready(); c.game({ type: 'ready', round: 0 }); c.peer.unready();
+  c.game({ type: 'start', round: 0, seed: 5, fleets: [[1], [2]] });
+  expect(c.peer.state).toMatchObject({ phase: 'starting', changing: false, localReady: true });
+  const d = inLobby('guest'); d.game({ type: 'unready-ok', round: 0 }); expect(d.peer.state.phase).toBe('error');
+});
+it('peer-left: the other player left, or the relay ended the room and says why', () => {
+  const a = scripted(); a.relay({ type: 'waiting' });
+  a.relay({ type: 'peer-left', message: 'The other player disconnected.' });
+  expect(a.peer.state).toMatchObject({ phase: 'closed', message: 'Your opponent left the room.' });
+  for (const reason of ['Server is stopping.', 'Room time limit reached.', 'Room was idle for too long.']) {
+    const p = scripted(); p.relay({ type: 'waiting' }); p.relay({ type: 'peer-left', message: reason });
+    expect(p.peer.state).toMatchObject({ phase: 'closed', message: `The room closed. ${reason}` });
+  }
+  const n = scripted(); n.relay({ type: 'peer-left' });
+  expect(n.peer.state).toMatchObject({ phase: 'closed', message: 'Your opponent left the room.' });
+});
+it('a relay that stops tells both players why (not that the other player left)', async () => {
+  const p = await pair();
+  await p.app.close();
+  await until(() => p.peers.every(peer => peer.state.phase === 'closed' || peer.state.phase === 'error'), p.states);
+  expect(p.peers.map(peer => peer.state.message)).toEqual(['The room closed. Server is stopping.', 'The room closed. Server is stopping.']);
+});
+it('beats: one every 20 s in the fleet choice; the beats of the opponent keep a 10-minute choice open; 2 minutes of silence end it', () => {
+  vi.useFakeTimers();
+  try {
+    const p = inLobby('host');
+    expect(p.peer.state.phase).toBe('lobby');
+    for (let n = 0; n < 30; n++) { vi.advanceTimersByTime(BEAT_MS); p.game({ type: 'beat', round: 0 }); }
+    expect(p.peer.state.phase).toBe('lobby');
+    expect(sentTypes(p, 'beat').length).toBeGreaterThanOrEqual(29);
+    expect(sentTypes(p, 'beat')[0]).toEqual({ type: 'beat', round: 0 });
+    vi.advanceTimersByTime(QUIET_PEER_MS - 5000);
+    expect(p.peer.state.phase).toBe('lobby');
+    vi.advanceTimersByTime(7000);
+    expect(p.peer.state).toMatchObject({ phase: 'error', message: 'Your opponent stopped responding.' });
+  } finally { vi.useRealTimers(); }
+});
+it('beats: the last round is accepted just after a rematch; other rounds, extra fields and early beats are refused', () => {
+  const ok = inLobby('host'); ok.game({ type: 'beat', round: 0 }); expect(ok.peer.state.phase).toBe('lobby');
+  for (const packet of [{ type: 'beat', round: 1 }, { type: 'beat', round: 0, x: 1 }, { type: 'beat' }]) {
+    const p = inLobby('host'); p.game(packet); expect(p.peer.state.phase).toBe('error');
+  }
+  const early = scripted(); early.relay({ type: 'waiting' }); early.relay({ type: 'ready', role: 'host' });
+  early.game({ type: 'beat', round: 0 }); expect(early.peer.state.phase).toBe('error');
 });
