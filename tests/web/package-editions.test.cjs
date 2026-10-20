@@ -112,10 +112,6 @@ test('a Cosmo Clash build that cannot work at /cosmoclash/ is refused before any
     fs.truncateSync(big, 25 * 1024 * 1024 + 1);
     for (const [label, files, message] of [
         ['built for /', { 'index.html': COSMO_PAGE.replaceAll('/cosmoclash/assets/', '/assets/') }, /--base \/cosmoclash\//],
-        ['root path in a script', { 'assets/index-AbCd1234.js': 'load("/models/gondi.glb")' }, /root paths.*\/models\/gondi\.glb/],
-        ['root path in a template', { 'assets/index-AbCd1234.js': 'load(`/textures/${file}`)' }, /root paths.*\/textures\/\$\{file\}/],
-        ['root path in CSS', { 'assets/index-Ef56Gh78.css': '.a{background:url(/textures/logo.jpg)}' }, /root paths.*\/textures\/logo\.jpg/],
-        ['root path of the Wasm', { 'assets/index-AbCd1234.js': 'fetch("/cosmoclash.wasm")' }, /root paths.*\/cosmoclash\.wasm/],
         ['another origin', { 'index.html': COSMO_PAGE + '<script src="https://cdn.example/three.js"></script>' }, /another origin/],
         ['a protocol-relative URL', { 'index.html': COSMO_PAGE + '<link rel="stylesheet" href="//fonts.example/a.css">' }, /another origin/],
         ['a page URL outside its folder', { 'index.html': COSMO_PAGE + '<link rel="icon" href="/favicon.ico">' }, /outside \/cosmoclash\//],
@@ -136,6 +132,16 @@ test('a Cosmo Clash build that cannot work at /cosmoclash/ is refused before any
     const check = run(['--check-cosmoclash', good]);
     assert.equal(check.status, 0, check.output);
     assert.match(check.output, /ready for \/cosmoclash\//);
+    // Root paths in the scripts are accepted: the game adds the base at run time
+    // (cosmoclash/src/base.ts); tests/browser/cosmoclash-site.mjs checks the real requests.
+    const rootPaths = cosmoBuild(path.join(dir, 'cosmo'), {
+        'assets/index-AbCd1234.js': 'const base="/cosmoclash/";load("/models/gondi.glb");fetch(`/sounds/${name}`);new Audio("/sounds/Damage.ogg");',
+        'assets/index-Ef56Gh78.css': '.splash{background:url(/cosmoclash/textures/logo.jpg)}',
+    });
+    const accepted = run(['--check-cosmoclash', rootPaths]);
+    assert.equal(accepted.status, 0, accepted.output);
+    assert.equal(run([...builds, '--cosmoclash', rootPaths, '--output', site]).status, 0);
+    fs.rmSync(site, { recursive: true, force: true });
     assert.match(run(['--cosmoclash', good, '--output', site]).output, /--original, --hd and --output are required/);
     const inside = run([...builds, '--cosmoclash', good, '--output', path.join(good, 'site')]);
     assert.match(inside.output, /separate from every engine build directory/);

@@ -93,14 +93,20 @@ with a third card on the picker at `/`. The site's Cloudflare Worker
 (`deploy/worker.js`) serves it, and the Worker's relay (`deploy/netplay.js`)
 gives it rooms and a room list. No VPS is necessary.
 
-- **Build.** `npm run build --prefix cosmoclash -- --base /cosmoclash/`. All
-  URLs of the build must start with `/cosmoclash/`: Vite's own script and style
-  links do, and the game code must make its file URLs from
-  `import.meta.env.BASE_URL` (not `/models/...`). `python3
+- **Build.** `npm run build --prefix cosmoclash -- --base /cosmoclash/`. Every
+  request of the game must go to `/cosmoclash/`: Vite's own script and style
+  links do, and the game adds the base at run time to the file names that the
+  original code writes from the site root (`/models/gondi.glb`): see
+  `assetURL()` and `installAssetBase()` in `cosmoclash/src/base.ts`. `python3
   scripts/package-editions.py --check-cosmoclash cosmoclash/dist` refuses a
-  build with root paths, page URLs to other origins (the site sends
-  `Cross-Origin-Embedder-Policy: require-corp`) or files larger than 25 MiB
-  (the Cloudflare asset limit).
+  build whose page does not load its scripts from `/cosmoclash/assets/`, loads
+  a missing file or a file of another origin (the site sends
+  `Cross-Origin-Embedder-Policy: require-corp`), or has files larger than
+  25 MiB (the Cloudflare asset limit). It does not read the scripts: the root
+  paths in them are correct. `npm run test:cosmoclash-site` checks the real
+  requests: it plays a short battle against the computer (models, sounds and
+  textures load) and refuses any 4xx answer and any request outside
+  `/cosmoclash/` and `/netplay/`.
 - **Package.** `scripts/build-editions.sh` builds Cosmo Clash first and
   packages it with the UQM engines (`UQM_COSMO=0` leaves it out);
   `package-editions.py --cosmoclash cosmoclash/dist` copies the build to

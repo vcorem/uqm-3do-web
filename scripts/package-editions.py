@@ -58,19 +58,12 @@ def check_cosmoclash(source):
             raise ValueError('The Cosmo Clash page has a URL outside ' + COSMO_BASE + ': ' + url)
         if not (source / url[len(COSMO_BASE):].split('?')[0].split('#')[0]).is_file():
             raise ValueError('The Cosmo Clash page loads a missing file: ' + url)
-    # Root paths of the build's own folders (for example "/models/gondi.glb") do
-    # not work at /cosmoclash/; the code must use import.meta.env.BASE_URL.
-    names = '|'.join(sorted(re.escape(path.name) for path in source.iterdir() if path.name != 'index.html'))
-    root_path = re.compile(r'(?<![\w.:/%-])/(?:' + names + r')(?:/[^"\'`)\s]*)?(?=["\'`)\s?#]|$)')
-    found = []
+    # The scripts may name files from the site root ('/models/gondi.glb'): the
+    # game adds the base at run time (cosmoclash/src/base.ts). The browser test
+    # tests/browser/cosmoclash-site.mjs plays a battle and checks the real requests.
     for path in sorted(source.rglob('*')):
         if path.is_file() and path.stat().st_size > ASSET_LIMIT:
             raise ValueError('Cosmo Clash file larger than 25 MiB: ' + str(path))
-        if path.is_file() and path.suffix in ('.js', '.css'):
-            found += sorted(set(root_path.findall(path.read_text(errors='replace'))))
-    if found:
-        raise ValueError('The Cosmo Clash build uses root paths, which do not work at ' + COSMO_BASE + ': '
-                         + ', '.join(found[:8]))
 
 
 def package(builds, output, cosmoclash=None):
