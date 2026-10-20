@@ -132,6 +132,8 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           UQM_DIST=.tools/release-web npm run test:editions
+      - name: Test the room-list client in a real browser
+        run: UQM_BROWSERS=chromium npm run test:lobby-client
       - name: Test Original C against Original Rust in real two-browser matches
         run: UQM_DIST=.tools/original-dist UQM_PEER_DIST=.tools/original-rust-dist UQM_TEST_OUTPUT=test-results/original-c-rust npm run test:browser
       - name: Test HD C against HD Rust in real two-browser matches
@@ -182,6 +184,24 @@ jobs:
               process.exit(JSON.parse(data).type === 'waiting' ? 0 : 1);
             });
           "
+      - name: Check the live room lists
+        run: |
+          for edition in original hd; do
+            EDITION="$edition" node --input-type=module -e "
+              import { WebSocket } from 'ws';
+              const ws = new WebSocket('wss://urquanmasters.org/netplay/lobby?edition=' + process.env.EDITION,
+                { origin: 'https://urquanmasters.org' });
+              const timer = setTimeout(() => { console.error('No room list answer'); process.exit(1); }, 15000);
+              ws.on('error', error => { console.error(error.message); process.exit(1); });
+              ws.on('message', data => {
+                const message = JSON.parse(data);
+                console.log(process.env.EDITION, 'room list:', message.type, Array.isArray(message.rooms) ? message.rooms.length : '?');
+                clearTimeout(timer);
+                ws.close();
+                process.exit(message.type === 'rooms' && Array.isArray(message.rooms) ? 0 : 1);
+              });
+            "
+          done
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

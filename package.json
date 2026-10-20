@@ -19,6 +19,7 @@
     "test:browser": "node tests/browser/netplay.mjs",
     "test:subtitles": "node tests/browser/subtitles.mjs",
     "test:editions": "node tests/browser/editions.mjs",
+    "test:lobby-client": "node tests/browser/lobby-client.mjs",
     "test:hd-campaign": "node tests/browser/hd-campaign.mjs",
     "test:hd-stability": "node tests/browser/hd-stability.mjs"
   },
