@@ -31,9 +31,11 @@ Open `http://127.0.0.1:9999/`. The game must already be built in `dist/` using `
 
 Use `scripts/build-editions.sh` to place both editions behind the picker in
 `dist/`, or `--dist .tools/hd-dist` to serve a standalone HD build. Both editions
-can use the same relay at the same time. Create a room on the chosen edition's
-page and share the full invitation. Its recipient clicks **Join room**, and
-both players click **Launch online Melee** once the game and room are ready.
+can use the same relay at the same time. On the chosen edition's page, choose
+**Online Melee** on the start screen (or press O in the main menu), then
+**Create room**. The room shows in the lobby of every player of that edition;
+a player chooses it in the list, or opens the invitation link. The match starts
+when both players are in the room (see `docs/online-ui.md`).
 The full invitation retains the edition page, such as `/hd/index.html#room=…`.
 Original players can play Original players; HD players can play HD players.
 
