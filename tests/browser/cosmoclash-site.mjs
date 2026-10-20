@@ -107,6 +107,8 @@ async function onlineMelee(host) {
     await host.keyboard.press('Enter');
     await screen(host, 'waiting');
     assert.equal((await online(host)).room, ROOM);
+    // The relay answered {"type":"waiting"}: the listed room is open.
+    await host.waitForFunction(() => window.__cosmo.netplay?.phase === 'waiting', {}, { timeout: 30000 });
     await host.screenshot({ path: path.join(out, 'online-waiting-host.png') });
 
     // The guest: the room is in the list (newest first, with the focus); Enter joins.
