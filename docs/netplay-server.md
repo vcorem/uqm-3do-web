@@ -116,11 +116,20 @@ parameters:
 /netplay/hd/<token>?role=host&name=<URL-encoded name>&engine=c|rust
 ```
 
-- `name` is required for a listed room. After trimming it must have 1 to 24
-  characters (Unicode code points) and no control characters, format
-  characters (such as bidi overrides and zero-width marks) or line separators.
-  Otherwise the host gets `{"type":"error","message":"Room names need 1 to 24
-  characters and no control characters."}`. `+` decodes to a space.
+- `name` is required for a listed room. `+` decodes to a space. The relay
+  normalizes the name to NFC, changes each run of spaces to one space and
+  trims it; the list shows that form. The result must have 1 to 24 characters
+  (Unicode code points) with at least one letter, digit, punctuation mark or
+  symbol. These are refused: control and format characters (such as bidi
+  overrides and zero-width marks), line separators, surrogates, private-use and
+  unassigned code points (also noncharacters), the blank fillers U+115F,
+  U+1160, U+2800, U+3164 and U+FFA0, and more than 3 nonspacing marks in a row
+  in the decomposed (NFD) form. Hebrew with niqqud needs 3; Zalgo text needs
+  more. Otherwise the host gets `{"type":"error","message":"Room names need 1
+  to 24 visible characters."}`. The client's `UQMNetplay.roomName()` applies the
+  same rule; `sc2/wasm/tests/room-names.cjs` holds the shared test cases. Names
+  can still be wide (for example U+FDFD), so a page that draws the list must fit
+  each name to its row.
 - `engine` is optional and allowed only together with `name`.
 - Guests use the normal `?role=guest` URL with no other parameter.
 
@@ -129,6 +138,22 @@ joins, when the host leaves, or when the room fails or expires. A listed room
 waits 10 minutes for a guest; a private room waits 2 minutes. When the list is
 full (50 rooms of that edition) or the host's address already has 3 waiting
 listed rooms, the host gets an error message and the token stays usable.
+
+A listed host sends the text `ping` every 30 seconds while it waits (the
+browser client does this). When a listed host sends no `ping` for 150 seconds,
+the relay closes the room with `{"type":"error","message":"The room closed
+because this page stopped answering. Create a new room."}` and the room leaves
+the list. This finds sleeping computers, lost networks and frozen pages, which
+the TCP connection or protocol pings do not show at once. A guest who picks
+such a room before the liveness check finds it gets "Room does not exist or has
+expired." and never pairs. 150 seconds allows for background tabs, whose
+timers can run only once a minute. Private rooms are not checked: they do not
+ping.
+
+List tokens are public, so one address may join at most 10 listed rooms in 10
+minutes. Further joins get "You joined many open rooms in a short time. Wait a
+few minutes, then try again." and the room keeps waiting. Joins of private
+rooms (with an invite) are not counted.
 
 ## Browser client API
 
@@ -142,12 +167,18 @@ listed rooms, the host gets an error message and the token stays usable.
   reconnects after 1, 2, 4, 8, then every 15 seconds and reports `'open'`
   again) or `'closed'` (after `close()`, or on a page outside a web server).
   It pings every 30 seconds and reconnects when a ping gets no answer.
+  A named host also pings every 30 seconds while it waits; when a ping gets no
+  answer, its room client reports `'error'` with "Lost the connection to online
+  play. Create a new room." Relay errors for a host are shown as the relay
+  sends them; for a guest they start with "Could not join this room."
 - `UQMNetplay.connect({ token, role: 'host', edition, name, engine, onStatus })`
   creates a listed room; without `name` the room is private. `engine` is sent
   only with a name. Join a listed room with
   `UQMNetplay.connect({ token: room.id, role: 'guest', edition })`.
-- `UQMNetplay.roomName(text)` returns the trimmed name or throws the message
-  for the player; `UQMNetplay.limits.roomNameChars` is 24.
+- `UQMNetplay.roomName(text)` returns the name as the list will show it
+  (NFC, one space between words, trimmed) or throws the message for the
+  player; `UQMNetplay.limits.roomNameChars` is 24. A page can call it to check
+  a name before it creates the room.
 - `UQMNetplay.lobbyURL(edition)` and `UQMNetplay.relayURL(token, role,
   location, edition, { name, engine })` build the socket URLs.
 
@@ -161,12 +192,17 @@ Screenshots go to `test-results/lobby-client/`.
 
 Default bounds are 128 active rooms, 16 connections per IP, 10,000 distinct room IDs per server process, 64 KiB per WebSocket message, 256 KiB of outgoing/queued data per direction, and at most 1,000 messages or 1 MiB per second per player. Compression is disabled. New rooms stop being accepted when the distinct-ID bound is reached; existing rooms continue. Restart the server to reset that bound.
 
-Room lists: at most 50 listed rooms per edition and 3 waiting listed rooms per
-address. Room-list sockets have their own bounds: 10 per address and 256 in
-total on the Node server (10 per address and 1,000 per edition on Cloudflare),
-and 1 KiB per received message. They do not count against the room connection
-limits. A reader too slow for a snapshot is disconnected; its client
-reconnects for a fresh one.
+Room lists: at most 50 listed rooms per edition, 3 waiting listed rooms per
+address and 10 listed-room joins per address in 10 minutes. Room-list sockets
+have their own bounds: 10 per address and 256 in total on the Node server (10
+per address and 1,000 per edition on Cloudflare), and 1 KiB per received
+message. They do not count against the room connection limits. A reader too
+slow for a snapshot is disconnected; its client reconnects for a fresh one.
+
+**Address** in every per-address bound (connections, listed rooms, joins,
+room-list sockets) means an IPv4 address, or for IPv6 the /64 network: one
+IPv6 client controls a whole /64, so it could otherwise fill the list. An
+IPv4-mapped IPv6 address (`::ffff:192.0.2.1`) counts as its IPv4 address.
 
 Room, retired-ID and connection limits are shared across editions. An Original
 room and an HD room with the same token consume two room identities.
@@ -217,10 +253,13 @@ with the full path and query. The browser client is the same.
   Within that time the room ID cannot be used again. A deploy restarts all
   objects and closes all open rooms.
 - One `NetplayGate` object holds a lease for each open connection. It enforces
-  16 connections per client IP, 256 connections and 128 active rooms in total.
-  The client IP is `CF-Connecting-IP`, which the Cloudflare edge sets. If a
-  connection ended without a close event, the gate asks its room before it
-  refuses a client, and every lease expires after the room lifetime.
+  16 connections per client address, 256 connections and 128 active rooms in
+  total. The client address is `CF-Connecting-IP`, which the Cloudflare edge
+  sets; the Worker changes it to the per-address key (IPv4 address or IPv6
+  /64) before any object sees it. If a connection ended without a close event,
+  the gate asks its room before it refuses a client, and every lease expires
+  after the room lifetime. The gate also counts listed-room joins per address,
+  in memory only: the object stays in memory while an address keeps joining.
 - The game-data rules (pairing first, nonempty binary only, 64 KiB per message
   with close code 1009, 1,000 messages or 1 MiB per second) are the same.
 - One `NetplayLobby` object per edition (`lobby:original`, `lobby:hd`) holds
@@ -229,24 +268,29 @@ with the full path and query. The browser client is the same.
   per-address bound). A room object adds its room when the named host is
   connected, and removes it when the room pairs or ends. While rooms are
   listed, an alarm every 20 seconds asks each room object whether its room
-  still waits with a connected host, and drops the others (for example rooms
-  whose objects a deploy restarted) and entries older than the 10-minute
-  limit. A list that is full asks the rooms the same way before it refuses a
-  host. Room-list sockets and rooms answer the text `ping` in the runtime
-  (`setWebSocketAutoResponse`), without waking the object. The class was
-  added with the migration `netplay-v2`.
-- The lobby stores each listed host's IP address with its entry, for the
-  per-address bound, until the room leaves the list. Snapshots never contain
-  it.
+  still waits with a connected host that pings, and drops the others (for
+  example rooms whose objects a deploy restarted) and entries older than the
+  10-minute limit. A room object whose host is silent closes its room when it
+  is asked. A list that is full asks the rooms the same way before it refuses a
+  host, at most once every 5 seconds; other refusals in that time use the last
+  result. Room-list sockets and rooms answer the text `ping` in the runtime
+  (`setWebSocketAutoResponse`), without waking the object. A room object reads
+  the time of its host's last `ping` with `getWebSocketAutoResponseTimestamp`.
+  The class was added with the migration `netplay-v2`.
+- The lobby stores each listed host's address key (IPv4 address or IPv6 /64)
+  with its entry, for the per-address bound, until the room leaves the list.
+  Snapshots never contain it.
 - Test vars: `NETPLAY_LISTED_WAITING_MS`, `NETPLAY_MAX_LISTED`,
   `NETPLAY_MAX_LISTED_PER_IP`, `NETPLAY_MAX_LOBBY`, `NETPLAY_MAX_LOBBY_PER_IP`,
-  `NETPLAY_LOBBY_CHECK_MS`.
+  `NETPLAY_LOBBY_CHECK_MS`, `NETPLAY_LOBBY_SWEEP_MS`, `NETPLAY_LISTED_SILENCE_MS`,
+  `NETPLAY_MAX_LISTED_JOINS`, `NETPLAY_LISTED_JOIN_WINDOW_MS`.
 
 Differences from the Node server, from the Workers runtime:
 
 - The runtime answers ping frames (and the `ping` text) itself and gives the
-  object no control frames. Thus there is no control-frame quota and no server heartbeat. Dead
-  connections end with the TCP connection, the idle limit or the lifetime.
+  object no control frames. Thus there is no control-frame quota and no server
+  heartbeat. Dead connections end with the TCP connection, the idle limit or
+  the lifetime; a listed waiting host also ends when it stops sending `ping`.
 - Workers WebSockets do not show the outgoing buffer size. The runtime buffers
   outgoing data; the per-player rate limit bounds it. The queue bound applies
   to the test-only delay queue.
@@ -258,7 +302,8 @@ test, same as the deploy job) with real WebSocket clients: rooms in
 `tests/worker/netplay.test.mjs`, room lists in `tests/worker/lobby.test.mjs`
 (the Node server runs the same cases in `tests/server/lobby.test.mjs`).
 `tests/worker/lobby-object.test.mjs` runs the lobby object with a fake state
-for the liveness check, which `wrangler dev` cannot trigger. The Durable Object
+for the liveness check of rooms whose objects restarted, which `wrangler dev`
+cannot trigger, and compares the name and address rules of both relays. The Durable Object
 bindings and migrations of the test come from `deploy/wrangler.jsonc`. The deploy workflow
 runs it before the build. To play a full match on a deployed site:
 
@@ -284,6 +329,6 @@ const address = await relay.listen(0, '127.0.0.1');
 await relay.close();
 ```
 
-Constructor options also expose `allowedOrigins`, `maxPayload`, `maxBufferedBytes`, `maxRooms`, `maxRoomIds`, `maxPerIp`, `waitingMs`, `lifetimeMs`, `heartbeatMs`, `idleMs`, `listedWaitingMs`, `maxListedRooms`, `maxListedPerIp`, `maxLobbyConnections`, and `maxLobbyPerIp` for bounded local tests. The heartbeat also checks that every listed room still waits with a connected host. Artificial delay is a server construction option, never a client-controlled query parameter.
+Constructor options also expose `allowedOrigins`, `maxPayload`, `maxBufferedBytes`, `maxRooms`, `maxRoomIds`, `maxPerIp`, `waitingMs`, `lifetimeMs`, `heartbeatMs`, `idleMs`, `listedWaitingMs`, `maxListedRooms`, `maxListedPerIp`, `maxLobbyConnections`, `maxLobbyPerIp`, `listedSilenceMs`, `maxListedJoins` and `listedJoinWindowMs` for bounded local tests. The heartbeat also checks that every listed room still waits with a connected host that sends `ping` texts (protocol pings do not show a frozen page, because the browser answers them). Artificial delay is a server construction option, never a client-controlled query parameter.
 
 The WebSocket dependency is pinned in `package-lock.json`. API reference: [ws documentation](https://github.com/websockets/ws/blob/master/doc/ws.md).

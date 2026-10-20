@@ -16,7 +16,9 @@ if (supported) nodeModule.registerHooks({
   },
 });
 globalThis.WebSocketRequestResponsePair ??= class { constructor(request, response) { Object.assign(this, { request, response }); } };
-const { NetplayLobby } = supported ? await import('../../deploy/netplay.js') : {};
+const { NetplayLobby, parseRoomURL, addressKey } = supported ? await import('../../deploy/netplay.js') : {};
+const node = await import('../../server/netplay.mjs');
+const { default: names } = await import('../../sc2/wasm/tests/room-names.cjs');
 const check = supported ? test : test.skip;
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -84,7 +86,7 @@ check('listed rooms are stored, snapshotted newest first without addresses, and 
 });
 
 check('the list bounds count all rooms and rooms per address, after dropping rooms that ended', async () => {
-  const l = await lobby({ NETPLAY_MAX_LISTED: '2', NETPLAY_MAX_LISTED_PER_IP: '1' });
+  const l = await lobby({ NETPLAY_MAX_LISTED: '2', NETPLAY_MAX_LISTED_PER_IP: '1', NETPLAY_LOBBY_SWEEP_MS: '0' });
   assert.equal(await l.object.add(entry(1, { ip: 'a' })), 'ok');
   assert.equal(await l.object.add(entry(2, { ip: 'a' })), 'ip');
   assert.equal(await l.object.add(entry(3, { ip: 'b' })), 'ok');
@@ -143,4 +145,44 @@ check('a lobby that wakes from hibernation reloads its list from storage', async
   const woken = await lobby({}, shared);
   assert.deepEqual(JSON.parse(woken.object.snapshot()).rooms.map(room => room.id), [token(2), token(1)]);
   assert.equal(await woken.object.add(entry(3)), 'ok');
+});
+
+check('repeated refusals of a full list ask the listed rooms at most once per sweep interval', async () => {
+  const l = await lobby({ NETPLAY_MAX_LISTED: '2', NETPLAY_LOBBY_SWEEP_MS: '300' });
+  assert.equal(await l.object.add(entry(1)), 'ok');
+  assert.equal(await l.object.add(entry(2)), 'ok');
+  for (let n = 0; n < 20; n++) assert.equal(await l.object.add(entry(100 + n)), 'full');
+  assert.equal(l.asked.length, 2, 'one sweep of the 2 listed rooms for 20 refusals');
+  await pause(350);
+  l.live[token(1)] = false;
+  assert.equal(await l.object.add(entry(200)), 'ok', 'the next sweep finds the room that ended');
+  assert.equal(l.asked.length, 4);
+  // The alarm's check also counts as a sweep.
+  await pause(350);
+  await l.object.alarm();
+  const asked = l.asked.length;
+  assert.equal(await l.object.add(entry(300)), 'full');
+  assert.equal(l.asked.length, asked);
+});
+
+check('the Cloudflare and Node relays parse room names and address keys the same way', () => {
+  const id = token(7);
+  for (const [input, listed] of names.accepted) {
+    const query = '?role=host&name=' + encodeURIComponent(input);
+    assert.equal(parseRoomURL('/netplay/' + id, query).name, listed, JSON.stringify(input));
+    assert.equal(node.parseRoomURL('/netplay/' + id + query).name, listed, JSON.stringify(input));
+  }
+  for (const [label, input] of names.refused) {
+    let encoded;
+    try { encoded = encodeURIComponent(input); } catch { encoded = '%ED%A0%80'; }
+    const query = '?role=host&name=' + encoded;
+    assert.equal(parseRoomURL('/netplay/' + id, query).error, 'Room names need 1 to 24 visible characters.', label);
+    assert.equal(node.parseRoomURL('/netplay/' + id + query).error, 'Room names need 1 to 24 visible characters.', label);
+  }
+  for (const value of ['203.0.113.7', '::ffff:203.0.113.7', '2001:db8::1', '2001:db8:0:0:ffff::16', '2001:db8:0:1::1',
+    'fe80::1%en0', '::', '::1', '2001:db8::1.2.3.4', '1::2::3', 'unknown', '', 'x'.repeat(100), 'A:B:C:D:E:F:0:1']) {
+    assert.equal(addressKey(value), node.addressKey(value), value);
+  }
+  assert.equal(addressKey('2001:db8:0:0:ffff::16'), addressKey('2001:db8::1'));
+  assert.notEqual(addressKey('2001:db8:0:1::1'), addressKey('2001:db8::1'));
 });

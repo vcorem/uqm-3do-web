@@ -78,13 +78,18 @@ async function run(name) {
       window.original = UQMNetplay.watchLobby({ edition: 'original', onRooms(rooms) { window.originalRooms.push(rooms.length); } });
       try { UQMNetplay.connect({ token: UQMNetplay.createToken(), role: 'host', edition: 'hd', name: 'x'.repeat(25) }); }
       catch (error) { window.nameError = error.message; }
-      window.room = UQMNetplay.connect({ token: UQMNetplay.createToken(), role: 'host', edition: 'hd', name: '  ' + name + '  ',
+      // A blank filler (U+3164) is refused in every browser, like on the relay.
+      try { UQMNetplay.roomName(String.fromCodePoint(0x3164)); } catch (error) { window.fillerError = error.message; }
+      // The listed name has one space between words.
+      window.room = UQMNetplay.connect({ token: UQMNetplay.createToken(), role: 'host', edition: 'hd', name: '  ' + name.replace(' ', '   ') + '  ',
         engine: 'rust', onStatus(status) { document.getElementById('room').textContent = status.state + ': ' + status.message; } });
     }, roomName);
-    assert.match(await hostPage.evaluate(() => window.nameError), /1 to 24 characters/);
+    assert.equal(await hostPage.evaluate(() => window.nameError), 'Room names need 1 to 24 visible characters.');
+    assert.equal(await hostPage.evaluate(() => window.fillerError), 'Room names need 1 to 24 visible characters.');
     const item = guestPage.locator('#rooms li', { hasText: roomName });
     await item.waitFor({ timeout: 10000 });
     assert.equal(await item.locator('small').textContent(), 'Rust engine');
+    assert.equal(await item.evaluate(li => li.firstChild.nodeValue), roomName, 'the relay lists the cleaned name');
     await guestPage.screenshot({ path: path.join(out, `${name}-1-room-listed.png`) });
     await hostPage.screenshot({ path: path.join(out, `${name}-1-host-waiting.png`) });
     assert.match(await hostPage.locator('#room').textContent(), /is open/);

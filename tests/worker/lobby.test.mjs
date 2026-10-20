@@ -4,10 +4,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { pause, roomId, startWorker, useDataManifest } from './wrangler-dev.mjs';
+import names from '../../sc2/wasm/tests/room-names.cjs';
 
 useDataManifest();
 
-const NAME_ERROR = /Room names need 1 to 24 characters/;
+const NAME_ERROR = /^Room names need 1 to 24 visible characters\.$/;
+// encodeURIComponent cannot encode a lone surrogate; this is its UTF-8 form, which decodes to an error.
+const encodeName = name => { try { return encodeURIComponent(name); } catch { return '%ED%A0%80'; } };
 const ids = rooms => rooms.map(room => room.id);
 // The relay counts rooms and lobby sockets per CF-Connecting-IP. Each test uses its own addresses.
 let nextAddress = 1;
@@ -15,7 +18,7 @@ const address = () => ({ headers: { 'CF-Connecting-IP': `198.51.100.${nextAddres
 
 function roomPath(id, role, { edition, name, engine } = {}) {
   let url = `/netplay/${edition === 'hd' ? 'hd/' : ''}${id}?role=${role}`;
-  if (name !== undefined) url += '&name=' + encodeURIComponent(name);
+  if (name !== undefined) url += '&name=' + encodeName(name);
   if (engine !== undefined) url += '&engine=' + engine;
   return url;
 }
@@ -130,13 +133,7 @@ test('room names are validated, and name and engine are host-only parameters', a
   const { socket, host, lobby } = await defaultWorker();
   const id = roomId();
   for (const [url, message] of [
-    [roomPath(id, 'host', { name: '' }), NAME_ERROR],
-    [roomPath(id, 'host', { name: '    ' }), NAME_ERROR],
-    [roomPath(id, 'host', { name: 'x'.repeat(25) }), NAME_ERROR],
-    [roomPath(id, 'host', { name: 'bell\u0007' }), NAME_ERROR],
-    [roomPath(id, 'host', { name: 'new\nline' }), NAME_ERROR],
-    [roomPath(id, 'host', { name: 'evil‮exe' }), NAME_ERROR],
-    [roomPath(id, 'host', { name: 'zero​width' }), NAME_ERROR],
+    ...names.refused.map(([, name]) => [roomPath(id, 'host', { name }), NAME_ERROR]),
     [`/netplay/${id}?role=host&name=%ZZ`, NAME_ERROR],
     [`/netplay/${id}?role=host&name=${'%41'.repeat(97)}`, NAME_ERROR],
     [`/netplay/${id}?role=host&name=a&name=b`, /Invalid room URL/],
@@ -162,7 +159,8 @@ test('room names are validated, and name and engine are host-only parameters', a
   assert.deepEqual(await accepted.next(), { type: 'waiting' });
   assert.equal((await watcher.rooms(rooms => ids(rooms).includes(id))).find(room => room.id === id).name, 'א'.repeat(24));
   accepted.ws.close();
-  for (const [raw, name] of [['Red+Blue', 'Red Blue'], ['1%2B1', '1+1'], ['%F0%9F%9A%80%20Rocket', '🚀 Rocket']]) {
+  for (const [raw, name] of [['Red+Blue', 'Red Blue'], ['1%2B1', '1+1'], ['%F0%9F%9A%80%20Rocket', '🚀 Rocket'],
+    ['Caf%65%CC%81%20%20Bar', 'Café Bar']]) {
     const named = socket(`/netplay/${roomId()}?role=host&name=${raw}`, address());
     assert.deepEqual(await named.next(), { type: 'waiting' }, raw);
     await watcher.rooms(rooms => rooms.some(room => room.name === name));
@@ -307,4 +305,104 @@ test('the room list and lobby sockets are bounded per address and in total; lobb
   assert.deepEqual(await retry.next(), { type: 'waiting' });
   assert.equal((await c1.rooms(rooms => ids(rooms).includes(refusedId))).length, 2);
   for (const closure of closures) assert.equal((await closure).code, 1008);
+});
+
+const SILENT_HOST = 'The room closed because this page stopped answering. Create a new room.';
+const TOO_MANY_JOINS = 'You joined many open rooms in a short time. Wait a few minutes, then try again.';
+const ip = value => ({ headers: { 'CF-Connecting-IP': value } });
+
+test('the liveness check closes a listed room whose host stops sending pings; a host that pings stays', async t => {
+  const { host, guest, lobby } = helpers(await startWorker(t, { NETPLAY_LISTED_SILENCE_MS: '2500', NETPLAY_LOBBY_CHECK_MS: '500' }));
+  const watcher = lobby();
+  await watcher.rooms();
+  // A sleeping computer or a frozen page: the socket stays open and nothing arrives.
+  const frozenId = roomId();
+  const frozen = host(frozenId, { name: 'Frozen' });
+  await frozen.next();
+  frozen.ws.pause();
+  const pingingId = roomId();
+  const pinging = host(pingingId, { name: 'Awake' });
+  await pinging.next();
+  const pings = setInterval(() => pinging.ws.send('ping'), 300);
+  t.after(() => clearInterval(pings));
+  await watcher.rooms(rooms => ids(rooms).includes(frozenId) && ids(rooms).includes(pingingId));
+  const left = await watcher.rooms(rooms => !ids(rooms).includes(frozenId), 15000);
+  assert.ok(ids(left).includes(pingingId), 'a host that pings stays listed');
+  frozen.ws.resume();
+  assert.equal((await frozen.next(value => value?.type === 'error', 15000)).message, SILENT_HOST);
+  await pause(3000);
+  assert.equal(pinging.closed, null);
+  assert.ok(ids(watcher.all.at(-1).rooms).includes(pingingId), 'a host that pings stays listed past the limit');
+  const joining = guest(pingingId);
+  assert.deepEqual(await joining.next(value => value.type === 'ready'), { type: 'ready', role: 'guest' });
+  // The frozen room's token is retired like any other ended room.
+  assert.match((await guest(frozenId).next()).message, /does not exist or has expired/);
+});
+
+test('a guest who picks a silent host from the list is refused before pairing, and the room closes', async t => {
+  // The liveness check is far away: only the guest's join finds the silent host.
+  const { host, guest, lobby } = helpers(await startWorker(t, { NETPLAY_LISTED_SILENCE_MS: '1000', NETPLAY_LOBBY_CHECK_MS: '600000' }));
+  const watcher = lobby();
+  await watcher.rooms();
+  const id = roomId();
+  const silent = host(id, { name: 'Asleep' });
+  await silent.next();
+  await watcher.rooms(rooms => ids(rooms).includes(id));
+  await pause(1500);
+  assert.ok(ids(watcher.all.at(-1).rooms).includes(id), 'still listed before anyone looks');
+  const joining = guest(id);
+  const reply = await joining.next();
+  assert.equal(reply.type, 'error');
+  assert.match(reply.message, /does not exist or has expired/);
+  assert.ok(!joining.all.some(value => value?.type === 'ready'), 'the guest never pairs');
+  assert.equal((await silent.next(value => value?.type === 'error')).message, SILENT_HOST);
+  await watcher.rooms(rooms => !ids(rooms).includes(id));
+});
+
+test('per-address bounds count an IPv6 client by its /64 network, and listed-room joins per address are limited', async t => {
+  const { host, guest, lobby } = helpers(await startWorker(t, { NETPLAY_MAX_LISTED_PER_IP: '2', NETPLAY_MAX_LOBBY_PER_IP: '2',
+    NETPLAY_MAX_LISTED_JOINS: '2', NETPLAY_LISTED_JOIN_WINDOW_MS: '4000' }));
+  // Lobby sockets: 2 per /64 in each edition; an IPv4-mapped address is the same IPv4 address.
+  const sockets = [lobby('original', ip('2001:db8:9:9::1')), lobby('original', ip('2001:db8:9:9:ffff::2'))];
+  await Promise.all(sockets.map(socket => socket.rooms()));
+  await assert.rejects(lobby('original', ip('2001:db8:9:9:abcd::3')).opened, /503/);
+  const other64 = lobby('original', ip('2001:db8:9:a::1'));
+  const watcher = other64;
+  await other64.rooms();
+  const v4 = [lobby('original', ip('198.51.100.250')), lobby('original', ip('::ffff:198.51.100.250'))];
+  await Promise.all(v4.map(socket => socket.rooms()));
+  await assert.rejects(lobby('original', ip('198.51.100.250')).opened, /503/);
+
+  // Listed rooms: 2 per /64.
+  const mine = [roomId(), roomId()];
+  const mineHosts = [host(mine[0], { name: 'Six A' }, ip('2001:db8:1:2::1')), host(mine[1], { name: 'Six B' }, ip('2001:db8:1:2:ffff::2'))];
+  for (const peer of mineHosts) assert.deepEqual(await peer.next(), { type: 'waiting' });
+  const third = host(roomId(), { name: 'Six C' }, ip('2001:db8:1:2:abcd::3'));
+  assert.match((await third.next()).message, /most open rooms/);
+  const nextNetwork = host(roomId(), { name: 'Next /64' }, ip('2001:db8:1:3::1'));
+  assert.deepEqual(await nextNetwork.next(), { type: 'waiting' });
+
+  // Joins of listed rooms: 2 per /64 in the window. Private rooms are not counted.
+  const open = [roomId(), roomId(), roomId()];
+  const openHosts = open.map((id, n) => host(id, { name: 'Open ' + n }));
+  for (const peer of openHosts) await peer.next();
+  await watcher.rooms(rooms => open.every(id => ids(rooms).includes(id)));
+  for (const [n, address] of ['2001:db8:5:5::1', '2001:db8:5:5:1::2'].entries()) {
+    assert.deepEqual(await guest(open[n], undefined, ip(address)).next(value => value.type === 'ready'), { type: 'ready', role: 'guest' });
+  }
+  const refused = guest(open[2], undefined, ip('2001:db8:5:5:2::3'));
+  assert.equal((await refused.next()).message, TOO_MANY_JOINS);
+  assert.equal((await refused.closure).code, 1008);
+  await pause(700);
+  assert.equal(openHosts[2].closed, null, 'a refused join does not end the room');
+  assert.ok(ids(watcher.all.at(-1).rooms).includes(open[2]));
+  const privateId = roomId();
+  const privateHost = host(privateId);
+  await privateHost.next();
+  assert.deepEqual(await guest(privateId, undefined, ip('2001:db8:5:5::1')).next(value => value.type === 'ready'),
+    { type: 'ready', role: 'guest' });
+  // After the window the network may join again.
+  await pause(4000);
+  assert.deepEqual(await guest(open[2], undefined, ip('2001:db8:5:5::1')).next(value => value.type === 'ready'),
+    { type: 'ready', role: 'guest' });
 });

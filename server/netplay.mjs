@@ -24,9 +24,17 @@ const ROOM_PATH = /^\/netplay\/(?:(hd)\/)?([0-9a-f]{32})$/;
 const QUERY_PART = /^(role|name|engine)=([^&]*)$/;
 const LOBBY_URL = /^\/netplay\/lobby\?edition=(original|hd)$/;
 const INVALID_ROOM = 'Invalid room URL or role.';
-const INVALID_NAME = 'Room names need 1 to 24 characters and no control characters.';
-// Control and format characters (bidi overrides, zero-width marks) and line separators.
-const NAME_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+const INVALID_NAME = 'Room names need 1 to 24 visible characters.';
+// The same name rule is in deploy/netplay.js and sc2/wasm/netplay-client.js.
+// Refused: control and format characters (bidi overrides, zero-width marks),
+// line separators, surrogates, private-use and unassigned code points
+// (noncharacters too), the blank fillers U+115F, U+1160, U+2800, U+3164 and
+// U+FFA0, and more than 3 stacked nonspacing marks (Hebrew with niqqud needs 3).
+const NAME_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\p{Zl}\p{Zp}\u115f\u1160\u2800\u3164\uffa0]/u;
+// Counted in the decomposed form, where a precomposed letter shows its marks.
+const NAME_STACKED = /[\p{Mn}\p{Me}]{4}/u;
+// At least one letter, digit, punctuation mark or symbol.
+const NAME_VISIBLE = /[\p{L}\p{N}\p{P}\p{S}]/u;
 const NAME_CHARS = 24;
 const MAX_LISTED = 50;
 const SNAPSHOT_MS = 500;
@@ -34,11 +42,54 @@ const LISTING_DENIED = {
   full: 'The room list is full. Try again in a few minutes.',
   ip: 'Your network already has the most open rooms allowed. Start or close one first.',
 };
+const SILENT_HOST = 'The room closed because this page stopped answering. Create a new room.';
+const TOO_MANY_JOINS = 'You joined many open rooms in a short time. Wait a few minutes, then try again.';
+// Recent listed-room joins are kept for at most this many addresses.
+const MAX_JOIN_ADDRESSES = 10000;
 
-function checkedName(value) {
-  const name = value.trim();
+/**
+ * The listed form of a room name (NFC, inner spaces collapsed to one, trimmed),
+ * or null when it does not have 1 to 24 allowed characters.
+ */
+export function checkedName(value) {
+  const text = value.normalize('NFC');
+  // Before collapsing spaces: line breaks and tabs are control characters.
+  if (NAME_FORBIDDEN.test(text) || NAME_STACKED.test(text.normalize('NFD'))) return null;
+  const name = text.replace(/\s+/g, ' ').trim();
   const length = [...name].length;
-  return length >= 1 && length <= NAME_CHARS && !NAME_FORBIDDEN.test(name) ? name : null;
+  return length >= 1 && length <= NAME_CHARS && NAME_VISIBLE.test(name) ? name : null;
+}
+
+/**
+ * The key for the per-address bounds. One IPv6 client controls a whole /64
+ * network, so IPv6 addresses count by their first 64 bits. IPv4 addresses, also
+ * in IPv4-mapped IPv6 form, count one by one. The same function is in deploy/netplay.js.
+ */
+export function addressKey(ip) {
+  const text = String(ip ?? '').trim().toLowerCase().replace(/%.*$/, '');
+  if (!text.includes(':')) return text.slice(0, 64) || 'unknown';
+  let hex = text;
+  // An IPv4 address in the last 32 bits becomes two hex words.
+  const v4 = /:(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hex);
+  if (v4) {
+    const bytes = v4.slice(1).map(Number);
+    if (bytes.some(byte => byte > 255)) return text.slice(0, 64);
+    hex = hex.slice(0, v4.index + 1) + ((bytes[0] << 8) | bytes[1]).toString(16) + ':' +
+      ((bytes[2] << 8) | bytes[3]).toString(16);
+  }
+  const halves = hex.split('::');
+  if (halves.length > 2) return text.slice(0, 64);
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  const missing = 8 - head.length - tail.length;
+  if (halves.length === 1 ? missing !== 0 : missing < 1) return text.slice(0, 64);
+  const parts = [...head, ...Array(halves.length === 2 ? missing : 0).fill('0'), ...tail];
+  if (parts.some(part => !/^[0-9a-f]{1,4}$/.test(part))) return text.slice(0, 64);
+  const words = parts.map(part => parseInt(part, 16));
+  if (words.slice(0, 5).every(word => word === 0) && words[5] === 0xffff) {
+    return [words[6] >> 8, words[6] & 255, words[7] >> 8, words[7] & 255].join('.');
+  }
+  return words.slice(0, 4).map(word => word.toString(16)).join(':') + '::/64';
 }
 
 /**
@@ -90,6 +141,13 @@ export function createNetplayServer(options = {}) {
   const maxListedPerIp = integer(options.maxListedPerIp, 3, 1, MAX_LISTED, 'maxListedPerIp');
   const maxLobbyConnections = integer(options.maxLobbyConnections, 256, 1, 10000, 'maxLobbyConnections');
   const maxLobbyPerIp = integer(options.maxLobbyPerIp, 10, 1, 1000, 'maxLobbyPerIp');
+  // A listed host pings every 30 s. Without a ping for this long it is gone
+  // (a sleeping computer or a lost network); background tabs ping at least once a minute.
+  const listedSilenceMs = integer(options.listedSilenceMs, 150000, 100, 3600000, 'listedSilenceMs');
+  // Joins of listed rooms per address: list tokens are public, so one script
+  // could otherwise join and leave every new room.
+  const maxListedJoins = integer(options.maxListedJoins, 10, 1, 10000, 'maxListedJoins');
+  const listedJoinWindowMs = integer(options.listedJoinWindowMs, 600000, 100, 86400000, 'listedJoinWindowMs');
   // Accommodate deliberately accelerated heartbeat intervals in integration tests.
   const maxControlFrames = Math.max(32, Math.ceil(1000 / heartbeatMs) + 4);
   // Integration tests may inject deterministic network delay. Never controlled by a client URL.
@@ -108,6 +166,8 @@ export function createNetplayServer(options = {}) {
   const usedRoomIds = new Set();
   const ipCounts = new Map();
   const lobbyIpCounts = new Map();
+  // Join times of listed rooms per address, least recently used first.
+  const listedJoins = new Map();
   // One room list per edition: named rooms that wait for a guest, oldest first, and the watching sockets.
   const lobbies = { original: newLobby(), hd: newLobby() };
   let shuttingDown = false;
@@ -211,7 +271,28 @@ export function createNetplayServer(options = {}) {
   function keepalive(ws) {
     if (!controlAllowed(ws, 6)) return reject(ws, 'Control frame rate exceeded.');
     if (ws.bufferedAmount + 6 > maxBufferedBytes) return reject(ws, 'Peer is too slow.');
+    ws.lastKeepalive = performance.now();
     ws.send('pong', error => { if (error) ws.terminate(); });
+  }
+  // Protocol pings do not show a frozen page: the browser answers them. A listed
+  // host's page must send its own "ping" texts, as on the Cloudflare relay.
+  function silent(room) {
+    return performance.now() - room.host.lastKeepalive > listedSilenceMs;
+  }
+  function closeSilent(room) {
+    json(room.host, { type: 'error', message: SILENT_HOST });
+    endRoom(room, room.host);
+  }
+  /** Counts a join of a listed room; false when the address has joined too many recently. */
+  function countJoin(ip) {
+    const now = performance.now();
+    const times = (listedJoins.get(ip) ?? []).filter(time => now - time < listedJoinWindowMs);
+    listedJoins.delete(ip);
+    const allowed = times.length < maxListedJoins;
+    if (allowed) times.push(now);
+    listedJoins.set(ip, times);
+    while (listedJoins.size > MAX_JOIN_ADDRESSES) listedJoins.delete(listedJoins.keys().next().value);
+    return allowed;
   }
   function deliver(ws) {
     ws.deliveryTimer = null;
@@ -283,7 +364,7 @@ export function createNetplayServer(options = {}) {
   function acceptRoom(ws, req, ip) {
     ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
     watchControlFrames(ws);
-    Object.assign(ws, { queue: [], queuedBytes: 0, deliveryTimer: null,
+    Object.assign(ws, { queue: [], queuedBytes: 0, deliveryTimer: null, lastKeepalive: performance.now(),
       sequence: 0, rateStart: performance.now(), rateBytes: 0, rateMessages: 0 });
     ws.on('error', () => endRoom(ws.room, ws));
     ws.on('close', () => {
@@ -324,6 +405,14 @@ export function createNetplayServer(options = {}) {
     } else {
       if (!room || room.ended || room.host.readyState !== WebSocket.OPEN) return reject(ws, 'Room does not exist or has expired.');
       if (room.guest) return reject(ws, 'Room already has two players.');
+      if (room.listed) {
+        // A guest who picks a listed room must find a host that still answers.
+        if (silent(room)) {
+          closeSilent(room);
+          return reject(ws, 'Room does not exist or has expired.');
+        }
+        if (!countJoin(ip)) return reject(ws, TOO_MANY_JOINS);
+      }
       room.guest = ws;
       clearTimeout(room.waitingTimer);
     }
@@ -377,7 +466,8 @@ export function createNetplayServer(options = {}) {
     if (origin.origin !== req.headers.origin || !(allowedOrigins ? allowedOrigins.has(origin.origin) : origin.origin === ownOrigin)) {
       return deny('403 Forbidden', 'Origin is not allowed.');
     }
-    const ip = req.socket.remoteAddress;
+    // Every per-address bound (room and lobby sockets, listed rooms, joins) uses this key.
+    const ip = addressKey(req.socket.remoteAddress);
     const toLobby = req.url.split('?')[0] === '/netplay/lobby';
     const full = toLobby
       ? lobbyWss.clients.size >= maxLobbyConnections || (lobbyIpCounts.get(ip) ?? 0) >= maxLobbyPerIp
@@ -393,11 +483,15 @@ export function createNetplayServer(options = {}) {
     for (const room of rooms.values()) {
       if (room.guest && now - room.lastData > idleMs) endRoom(room, null, 'Room was idle for too long.');
     }
-    // Liveness check of the room lists: every listed room still waits with a connected host.
+    // Liveness check of the room lists: every listed room still waits with a connected host that pings.
     for (const lobby of Object.values(lobbies)) {
-      for (const room of lobby.rooms.values()) {
+      for (const room of [...lobby.rooms.values()]) {
         if (room.ended || room.guest || room.host.readyState !== WebSocket.OPEN) unlist(room);
+        else if (silent(room)) closeSilent(room);
       }
+    }
+    for (const [ip, times] of listedJoins) {
+      if (now - times.at(-1) >= listedJoinWindowMs) listedJoins.delete(ip);
     }
     for (const ws of [...wss.clients, ...lobbyWss.clients]) {
       if (ws.readyState !== WebSocket.OPEN) continue;

@@ -11,8 +11,14 @@
     const MAX_QUEUE_BYTES = 1024 * 1024;
     const MAX_QUEUE_FRAMES = 4096;
     // Room names: the relay applies the same rule (deploy/netplay.js, server/netplay.mjs).
+    // Refused: control and format characters, line separators, surrogates,
+    // private-use and unassigned code points, blank fillers and more than 3
+    // stacked nonspacing marks. A name needs a letter, digit, punctuation or symbol.
     const MAX_NAME_CHARS = 24;
-    const NAME_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+    const NAME_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\p{Zl}\p{Zp}\u115f\u1160\u2800\u3164\uffa0]/u;
+    // Counted in the decomposed form, where a precomposed letter shows its marks.
+    const NAME_STACKED = /[\p{Mn}\p{Me}]{4}/u;
+    const NAME_VISIBLE = /[\p{L}\p{N}\p{P}\p{S}]/u;
     const MAX_LISTED_ROOMS = 50;
     const MAX_LOBBY_TEXT = 64 * 1024;
     const CONNECT_MS = 12000;
@@ -55,12 +61,18 @@
         url.hash = 'room=' + checkedToken(token);
         return url.href;
     }
-    /** The trimmed room name. Throws a message for the player when it cannot be listed. */
+    /**
+     * The name as the room list shows it (NFC, inner spaces collapsed to one,
+     * trimmed). Throws a message for the player when it cannot be listed.
+     */
     function roomName(input) {
-        const name = String(input == null ? '' : input).trim();
+        const text = String(input == null ? '' : input).normalize('NFC');
+        // Before collapsing spaces: line breaks and tabs are control characters.
+        const refused = NAME_FORBIDDEN.test(text) || NAME_STACKED.test(text.normalize('NFD'));
+        const name = refused ? '' : text.replace(/\s+/g, ' ').trim();
         const length = Array.from(name).length;
-        if (!length || length > MAX_NAME_CHARS || NAME_FORBIDDEN.test(name)) {
-            throw new Error('Room names need 1 to ' + MAX_NAME_CHARS + ' characters and no control characters.');
+        if (!length || length > MAX_NAME_CHARS || !NAME_VISIBLE.test(name)) {
+            throw new Error('Room names need 1 to ' + MAX_NAME_CHARS + ' visible characters.');
         }
         return name;
     }
@@ -115,6 +127,7 @@
         let socket;
         let timeout;
         let keepTimer;
+        let answered = true;
         let ended = false;
         const client = {
             role: role === 'host' ? 0 : 1,
@@ -159,11 +172,15 @@
         }
         // A named room can wait 10 minutes for a guest without any other traffic.
         // Only named rooms ping: every relay that lists rooms answers the ping.
+        // The relay closes a listed room whose host stops pinging, and a ping
+        // without an answer means that the connection is lost.
         function keepalive() {
             keepTimer = schedule(() => {
                 keepTimer = undefined;
                 if (ended || client.state !== 'waiting' || socket.readyState !== 1) return;
-                try { socket.send('ping'); } catch (_) { return; }
+                if (!answered) { end('error', 'Lost the connection to online play. Create a new room.'); return; }
+                answered = false;
+                try { socket.send('ping'); } catch (_) { end('error', 'Lost the connection to online play. Create a new room.'); return; }
                 keepalive();
             }, KEEPALIVE_MS);
         }
@@ -196,6 +213,7 @@
             };
             socket.onmessage = event => {
                 if (ended) return;
+                answered = true;
                 if (event.data === 'pong') return;
                 if (typeof event.data === 'string') {
                     if (event.data.length > 2048) { end('error', 'The online server sent an oversized message.'); return; }
@@ -218,7 +236,8 @@
                         end('closed', 'Your opponent left the room.');
                     } else if (message.type === 'error') {
                         const detail = typeof message.message === 'string' ? message.message.slice(0, 240) : 'Please create a new room.';
-                        end('error', 'Could not join this room. ' + detail);
+                        // The relay's messages to a host stand alone ("The room list is full…").
+                        end('error', role === 'host' ? detail : 'Could not join this room. ' + detail);
                     } else {
                         end('error', 'The online server sent an unknown message.');
                     }

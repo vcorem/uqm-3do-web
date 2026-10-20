@@ -15,9 +15,17 @@ const roomName = (edition, token) => (edition ? edition + ':' : '') + token;
 const lobbyName = edition => 'lobby:' + (edition ?? 'original');
 const DEFAULT_ORIGINS = 'https://urquanmasters.org';
 const INVALID_ROOM = 'Invalid room URL or role.';
-const INVALID_NAME = 'Room names need 1 to 24 characters and no control characters.';
-// Control and format characters (bidi overrides, zero-width marks) and line separators.
-const NAME_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+const INVALID_NAME = 'Room names need 1 to 24 visible characters.';
+// The same name rule is in server/netplay.mjs and sc2/wasm/netplay-client.js.
+// Refused: control and format characters (bidi overrides, zero-width marks),
+// line separators, surrogates, private-use and unassigned code points
+// (noncharacters too), the blank fillers U+115F, U+1160, U+2800, U+3164 and
+// U+FFA0, and more than 3 stacked nonspacing marks (Hebrew with niqqud needs 3).
+const NAME_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\p{Zl}\p{Zp}\u115f\u1160\u2800\u3164\uffa0]/u;
+// Counted in the decomposed form, where a precomposed letter shows its marks.
+const NAME_STACKED = /[\p{Mn}\p{Me}]{4}/u;
+// At least one letter, digit, punctuation mark or symbol.
+const NAME_VISIBLE = /[\p{L}\p{N}\p{P}\p{S}]/u;
 const NAME_CHARS = 24;
 const MAX_LISTED = 50;
 const SNAPSHOT_MS = 500;
@@ -26,12 +34,52 @@ const LISTING_DENIED = {
   ip: 'Your network already has the most open rooms allowed. Start or close one first.',
   unavailable: 'The room list is unavailable. Try again.',
 };
+const SILENT_HOST = 'The room closed because this page stopped answering. Create a new room.';
+const TOO_MANY_JOINS = 'You joined many open rooms in a short time. Wait a few minutes, then try again.';
 
-/** The trimmed room name, or null when it is not 1 to 24 characters without control characters. */
+/**
+ * The listed form of a room name (NFC, inner spaces collapsed to one, trimmed),
+ * or null when it does not have 1 to 24 allowed characters.
+ */
 function checkedName(value) {
-  const name = value.trim();
+  const text = value.normalize('NFC');
+  // Before collapsing spaces: line breaks and tabs are control characters.
+  if (NAME_FORBIDDEN.test(text) || NAME_STACKED.test(text.normalize('NFD'))) return null;
+  const name = text.replace(/\s+/g, ' ').trim();
   const length = [...name].length;
-  return length >= 1 && length <= NAME_CHARS && !NAME_FORBIDDEN.test(name) ? name : null;
+  return length >= 1 && length <= NAME_CHARS && NAME_VISIBLE.test(name) ? name : null;
+}
+
+/**
+ * The key for the per-address bounds. One IPv6 client controls a whole /64
+ * network, so IPv6 addresses count by their first 64 bits. IPv4 addresses, also
+ * in IPv4-mapped IPv6 form, count one by one. The same function is in server/netplay.mjs.
+ */
+export function addressKey(ip) {
+  const text = String(ip ?? '').trim().toLowerCase().replace(/%.*$/, '');
+  if (!text.includes(':')) return text.slice(0, 64) || 'unknown';
+  let hex = text;
+  // An IPv4 address in the last 32 bits becomes two hex words.
+  const v4 = /:(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hex);
+  if (v4) {
+    const bytes = v4.slice(1).map(Number);
+    if (bytes.some(byte => byte > 255)) return text.slice(0, 64);
+    hex = hex.slice(0, v4.index + 1) + ((bytes[0] << 8) | bytes[1]).toString(16) + ':' +
+      ((bytes[2] << 8) | bytes[3]).toString(16);
+  }
+  const halves = hex.split('::');
+  if (halves.length > 2) return text.slice(0, 64);
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  const missing = 8 - head.length - tail.length;
+  if (halves.length === 1 ? missing !== 0 : missing < 1) return text.slice(0, 64);
+  const parts = [...head, ...Array(halves.length === 2 ? missing : 0).fill('0'), ...tail];
+  if (parts.some(part => !/^[0-9a-f]{1,4}$/.test(part))) return text.slice(0, 64);
+  const words = parts.map(part => parseInt(part, 16));
+  if (words.slice(0, 5).every(word => word === 0) && words[5] === 0xffff) {
+    return [words[6] >> 8, words[6] & 255, words[7] >> 8, words[7] & 255].join('.');
+  }
+  return words.slice(0, 4).map(word => word.toString(16)).join(':') + '::/64';
 }
 
 /**
@@ -39,7 +87,7 @@ function checkedName(value) {
  * (which lists the room in its edition's lobby) and engine=c|rust. Each
  * parameter at most once; nothing else.
  */
-function parseRoomURL(pathname, search) {
+export function parseRoomURL(pathname, search) {
   const path = ROOM_PATH.exec(pathname);
   if (!path || !search.startsWith('?')) return { error: INVALID_ROOM };
   const params = new Map();
@@ -98,6 +146,15 @@ function settings(env) {
     maxLobby: integer(env.NETPLAY_MAX_LOBBY, 1000, 1, 10000),
     maxLobbyPerIp: integer(env.NETPLAY_MAX_LOBBY_PER_IP, 10, 1, 1000),
     lobbyCheckMs: integer(env.NETPLAY_LOBBY_CHECK_MS, 20000, 100, 600000),
+    // A refused listing checks the listed rooms at most this often (the alarm still runs).
+    lobbySweepMs: integer(env.NETPLAY_LOBBY_SWEEP_MS, 5000, 0, 600000),
+    // A listed host pings every 30 s. Without a ping for this long it is gone
+    // (a sleeping computer or a lost network); background tabs ping at least once a minute.
+    listedSilenceMs: integer(env.NETPLAY_LISTED_SILENCE_MS, 150000, 100, 3600000),
+    // Joins of listed rooms per address: list tokens are public, so one script
+    // could otherwise join and leave every new room.
+    maxListedJoins: integer(env.NETPLAY_MAX_LISTED_JOINS, 10, 1, 10000),
+    listedJoinWindowMs: integer(env.NETPLAY_LISTED_JOIN_WINDOW_MS, 600000, 100, 86400000),
   };
 }
 
@@ -128,8 +185,9 @@ export async function handleNetplay(request, env) {
   if (request.headers.has('Sec-WebSocket-Protocol')) return jsonResponse(400, 'Subprotocols are unsupported.');
   const url = new URL(request.url);
   // Cloudflare sets CF-Connecting-IP at the edge; a client cannot choose it in production.
+  // Every per-address bound (gate leases, listed rooms, lobby sockets) uses this key.
   const headers = new Headers(request.headers);
-  headers.set('X-Netplay-IP', request.headers.get('CF-Connecting-IP') || 'unknown');
+  headers.set('X-Netplay-IP', addressKey(request.headers.get('CF-Connecting-IP') || 'unknown'));
   const forwarded = new Request(request.url, { method: 'GET', headers });
   if (url.pathname === '/netplay/lobby') {
     const lobby = LOBBY_URL.exec(url.pathname + url.search);
@@ -199,19 +257,26 @@ export class NetplayRoom extends DurableObject {
       if (room.status === 'paired' || this.pending.guest || this.socket('guest')) {
         return rejectedSocket('Room already has two players.');
       }
+      // A guest who picks a listed room must find a host that still answers.
+      if (room.listed && this.silent()) {
+        await this.closeSilent(true);
+        return rejectedSocket('Room does not exist or has expired.');
+      }
     }
     // Reserve the role before the gate call, because other requests can run during it.
     this.pending[role] = true;
     const conn = crypto.randomUUID();
     let lease;
     try {
-      lease = await this.gate.acquire({ conn, ip, room: id, newRoom: role === 'host' });
+      lease = await this.gate.acquire({ conn, ip, room: id, newRoom: role === 'host',
+        listedJoin: role === 'guest' && Boolean(room.listed) });
     } catch {
       lease = 'busy';
     }
     this.pending[role] = false;
     if (lease === 'busy') return jsonResponse(503, 'Connection limit reached.');
     if (lease === 'rooms') return rejectedSocket('Room limit reached.');
+    if (lease === 'joins') return rejectedSocket(TOO_MANY_JOINS);
     // The room can change while the gate call runs.
     if (role === 'guest' && (this.room?.status !== 'waiting' || !this.socket('host'))) {
       await this.release(conn);
@@ -275,9 +340,35 @@ export class NetplayRoom extends DurableObject {
     return this.ctx.getWebSockets('c:' + conn).length > 0;
   }
 
-  /** Called by the lobby's liveness check: is this still a named room that waits for a guest? */
-  isListed() {
-    return this.room?.status === 'waiting' && Boolean(this.room.listed) && Boolean(this.socket('host'));
+  /**
+   * Called by the lobby's liveness check: is this still a named room that waits
+   * for a guest, with a host that answers? A silent host's room is closed here.
+   */
+  async isListed() {
+    if (this.room?.status !== 'waiting' || !this.room.listed || !this.socket('host')) return false;
+    if (!this.silent()) return true;
+    // The lobby drops the entry because of the answer; it is not called back.
+    await this.closeSilent(false);
+    return false;
+  }
+
+  /**
+   * True when the waiting listed host sent no "ping" for listedSilenceMs. The
+   * runtime answers the pings and records the time; the object does not wake up.
+   */
+  silent() {
+    const host = this.socket('host');
+    if (!host) return true;
+    let answered = null;
+    try { answered = this.ctx.getWebSocketAutoResponseTimestamp(host); } catch { /* Not available: use the creation time. */ }
+    const last = Math.max(answered ? answered.getTime() : 0, this.room.created);
+    return Date.now() - last > this.config.listedSilenceMs;
+  }
+
+  async closeSilent(tellLobby) {
+    const host = this.socket('host');
+    this.send(host, { type: 'error', message: SILENT_HOST });
+    await this.endRoom(host, undefined, tellLobby);
   }
 
   send(ws, value) {
@@ -292,10 +383,10 @@ export class NetplayRoom extends DurableObject {
     try { await this.gate.release(conn); } catch { /* The lease expires or is checked later. */ }
   }
 
-  async endRoom(departing, message = 'The other player disconnected.') {
+  async endRoom(departing, message = 'The other player disconnected.', tellLobby = true) {
     const sockets = this.ctx.getWebSockets();
     const wasActive = this.room && this.room.status !== 'ended';
-    const wasListed = wasActive && this.room.status === 'waiting' && this.room.listed;
+    const wasListed = tellLobby && wasActive && this.room.status === 'waiting' && this.room.listed;
     if (wasActive) {
       this.room = { ...this.room, status: 'ended', endedAt: Date.now(), lastData: this.lastData };
     }
@@ -437,10 +528,16 @@ export class NetplayRoom extends DurableObject {
 // room objects) are found by asking the room before a limit refuses a client.
 const LEASE_MARGIN_MS = 300000;
 
+// The gate remembers recent listed-room joins for at most this many addresses.
+const MAX_JOIN_ADDRESSES = 10000;
+
 export class NetplayGate extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.config = settings(env);
+    // Join times of listed rooms per address, least recently used first. Memory
+    // only: the object stays in memory while an address keeps joining.
+    this.joins = new Map();
     ctx.blockConcurrencyWhile(async () => {
       this.leases = await ctx.storage.list({ prefix: 'c:' });
     });
@@ -477,14 +574,30 @@ export class NetplayGate extends DurableObject {
     if (dead.length) await this.ctx.storage.delete(dead);
   }
 
-  /** Returns 'ok', 'busy' (connection bounds) or 'rooms' (active room bound). */
-  async acquire({ conn, ip, room, newRoom }) {
+  /** Counts a join of a listed room; false when the address has joined too many recently. */
+  countJoin(ip) {
+    const now = Date.now();
+    const times = (this.joins.get(ip) ?? []).filter(time => now - time < this.config.listedJoinWindowMs);
+    this.joins.delete(ip);
+    const allowed = times.length < this.config.maxListedJoins;
+    if (allowed) times.push(now);
+    this.joins.set(ip, times);
+    while (this.joins.size > MAX_JOIN_ADDRESSES) this.joins.delete(this.joins.keys().next().value);
+    return allowed;
+  }
+
+  /**
+   * Returns 'ok', 'busy' (connection bounds), 'rooms' (active room bound) or
+   * 'joins' (too many listed-room joins from this address in the window).
+   */
+  async acquire({ conn, ip, room, newRoom, listedJoin = false }) {
     let denial = this.denial(ip, newRoom);
     if (denial) {
       await this.prune(ip, this.counts(ip).perIp < this.config.maxPerIp);
       denial = this.denial(ip, newRoom);
       if (denial) return denial;
     }
+    if (listedJoin && !this.countJoin(ip)) return 'joins';
     const lease = { ip, room, newRoom, expires: Date.now() + this.config.lifetimeMs + LEASE_MARGIN_MS };
     this.leases.set('c:' + conn, lease);
     await this.ctx.storage.put('c:' + conn, lease);
@@ -510,6 +623,7 @@ export class NetplayLobby extends DurableObject {
     this.config = settings(env);
     this.timer = null;
     this.lastSent = 0;
+    this.lastCheck = 0;
     this.text = null;
     // Keepalive for clients behind proxies that close quiet connections.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
@@ -587,7 +701,8 @@ export class NetplayLobby extends DurableObject {
     const key = 'r:' + id;
     if (this.rooms.has(key)) return 'ok';
     if (this.denial(ip)) {
-      await this.check();
+      // Each check asks every listed room, so repeated refusals use the last result.
+      if (Date.now() - this.lastCheck >= this.config.lobbySweepMs) await this.check();
       const denial = this.denial(ip);
       if (denial) return denial;
     }
@@ -612,6 +727,7 @@ export class NetplayLobby extends DurableObject {
   /** Drops entries whose room no longer waits for a guest, or that outlived the waiting limit. */
   async check() {
     const now = Date.now();
+    this.lastCheck = now;
     const { listedWaitingMs, lobbyCheckMs } = this.config;
     const results = await Promise.all([...this.rooms].map(async ([key, entry]) => {
       if (now >= entry.created + listedWaitingMs + lobbyCheckMs) return [key, false];

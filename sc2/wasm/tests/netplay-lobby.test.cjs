@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const netplay = require('../netplay-client.js');
+const names = require('./room-names.cjs');
 
 const token = '0123456789abcdef0123456789abcdef';
 const other = 'fedcba9876543210fedcba9876543210';
@@ -52,12 +53,10 @@ function watch(options = {}) {
 
 const room = (id, name, extra = {}) => ({ id, name, engine: 'c', created: 1760000000000, ...extra });
 
-test('room names are trimmed and checked like the relay checks them', () => {
-    assert.equal(netplay.roomName('  Alpha  '), 'Alpha');
-    assert.equal(netplay.roomName('א'.repeat(24)), 'א'.repeat(24));
-    assert.equal(netplay.roomName('🚀'.repeat(24)), '🚀'.repeat(24), 'characters, not UTF-16 units');
-    for (const bad of ['', '   ', 'x'.repeat(25), 'bell\u0007', 'new\nline', 'evil‮exe', 'zero​width', null, undefined]) {
-        assert.throws(() => netplay.roomName(bad), /1 to 24 characters/, JSON.stringify(bad));
+test('room names are cleaned and checked like the relay checks them', () => {
+    for (const [input, listed] of names.accepted) assert.equal(netplay.roomName(input), listed, JSON.stringify(input));
+    for (const [label, input] of [...names.refused, ['null', null], ['undefined', undefined]]) {
+        assert.throws(() => netplay.roomName(input), /^Error: Room names need 1 to 24 visible characters\.$/, label);
     }
     assert.equal(netplay.limits.roomNameChars, 24);
     assert.equal(netplay.limits.listedRooms, 50);
@@ -107,6 +106,47 @@ test('a named host room shows its name, pings while it waits, and stops pinging 
     assert.equal(client.send(new Uint8Array([1])), true);
     client.close();
     assert.equal(f.timers.size, 0);
+});
+
+test('a named host whose ping gets no answer reports the lost connection', () => {
+    const f = fakes();
+    const statuses = [];
+    const client = netplay.connect({ token, role: 'host', name: 'Quiet', location,
+        WebSocket: f.WebSocket, setTimeout: f.setTimeout, clearTimeout: f.clearTimeout,
+        onStatus(status) { statuses.push(status); } });
+    const socket = f.sockets[0];
+    socket.open();
+    socket.text({ type: 'waiting' });
+    f.fire(30000);
+    assert.deepEqual(socket.sent, ['ping']);
+    // Any message from the relay counts as an answer.
+    socket.text({ type: 'waiting' });
+    f.fire(30000);
+    assert.deepEqual(socket.sent, ['ping', 'ping']);
+    assert.equal(client.state, 'waiting');
+    f.fire(30000);
+    assert.equal(client.state, 'error');
+    assert.equal(statuses.at(-1).message, 'Lost the connection to online play. Create a new room.');
+    assert.deepEqual(socket.sent, ['ping', 'ping'], 'no ping after the lost answer');
+    assert.equal(socket.closed.length, 1);
+    assert.equal(f.timers.size, 0);
+});
+
+test('relay errors stand alone for a host and explain the failed join for a guest', () => {
+    for (const [role, expected] of [
+        ['host', 'The room closed because this page stopped answering. Create a new room.'],
+        ['guest', 'Could not join this room. The room closed because this page stopped answering. Create a new room.'],
+    ]) {
+        const f = fakes();
+        const statuses = [];
+        const client = netplay.connect({ token, role, name: role === 'host' ? 'Arena' : undefined, location,
+            WebSocket: f.WebSocket, setTimeout: f.setTimeout, clearTimeout: f.clearTimeout,
+            onStatus(status) { statuses.push(status); } });
+        f.sockets[0].open();
+        f.sockets[0].text({ type: 'error', message: 'The room closed because this page stopped answering. Create a new room.' });
+        assert.equal(client.state, 'error');
+        assert.equal(statuses.at(-1).message, expected, role);
+    }
 });
 
 test('private rooms and guests never ping, so relays without room lists keep working', () => {
