@@ -72,6 +72,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
+      # The runner starts with about 7 GB free. The C builds, the four-engine site, its
+      # split parts and a 299-640 MB Cache Storage copy in the browser need more; with a
+      # full disk Chromium fails the copy as "Cache.put() encountered a network error".
+      - name: Free runner disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          df -h /
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -141,7 +149,9 @@ jobs:
       - name: Split data files into Cloudflare asset parts
         run: python3 deploy/split-data.py --site .tools/release-web --output .tools/site --manifest deploy/data-parts.json
       - name: Test that return visits start from the game data kept in the browser
-        run: UQM_DATA_CACHE_LEAN=1 UQM_DIST=.tools/release-web UQM_SITE=.tools/site UQM_SITE_MANIFEST=deploy/data-parts.json UQM_TEST_OUTPUT=test-results/data-cache npm run test:data-cache
+        run: |
+          df -h /
+          UQM_DATA_CACHE_LEAN=1 UQM_DIST=.tools/release-web UQM_SITE=.tools/site UQM_SITE_MANIFEST=deploy/data-parts.json UQM_TEST_OUTPUT=test-results/data-cache npm run test:data-cache
       - name: Deploy the Worker and static assets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
