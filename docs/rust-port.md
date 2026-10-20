@@ -80,15 +80,16 @@ cargo build --manifest-path rust/Cargo.toml -p uqm-relay --release --locked
 ./scripts/build-web.sh
 ./scripts/build-hd-web.sh
 ./scripts/build-editions.sh
-npm start -- --port 10000
+npm run start:rust -- --port 10000
 ```
 
 For the isolated local toolchain under `.tools`, source `scripts/rust-env.sh`
 from Bash before direct Cargo commands. Build scripts do that automatically.
 The relay executable is `rust/target/release/uqm-relay`. Build it for the server's
 actual Linux architecture before deploying; a local macOS binary is not portable
-to Linux. `npm start` builds and runs the Rust relay; `npm run start:node`
-runs the retained Node reference server.
+to Linux. `npm run start:rust` builds and runs the Rust relay. `npm start`
+runs the Node server, which also has the room lists (the Rust relay does not
+have them yet).
 
 ```sh
 # Example runtime arguments; no server deployment is performed by this branch.

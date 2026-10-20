@@ -55,16 +55,17 @@ In a ship selection menu, press **Alt / Option** for the ship video.
 
 ## Play Online Melee locally
 
-Use Node.js 22 or newer and the pinned Rust toolchain described below. After building the game, start the Rust game and
-room server on a separate port so an existing campaign preview can stay open:
+Use Node.js 22 or newer. After building the game, start the game and room
+server on a separate port so an existing campaign preview can stay open:
 
 ```sh
 npm ci
 npm start -- --port 10000
 ```
 
-The first start compiles the Rust relay. `npm run start:node` runs the retained
-Node reference server for comparison.
+`npm start` runs the Node server, which also has the room lists of Online
+Melee. `npm run start:rust` runs the Rust relay with the pinned Rust toolchain
+described below; it has private rooms only, and its first start compiles it.
 
 Open **http://127.0.0.1:10000/** and choose an edition if using the combined
 package. Create a room on that edition's page, copy its invite, then open the

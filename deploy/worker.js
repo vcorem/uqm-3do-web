@@ -1,10 +1,10 @@
 // Cloudflare Worker for urquanmasters.org: static game files with the
 // cross-origin isolation headers, the large data files joined from parts, and
-// the private Online Melee relay (deploy/netplay.js).
+// the Online Melee relay and its room lists (deploy/netplay.js).
 import dataFiles from './data-parts.json';
 import { handleNetplay } from './netplay.js';
 
-export { NetplayRoom, NetplayGate } from './netplay.js';
+export { NetplayRoom, NetplayGate, NetplayLobby } from './netplay.js';
 
 const CANONICAL_HOST = 'urquanmasters.org';
 const ISOLATION = {

@@ -16,15 +16,18 @@
     { "pattern": "urquanmasters.org", "custom_domain": true },
     { "pattern": "www.urquanmasters.org", "custom_domain": true }
   ],
-  // Online Melee relay: one object per room, one global object for the connection bounds.
+  // Online Melee relay: one object per room, one global object for the connection
+  // bounds, and one room list (lobby) object per edition.
   "durable_objects": {
     "bindings": [
       { "name": "NETPLAY_ROOMS", "class_name": "NetplayRoom" },
-      { "name": "NETPLAY_GATE", "class_name": "NetplayGate" }
+      { "name": "NETPLAY_GATE", "class_name": "NetplayGate" },
+      { "name": "NETPLAY_LOBBY", "class_name": "NetplayLobby" }
     ]
   },
   "migrations": [
-    { "tag": "netplay-v1", "new_sqlite_classes": ["NetplayRoom", "NetplayGate"] }
+    { "tag": "netplay-v1", "new_sqlite_classes": ["NetplayRoom", "NetplayGate"] },
+    { "tag": "netplay-v2", "new_sqlite_classes": ["NetplayLobby"] }
   ],
   "observability": { "enabled": true }
 }
