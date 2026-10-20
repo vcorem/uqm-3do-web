@@ -101,3 +101,16 @@ Python standard library.
   `UQM_PEER_DIST`) meet in the test lobby and play a full match.
 - Until the room client has `watchLobby`,
   `tests/browser/fixtures/lobby-client-shim.js` adds it in tests.
+
+## Notes for the other parts of the page
+
+- Loading progress: the start screen shows `Module.setStatus('… (done/total)')`
+  byte progress and `Module.monitorRunDependencies` counts. A loader that
+  fetches the game files itself can call
+  `online.controller.progress({ label, fraction })` instead.
+- The page defines `Module.takePendingNetplayRole` in its `Module` object, so
+  it exists before the engine starts.
+- `tests/helpers/online-lobby.mjs` is a test lobby in front of any relay: it
+  answers `/netplay/lobby`, lists rooms whose host adds `name=`, and forwards
+  room connections without the lobby parameters, so the current relays pair
+  the players. With a relay that has the lobby, tests can use it directly.
