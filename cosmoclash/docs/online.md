@@ -108,7 +108,9 @@ at the countdown.
 
 The input lockstep, the checksums, the result agreement and the rematch do not
 change. Protocol 1 and 2 pages do not play each other (the version check stops
-them before any battle).
+them before any battle). The build id is the Wasm hash only: a later change to
+these packets in TypeScript alone must also raise `PROTOCOL_VERSION`, else an
+old open page and a new page pass the check and then refuse each other's packets.
 
 ## Local serving and the room list adapter
 
