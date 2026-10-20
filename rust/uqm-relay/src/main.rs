@@ -690,10 +690,12 @@ async fn static_file<W: AsyncWrite + Unpin>(
             return Err(io::Error::from(io::ErrorKind::NotFound));
         }
         let root = tokio::fs::canonicalize(dist).await?;
-        let path = tokio::fs::canonicalize(root.join(if decoded == "/" {
-            "index.html"
+        // A folder path gives its index.html (/, /cosmoclash/).
+        let relative = &decoded[1..];
+        let path = tokio::fs::canonicalize(root.join(if decoded.ends_with('/') {
+            format!("{relative}index.html")
         } else {
-            &decoded[1..]
+            relative.to_owned()
         }))
         .await?;
         if !path.starts_with(&root) || path == root {
@@ -701,7 +703,16 @@ async fn static_file<W: AsyncWrite + Unpin>(
         }
         // Reject FIFOs/devices before open: opening a FIFO for reading can
         // otherwise block a filesystem worker indefinitely, including shutdown.
-        if !tokio::fs::metadata(&path).await?.is_file() {
+        let kind = tokio::fs::metadata(&path).await?;
+        if kind.is_dir() {
+            // A folder without its slash: redirect when it has a page, because
+            // the page's relative URLs need the slash.
+            let index = tokio::fs::canonicalize(path.join("index.html")).await?;
+            if index.starts_with(&root) && tokio::fs::metadata(&index).await?.is_file() {
+                return Ok(None);
+            }
+        }
+        if !kind.is_file() {
             return Err(io::ErrorKind::NotFound.into());
         }
         let mut options = tokio::fs::OpenOptions::new();
@@ -717,11 +728,21 @@ async fn static_file<W: AsyncWrite + Unpin>(
         if !info.is_file() {
             return Err(io::ErrorKind::NotFound.into());
         }
-        Ok::<_, io::Error>((file, info.len(), path))
+        Ok::<_, io::Error>(Some((file, info.len(), path)))
     }
     .await;
-    let Ok((mut file, length, path)) = resolve else {
-        return response(writer, "404 Not Found", b"Not found", "", head).await;
+    let (mut file, length, path) = match resolve {
+        Ok(Some(found)) => found,
+        Ok(None) => {
+            // /cosmoclash opens /cosmoclash/, with the query (an invitation) kept.
+            let (path, query) = match request.target.find('?') {
+                Some(at) => request.target.split_at(at),
+                None => (request.target.as_str(), ""),
+            };
+            let location = format!("Location: {path}/{query}\r\n");
+            return response(writer, "301 Moved Permanently", b"", &location, head).await;
+        }
+        Err(_) => return response(writer, "404 Not Found", b"Not found", "", head).await,
     };
     writer.write_all(format!("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: {length}\r\nContent-Type: {}\r\n{ISOLATION}\r\n", mime(&path)).as_bytes()).await?;
     if !head {
