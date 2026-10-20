@@ -1,11 +1,12 @@
 import './main-menu.css';
+import { assetURL } from '@/base';
 
 export class MainMenu {
   private root:HTMLDivElement;
   private keyHandler:(e:KeyboardEvent)=>void;
   constructor(parent:HTMLElement,onPlay:()=>void,onLocal?:()=>void,onOnline?:()=>void) {
     this.root=document.createElement('div');this.root.id='main-menu';
-    this.root.style.backgroundImage='url(/textures/main-bk.jpg)';
+    this.root.style.backgroundImage=`url(${assetURL('textures/main-bk.jpg')})`;
     const add=(text:string,action:()=>void)=>{const button=document.createElement('button');button.className='menu-btn';button.textContent=text;button.addEventListener('click',action);this.root.appendChild(button);};
     add('Play vs Computer',onPlay);
     if(onLocal)add('Two Players · Same Computer',onLocal);

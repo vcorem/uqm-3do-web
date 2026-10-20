@@ -1,4 +1,5 @@
 import type { PlayerInput } from '@/input/InputManager';
+import { assetURL } from '@/base';
 
 export type ShipId = 'michiGichi' | 'gondi' | 'sholev';
 export const SHIP_IDS: ShipId[] = ['michiGichi', 'gondi', 'sholev'];
@@ -39,7 +40,7 @@ export class RustEngine {
   private encoder=new TextEncoder();
   private decoder=new TextDecoder('utf-8',{fatal:true});
   private constructor(private wasm:CosmoExports, readonly buildId:string) {}
-  static async load(url=new URL('cosmoclash.wasm',document.baseURI).href):Promise<RustEngine> {
+  static async load(url=new URL(assetURL('cosmoclash.wasm'),location.href).href):Promise<RustEngine> {
     const response=await fetch(url,{cache:'no-store'});
     if(!response.ok) throw new Error(`Game engine could not load (${response.status}).`);
     const bytes=await response.arrayBuffer();

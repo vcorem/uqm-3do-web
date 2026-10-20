@@ -1,4 +1,5 @@
 import { SoundEffect, SOUND_CONFIG } from './SoundEffect';
+import { assetURL } from '@/base';
 
 export class SoundManager {
   private static instance: SoundManager | null = null;
@@ -82,7 +83,7 @@ export class SoundManager {
     const sfxPromises = sfxEntries.map(async (effect) => {
       const config = SOUND_CONFIG[effect];
       try {
-        const resp = await fetch(config.file);
+        const resp = await fetch(assetURL(config.file));
         const arrayBuf = await resp.arrayBuffer();
         this.rawBuffers.set(`sfx:${effect}`, arrayBuf);
       } catch {
@@ -96,7 +97,7 @@ export class SoundManager {
     };
     const musicPromises = Object.entries(musicFiles).map(async ([key, file]) => {
       try {
-        const resp = await fetch(file);
+        const resp = await fetch(assetURL(file));
         const arrayBuf = await resp.arrayBuffer();
         this.rawBuffers.set(`music:${key}`, arrayBuf);
       } catch {

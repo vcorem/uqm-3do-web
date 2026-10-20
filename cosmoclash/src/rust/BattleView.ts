@@ -8,6 +8,7 @@ import { ThrustEffect } from '@/game/ThrustEffect';
 import { FrostTrailEffect } from '@/game/FrostTrailEffect';
 import { SoundManager } from '@/audio/SoundManager';
 import { SOUND_CONFIG, SoundEffect } from '@/audio/SoundEffect';
+import { assetURL } from '@/base';
 import { SHIP_IDS, type Snapshot, type ShipId, type EntityView } from './Engine';
 
 type Visual = { object:THREE.Object3D; kind:string; ownedTexture?:THREE.Texture };
@@ -54,13 +55,13 @@ export class BattleView {
     const textureFiles:Record<string,string>={flame:'GondiFire.jpg',plasma:'plasma_atlas.png',sun:'sun_shot.png',ice:'ice_shot_atlas.png',frost:'frost_shield.png',snot:'snot_atlas.png',explosion:'explosion_atlas.png',star:'star_test-02.jpg',sunAtlas:'sun_atlas.jpg',thrust:'thrust_test01.jpg'};
     const tl=new THREE.TextureLoader();
     await Promise.all([
-      ...Object.entries(textureFiles).map(async([key,file])=>{this.textures.set(key,await tl.loadAsync(`/textures/${file}`));}),
+      ...Object.entries(textureFiles).map(async([key,file])=>{this.textures.set(key,await tl.loadAsync(assetURL(`textures/${file}`)));}),
       ...CHARACTER_REGISTRY.map(async(def,i)=>{
-        const gltf=await this.loader.loadAsync(def.modelPath);
+        const gltf=await this.loader.loadAsync(assetURL(def.modelPath));
         gltf.scene.traverse(child=>{if((child as THREE.Mesh).isMesh){const mats=(child as THREE.Mesh).material;for(const mat of Array.isArray(mats)?mats:[mats])if((mat as THREE.MeshStandardMaterial).emissive)(mat as THREE.MeshStandardMaterial).emissive.set(0,0,0);}});
         this.models.set(SHIP_IDS[i],{model:gltf.scene,animations:gltf.animations});
       }),
-      ...[0,1,2].map(async i=>{const gltf=await this.loader.loadAsync(`/models/asteroid0${i+1}.glb`);gltf.scene.scale.setScalar(10);gltf.scene.traverse(child=>{if((child as THREE.Mesh).isMesh){const mat=(child as THREE.Mesh).material as THREE.MeshStandardMaterial;if(mat.emissive)mat.emissive.set(0,0,0);}});this.asteroidModels[i]=gltf.scene;}),
+      ...[0,1,2].map(async i=>{const gltf=await this.loader.loadAsync(assetURL(`models/asteroid0${i+1}.glb`));gltf.scene.scale.setScalar(10);gltf.scene.traverse(child=>{if((child as THREE.Mesh).isMesh){const mat=(child as THREE.Mesh).material as THREE.MeshStandardMaterial;if(mat.emissive)mat.emissive.set(0,0,0);}});this.asteroidModels[i]=gltf.scene;}),
     ]);
     // Preserve the source flame's luminance alpha and warm tint.
     const flame=this.textures.get('flame')!;const image=flame.image as HTMLImageElement;

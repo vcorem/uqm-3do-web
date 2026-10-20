@@ -1,3 +1,4 @@
+import { installAssetBase } from '@/base';
 import { createRenderer } from '@/game/Scene';
 import { GameLoop } from '@/engine/GameLoop';
 import { InputManager, shouldIgnoreGameKeyDown } from '@/input/InputManager';
@@ -16,6 +17,9 @@ import { NetplayPanel } from '@/netplay/NetplayPanel';
 import type { MatchStart, Frame } from '@/netplay/CosmoNetplay';
 import '@/ui/hud.css';
 import '@/ui/main-menu.css';
+
+// The upstream scene code loads its files from the site root; the game is at /cosmoclash/.
+installAssetBase();
 
 const DT=1000/60;
 const viewport=new Viewport();
