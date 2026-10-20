@@ -361,7 +361,9 @@ test('invite links ask once, then join; copy link; no lobby support; failure and
     const none = harness({ netplay: false });
     none.ui.activate('online');
     assert.equal(none.state.screen, 'message');
-    assert.deepEqual(none.state.items, []);
+    assert.deepEqual(none.state.items, ['back']);
+    none.ui.key('Escape');
+    assert.equal(none.state.screen, 'start', 'the player can go back');
 
     const f = harness();
     f.ui.fail('This server needs cross-origin isolation.');

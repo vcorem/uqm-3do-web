@@ -64,7 +64,7 @@
         found: () => ['cancel'],
         invite: () => ['join', 'dismiss'],
         restart: () => ['reload', 'back'],
-        message: state => state.message && state.message.reload === false ? [] : ['reload'],
+        message: state => state.message && state.message.reload === false ? ['back'] : ['reload'],
         hidden: () => [],
     };
     const ESCAPE = { lobby: 'back', name: 'cancel', waiting: 'cancel', joining: 'cancel', found: 'cancel',
@@ -401,6 +401,7 @@
             case 'Enter': case ' ': activate(state.focus); return true;
             case 'Escape':
                 if (ESCAPE[state.screen]) { gesture(); activate(ESCAPE[state.screen]); return true; }
+                if (state.items.includes('back')) { activate('back'); return true; }
                 if (state.screen === 'start' && state.pendingPlay) { state.pendingPlay = false; changed(); return true; }
                 return false;
             default: return false;
@@ -1023,7 +1024,7 @@
                 case 'found': drawFound(state, t, now); break;
                 case 'invite': drawInvite(state); break;
                 case 'restart': drawMessage(state, [['reload', 'Reload', 'Reload and open Online Melee'], ['back', 'Back to game']]); break;
-                case 'message': drawMessage(state, state.items.includes('reload') ? [['reload', 'Reload', 'Reload the page']] : []); break;
+                case 'message': drawMessage(state, state.items.includes('reload') ? [['reload', 'Reload', 'Reload the page']] : [['back', 'Back']]); break;
                 default: break;
                 }
                 return regions.slice();
