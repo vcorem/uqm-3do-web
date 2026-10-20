@@ -673,7 +673,18 @@
             ctx.fillRect(0, Math.round(y0 * k), canvas.width, canvas.height - Math.round(y0 * k));
         }
         function wrap(role, value, width) {
-            const words = String(value).split(/\s+/).filter(Boolean);
+            const words = [];
+            // A word wider than the line (a link) is cut into pieces that fit.
+            for (const word of String(value).split(/\s+/).filter(Boolean)) {
+                let rest = Array.from(word);
+                while (rest.length && measure(role, rest.join('')) > width) {
+                    let n = rest.length - 1;
+                    while (n > 1 && measure(role, rest.slice(0, n).join('')) > width) n--;
+                    words.push(rest.slice(0, n).join(''));
+                    rest = rest.slice(n);
+                }
+                if (rest.length) words.push(rest.join(''));
+            }
             const lines = [];
             let line = '';
             for (const word of words) {
@@ -759,7 +770,8 @@
             const n = state.notice;
             const value = n ? n.text : fallback;
             const color = (n ? n.kind : kind) === 'error' ? RGB.error : n ? RGB.notice : RGB.status;
-            if (value) paragraph('body', value, 8, 199, 304, color, 'left');
+            // Long messages (a link to copy) use the small font so they keep clear of the keys line.
+            if (value) paragraph(wrap('body', value, 304).length > 2 ? 'small' : 'body', value, 8, 199, 304, color, 'left');
         }
         function hint(value) { text('small', value, W / 2, H - lineHeight('small') - 3, RGB.hint, 'center', W - 8); }
 
@@ -1210,6 +1222,18 @@
                 if (online) win.location.reload();
             },
             copy(text) {
+                // A hidden field and the copy command work in more places (also over plain HTTP).
+                try {
+                    const field = document.createElement('textarea');
+                    field.value = text;
+                    field.setAttribute('readonly', '');
+                    field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+                    (document.fullscreenElement || document.body).appendChild(field);
+                    field.select();
+                    const copied = document.execCommand && document.execCommand('copy');
+                    field.remove();
+                    if (copied) return Promise.resolve();
+                } catch (_) { /* Try the clipboard API. */ }
                 const clipboard = win.navigator && win.navigator.clipboard;
                 return clipboard && clipboard.writeText ? clipboard.writeText(text) : Promise.reject(new Error('No clipboard'));
             },
