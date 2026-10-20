@@ -209,7 +209,9 @@ try {
   assert.equal(await page.locator('#engine-choice').isHidden(), true, 'no engine switch for Cosmo Clash');
   await page.screenshot({ path: path.join(out, 'picker-cosmoclash.png'), fullPage: true });
   report.requests.length = 0;
-  await Promise.all([page.waitForURL(origin + '/cosmoclash/'), page.locator('#launch-edition').click()]);
+  // The page's 'load' waits for every texture (and, on a deployed site, the edge's own scripts):
+  // the game state below is the real signal.
+  await Promise.all([page.waitForURL(origin + '/cosmoclash/', { waitUntil: 'domcontentloaded' }), page.locator('#launch-edition').click()]);
 
   // The game: menu reached, the packaged Wasm runs, and every file came from /cosmoclash/.
   await page.waitForFunction(() => window.__cosmo?.state === 'menu', {}, { timeout: 90000 });
@@ -251,7 +253,11 @@ try {
   else report.online = 'skipped on a deployed site (COSMO_SITE_ONLINE=1 runs it)';
 
   const sameOrigin = report.requests.filter(url => url.startsWith(origin + '/'));
-  assert.deepEqual(sameOrigin.filter(url => !url.startsWith(origin + '/cosmoclash/')), [], 'the game loads its files from /cosmoclash/ only');
+  // On a deployed site Cloudflare can add its own same-origin paths (/cdn-cgi/, for
+  // example the Web Analytics beacon /cdn-cgi/rum): recorded, not refused.
+  report.edgePaths = live ? sameOrigin.filter(url => url.startsWith(origin + '/cdn-cgi/')) : [];
+  assert.deepEqual(sameOrigin.filter(url => !url.startsWith(origin + '/cosmoclash/') && !report.edgePaths.includes(url)), [],
+    'the game loads its files from /cosmoclash/ only');
   // The game itself loads nothing from other origins. A deployed site can have edge
   // additions (analytics) that the zone adds; they are recorded, not refused.
   report.otherOrigins = report.requests.filter(url => /^https?:/.test(url) && !url.startsWith(origin + '/'));
@@ -267,7 +273,7 @@ try {
   const chooseGame = page.locator('#main-menu').getByRole('menuitem', { name: /choose game/i })
     .or(page.locator('#main-menu').getByRole('link', { name: /choose game/i }));
   if (await chooseGame.count()) {
-    await Promise.all([page.waitForURL(url => url.origin === origin && ['/', '/index.html'].includes(url.pathname)), chooseGame.first().click()]);
+    await Promise.all([page.waitForURL(url => url.origin === origin && ['/', '/index.html'].includes(url.pathname), { waitUntil: 'domcontentloaded' }), chooseGame.first().click()]);
     report.chooseGame = 'menu item';
   } else {
     await page.goBack();

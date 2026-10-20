@@ -357,6 +357,24 @@ it('peer-left: the other player left, or the relay ended the room and says why',
   const n = scripted(); n.relay({ type: 'peer-left' });
   expect(n.peer.state).toMatchObject({ phase: 'closed', message: 'Your opponent left the room.' });
 });
+it('a packet sent while the socket closes does not hide the reason that is still in the queue', () => {
+  // Live relay: peer-left and the close frame come together; the game sends a packet in between.
+  const p = inLobby('guest');
+  expect(p.peer.state.phase).toBe('lobby');
+  p.socket.readyState = 2;
+  const before = p.sent.length;
+  p.peer.chooseFleet([0]);
+  expect(p.sent.length).toBe(before);
+  expect(p.peer.state.phase).toBe('lobby');
+  p.relay({ type: 'peer-left', message: 'The other player disconnected.' });
+  expect(p.peer.state).toMatchObject({ phase: 'closed', message: 'Your opponent left the room.' });
+  // Without a last message, the close event says it.
+  const q = inLobby('guest');
+  q.socket.readyState = 3;
+  q.peer.chooseFleet([0]);
+  q.socket.onclose?.({});
+  expect(q.peer.state).toMatchObject({ phase: 'closed', message: 'The connection closed.' });
+});
 it('a relay that stops tells both players why (not that the other player left)', async () => {
   const p = await pair();
   await p.app.close();

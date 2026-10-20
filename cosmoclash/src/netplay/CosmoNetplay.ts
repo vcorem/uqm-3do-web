@@ -350,7 +350,12 @@ export class CosmoNetplay {
   }
   private fail(message: string): void { this.stop('error', message); }
   private send(packet: Packet): void {
-    if (!this.socket || this.socket.readyState !== 1) { this.fail('The connection is no longer available.'); return; }
+    if (!this.socket) { this.fail('The connection is no longer available.'); return; }
+    // A closing socket: the relay's last message (peer-left: the opponent left) or the close
+    // event is still in the queue, and it says why. Over the internet the message and the close
+    // frame often come together, and a frame sent in between must not hide the reason.
+    if (this.socket.readyState >= 2) return;
+    if (this.socket.readyState !== 1) { this.fail('The connection is no longer available.'); return; }
     const bytes = new TextEncoder().encode(JSON.stringify(packet));
     if (bytes.length > MAX_PACKET || this.socket.bufferedAmount + bytes.length > MAX_BUFFERED) { this.fail('The connection is too slow to continue safely.'); return; }
     try { this.socket.send(bytes); this.lastSentAt = Date.now(); } catch { this.fail('Game data could not be sent.'); }
