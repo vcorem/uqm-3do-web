@@ -13,10 +13,10 @@ part of the game and work in full screen. Code: `web/online/online-ui.js`
 | --- | --- | --- |
 | Start | Title picture, **Play** and **Online Melee**, How to start steps, download progress | arrows, Enter |
 | Lobby | **ONLINE MELEE**, live list of open rooms of this edition (name, C/RUST engine tag, waiting time), **Create room**, **Back** | arrows (Left/Right: list and buttons), Enter, Esc |
-| Name | Room name field (remembered; default "Captain NN"), **Open room**, **Cancel** | type, Enter, Esc |
-| Waiting | "Room open", the name, waiting time, **Cancel**, **Copy link** | Esc closes the room |
-| Joining | The picked room while the client connects | Esc |
-| Opponent found | Countdown (3 s), which fleet the player commands, **Cancel** | Esc |
+| Name | Room name field (remembered; default "Captain NN"), **Open room**, **Cancel**; a refused name shows the reason here | type, Enter, Esc |
+| Waiting | "Room open", the name, waiting time, **Cancel**, **Copy link** (focused first); "Almost ready" with the download while this page loads | Esc closes the room |
+| Joining | The picked room while the client connects, or the download while this page loads | Esc (Enter does nothing) |
+| Opponent found | Countdown (3 s), which fleet the player commands, **Cancel** | Esc (Enter does nothing) |
 | Invite | For an invite link (`#room=<token>`): **Join** / **Not now** | Enter, Esc |
 | Reload needed | Engine without the main-menu hook: **Reload** (opens the lobby after the reload) / **Back to game** | Enter, Esc |
 | Message | Load failure or engine exit, **Reload** | Enter |
@@ -26,8 +26,20 @@ item; the drawn focus follows the keyboard focus, so screen readers read the
 items). A live region (`#status`) says the screen and messages.
 
 - **Play** works while the game downloads; the game starts when it is ready.
+- A room can be created or picked while the game downloads, but it opens
+  (and a guest joins) only when this page's game is ready, so the opponent
+  never waits in the engine for a download.
 - The first choice is a user gesture: the frame goes full screen then, and
   Chromium keeps Esc as a game key (`navigator.keyboard.lock(['Escape'])`).
+  Esc gives no user activation, so a choice made with Esc does not ask; a
+  refused request is asked again at the next choice.
+- A held Enter or Space repeats; repeats are ignored, so one press makes one
+  choice. Enter never cancels: after **Open room** the focus is on **Copy
+  link**, and Joining and Opponent found ignore Enter (Esc or a click cancels).
+- Room names follow the room client's rule (`UQMNetplay.roomName`: NFC, inner
+  spaces collapsed, no hidden or format characters, at most 24 characters).
+  The name is remembered only when it is accepted, and the waiting screen
+  shows it as the list does.
 - While a match runs no page text is over the game.
 - After a session (opponent left, match over) the engine returns to its main
   menu and the lobby comes back by itself, still in full screen, with the
@@ -43,12 +55,16 @@ Engine hook (A): the page defines `Module.takePendingNetplayRole()` (0 host,
 sessions, when `Module.gameScreen === 'mainMenu'` and
 `Module.supportsNetplayHook === true`, set `Module.webNet` and then return
 the role once (if the engine is away from its main menu at that moment, the
-role waits until it is back there). A session ends when `Module.gameScreen`
-goes from `melee` back to `mainMenu`. Without the hook the page offers a
-reload. The Original main menu goes back to the intro after 20 s without
-input (2 minutes with its music); while the lobby covers it, the page sends a
-Left key to the game canvas every 8 s (the main menu ignores Left, but it
-counts as input).
+role waits until it is back there). `takePendingNetplayRole` tells the menu
+when the engine took the role; a role not taken within 15 s is withdrawn and
+the lobby shows an error. A session ends when `Module.gameScreen` goes from
+`melee` back to `mainMenu`. The shell reports every `Module.gameScreen`
+change as the engine makes it (a property setter), so a short session is not
+missed between two polls. Without the hook the page offers a reload. The
+Original main menu goes back to the intro after 20 s without input (2 minutes
+with its music); while the menu covers the started game, the page sets
+`Module.holdMainMenu = true` (and `false` when it hides), which the engine's
+main menu reads (the ENGINE stream's hook build).
 
 Lobby (B): `UQMNetplay.watchLobby({ edition, onRooms, onStatus })` gives the
 room list (`{ id, name, engine, created }`, newest first); `onStatus` states
@@ -59,7 +75,9 @@ else `c`. A guest joins with the listed id. If the client has no `watchLobby`,
 the lobby says that the list is not available and invite links still work.
 
 Scripted play (remote tests): `online.controller.host(name, token)` and
-`online.controller.join(token)`.
+`online.controller.join(token)`. `host(null, token)` opens a private room
+(no name: not in the list, so no other player can take it); the relay keeps
+a private room 2 minutes, a listed one 10.
 
 ## Art
 
@@ -106,8 +124,12 @@ Python standard library.
 
 - Loading progress: the start screen shows `Module.setStatus('… (done/total)')`
   byte progress and `Module.monitorRunDependencies` counts. A loader that
-  fetches the game files itself can call
-  `online.controller.progress({ label, fraction })` instead.
+  fetches the game files itself (the CACHE stream's `engine-loader.js`) calls
+  `online.controller.progress({ label, fraction })` instead, through the
+  global `online` that the shell defines. Tests read the loading text from
+  `online.state.loading.label`; `#status` is the menu's live region (it says
+  "Unable to start. …" for a load failure), and the page has no `#progress`
+  element.
 - The page defines `Module.takePendingNetplayRole` in its `Module` object, so
   it exists before the engine starts.
 - `tests/helpers/online-lobby.mjs` is a test lobby in front of any relay: it

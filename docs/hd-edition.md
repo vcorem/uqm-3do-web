@@ -40,8 +40,9 @@ edition and token together as the room identity. Identical tokens in different
 editions cannot pair, forward data or disconnect one another. Capacity limits
 remain shared. See [the relay contract](netplay-server.md#connection-contract).
 
-Leaving or losing a connection ends that room; the lobby comes back for the
-next match. **Play** on the start screen still starts the local campaign and
+Leaving or losing a connection ends that room. With an engine that has the
+main-menu hook the lobby comes back for the next match; without it the page
+offers a reload. **Play** on the start screen still starts the local campaign and
 local Melee. The Python preview serves local play only; online play needs
 the relay and, outside localhost, HTTPS with WebSocket forwarding.
 

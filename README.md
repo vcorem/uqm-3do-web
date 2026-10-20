@@ -75,9 +75,12 @@ After a short countdown the Melee screen opens on both sides, still in full
 screen. Configure the fleets, confirm Start Melee on both sides and choose
 ships. The host controls the bottom fleet; the guest controls the top fleet.
 Both use the player-one keyboard template; HD uses the arrow-key controls.
-**Copy link** on the waiting screen gives a private invite link instead; it
-opens the same lobby and joins after one click. From the game's main menu,
-the **Online Melee** corner button or the **O** key opens the lobby again.
+**Copy link** on the waiting screen copies a direct link to the same room: it
+opens the lobby and joins after one click. The room stays in the public list
+too, and the first player who joins gets it. A room opens, and a picked room
+is joined, only when that page's game has loaded, so nobody waits for the
+other player's download. From the game's main menu, the **Online Melee**
+corner button or the **O** key opens the lobby again.
 See [the in-frame start screen and lobby](docs/online-ui.md).
 
 Original rooms connect to `/netplay/<room>` and HD rooms connect to
@@ -88,12 +91,15 @@ Rooms use the original UQM netplay protocol and simulation over an ordered
 WebSocket relay, with a three-frame default input delay. Browser callbacks
 queue network bytes; the game reads them during its normal input polling.
 The Diagnostics panel shows the connection, engine state and simulation
-checksum counts. Leaving or losing either connection ends the room; the lobby
-comes back by itself for the next match. **Play** on the start screen opens
-the campaign and local Melee normally.
+checksum counts. Leaving or losing either connection ends the room. With an
+engine that has the main-menu hook, the lobby comes back by itself for the
+next match; an engine without it offers a reload, which opens the lobby
+again. **Play** on the start screen opens the campaign and local Melee
+normally.
 
-The invite contains a private room code in its URL fragment. Anyone with it
-can take the guest slot, so share it only with the intended opponent. A
+The invite contains the room code in its URL fragment. Anyone with it can
+take the guest slot while the room waits, as can anyone who picks the room
+in the list. A
 localhost invite works only on that computer. Two-computer play requires a
 shared HTTPS server; see [relay setup and limits](docs/netplay-server.md).
 The Python preview and legacy nginx Docker image serve local play only;
