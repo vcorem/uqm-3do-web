@@ -12,7 +12,7 @@ part of the game and work in full screen. Code: `web/online/online-ui.js`
 | Screen | What it shows | Keys |
 | --- | --- | --- |
 | Start | Title picture, **Play** and **Online Melee**, How to start steps, download progress | arrows, Enter |
-| Lobby | **ONLINE MELEE**, live list of open rooms of this edition (name, C/RUST engine tag, waiting time), **Create room**, **Back** | arrows (Left/Right: list and buttons), Enter, Esc |
+| Lobby | **ONLINE MELEE**, live list of open rooms of this edition (name, C ENGINE / RUST ENGINE tag, waiting time), **Create room**, **Back** | arrows (Left/Right: list and buttons), Enter, Esc |
 | Name | Room name field (remembered; default "Captain NN"), **Open room**, **Cancel**; a refused name shows the reason here | type, Enter, Esc |
 | Waiting | "Room open", the name, waiting time, **Cancel**, **Copy link** (focused first); "Almost ready" with the download while this page loads | Esc closes the room |
 | Joining | The picked room while the client connects, or the download while this page loads | Esc (Enter does nothing) |

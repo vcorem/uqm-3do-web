@@ -897,7 +897,8 @@
                 text('body', time, listX + listW - 5, y + (rowH - lineHeight('body')) / 2 + 1, hi ? RGB.teamNameHi : RGB.teamName, 'right');
                 let tagX = listX + listW - 9 - timeW;
                 if (room.engine) {
-                    const label = room.engine === 'rust' ? 'RUST' : 'C';
+                    // The word ENGINE: a lone "C" tag does not say what it is.
+                    const label = room.engine === 'rust' ? 'RUST ENGINE' : 'C ENGINE';
                     const tagW = measure('small', label) + 5;
                     tagX -= tagW;
                     starconBox(tagX, y + 6, tagW, rowH - 12, 1, RGB.boxBR, RGB.boxTL, [0, 0, 40]);
@@ -932,8 +933,10 @@
             const createHi = state.focus === 'create' || (under && state.screen === 'name');
             controlBox(colX, top, colW, 44, createHi);
             const lh = lineHeight('label');
-            text('label', 'CREATE', colX + colW / 2, top + 22 - lh - 1, createHi ? RGB.ctrlTextHi : RGB.ctrlText, 'center');
-            text('label', 'ROOM', colX + colW / 2, top + 22 + 1, createHi ? RGB.ctrlTextHi : RGB.ctrlText, 'center');
+            // Focused: the yellow of the other focused buttons (the game's own lighter blue is hard to see).
+            const createText = createHi ? RGB.btnTextHi : RGB.ctrlText;
+            text('label', 'CREATE', colX + colW / 2, top + 22 - lh - 1, createText, 'center');
+            text('label', 'ROOM', colX + colW / 2, top + 22 + 1, createText, 'center');
             region('create', colX, top, colW, 44, 'Create room');
             const backY = top + rows * (rowH + 2) - 15;
             button(colX + 4, backY, colW - 8, 13, 'Back', state.focus === 'back');
