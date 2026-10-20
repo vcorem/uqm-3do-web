@@ -1,14 +1,22 @@
 import './main-menu.css';
-import { assetURL } from '@/base';
+import { assetURL, BASE } from '@/base';
 import { el, button } from './dom';
 import { announce } from './live';
 
 export type MenuChoice = 'ai' | 'local' | 'online';
-const ITEMS: { id: MenuChoice; label: string }[] = [
+type MenuItem = MenuChoice | 'games';
+// 'Choose game' opens the site's game picker (the parent of /cosmoclash/), like
+// 'Choose edition' on the UQM pages. A build at the site root has no picker.
+const ITEMS: { id: MenuItem; label: string }[] = [
   { id: 'ai', label: 'Play vs Computer' },
   { id: 'local', label: 'Two Players · Same Computer' },
   { id: 'online', label: 'Online Melee' },
+  ...(BASE !== '/' ? [{ id: 'games' as const, label: 'Choose game' }] : []),
 ];
+/** The site's picker page, from the game's own path. */
+export function pickerURL(base: string = BASE, href: string = location.href): string {
+  return new URL('../', new URL(base, href)).href;
+}
 
 /** Full screen on and off: the F key, and this corner button for the mouse. */
 export interface FullscreenToggle { active(): boolean; toggle(): void }
@@ -16,8 +24,8 @@ export interface FullscreenToggle { active(): boolean; toggle(): void }
 /** The main menu over the title art. Arrows choose, Enter or a click starts the focused item. */
 export class MainMenu {
   private root: HTMLDivElement;
-  private focus: MenuChoice;
-  private buttons = new Map<MenuChoice, HTMLButtonElement>();
+  private focus: MenuItem;
+  private buttons = new Map<MenuItem, HTMLButtonElement>();
   private corner: HTMLButtonElement | null = null;
   private onFullscreen = () => this.showFullscreen();
 
@@ -66,16 +74,17 @@ export class MainMenu {
     return false;
   }
 
-  get focused(): MenuChoice { return this.focus; }
+  get focused(): MenuChoice { return this.focus === 'games' ? 'ai' : this.focus; }
 
-  private setFocus(id: MenuChoice, moveDom: boolean): void {
+  private setFocus(id: MenuItem, moveDom: boolean): void {
     this.focus = id;
     for (const [key, node] of this.buttons) node.classList.toggle('is-focus', key === id);
     if (moveDom) this.buttons.get(id)?.focus({ preventScroll: true });
   }
 
-  private choose(id: MenuChoice): void {
+  private choose(id: MenuItem): void {
     this.setFocus(id, false);
+    if (id === 'games') { location.assign(pickerURL()); return; }
     this.onChoose(id);
   }
 

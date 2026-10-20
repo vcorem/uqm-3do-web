@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { OnlineController, NAME_KEY, COUNTDOWN_MS, INPUT_LOCK_MS, LIST_WAIT_MS, cleanMessage, clock, waitingTime, type SessionHandlers, type SessionLike } from './OnlineController';
+import { OnlineController, NAME_KEY, NOTICE_MS, COUNTDOWN_MS, INPUT_LOCK_MS, LIST_WAIT_MS, cleanMessage, clock, waitingTime, type SessionHandlers, type SessionLike } from './OnlineController';
 import type { LobbyRoom, LobbyStatus, LobbyWatcher } from './CosmoLobby';
 import type { MatchStart, NetplayState, Role } from './CosmoNetplay';
 
@@ -515,3 +515,28 @@ describe('fresh room lists, Open room and Change fleet', () => {
     expect(g.s.items).toEqual(['ship', 'ready', 'undo', 'leave']);
   });
 });
+
+describe('notices', () => {
+  it('an info notice goes away after NOTICE_MS; an error stays', () => {
+    const h = harness();
+    h.controller.openLobby();
+    h.rooms([]);
+    h.keys('Enter');
+    h.controller.activate('open');
+    h.keys('ArrowRight', 'Enter');
+    expect(h.s.notice).toMatchObject({ text: 'Your room is closed.', kind: 'info' });
+    h.advance(NOTICE_MS - 1);
+    expect(h.s.notice?.text).toBe('Your room is closed.');
+    h.advance(1);
+    expect(h.s.notice).toBeNull();
+    // An error notice is not timed: a refused join stays until the next event.
+    h.rooms([room('b', 'Gone')]);
+    h.controller.activate('room:' + token('b'));
+    h.session.set({ phase: 'error', message: 'Room does not exist or has expired.' });
+    expect(h.s.notice?.kind).toBe('error');
+    const before = h.s.notice;
+    h.advance(NOTICE_MS * 3);
+    expect(h.s.notice).toBe(before);
+  });
+});
+

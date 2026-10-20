@@ -20,6 +20,8 @@ export const SHIP_COUNT = 3;
 /** The relays keep a listed room 10 minutes and a private room 2 minutes. */
 export const LISTED_ROOM_MINUTES = 10;
 export const PRIVATE_ROOM_MINUTES = 2;
+/** An info notice shows this long (as in the UQM lobby). */
+export const NOTICE_MS = 10000;
 const BANNER_MS = 2500;
 /** A new fleet or result screen ignores Enter and Space this long (a key pressed for the last screen). */
 export const INPUT_LOCK_MS = 600;
@@ -139,6 +141,7 @@ export class OnlineController {
   private retryTimer: unknown = null;
   private countdownTimer: unknown = null;
   private clockTimer: unknown = null;
+  private noticeTimer: unknown = null;
   private listTimer: unknown = null;
   private lastRoom: string | null = null;
 
@@ -195,8 +198,18 @@ export class OnlineController {
     this.changed();
   }
   private notice(text: string | null, kind: Notice['kind'] = 'info'): void {
-    this.state.notice = text ? { text, kind } : null;
+    const notice = text ? { text, kind } : null;
+    this.state.notice = notice;
     if (text && kind === 'error') this.env.sound?.('error');
+    if (this.noticeTimer) { this.env.clearTimeout(this.noticeTimer); this.noticeTimer = null; }
+    // An info notice (why a match ended, 'You left the room.') gives way to the screen's
+    // own text after a while, as in the UQM lobby; errors and a link to copy stay.
+    if (notice && kind === 'info') {
+      this.noticeTimer = this.env.setTimeout(() => {
+        this.noticeTimer = null;
+        if (this.state.notice === notice) { this.state.notice = null; this.changed(); }
+      }, NOTICE_MS);
+    }
   }
   /** Waiting clocks and room ages change once a second while those screens show. */
   private tickClock(): void {

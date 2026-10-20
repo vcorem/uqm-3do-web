@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { MainMenu, type MenuChoice } from './MainMenu';
+import { MainMenu, pickerURL, type MenuChoice } from './MainMenu';
 import { DifficultyUI } from './DifficultyUI';
 import { attachLiveRegion, announced } from './live';
 
@@ -59,3 +59,11 @@ describe('main menu', () => {
     expect(back).toBe(1);
   });
 });
+
+describe('Choose game', () => {
+  it('opens the picker at the parent of the game path (the item shows only in a /cosmoclash/ build)', () => {
+    expect(pickerURL('/cosmoclash/', 'https://urquanmasters.org/cosmoclash/?cosmoRoom=x')).toBe('https://urquanmasters.org/');
+    expect(pickerURL('/cosmoclash/', 'http://127.0.0.1:9999/cosmoclash/')).toBe('http://127.0.0.1:9999/');
+  });
+});
+
