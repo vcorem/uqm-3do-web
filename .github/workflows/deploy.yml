@@ -147,7 +147,7 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           UQM_DIST=.tools/release-web npm run test:editions
-      - name: Test the Cosmo Clash card and game on the packaged site
+      - name: Test the Cosmo Clash card, a battle and Online Melee on the packaged site (Node relay)
         run: UQM_DIST=.tools/release-web UQM_TEST_OUTPUT=test-results/cosmoclash-site npm run test:cosmoclash-site
       - name: Test the room-list client in a real browser
         run: UQM_BROWSERS=chromium npm run test:lobby-client
@@ -159,7 +159,7 @@ jobs:
         run: python3 deploy/split-data.py --site .tools/release-web --output .tools/site --manifest deploy/data-parts.json
       - name: Test that return visits start from the game data kept in the browser
         run: UQM_DATA_CACHE_LEAN=1 UQM_DIST=.tools/release-web UQM_SITE=.tools/site UQM_SITE_MANIFEST=deploy/data-parts.json UQM_TEST_OUTPUT=test-results/data-cache npm run test:data-cache
-      - name: Test Cosmo Clash through the Worker and its asset store
+      - name: Test Cosmo Clash and its Online Melee through the Worker, its asset store and its relay
         run: UQM_SITE=.tools/site UQM_SITE_MANIFEST=deploy/data-parts.json UQM_TEST_OUTPUT=test-results/cosmoclash-worker npm run test:cosmoclash-site
       - name: Deploy the Worker and static assets
         env:

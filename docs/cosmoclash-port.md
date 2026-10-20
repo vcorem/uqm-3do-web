@@ -83,8 +83,9 @@ npm start -- --port 10000 --cosmoclash cosmoclash/dist
 ```
 
 Open `http://127.0.0.1:10000/cosmoclash/`. `npm run test:cosmoclash-site` opens
-the picker card and the game at `/cosmoclash/` in Chromium (see
-[Verification](#verification)).
+the picker card and the game at `/cosmoclash/` in Chromium, plays a short battle
+against the computer, and plays Online Melee between two pages through the
+site's relay and room list (see [Verification](#verification)).
 
 ## Server handover
 
@@ -213,6 +214,13 @@ wins or replace simulation state. Coverage includes solo AI, morphing, local
 weapons/shield/slime, actual audio output and mute, a complete three-ship online
 fleet match, rematch, disconnect, and a separate connection with artificial
 latency/jitter. Browser checks also inspect loading failures and script errors.
+`npm run test:cosmoclash-site` runs the built game on the packaged site with the
+site's own servers: the Node relay, or (with `UQM_SITE`, as in the deploy job)
+the Worker under `wrangler dev`. The host page creates a named room, the guest
+page finds it in the cosmoclash room list and joins, both choose a ship and play
+until they verify checksums, the host leaves, and both are back in the lobby.
+Every socket must go to `/netplay/lobby?edition=cosmoclash` or
+`/netplay/cosmoclash/<token>`.
 
 Raw reports and screenshots are generated under `cosmoclash/test-results/`
 (ignored by Git). The dedicated GitHub workflow is

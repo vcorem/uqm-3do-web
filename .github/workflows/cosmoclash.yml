@@ -91,7 +91,7 @@ jobs:
           npx playwright install --with-deps chromium
           npm run test:browser --prefix cosmoclash
       # The site build: urquanmasters.org/cosmoclash/ behind the picker, with stand-in UQM pages.
-      - name: Test the Cosmo Clash card and game at /cosmoclash/
+      - name: Test the Cosmo Clash card, a battle and Online Melee at /cosmoclash/ (Node relay)
         run: |
           (cd cosmoclash && npx vite build --base /cosmoclash/ --outDir ../.tools/cosmoclash-site-dist --emptyOutDir)
           python3 scripts/package-editions.py --check-cosmoclash .tools/cosmoclash-site-dist
