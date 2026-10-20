@@ -102,9 +102,18 @@ function fail(error:unknown):void {
 function clearPanel():void { panel?.destroy();panel=null;paused=false; }
 function clearSelection():void {badges?.dispose();badges=null;selection?.dispose();selection=null;selectionUI?.destroy();selectionUI=null;}
 function clearRound():void {battle.clear();hud?.destroy();hud=null;matchHud?.destroy();matchHud=null;snapshot=null;clearPanel();}
+// The online fleet screen has its picks panel under the ship: the ship shows a little
+// higher there (a fraction of the frame height), in the space between the name box and the panel.
+const FLEET_LIFT=0.05;
+let selectionLift=0;
 function resizeCameras():void {
   renderer.setSize(viewport.width,viewport.height);battle.camera.aspect=viewport.width/viewport.height;battle.camera.updateProjectionMatrix();
-  if(selection){selection.camera.aspect=viewport.width/viewport.height;selection.camera.updateProjectionMatrix();}
+  if(selection){
+    selection.camera.aspect=viewport.width/viewport.height;
+    if(selectionLift)selection.camera.setViewOffset(viewport.width,viewport.height,0,Math.round(viewport.height*selectionLift),viewport.width,viewport.height);
+    else selection.camera.clearViewOffset();
+    selection.camera.updateProjectionMatrix();
+  }
 }
 viewport.onResize(resizeCameras);
 
@@ -133,7 +142,7 @@ function showDifficulty():void {
 }
 function showSelection(player:0|1):void {
   clearSelection();clearMessage();clearPanel();state='selection';selectingPlayer=player;
-  selection=new SelectionScene();selection.state=player===0?SelectionState.SELECTING_P1:SelectionState.SELECTING_P2;
+  selectionLift=0;selection=new SelectionScene();selection.state=player===0?SelectionState.SELECTING_P1:SelectionState.SELECTING_P2;
   resizeCameras();
   if(fleetReselect){const used=new Set(playerLost.map(i=>CHARACTER_REGISTRY[i].id));selection.setDisabledShips(used);selection.jumpToIndex(CHARACTER_REGISTRY.findIndex(def=>!used.has(def.id)));}
   selectionUI=new SelectionUI(container,{prev:()=>browseSelection(-1),next:()=>browseSelection(1),choose:chooseSelection});
@@ -342,7 +351,7 @@ function render():void {
   if(s.screen==='fleet'){
     state='online';
     if(!selection){
-      selection=new SelectionScene();selection.state=SelectionState.SELECTING_P1;resizeCameras();
+      selection=new SelectionScene();selection.state=SelectionState.SELECTING_P1;selectionLift=FLEET_LIFT;resizeCameras();
       selection.jumpToIndex(s.fleet.carousel);badges=new FleetBadges(selection.scene);sound.playMusic('intro');
     }else{
       const delta=(s.fleet.carousel-selection.currentIndex+3)%3;
