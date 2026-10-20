@@ -2,19 +2,22 @@
 // and the cosmoclash room list (the relay's own, or scripts/cosmo-lobby.mjs).
 // The host creates a named room with the keyboard; the guest sees it in the
 // list and joins with the keyboard; both choose fleets in the 3D ship choice;
-// Change fleet (host and guest); a real battle with verified checksums;
-// rematch; the opponent leaves -> lobby; Open room before the room list
-// answers; full screen again after the browser left it, and F. Then a relay
-// without room lists (the Rust relay): a private room, its invite link and the
-// Join screen, with the mouse. Every screen is saved at 1280x720, 1024x768 and
-// 1920x1080 in test-results/online-ui/.
+// Change fleet (host and guest); a real fleet match with verified checksums,
+// in which the loser chooses the next ship with the keyboard while the
+// opponent waits (protocol 3); rematch, in which the time to choose runs out
+// and the first ship left comes; the opponent leaves -> lobby; Open room
+// before the room list answers; full screen again after the browser left it,
+// and F. Then a relay without room lists (the Rust relay): a private room, its
+// invite link and the Join screen, with the mouse. Every screen is saved at
+// 1280x720, 1024x768 and 1920x1080 in test-results/online-ui/; the new and
+// changed screens of the next-ship choice also in test-results/next-ship/.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createNetplayServer } from '../../../server/netplay.mjs';
 import { createRustRelay } from '../../../tests/helpers/rust-relay.mjs';
 import { createCosmoServer } from '../../scripts/cosmo-server.mjs';
-import { root, launch, poll, read, screen, setKeys, botKeys, watchPage, recordKeyboardLock, wasmHash } from './helpers.mjs';
+import { root, launch, poll, read, screen, setKeys, botKeys, watchPage, recordKeyboardLock, wasmHash, nextShipShots, shipSpace, textOutside } from './helpers.mjs';
 
 const output = path.resolve(root, process.env.COSMO_ONLINE_UI_DIR || 'test-results/online-ui');
 await fs.rm(output, { recursive: true, force: true });
@@ -22,18 +25,96 @@ await fs.mkdir(output, { recursive: true });
 const SIZES = [[1280, 720], [1024, 768], [1920, 1080]];
 const shots = [];
 let counter = 0;
-/** Saves the screen at the three sizes (or the first only) and returns to 1280x720. */
-async function capture(page, name, who, sizes = SIZES) {
+const next = await nextShipShots('online');
+/**
+ * Saves the screen at the three sizes (or the first only) and returns to 1280x720.
+ * options.next: a new or changed screen of the next-ship choice, also in
+ * test-results/next-ship/, with no text outside the game frame (and options.check).
+ */
+async function capture(page, name, who, sizes = SIZES, options = {}) {
   const n = String(++counter).padStart(2, '0');
   for (const [width, height] of sizes) {
     if (width !== 1280 || height !== 720) { await page.setViewportSize({ width, height }); await page.waitForTimeout(120); }
     else await page.waitForTimeout(80);
+    if (options.next) assert.deepEqual(await textOutside(page), [], `text outside the game frame (${name} ${width}x${height})`);
+    if (options.check) await options.check(width, height);
     const file = path.join(output, `${n}-${name}-${who}-${width}x${height}.png`);
     await page.screenshot({ path: file });
     shots.push(path.relative(root, file));
+    if (options.next) await next.add(file, `${name}-${who}`, `${width}x${height}`);
   }
   await page.setViewportSize({ width: 1280, height: 720 });
 }
+const SHIP_IDS = ['michiGichi', 'gondi', 'sholev'];
+/**
+ * Protocol 3: both pages show the choice of the next ship (pages[ci] chooses).
+ * how: 'keyboard' (screens of both sides, Esc asks, the other ship with the
+ * keys), 'timeout' (no key: the time runs out, the first ship left comes) or
+ * 'quick' (Enter). Returns the choice after both pages are in the next battle.
+ */
+async function nextShip(pages, ci, how) {
+  const chooser = pages[ci], waiter = pages[1 - ci];
+  const who = ci ? 'guest' : 'host', other = ci ? 'host' : 'guest';
+  const states = await Promise.all(pages.map(read));
+  const choice = states[ci].online.next;
+  assert.equal(choice.mine, true);
+  assert.equal(states[1 - ci].online.next.mine, false);
+  assert.deepEqual(states[1 - ci].online.next.ships, choice.ships, 'both pages know the ships left');
+  assert.equal(choice.ships.length, 2);
+  // Both peers stopped at the same tick: the same state and the same checksum.
+  assert.equal(states[0].net.tick, states[1].net.tick);
+  assert.equal(states[0].hash, states[1].hash, 'both peers have the same state during the choice');
+  assert.deepEqual(states.map(s => s.net.phase), ['choosing', 'choosing']);
+  let ship;
+  if (how === 'keyboard') {
+    await capture(chooser, 'next-ship-choose', who, SIZES, { next: true, check: () => shipSpace(chooser) });
+    assert.match(await chooser.locator('#cosmo-online h1').textContent(), /^Choose Your Next Ship$/);
+    assert.match(await chooser.locator('.cc-timer-n').textContent(), /^(1\d|20)$/);
+    await capture(waiter, 'next-ship-wait', other, SIZES, { next: true });
+    assert.match(await waiter.locator('#cosmo-online').textContent(), /Your opponent is choosing the next ship/);
+    // The waiting player never chooses: Enter does nothing there.
+    await waiter.keyboard.press('Enter');
+    await waiter.waitForTimeout(200);
+    assert.deepEqual([(await read(waiter)).online.confirm, (await read(waiter)).online.screen], [false, 'next']);
+    // Esc asks first; Stay (the default) keeps the match, the time goes on.
+    await chooser.waitForTimeout(700);
+    await chooser.keyboard.press('Escape');
+    await chooser.waitForFunction(() => window.__cosmo.online.confirm);
+    assert.equal(await activeText(chooser), 'Stay');
+    await capture(chooser, 'next-ship-leave-question', who, SIZES, { next: true });
+    await chooser.keyboard.press('Enter');
+    assert.equal((await read(chooser)).online.confirm, false);
+    // The other ship (not the first ship left), with the keyboard.
+    await chooser.keyboard.press('ArrowRight');
+    ship = (await read(chooser)).online.next.carousel;
+    assert.notEqual(ship, choice.ships[0]);
+    assert.equal(await chooser.locator('.cc-ship-name').textContent(), ['MichiGichi', 'Gondi', 'Sholev'][ship]);
+    await chooser.keyboard.press('Enter');
+  } else if (how === 'timeout') {
+    ship = choice.ships[0];
+    // The last seconds: the timer is red on both sides.
+    await Promise.all(pages.map(p => p.waitForFunction(() => window.__cosmo.online.next?.left <= 4, {}, { timeout: 30000 })));
+    await capture(chooser, 'next-ship-last-seconds', who, [[1280, 720]], { next: true });
+    await capture(waiter, 'next-ship-wait-last-seconds', other, [[1280, 720]], { next: true });
+    await chooser.waitForFunction(() => window.__cosmo.online.screen !== 'next' || window.__cosmo.online.next?.chosen !== null, {}, { timeout: 15000 });
+  } else {
+    await chooser.waitForTimeout(700);
+    await chooser.keyboard.press('Enter');
+    ship = choice.carousel;
+  }
+  await Promise.all(pages.map(p => screen(p, 'countdown', 15000)));
+  const after = await Promise.all(pages.map(read));
+  for (const s of after) {
+    assert.equal(s.fleet.current[choice.player], ship, 'both peers fly the chosen ship next');
+    assert.equal(s.snapshot.players[choice.player].shipId, SHIP_IDS[ship]);
+    assert.equal(s.fleet.battle, choice.battle);
+  }
+  if (how === 'keyboard') await capture(chooser, 'next-ship-countdown', who, SIZES, { next: true });
+  await Promise.all(pages.map(p => screen(p, 'battle', 15000)));
+  if (how === 'keyboard') { await pages[0].waitForTimeout(600); await capture(pages[0], 'next-ship-battle', 'host', SIZES, { next: true }); }
+  return { battle: choice.battle, player: choice.player, ship, how, ships: choice.ships };
+}
+
 const expectedHash = await wasmHash();
 const sink = { errors: [], requests: [], sockets: [] };
 const result = { passed: false, wasmSha256: expectedHash, checks: {} };
@@ -154,7 +235,9 @@ try {
   await A.waitForTimeout(2600);
   await A.keyboard.press('ArrowRight'); await A.keyboard.press('Enter'); await A.keyboard.press('Enter');
   assert.deepEqual((await read(A)).online.picks, [1, 2]);
-  await capture(A, 'fleet-two-picks', 'host');
+  assert.equal(await A.locator('.cc-rule').textContent(), 'Ship 1 opens the match. After each loss you choose your next ship from the ships left.');
+  assert.deepEqual(await A.locator('.cc-slot').allTextContents(), ['1Gondi', '✓Sholev', '+Add']);
+  await capture(A, 'fleet-two-picks', 'host', SIZES, { next: true, check: () => shipSpace(A) });
   await A.keyboard.press('ArrowDown');
   assert.equal(await activeText(A), 'Ready · 2 ships');
   await A.keyboard.press('Enter');
@@ -192,21 +275,26 @@ try {
   result.checks.changeFleet = true;
   await B.keyboard.press('Backspace'); await B.keyboard.press('Backspace');
   assert.deepEqual((await read(B)).online.picks, [0]);
-  await capture(B, 'fleet-one-pick', 'guest');
-  // The host says Ready again (the focus is on the ship after Change fleet), then the guest.
-  await A.keyboard.press('ArrowDown');
-  assert.equal(await activeText(A), 'Ready · 2 ships');
+  await capture(B, 'fleet-one-pick', 'guest', SIZES, { next: true });
+  // The host adds MichiGichi (the focus is on the ship after Change fleet; a full fleet puts it on Ready) and says Ready.
   await A.keyboard.press('Enter');
-  await B.waitForFunction(() => document.querySelector('.cc-opponent')?.textContent === 'Opponent: ready with 2 ships');
-  await B.keyboard.press('ArrowDown'); await B.keyboard.press('Enter');
+  assert.deepEqual((await read(A)).online.picks, [1, 2, 0]);
+  assert.equal(await activeText(A), 'Ready · 3 ships');
+  await A.keyboard.press('Enter');
+  await B.waitForFunction(() => document.querySelector('.cc-opponent')?.textContent === 'Opponent: ready with 3 ships');
+  // The guest takes its two ships back (three ships each: the first loss always has a choice).
+  await B.keyboard.press('Enter'); await B.keyboard.press('Enter');
+  assert.deepEqual((await read(B)).online.picks, [0, 1, 2]);
+  assert.equal(await activeText(B), 'Ready · 3 ships');
+  await B.keyboard.press('Enter');
   await Promise.all([screen(A, 'countdown'), screen(B, 'countdown')]);
-  await capture(A, 'countdown', 'host');
+  await capture(A, 'countdown', 'host', SIZES, { next: true });
   await capture(B, 'countdown', 'guest', [[1280, 720]]);
   await Promise.all([screen(A, 'battle'), screen(B, 'battle')]);
   const starts = await Promise.all([A, B].map(read));
-  assert.deepEqual(starts.map(s => s.net.localFleet), [[1, 2], [0]]);
+  assert.deepEqual(starts.map(s => s.net.localFleet), [[1, 2, 0], [0, 1, 2]]);
   await A.waitForTimeout(800);
-  await capture(A, 'battle', 'host');
+  await capture(A, 'battle', 'host', SIZES, { next: true });
   await capture(B, 'battle', 'guest', [[1280, 720]]);
   // Esc asks first; Stay (the default) keeps the match.
   await B.keyboard.press('Escape');
@@ -216,10 +304,13 @@ try {
   await B.keyboard.press('Enter');
   assert.equal((await read(B)).online.confirm, false);
 
-  // A real battle with real keys, until the fleet match ends.
+  // A real fleet match with real keys, until it ends. After a loss with two ships left the loser
+  // chooses the next ship: the first time with the keyboard, the second time the time runs out.
   const held = [new Set(), new Set()];
   const started = Date.now();
   let roundShot = false, maxChecks = 0, maxShots = 0;
+  const choices = [];
+  const how = () => !choices.some(c => c.how === 'keyboard') ? 'keyboard' : !choices.some(c => c.how === 'timeout') ? 'timeout' : 'quick';
   for (;;) {
     const states = await Promise.all([A, B].map(read));
     for (const s of states) {
@@ -228,9 +319,15 @@ try {
       maxShots = Math.max(maxShots, s.snapshot?.bullets.length ?? 0);
     }
     if (states.every(s => s.online.screen === 'result')) break;
-    if (!roundShot && states[0].state === 'roundOver' && states[0].fleet.indices.some(n => n === 0)) {
+    const ci = states.findIndex(s => s.online.screen === 'next' && s.online.next?.mine);
+    if (ci >= 0 && states[1 - ci].online.screen === 'next') {
+      await Promise.all([A, B].map((p, i) => setKeys(p, new Set(), held[i])));
+      choices.push(await nextShip([A, B], ci, how()));
+      continue;
+    }
+    if (!roundShot && states[0].state === 'roundOver' && states[0].fleet.battle === 0) {
       roundShot = true;
-      await capture(A, 'battle-round-over', 'host', [[1280, 720]]);
+      await capture(A, 'battle-round-over', 'host', [[1280, 720]], { next: true });
     }
     if (Date.now() - started > (process.env.CI ? 480000 : 300000)) throw new Error('The fleet match did not finish: ' + JSON.stringify(states.map(s => s.net)));
     await Promise.all([A, B].map((p, i) => setKeys(p, states[i].net.phase === 'playing' && states[i].snapshot ? botKeys(states[i].snapshot, i) : new Set(), held[i])));
@@ -240,10 +337,12 @@ try {
   const ended = await Promise.all([A, B].map(read));
   assert.ok(ended.every(s => s.net.phase === 'ended' && s.net.verifiedChecksums >= 5), 'both peers verify the state many times');
   assert.ok(maxShots > 0, 'weapons fire');
-  result.checks.match = { ticks: ended.map(s => s.net.tick), verifiedChecksums: ended.map(s => s.net.verifiedChecksums), battles: ended.map(s => s.fleet.battle), elapsedMs: Date.now() - started };
+  assert.ok(choices.length >= 1, 'the first loss of a fleet of three always has a choice');
+  result.checks.match = { ticks: ended.map(s => s.net.tick), verifiedChecksums: ended.map(s => s.net.verifiedChecksums), battles: ended.map(s => s.fleet.battle), choices: [...choices], elapsedMs: Date.now() - started };
+  assert.deepEqual(ended[0].fleet.sides, ended[1].fleet.sides, 'both pages end with the same fleets');
   const titles = await Promise.all([A, B].map(p => p.locator('#cosmo-online h1').textContent()));
   assert.deepEqual([...titles].sort(), ['Defeat', 'Victory']);
-  await capture(A, 'result', 'host');
+  await capture(A, 'result', 'host', SIZES, { next: true });
   await capture(B, 'result', 'guest', [[1280, 720]]);
 
   // Rematch: both must accept; the fleet screen keeps the last fleet.
@@ -256,7 +355,7 @@ try {
   await B.keyboard.press('Enter');
   await Promise.all([screen(A, 'fleet'), screen(B, 'fleet')]);
   assert.equal((await read(A)).net.round, 1);
-  assert.equal(await activeText(A), 'Ready · 2 ships');
+  assert.equal(await activeText(A), 'Ready · 3 ships');
   await capture(A, 'fleet-rematch', 'host', [[1280, 720]]);
   // A new fleet screen ignores Enter for 600 ms (a double press of Accept rematch).
   await A.waitForTimeout(700);
@@ -264,6 +363,29 @@ try {
   await Promise.all([screen(A, 'battle'), screen(B, 'battle')]);
   await poll(async () => (await Promise.all([A, B].map(read))).every(s => s.net.verifiedChecksums >= 3), 30000, 'rematch checksums');
   result.checks.rematch = true;
+  // The rematch: the time to choose runs out (when the first match had no second choice), then the next battle.
+  if (!choices.some(c => c.how === 'timeout')) {
+    const again = Date.now();
+    for (;;) {
+      const states = await Promise.all([A, B].map(read));
+      for (const s of states) assert.ok(!['error', 'closed', 'ended'].includes(s.net?.phase), JSON.stringify(s.net));
+      const ci = states.findIndex(s => s.online.screen === 'next' && s.online.next?.mine);
+      if (ci >= 0 && states[1 - ci].online.screen === 'next') {
+        await Promise.all([A, B].map((p, i) => setKeys(p, new Set(), held[i])));
+        choices.push(await nextShip([A, B], ci, 'timeout'));
+        break;
+      }
+      if (Date.now() - again > (process.env.CI ? 480000 : 300000)) throw new Error('No choice of the next ship in the rematch');
+      await Promise.all([A, B].map((p, i) => setKeys(p, states[i].net.phase === 'playing' && states[i].snapshot ? botKeys(states[i].snapshot, i) : new Set(), held[i])));
+      await new Promise(r => setTimeout(r, 120));
+    }
+    const checks = (await Promise.all([A, B].map(read))).map(s => s.net.verifiedChecksums);
+    await poll(async () => (await Promise.all([A, B].map(read))).every((s, i) => s.net.verifiedChecksums >= checks[i] + 3), 30000, 'checksums after the choice');
+  }
+  const timeout = choices.find(c => c.how === 'timeout');
+  assert.ok(timeout && timeout.ship === timeout.ships[0], 'when the time runs out the first ship left in fleet order comes');
+  result.checks.nextShip = choices;
+  await Promise.all([A, B].map((p, i) => setKeys(p, new Set(), held[i])));
 
   // The guest leaves with Esc and Leave: both back in the lobby with a message.
   await B.keyboard.press('Escape'); await B.keyboard.press('ArrowRight'); await B.keyboard.press('Enter');
@@ -394,7 +516,7 @@ try {
   result.error = String(error && error.stack || error);
   throw error;
 } finally {
-  Object.assign(result, { errors: sink.errors, requests: sink.requests, sockets: sink.sockets, screenshots: shots });
+  Object.assign(result, { errors: sink.errors, requests: sink.requests, sockets: sink.sockets, screenshots: shots, nextShipScreenshots: next.files });
   await fs.writeFile(path.join(output, 'results.json'), JSON.stringify(result, null, 2));
   await Promise.all(browsers.map(b => b.close().catch(() => {})));
   for (const server of servers) await server.close().catch(() => {});
