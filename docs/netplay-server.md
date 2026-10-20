@@ -8,26 +8,26 @@ See [the original validation record](validation.md) and
 [the Rust validation record](rust-validation.md) for the edition and build
 covered by each completed check.
 
-The Rust server serves the built game and connects exactly two players in each private room. It relays ordered binary game data; the UQM engine validates its own protocol and synchronizes the match. It does not proxy TCP connections or connect to arbitrary destinations. The previous Node server remains available as a reference implementation.
+The local server serves the built game and connects exactly two players in each room. It relays ordered binary game data; the UQM engine validates its own protocol and synchronizes the match. It does not proxy TCP connections or connect to arbitrary destinations. There are two local servers with the same room protocol: the Node server (`npm start`, `server/netplay.mjs`) and the Rust server (`npm run start:rust`, `rust/uqm-relay`).
 
 The Node server and the Cloudflare relay also keep a **room list (lobby)** for
 each edition: a host can give a room a name, and other players see the named
 rooms that wait for a guest and pick one. See [Room lists](#room-lists). The
 Rust server does not have room lists yet: it refuses lobby sockets and named
-rooms, and its private rooms work as before. To try room lists locally, run
-`npm run start:node`.
+rooms, and its private rooms work as before. For this reason `npm start` runs
+the Node server.
 
 ## Run locally
 
-Requires Node.js 22 or newer for the development launcher and Rust 1.85.1,
-as described in [the Rust build guide](rust-port.md). From the project directory:
+Requires Node.js 22 or newer (and Rust 1.85.1 for the Rust server, as
+described in [the Rust build guide](rust-port.md)). From the project directory:
 
 ```sh
 npm ci
 npm start
 ```
 
-Open `http://127.0.0.1:9999/`. The game must already be built in `dist/` using `scripts/build-web.sh`. The first start compiles the Rust relay. The server sends the COOP/COEP headers required for WebAssembly threads. If the older Python preview is using port 9999, use `npm start -- --port 10000` and open that port. The Python preview and the legacy nginx Docker image do not provide multiplayer rooms; use this relay for Online Melee. Once built, `rust/target/release/uqm-relay` runs directly without Node or Cargo. Use `npm run start:node` for the Node reference server.
+Open `http://127.0.0.1:9999/`. The game must already be built in `dist/` using `scripts/build-web.sh`. The server sends the COOP/COEP headers required for WebAssembly threads. If the older Python preview is using port 9999, use `npm start -- --port 10000` and open that port. The Python preview and the legacy nginx Docker image do not provide multiplayer rooms; use this relay for Online Melee. `npm run start:rust` compiles and runs the Rust server, which takes the same options; once built, `rust/target/release/uqm-relay` runs directly without Node or Cargo.
 
 Use `scripts/build-editions.sh` to place both editions behind the picker in
 `dist/`, or `--dist .tools/hd-dist` to serve a standalone HD build. Both editions

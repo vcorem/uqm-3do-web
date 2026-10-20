@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "start": "bash scripts/run-rust-relay.sh",
+    "start": "node server/netplay.mjs",
     "start:rust": "bash scripts/run-rust-relay.sh",
     "start:node": "node server/netplay.mjs",
     "pretest": "bash scripts/build-rust-relay.sh",
