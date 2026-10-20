@@ -46,6 +46,11 @@ items). A live region (`#status`) says the screen and messages.
   reason. From the main menu the **ONLINE MELEE / PRESS O** corner button (top
   right, clear of the menu) or the **O** key opens the lobby. The main menu
   does not use O. The button is not shown in the campaign or in battles.
+- The lobby never covers another game screen: if the game leaves its main
+  menu under it (a key pressed while the main menu fades in), the lobby hides
+  and closes an open room. The menu opens at once when it is chosen, so a key
+  pressed right after O is the menu's; a game key held while the menu opens
+  gets its release on the game canvas.
 
 ## Contracts used
 
