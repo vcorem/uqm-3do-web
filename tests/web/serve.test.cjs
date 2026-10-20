@@ -69,3 +69,36 @@ test('the preview server sends SHA-256 ETags and answers a matching If-None-Matc
     assert.equal(missing.headers.get('ETag'), null);
     assert.equal((await fetch(origin + '/hd', { redirect: 'manual' })).headers.get('ETag'), null);
 });
+
+test('the preview server opens Cosmo Clash at /cosmoclash/ with its file types', async t => {
+    const site = fs.mkdtempSync(path.join(os.tmpdir(), 'uqm-serve-'));
+    t.after(() => fs.rmSync(site, { recursive: true, force: true }));
+    fs.writeFileSync(path.join(site, 'index.html'), 'picker');
+    for (const name of ['cosmoclash/index.html', 'cosmoclash/assets/index-AbCd1234.js', 'cosmoclash/cosmoclash.wasm',
+        'cosmoclash/models/gondi.glb', 'cosmoclash/sounds/Damage.ogg', 'cosmoclash/sounds/bigang.wav']) {
+        fs.mkdirSync(path.dirname(path.join(site, name)), { recursive: true });
+        fs.writeFileSync(path.join(site, name), name);
+    }
+    const port = await freePort();
+    const child = spawn('python3', [path.join(__dirname, '../../scripts/serve.py'), '--port', String(port), '--directory', site],
+        { stdio: ['ignore', 'pipe', 'pipe'] });
+    t.after(() => child.kill());
+    const origin = `http://127.0.0.1:${port}`;
+    for (let tries = 0; ; tries++) {
+        try { await fetch(origin + '/'); break; } catch (error) {
+            if (tries > 100 || child.exitCode !== null) throw new Error('serve.py did not start');
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+    }
+    const redirect = await fetch(origin + '/cosmoclash?cosmoRoom=0123456789abcdef0123456789abcdef', { redirect: 'manual' });
+    assert.equal(redirect.status, 301);
+    assert.equal(new URL(redirect.headers.get('Location'), origin).href, origin + '/cosmoclash/?cosmoRoom=0123456789abcdef0123456789abcdef');
+    const page = await fetch(origin + '/cosmoclash/');
+    assert.equal(await page.text(), 'cosmoclash/index.html');
+    assert.equal(page.headers.get('Cross-Origin-Embedder-Policy'), 'require-corp');
+    for (const [name, type] of [['assets/index-AbCd1234.js', 'text/javascript; charset=utf-8'], ['cosmoclash.wasm', 'application/wasm'],
+        ['models/gondi.glb', 'model/gltf-binary'], ['sounds/Damage.ogg', 'audio/ogg'], ['sounds/bigang.wav', 'audio/wav']]) {
+        const response = await fetch(origin + '/cosmoclash/' + name, { method: 'HEAD' });
+        assert.equal(response.headers.get('Content-Type'), type, name);
+    }
+});
