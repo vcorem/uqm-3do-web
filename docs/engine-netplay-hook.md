@@ -33,8 +33,9 @@ Without `takePendingNetplayRole` the engine works as before.
   with its music, which this build does not have) into the title and the
   credits. The hold stops this. If no hold was set, the credits take a role
   too: they end, and the session starts after a fade. During the title
-  picture (3 s) the role waits. The HD web build is a DEBUG build and has no
-  main menu time-out.
+  picture (3 s) and while the credits load, the role waits (measured: 0.3 to
+  1.2 s, once 12 s on a heavily loaded machine). The HD web build is a DEBUG
+  build and has no main menu time-out.
 - HD only: the session turns off the ship seed and reloads the ship list, as
   Super Melee from the menu does, so both players have the same ships.
 - The Super-Melee NET... button says "For Online Melee, press O in the main
@@ -50,3 +51,6 @@ shell's normal start path and plays two sessions from the main menu. Session
 only with the role, as the lobby does. Session 2 holds the menu with
 `Module.holdMainMenu` and then with a ready room. Both sessions play a full
 fleet match with checksums, close the room and return to the main menu.
+Before the sessions it checks that Setup (and in Original the mouse popup)
+reports `'transition'`. The test uses only this contract and `#start`, so it
+runs with the launcher page and with the in-frame start screen.
