@@ -246,6 +246,27 @@ test('a guest joins from the list; the hook gives the guest role 1', () => {
     assert.equal(h.state.screen, 'hidden', 'Esc in the lobby returns to the game');
 });
 
+test('with the hook, a match found while the engine is away from its main menu waits for it there', () => {
+    const h = harness({ ready: true, hook: true });
+    h.ui.activate('play');
+    h.game.current = 'mainMenu';
+    h.ui.gameScreen('mainMenu');
+    h.ui.fromMenu();
+    h.ui.activate('create');
+    h.ui.activate('open');
+    h.game.current = 'transition';
+    h.ui.gameScreen('transition');
+    h.clients[0].status('ready', 'Opponent connected.');
+    h.advance(3000);
+    assert.deepEqual(h.game.queued, [[0, h.clients[0]]], 'the role is queued; the engine takes it at its main menu');
+    assert.equal(h.state.screen, 'hidden');
+    h.ui.gameScreen('mainMenu');
+    assert.equal(h.state.screen, 'hidden', 'reaching the main menu before the match is not the end of the session');
+    h.ui.gameScreen('melee');
+    h.ui.gameScreen('mainMenu');
+    assert.equal(h.state.screen, 'lobby');
+});
+
 test('found while the game still downloads: the match starts when it is ready', () => {
     const h = harness();
     h.ui.activate('online');
@@ -294,6 +315,7 @@ test('without the engine hook, a second online match needs a reload', () => {
     h.clients[0].status('closed', 'Your opponent left the room.');
     h.ui.gameScreen('mainMenu');
     assert.equal(h.state.screen, 'hidden', 'the page waits a moment for the engine to mark the hook');
+    assert.ok(!h.calls.includes('reload:true'));
     h.advance(2100);
     assert.equal(h.state.screen, 'restart');
     assert.match(h.state.message.detail, /play online again/);

@@ -267,7 +267,8 @@
                 game.start(room.role, room.client);
                 return;
             }
-            if (game.hook() && game.screen() === 'mainMenu') {
+            if (game.hook()) {
+                // The engine takes the role at its main menu (at once, or when it is back there).
                 state.session = { room, role: room.role, hook: true, sawMelee: false };
                 show('hidden');
                 game.queue(room.role === 'host' ? 0 : 1, room.client);
@@ -1364,9 +1365,26 @@
             schedule();
         }
 
+        // The game's main menu goes back to its intro after two minutes without
+        // input. While the lobby covers it, a Left key (which the main menu
+        // ignores) keeps it there, so the match can start from it.
+        function keepAwake() {
+            if (overlay.hidden || state.engineScreen !== 'mainMenu' || !options.game.started()) return;
+            const send = type => {
+                const event = new win.KeyboardEvent(type, { key: 'ArrowLeft', code: 'ArrowLeft', bubbles: true, cancelable: true });
+                Object.defineProperty(event, 'keyCode', { get: () => 37 });
+                Object.defineProperty(event, 'which', { get: () => 37 });
+                event.uqmKeepAwake = true;
+                gameCanvas.dispatchEvent(event);
+            };
+            send('keydown');
+            win.setTimeout(() => send('keyup'), 150);
+        }
+        win.setInterval(keepAwake, options.keepAwakeMs || 30000);
+
         // Keyboard: the menu takes arrows, Enter and Esc while it is shown.
         document.addEventListener('keydown', event => {
-            if (event.ctrlKey || event.altKey || event.metaKey) return;
+            if (event.uqmKeepAwake || event.ctrlKey || event.altKey || event.metaKey) return;
             if (!overlay.hidden) {
                 const target = event.target;
                 const typing = target === input;
@@ -1393,7 +1411,7 @@
             }
         }, true);
         document.addEventListener('keyup', event => {
-            if (!overlay.hidden && (event.key === 'o' || event.key === 'O' || event.key === 'Enter')) event.stopPropagation();
+            if (!event.uqmKeepAwake && !overlay.hidden && (event.key === 'o' || event.key === 'O' || event.key === 'Enter')) event.stopPropagation();
         }, true);
         overlay.addEventListener('wheel', event => {
             if (state.screen !== 'lobby') return;
