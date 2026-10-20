@@ -6,7 +6,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
-const output=path.join(root,'test-results/browser');await fs.mkdir(output,{recursive:true});
+const output=path.resolve(root,process.env.COSMO_BROWSER_RESULTS_DIR||'test-results/browser');await fs.mkdir(output,{recursive:true});
 const executablePath=process.env.CHROME_BIN|| (process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':undefined);
 const expectedHash=createHash('sha256').update(await fs.readFile(path.join(root,'dist/cosmoclash.wasm'))).digest('hex');
 const scenarios=[];

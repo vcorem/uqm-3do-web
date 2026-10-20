@@ -55,7 +55,7 @@ and Shift. Online players both use the default controls locally.
 
 ## Reproduce locally
 
-Run from the repository root with Node.js 22+, Bash, Python 3 and Rust 1.85.1:
+Run from the repository root with Node.js 22.12+, Bash, Python 3 and Rust 1.85.1:
 
 ```sh
 npm ci
@@ -149,6 +149,7 @@ that a hosted CI run or public internet play has passed.
 | Native vs Wasm / independent Wasm | 36 matchup/difficulty cases, 12,960 frames, 13,198,168 comparisons; maximum native/Wasm difference 1.82e-12; independent Wasm instances exact |
 | Wasm ABI and repeated resets | Invalid inputs rejected without state changes; 1,000 resets with no linear-memory growth |
 | Existing UQM and shared-relay regression suite | 115 tests passed |
+| Patched development dependencies | Vite 7.3.7 / Vitest 4.1.11; 635 tests rerun successfully; full and runtime-only npm audits report zero findings (20 October 2026) |
 | Real browser solo/local play | AI, morphing, all three ships, frost shield, slime, audio output/mute, responsive menu, and removed debug-kill keys passed |
 | Real two-browser fleet match | 6,321 synchronized ticks, 212 verified checksums per peer, all three ships and four battle transitions; natural match finish, mutual rematch and disconnect passed |
 | Real two-browser latency/jitter | Relay delays of 0/30/5/70/15 ms; both peers verified eight checksums; motion, firing and disconnect passed |
@@ -160,7 +161,12 @@ Validated gameplay Wasm SHA-256:
 `de75c39465bbda999c89f4c8b0f750c3707024c28b4a629df5539b53aaeb714d`.
 
 The fixed audio preload/decode race and editable-input keyboard handling have
-regression coverage. The production bundle builds successfully; Vite reports a
+regression coverage. Development dependencies are updated to patched Vite 7.3.7
+and Vitest 4.1.11; Node types are an explicit locked dependency for clean builds.
+Vitest 4 requires constructable function mocks. Two upstream test files receive
+that mechanical adaptation; their exact originals remain under
+`cosmoclash/reference/upstream-tests/`, with the original SHA-256 manifest
+unchanged. Gameplay and AI source references remain unchanged. The production bundle builds successfully; Vite reports a
 size advisory for the Three.js bundle (approximately 675 kB before gzip).
 
 ## Remaining release validation

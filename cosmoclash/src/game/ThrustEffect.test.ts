@@ -2,27 +2,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock THREE since ThrustEffect creates Three.js objects
 vi.mock('three', () => {
-  const BufferAttribute = vi.fn().mockImplementation((array: Float32Array, itemSize: number) => ({
+  const BufferAttribute = vi.fn().mockImplementation(function (array: Float32Array, itemSize: number) { return {
     array,
     itemSize,
     needsUpdate: false,
-  }));
-  const BufferGeometry = vi.fn().mockImplementation(() => ({
+  }; });
+  const BufferGeometry = vi.fn().mockImplementation(function () { return {
     setAttribute: vi.fn(),
     dispose: vi.fn(),
-  }));
-  const ShaderMaterial = vi.fn().mockImplementation(() => ({
+  }; });
+  const ShaderMaterial = vi.fn().mockImplementation(function () { return {
     dispose: vi.fn(),
-  }));
+  }; });
   const Points = vi.fn().mockImplementation(
-    (geometry: unknown, material: unknown) => ({
+    function (geometry: unknown, material: unknown) { return {
       geometry,
       material,
-    })
+    }; }
   );
-  const Color = vi.fn().mockImplementation(() => ({
+  const Color = vi.fn().mockImplementation(function () { return {
     setRGB: vi.fn(),
-  }));
+  }; });
   return {
     BufferAttribute,
     BufferGeometry,

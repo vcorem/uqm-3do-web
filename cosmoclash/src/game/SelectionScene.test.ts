@@ -8,7 +8,7 @@ vi.mock('three', async () => {
 });
 
 vi.mock('three/addons/loaders/GLTFLoader.js', () => ({
-  GLTFLoader: vi.fn().mockImplementation(() => ({
+  GLTFLoader: vi.fn().mockImplementation(function () { return {
     load: vi.fn((_url: string, onLoad: (gltf: any) => void) => {
       const scene = {
         clone: () => ({
@@ -22,7 +22,7 @@ vi.mock('three/addons/loaders/GLTFLoader.js', () => ({
       };
       onLoad({ scene, animations: [] });
     }),
-  })),
+  }; }),
 }));
 
 import { SelectionScene, SelectionState } from './SelectionScene';

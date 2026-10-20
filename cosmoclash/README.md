@@ -14,7 +14,7 @@ the production battle loop does not invoke them.
 
 ## Build and play
 
-Requirements: Node.js 22+, Python 3, Bash, and Rust 1.85.1. From the repository root:
+Requirements: Node.js 22.12+, Python 3, Bash, and Rust 1.85.1. From the repository root:
 
 ```bash
 npm ci

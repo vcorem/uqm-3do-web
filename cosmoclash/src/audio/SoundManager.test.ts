@@ -12,7 +12,7 @@ const mockAudioContext = {
   decodeAudioData: vi.fn(async (buf: ArrayBuffer) => buf as unknown as AudioBuffer),
   destination: {}, state: 'suspended', resume: vi.fn(async () => {}),
 };
-const audioContextConstructor = vi.fn(() => mockAudioContext);
+const audioContextConstructor = vi.fn(function () { return mockAudioContext; });
 const mockFetch = vi.fn(async () => ({ arrayBuffer: async () => new ArrayBuffer(8) }));
 
 function deferred<T>() {
