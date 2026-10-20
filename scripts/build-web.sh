@@ -65,6 +65,9 @@ done
 cp COPYING "$output/COPYING.txt"
 cp wasm/netplay-client.js "$output/netplay-client.js"
 cp "$root/web/game-help/game-help.js" "$output/game-help.js"
+# In-frame start screen and online lobby, with art made from the game content.
+cp "$root/web/online/online-ui.js" "$output/online-ui.js"
+python3 "$root/web/online/build-art.py" --edition original --content "$root/sc2/content" --output "$output"
 python3 - "$output/engine-language.json" "${UQM_CORE:-rust}" <<'PY'
 import json, sys
 with open(sys.argv[1], 'w') as stream:

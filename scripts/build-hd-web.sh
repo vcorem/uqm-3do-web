@@ -116,6 +116,9 @@ cp content/notices/upstream/licenses/COPYING-UQM "$output/COPYING.txt"
 cp content/content-licenses.txt "$output/content-licenses.txt"
 cp "$root/hd/content-lock.json" "$output/content-lock.json"
 cp "$root/web/game-help/game-help.js" "$output/game-help.js"
+# In-frame start screen and online lobby, with art made from the HD content.
+cp "$root/web/online/online-ui.js" "$output/online-ui.js"
+python3 "$root/web/online/build-art.py" --edition hd --content "$source_dir/content" --output "$output"
 cp "$root/sc2/wasm/netplay-client.js" "$output/netplay-client.js"
 python3 - "$output/engine-language.json" "${UQM_CORE:-rust}" <<'PY'
 import json, sys
