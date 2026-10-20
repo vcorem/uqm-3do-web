@@ -162,7 +162,7 @@ async function keyboardFlow(edition, viewport) {
   await until(second, s => s.screen === 'lobby' && s.rooms === 1, 'second guest sees the room');
   await press(second, 'Enter');
   s = await until(host, s => s.log.includes('hook:0'), 'host starts through the main-menu hook', 20000);
-  assert.equal(s.overlay, false);
+  assert.equal(s.overlay, false, 'nothing covers the match');
   await until(second, s => s.gameScreen === 'melee', 'second guest match starts', 20000);
   await second.context.close();
   await until(host, s => s.screen === 'lobby', 'lobby after the second session', 20000);

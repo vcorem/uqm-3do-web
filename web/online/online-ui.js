@@ -1222,7 +1222,7 @@
             },
             focusGame() { win.setTimeout(() => { if (overlay.hidden) gameCanvas.focus(); }, 0); },
             sound: name => sounds.play(name),
-            changed: () => { dirty = true; schedule(); },
+            changed: current => { dirty = true; if (current.screen === 'hidden') showOverlay(false); schedule(); },
         });
         const state = controller.state;
 
@@ -1302,20 +1302,21 @@
             const ours = !active || active === document.body || active === gameCanvas || active === corner || overlay.contains(active);
             if (focused && !overlay.hidden && active !== focused && ours) focused.focus({ preventScroll: true });
         }
+        // The overlay goes away at once when a match or the game starts.
+        function showOverlay(visible) {
+            if (overlay.hidden !== visible) return;
+            overlay.hidden = !visible;
+            if (visible) { keepAwake(); return; }
+            // Give the keyboard back to the game.
+            if (document.activeElement && overlay.contains(document.activeElement)) gameCanvas.focus();
+            // No page text over a running match.
+            const keys = document.getElementById('keys-pop');
+            if (keys && state.session) keys.hidden = true;
+        }
         function render(time) {
             frame = 0;
             const visible = state.screen !== 'hidden';
-            if (overlay.hidden === visible) {
-                overlay.hidden = !visible;
-                if (visible) keepAwake();
-                if (!visible) {
-                    // Give the keyboard back to the game.
-                    if (document.activeElement && overlay.contains(document.activeElement)) gameCanvas.focus();
-                    // No page text over a running match.
-                    const keys = document.getElementById('keys-pop');
-                    if (keys && state.session) keys.hidden = true;
-                }
-            }
+            showOverlay(visible);
             corner.hidden = visible || state.session !== null || state.engineScreen !== 'mainMenu' || !options.game.started();
             announce();
             if (!visible) return;

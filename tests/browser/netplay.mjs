@@ -62,7 +62,9 @@ if (peerDist) {
 }
 
 async function readState(page) {
-  return page.evaluate(() => ({ ...Module.webNet.stats, connection: Module.webNet.state }));
+  // Module.webNet is the room connection from the match start on.
+  return page.evaluate(() => Module.webNet ? { ...Module.webNet.stats, connection: Module.webNet.state }
+    : { connection: online.state.room ? online.state.room.status : 'none', screen: online.state.screen });
 }
 async function waitState(pages, state, timeout = 45000) {
   await Promise.all(pages.map(page => page.waitForFunction(

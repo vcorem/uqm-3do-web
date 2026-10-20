@@ -49,7 +49,7 @@ page.on('crash', () => failures.push('page crashed'));
 const result = { edition, page: pageFolder, role, engine, browserVersion: browser.version(), origin, passed: false, started: new Date().toISOString() };
 const readState = () => page.evaluate(() => ({ ...Module.webNet.stats, connection: Module.webNet.state }));
 const waitState = (state, timeout = 120000) => page.waitForFunction(
-  state => Module.webNet.stats.engineState === state, state, { polling: 100, timeout });
+  state => Module.webNet && Module.webNet.stats.engineState === state, state, { polling: 100, timeout });
 async function enterUntil(state) {
   const deadline = Date.now() + 120000;
   while (Date.now() < deadline) {
