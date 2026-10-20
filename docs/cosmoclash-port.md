@@ -169,6 +169,12 @@ that mechanical adaptation; their exact originals remain under
 unchanged. Gameplay and AI source references remain unchanged. The production bundle builds successfully; Vite reports a
 size advisory for the Three.js bundle (approximately 675 kB before gzip).
 
+The existing general UQM workflow previously ran its C/Rust comparison tests
+before the original build generated `config_unix.h`. The original build step is
+now ordered before those comparisons. This corrects an inherited clean-checkout
+prerequisite; the separate full UQM workflow is not included in the Cosmo-specific
+validation totals above.
+
 ## Remaining release validation
 
 Two local browser processes and simulated latency exercise the complete client
