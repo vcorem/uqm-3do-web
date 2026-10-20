@@ -20,8 +20,8 @@
   {
     "source": "src/uqm/restart.rs",
     "symbol": "uqm_em_asm_3",
-    "bytes": 190,
-    "sha256": "86603734d38930d29c8456b08d9ec272eaa702b29fadb500faa1ee1978c6625a"
+    "bytes": 346,
+    "sha256": "119f76eadeb20dd958c41ec789d8b4074ef692393f1d273018e805eb486055bd"
   },
   {
     "source": "src/uqm/supermelee/netplay/checksum.rs",

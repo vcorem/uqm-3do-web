@@ -1453,35 +1453,29 @@ unsafe extern "C" fn announceWebNetplayHook() {
         &raw mut c2rust_lvalue as *mut ::core::ffi::c_char,
     );
 }
-unsafe extern "C" fn takePendingWebMelee() -> BOOLEAN {
+unsafe extern "C" fn pollWebNetplayPage() -> ::core::ffi::c_int {
     let mut c2rust_lvalue: [::core::ffi::c_char; 1] = ['\0' as ::core::ffi::c_char];
-    let mut role: ::core::ffi::c_int = emscripten_asm_const_int_sync_on_main_thread(
+    return emscripten_asm_const_int_sync_on_main_thread(
         ({
-            extern "C" { static uqm_em_asm_3: [::core::ffi::c_char; 190]; }
+            extern "C" { static uqm_em_asm_3: [::core::ffi::c_char; 346]; }
             &raw const uqm_em_asm_3 as *const ::core::ffi::c_char
         }),
         &raw mut c2rust_lvalue as *mut ::core::ffi::c_char,
     );
+}
+unsafe extern "C" fn takeWebNetplayRole(mut page: ::core::ffi::c_int) -> BOOLEAN {
+    let mut role: ::core::ffi::c_int = (page & 3 as ::core::ffi::c_int)
+        - 1 as ::core::ffi::c_int;
     if role != 0 as ::core::ffi::c_int && role != 1 as ::core::ffi::c_int {
         return BOOLEAN::FALSE;
     }
     webNetplayRole = role;
     netplayOptions.inputDelay = 3 as size_t;
-    GlobData.Game_state.CurrentActivity = C2Rust_Unnamed_2::SUPER_MELEE.0
-        as ::core::ffi::c_int as ACTIVITY;
     return BOOLEAN::TRUE;
 }
-unsafe extern "C" fn webNetplayHoldsMainMenu() -> BOOLEAN {
-    let mut c2rust_lvalue: [::core::ffi::c_char; 1] = ['\0' as ::core::ffi::c_char];
-    return BOOLEAN(
-        emscripten_asm_const_int_sync_on_main_thread(
-            ({
-                extern "C" { static uqm_em_asm_4: [::core::ffi::c_char; 138]; }
-            &raw const uqm_em_asm_4 as *const ::core::ffi::c_char
-            }),
-            &raw mut c2rust_lvalue as *mut ::core::ffi::c_char,
-        ) as ::core::ffi::c_uint,
-    );
+#[no_mangle]
+pub unsafe extern "C" fn TakeWebNetplayRole() -> BOOLEAN {
+    return takeWebNetplayRole(pollWebNetplayPage());
 }
 unsafe extern "C" fn playWebMelee() {
     FreeGameData();
@@ -1556,9 +1550,16 @@ unsafe extern "C" fn DoRestart(mut pMS: *mut MENU_STATE) -> BOOLEAN {
     static mut LastInputTime: TimeCount = 0;
     static mut InactTimeOut: TimeCount = 0;
     let mut TimeIn: TimeCount = GetTimeCounter();
+    let mut webPage: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
     ::core::ptr::write_volatile(&raw mut GamePaused, BOOLEAN::FALSE);
     if (*pMS).Initialized != 0 {
         Flash_process((*pMS).flashContext);
+    }
+    if (*pMS).Initialized as ::core::ffi::c_int != 0
+        && GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+            & C2Rust_Unnamed_2::CHECK_ABORT.0 as ::core::ffi::c_int == 0
+    {
+        webPage = pollWebNetplayPage();
     }
     if (*pMS).Initialized == 0 {
         if !(*pMS).hMusic.is_null() {
@@ -1619,7 +1620,9 @@ unsafe extern "C" fn DoRestart(mut pMS: *mut MENU_STATE) -> BOOLEAN {
         & C2Rust_Unnamed_2::CHECK_ABORT.0 as ::core::ffi::c_int != 0
     {
         return BOOLEAN::FALSE
-    } else if takePendingWebMelee().0 != 0 {
+    } else if takeWebNetplayRole(webPage).0 != 0 {
+        GlobData.Game_state.CurrentActivity = C2Rust_Unnamed_2::SUPER_MELEE.0
+            as ::core::ffi::c_int as ACTIVITY;
         setBrowserGameScreen(b"transition\0".as_ptr() as *const ::core::ffi::c_char);
         Flash_pause((*pMS).flashContext);
         return BOOLEAN::FALSE;
@@ -1736,6 +1739,7 @@ unsafe extern "C" fn DoRestart(mut pMS: *mut MENU_STATE) -> BOOLEAN {
         ::core::ffi::c_int,
     >(&raw const MouseButtonDown) != 0
     {
+        setBrowserGameScreen(b"transition\0".as_ptr() as *const ::core::ffi::c_char);
         Flash_pause((*pMS).flashContext);
         DoPopupWindow(
             GetStringAddress(
@@ -1760,9 +1764,10 @@ unsafe extern "C" fn DoRestart(mut pMS: *mut MENU_STATE) -> BOOLEAN {
         ScreenTransition(3 as ::core::ffi::c_int, ::core::ptr::null::<RECT>());
         UnbatchGraphics();
         Flash_continue((*pMS).flashContext);
+        setBrowserGameScreen(b"mainMenu\0".as_ptr() as *const ::core::ffi::c_char);
         LastInputTime = GetTimeCounter();
     } else {
-        if webNetplayHoldsMainMenu().0 != 0 {
+        if webPage & 4 as ::core::ffi::c_int != 0 {
             LastInputTime = GetTimeCounter();
         }
         if GetTimeCounter().wrapping_sub(LastInputTime) > InactTimeOut {

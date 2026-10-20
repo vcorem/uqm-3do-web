@@ -4504,10 +4504,17 @@ unsafe extern "C" fn MeleeOptionSelect(mut pMS: *mut MELEE_STATE) {
         0 => {
             let mut which_side: COUNT = 0;
             let mut confirmed: BOOLEAN = BOOLEAN::FALSE;
-            uqm_lua_checked!(DrawMeleeStatusMessage(
-                b"Open an Online Melee room in the browser launcher.\0".as_ptr()
-                    as *const ::core::ffi::c_char,
-            ), ());
+            if webNetplayRole >= 0 as ::core::ffi::c_int {
+                uqm_lua_checked!(DrawMeleeStatusMessage(
+                    b"Player sides are assigned by the online room.\0".as_ptr()
+                        as *const ::core::ffi::c_char,
+                ), ());
+            } else {
+                uqm_lua_checked!(DrawMeleeStatusMessage(
+                    b"For Online Melee, press O in the main menu.\0".as_ptr()
+                        as *const ::core::ffi::c_char,
+                ), ());
+            }
         }
         1 | 7 => {
             let mut which_side_0: COUNT = (if (*pMS).MeleeOption as ::core::ffi::c_int
@@ -5391,7 +5398,7 @@ pub unsafe extern "C" fn Melee_bootstrapSyncTeam(
                         .as_ptr() as *const ::core::ffi::c_char,
                     b"src/uqm/supermelee/melee.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
-                    3330 as ::core::ffi::c_int,
+                    3333 as ::core::ffi::c_int,
                     b"Melee_bootstrapSyncTeam\0".as_ptr() as *const ::core::ffi::c_char,
                 );
                 0 as ::core::ffi::c_int != 0

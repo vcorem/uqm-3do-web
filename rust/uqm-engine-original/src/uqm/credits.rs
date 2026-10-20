@@ -103,6 +103,7 @@ extern "C" {
     fn PlayMusic(MusicRef: MUSIC_REF, Continuous: BOOLEAN, Priority: BYTE);
     fn SetMenuSounds(sound_0: MENU_SOUND_FLAGS, sound_1: MENU_SOUND_FLAGS);
     static mut ScreenContext: CONTEXT;
+    fn TakeWebNetplayRole() -> BOOLEAN;
     fn abs(_: ::core::ffi::c_int) -> ::core::ffi::c_int;
     static mut sliderDisabled: BOOLEAN;
     static mut oscillDisabled: BOOLEAN;
@@ -242,6 +243,7 @@ pub struct CREDITS_INPUT_STATE {
     pub AllowSpeedChange: BOOLEAN,
     pub CloseWhenDone: BOOLEAN,
     pub CloseTimeOut: DWORD,
+    pub WebNetplayCanStart: BOOLEAN,
 }
 pub type MENU_SOUND_FLAGS = UWORD;
 pub type TimePeriod = DWORD;
@@ -1143,6 +1145,9 @@ unsafe extern "C" fn DoCreditsInput(mut pIS: *mut ::core::ffi::c_void) -> BOOLEA
     if CreditsRunning.0 != 0 {
         (*pCIS).CloseTimeOut = 0 as DWORD;
     }
+    if (*pCIS).WebNetplayCanStart.0 != 0 && TakeWebNetplayRole().0 != 0 {
+        return BOOLEAN::FALSE;
+    }
     if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
         & C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int != 0
         || (*pCIS).AllowCancel.0 != 0
@@ -1218,6 +1223,7 @@ pub unsafe extern "C" fn Credits(mut WithOuttakes: BOOLEAN) {
         AllowSpeedChange: BOOLEAN::FALSE,
         CloseWhenDone: BOOLEAN::FALSE,
         CloseTimeOut: 0,
+        WebNetplayCanStart: BOOLEAN::FALSE,
     };
     let mut screenRect: RECT = RECT {
         corner: POINT { x: 0, y: 0 },
@@ -1271,6 +1277,9 @@ pub unsafe extern "C" fn Credits(mut WithOuttakes: BOOLEAN) {
             (WithOuttakes.0 == 0) as ::core::ffi::c_int as ::core::ffi::c_uint,
         );
         cis.AllowSpeedChange = BOOLEAN::TRUE;
+        cis.WebNetplayCanStart = BOOLEAN(
+            (WithOuttakes.0 == 0) as ::core::ffi::c_int as ::core::ffi::c_uint,
+        );
         SetMenuSounds(
             0 as ::core::ffi::c_int as MENU_SOUND_FLAGS,
             0 as ::core::ffi::c_int as MENU_SOUND_FLAGS,

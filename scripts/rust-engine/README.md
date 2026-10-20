@@ -140,7 +140,12 @@ is reviewed.
 
 The 2026-10-20 main-menu online session hook (`restart.c` in both editions)
 and the HD status line fix (`hd/patches/0008-melee-network-status.patch`,
-`0009-web-netplay-menu-hook.patch`) were adopted this way.
+`0009-web-netplay-menu-hook.patch`) were adopted this way, and so was the
+review follow-up of the same day (one page call per menu frame, the
+Original credits that take a role, `gameScreen` in the menu's sub-screens,
+the NET... button text: Original `restart.c`, `restart.h`, `credits.c`,
+`melee.c`; HD 0008 and 0009). Its only new public symbol is Original's
+`TakeWebNetplayRole`.
 
 ## Validation performed during this migration
 

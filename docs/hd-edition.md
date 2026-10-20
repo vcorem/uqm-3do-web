@@ -25,7 +25,8 @@ the bottom team (in the 3DO layout it continues into the bottom border),
 erases the old message before it draws a new one, and shows the NETWORK
 CONTROL box for the remote side. `hd/patches/0009-web-netplay-menu-hook.patch`
 lets the page start an online session from the main menu
-(`Module.takePendingNetplayRole`), as in Original.
+(`Module.takePendingNetplayRole`), as in Original; see
+[engine-netplay-hook.md](engine-netplay-hook.md).
 
 ## Online Melee
 

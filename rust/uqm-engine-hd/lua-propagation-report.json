@@ -1,6 +1,6 @@
 {
   "changed_files": 274,
-  "checked_calls": 13436,
+  "checked_calls": 13437,
   "files": [
     {
       "file": "src/libs/callback/alarm.rs",
@@ -12726,7 +12726,7 @@
           "function": "nextControlType"
         },
         {
-          "checked_calls": 7,
+          "checked_calls": 8,
           "failure_return": "()",
           "function": "MeleeOptionSelect"
         },
