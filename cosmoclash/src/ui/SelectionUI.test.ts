@@ -39,6 +39,13 @@ describe('SelectionUI', () => {
     expect(root?.style.display).toBe('none');
   });
 
+  it('the next ship: the ships that the player has left', () => {
+    ui.showRemaining(2);
+    expect(document.querySelector('.selection-remaining')?.textContent).toBe('You have 2 ships left');
+    ui.showRemaining(1);
+    expect(document.querySelector('.selection-remaining')?.textContent).toBe('You have 1 ship left');
+  });
+
   it('destroy removes element from DOM', () => {
     ui.destroy();
     expect(document.getElementById('selection-ui')).toBeNull();

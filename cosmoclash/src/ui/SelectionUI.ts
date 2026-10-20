@@ -129,7 +129,7 @@ export class SelectionUI {
 
   showRemaining(count: number): void {
     if (count > 0) {
-      this.remainingEl.textContent = `${count} ship${count === 1 ? '' : 's'} remaining`;
+      this.remainingEl.textContent = `You have ${count} ship${count === 1 ? '' : 's'} left`;
       this.remainingEl.style.display = '';
     } else {
       this.remainingEl.style.display = 'none';
