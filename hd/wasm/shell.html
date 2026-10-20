@@ -319,9 +319,21 @@ if(!window.crossOriginIsolated||typeof SharedArrayBuffer==='undefined') fail('Us
 <script src="engine-loader.js"></script>
 <script>
 (function (template) {
+  // The loader's progress goes to the page's own loading display: the game menu's
+  // progress bar when the page has one (online.controller), else the status line and bar.
+  function showProgress(event) {
+    var menu=window.online && online.controller;
+    if(menu && typeof menu.progress==='function') {
+      menu.progress(event.total ? { label: event.label, fraction: event.fraction } : { label: event.label });
+      return;
+    }
+    var status=document.getElementById('status'), bar=document.getElementById('progress');
+    if(bar && event.total) { bar.max=event.total; bar.value=event.done; }
+    if(status) status.textContent=event.label;
+    else if(typeof Module.setStatus==='function') Module.setStatus(event.label);
+  }
   if (window.UQMEngineLoader) {
-    UQMEngineLoader.start({ module: Module, edition: 'hd', template: template,
-      status: document.getElementById('status'), progress: document.getElementById('progress') });
+    UQMEngineLoader.start({ module: Module, edition: 'hd', template: template, onProgress: showProgress });
     return;
   }
   // Without the loader the engine starts as before and downloads the data itself.

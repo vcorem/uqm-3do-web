@@ -12,21 +12,43 @@
    ArrayBuffer of the exact size. Emscripten's file system keeps views of that
    buffer (canOwn), and the loader drops its own reference when it hands it over.
 
-   Whenever Cache Storage, an ETag, the HEAD request or the quota is unavailable,
-   the engine starts exactly as before and downloads the file itself. */
+   Whenever Cache Storage, an ETag, the HEAD request or durable storage with
+   enough quota is unavailable, or a step does not answer in time, the engine
+   starts exactly as before and downloads the file itself.
+
+   While the data downloads or is read, the engine's Wasm is compiled (Module.instantiateWasm),
+   and on a first visit the engine script is fetched into the HTTP cache.
+
+   Progress goes to options.onProgress({ phase, label, done, total, fraction }):
+   phase 'download' (first visit), 'stored' (reading the stored copy) or
+   'starting' (label only). Without onProgress it goes to Module.setStatus.
+   Module.gameData describes the load while it runs and after it ends. */
 (function (root, factory) {
     'use strict';
-    const api = factory();
+    const api = factory(root);
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.UQMEngineLoader = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (scope) {
     'use strict';
     const DATA_FILE = 'uqm-debug.data';
     const CACHE_PREFIX = 'uqm-game-data-';
     const KEY_PATH = '/.uqm-game-data/';
     // Room for the cache's own records next to the stored copy.
     const QUOTA_MARGIN = 64 * 1024 * 1024;
+    // Private windows report a small quota (Chrome incognito 4-5 GiB on a 24 GB Mac, Safari
+    // 1000 MiB) and keep Cache Storage in memory. Normal profiles of Chrome, Firefox and Safari
+    // report 10 GiB or more, except on small disks.
+    const TEMPORARY_QUOTA = 6 * 1024 * 1024 * 1024;
+    const LIMITS = {
+        // The HEAD request and each Cache Storage call before the engine starts.
+        check: 10000,
+        // Reading the stored copy: the longest wait for its next part.
+        read: 60000,
+        // Storing a download: the longest wait after its last byte arrived.
+        store: 60000,
+    };
     const PROGRESS_INTERVAL_MS = 100;
+    const STEP_LIMIT = 16;
     const now = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 
     /** One version of the file. A weak validator still names one version. */
@@ -55,19 +77,40 @@
         return Math.round(bytes / 1e6);
     }
 
+    function percent(done, total) {
+        return Math.floor(done * 100 / total);
+    }
+
     function storedLabel(done, total) {
         return 'Loading game data saved in this browser: ' + megabytes(done) + ' / ' + megabytes(total) +
-            ' MB (' + Math.floor(done * 100 / total) + '%)';
+            ' MB (' + percent(done, total) + '%)';
+    }
+
+    function message(error) {
+        return String(error && error.message || error);
+    }
+
+    /** Rejects when `promise` has not settled after `ms`; the error names the step that stalled. */
+    function deadline(promise, ms, what) {
+        let timer;
+        const late = new Promise((_, reject) => {
+            timer = setTimeout(() => {
+                const error = new Error(what + ' did not answer within ' + Math.round(ms / 1000) + ' s');
+                error.timeout = true;
+                reject(error);
+            }, ms);
+        });
+        return Promise.race([Promise.resolve(promise), late]).finally(() => clearTimeout(timer));
     }
 
     function environment(options) {
-        const scope = typeof globalThis !== 'undefined' ? globalThis : {};
         let caches = options.caches;
         if (caches === undefined) {
             // Some private modes throw on access instead of leaving the API out.
             try { caches = scope.caches || null; } catch (_) { caches = null; }
         }
         const document = options.document || scope.document;
+        const help = scope.UQMHelp;
         return {
             fetch: options.fetch || (typeof scope.fetch === 'function' ? scope.fetch.bind(scope) : null),
             caches,
@@ -77,43 +120,59 @@
             base: options.base || (document && document.baseURI) || (scope.location && scope.location.href),
             TransformStream: options.TransformStream || scope.TransformStream,
             Response: options.Response || scope.Response,
+            AbortController: options.AbortController || scope.AbortController || null,
+            WebAssembly: options.WebAssembly !== undefined ? options.WebAssembly : scope.WebAssembly || null,
+            formatProgress: options.formatProgress !== undefined ? options.formatProgress
+                : (help && typeof help.formatProgress === 'function' ? help.formatProgress : null),
+            limits: Object.assign({}, LIMITS, options.limits),
         };
     }
 
-    /** Feeds the page's progress bar and status text. Downloads use Emscripten's own
-        wording, so the page formats them exactly like its own download (UQMHelp.formatProgress). */
-    function reporter(options, module) {
+    /** Feeds the page's loading display and records the steps in Module.gameData. */
+    function reporter(options, module, env, result) {
         let last = -Infinity;
-        function text(message) {
-            if (options.status) options.status.textContent = message;
-            else if (typeof module.setStatus === 'function') module.setStatus(message);
+        let lastPhase = null;
+        function downloadLabel(done, total) {
+            // The page's own wording for a download (UQMHelp.formatProgress), so both paths read alike.
+            const formatted = env.formatProgress && env.formatProgress('(' + done + '/' + total + ')');
+            return formatted && formatted.label ? formatted.label
+                : 'Downloading game data: ' + megabytes(done) + ' / ' + megabytes(total) + ' MB (' + percent(done, total) + '%)';
+        }
+        function emit(event) {
+            result.loading = event;
+            if ((event.phase !== lastPhase || event.done === event.total) && result.steps.length < STEP_LIMIT) {
+                result.steps.push({ phase: event.phase, label: event.label, at: Math.round(now()) });
+            }
+            lastPhase = event.phase;
+            if (typeof options.onProgress === 'function') {
+                try { options.onProgress(event); } catch (_) { /* The display is optional; loading goes on. */ }
+                return;
+            }
+            if (typeof module.setStatus !== 'function') return;
+            // Without a page callback: Emscripten's wording for a download, which the page formats itself.
+            module.setStatus(event.phase === 'download' ? 'Downloading data... (' + event.done + '/' + event.total + ')' : event.label);
         }
         return {
             progress(phase, done, total) {
                 const time = now();
-                if (done < total && time - last < PROGRESS_INTERVAL_MS) return;
+                if (phase === lastPhase && done < total && time - last < PROGRESS_INTERVAL_MS) return;
                 last = time;
-                if (phase === 'download' && typeof module.setStatus === 'function') {
-                    module.setStatus('Downloading data... (' + done + '/' + total + ')');
-                    return;
-                }
                 // Keep the dependency counter from taking over the byte progress bar.
                 module.byteProgress = true;
-                if (options.progress) {
-                    options.progress.max = total;
-                    options.progress.value = done;
-                }
-                text(phase === 'download' ? 'Downloading game data: ' + megabytes(done) + ' / ' + megabytes(total) + ' MB'
-                    : storedLabel(done, total));
+                emit({ phase, done, total, fraction: done / total,
+                    label: phase === 'download' ? downloadLabel(done, total) : storedLabel(done, total) });
             },
-            text,
+            text(phase, label) {
+                emit({ phase, label });
+            },
         };
     }
 
     /** Reads a response body into one ArrayBuffer of exactly `expected` bytes. */
-    async function readBody(response, expected, onProgress) {
+    async function readBody(response, expected, onProgress, stallMs) {
+        const wait = promise => (stallMs ? deadline(promise, stallMs, 'Reading the stored copy') : promise);
         if (!response.body || typeof response.body.getReader !== 'function') {
-            const buffer = await response.arrayBuffer();
+            const buffer = await wait(response.arrayBuffer());
             if (buffer.byteLength !== expected) throw new Error('the stored copy has ' + buffer.byteLength + ' of ' + expected + ' bytes');
             onProgress(expected, expected);
             return buffer;
@@ -124,7 +183,7 @@
         let offset = 0;
         try {
             for (;;) {
-                const { done, value } = await reader.read();
+                const { done, value } = await wait(reader.read());
                 if (done) break;
                 if (offset + value.byteLength > expected) throw new Error('the stored copy is larger than ' + expected + ' bytes');
                 if (!offset && value.byteLength === expected && value.byteOffset === 0 && value.buffer.byteLength === expected) {
@@ -154,6 +213,8 @@
         const etag = normalizeETag(response.headers.get('ETag')) || announced.etag;
         const total = byteCount(response.headers.get('Content-Length')) || announced.size;
         let received = 0;
+        let bodyEnded;
+        const ended = new Promise(resolve => { bodyEnded = resolve; });
         const counted = response.body.pipeThrough(new env.TransformStream({
             transform(chunk, controller) {
                 received += chunk.byteLength;
@@ -164,15 +225,19 @@
             flush() {
                 // An error here makes the put fail, so a short copy is never stored.
                 if (received !== total) throw new Error('the download ended after ' + received + ' of ' + total + ' bytes');
+                bodyEnded();
             },
         }));
         const key = cacheKey(edition, etag, url);
-        await cache.put(key, new env.Response(counted, { headers: {
+        const put = cache.put(key, new env.Response(counted, { headers: {
             'Content-Type': 'application/octet-stream',
             'X-UQM-ETag': etag,
             'X-UQM-Size': String(total),
             'X-UQM-Stored': new Date().toISOString(),
         } }));
+        // A slow network waits as long as Emscripten's own download would. A storage backend
+        // that does not finish once every byte has arrived gives way to the normal path.
+        await Promise.race([put, ended.then(() => deadline(put, env.limits.store, 'Storing the game data'))]);
         return { key, etag, size: total };
     }
 
@@ -182,15 +247,25 @@
         return keys.length - (keys.some(request => request.url === keep) ? 1 : 0);
     }
 
-    async function hasRoom(storage, bytes) {
-        if (!storage || typeof storage.estimate !== 'function') return true;
+    /** null when the copy may be stored, else the reason it may not. */
+    async function storageProblem(storage, bytes, limit) {
+        if (!storage || typeof storage.estimate !== 'function') return null;
+        let estimate;
+        let persisted = false;
         try {
-            const estimate = await storage.estimate();
-            if (!(estimate && estimate.quota > 0)) return true;
-            return estimate.quota - (estimate.usage || 0) >= bytes + QUOTA_MARGIN;
+            estimate = await deadline(storage.estimate(), limit, 'The storage estimate');
+            if (typeof storage.persisted === 'function') persisted = await deadline(storage.persisted(), limit, 'The storage check');
         } catch (_) {
-            return true;
+            return null;
         }
+        if (!(estimate && estimate.quota > 0)) return null;
+        if (!persisted && estimate.quota < TEMPORARY_QUOTA) {
+            return 'browser storage looks temporary here (a private window keeps it in memory)';
+        }
+        if (estimate.quota - (estimate.usage || 0) < bytes + QUOTA_MARGIN) {
+            return 'there is not enough browser storage for ' + megabytes(bytes) + ' MB';
+        }
+        return null;
     }
 
     function requestPersistence(storage, say) {
@@ -202,11 +277,83 @@
             .catch(() => {});
     }
 
-    /** Resolves to { source: 'cache' | 'download', buffer, ... } or { source: 'network', reason }. */
-    async function load(options, env, report, say) {
+    function engineScripts(template) {
+        return template && template.content ? Array.from(template.content.querySelectorAll('script')) : [];
+    }
+
+    /** The engine script, and its Wasm beside it (emcc names them uqm-debug.js and uqm-debug.wasm). */
+    function engineFiles(env, template) {
+        for (const script of engineScripts(template)) {
+            const src = typeof script.getAttribute === 'function' ? script.getAttribute('src') : null;
+            if (!src) continue;
+            try {
+                const js = new URL(src, env.base);
+                if (!/\.js$/.test(js.pathname)) continue;
+                const wasm = new URL(js.href);
+                wasm.pathname = wasm.pathname.replace(/\.js$/, '.wasm');
+                return { js: js.href, wasm: wasm.href };
+            } catch (_) { /* Not a URL: the engine fetches its own files. */ }
+        }
+        return null;
+    }
+
+    /** Emscripten asks for its script only after the data. On a first visit, fetch it during the
+        download, so the engine gets it from the HTTP cache (a 304 answer) later. */
+    function warmScript(env, url) {
+        return Promise.resolve().then(() => env.fetch(url, { credentials: 'same-origin' })).then(async response => {
+            if (!response.ok || !response.body) return 0;
+            // Read to the end, so the browser keeps the whole response; nothing is kept here.
+            const reader = response.body.getReader();
+            let bytes = 0;
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) return bytes;
+                bytes += value.byteLength;
+            }
+        }).catch(() => 0);
+    }
+
+    /** Emscripten fetches and compiles its Wasm only after the data. Compile it now, while the data
+        downloads or is read, and give the compiled module to Emscripten (Module.instantiateWasm).
+        Safari's HTTP cache keeps no file this large, so a warm-up fetch would not help there. */
+    function compileEarly(env, module, url, result, say) {
+        const wasm = env.WebAssembly;
+        if (!url || !wasm || typeof wasm.compileStreaming !== 'function' || typeof wasm.instantiateStreaming !== 'function' ||
+            module.instantiateWasm) return;
+        const fetchWasm = () => env.fetch(url, { credentials: 'same-origin' });
+        const begin = now();
+        const state = result.wasm = { url, state: 'compiling' };
+        const compiled = wasm.compileStreaming(Promise.resolve().then(fetchWasm));
+        compiled.then(() => Object.assign(state, { state: 'compiled', compileMs: Math.round(now() - begin) }),
+            error => Object.assign(state, { state: 'failed', reason: message(error) }));
+        module.instantiateWasm = function (imports, receiveInstance) {
+            compiled.then(compiledModule => wasm.instantiate(compiledModule, imports).then(instance => ({ instance, module: compiledModule })))
+                .catch(error => {
+                    // Emscripten's own way: fetch and compile it again.
+                    say('the Wasm compiled during loading could not start (' + message(error) + '); loading it again');
+                    state.state = 'reloaded';
+                    return wasm.instantiateStreaming(fetchWasm(), imports);
+                })
+                .then(output => {
+                    state.used = true;
+                    receiveInstance(output.instance, output.module);
+                }, error => {
+                    const text = 'The game engine could not start: ' + message(error);
+                    say(text);
+                    if (typeof module.onAbort === 'function') module.onAbort(text);
+                });
+            // Emscripten waits for receiveInstance.
+            return {};
+        };
+    }
+
+    /** Fills `result` (Module.gameData) and `held.buffer`; source 'cache', 'download' or 'network'. */
+    async function load(options, env, report, say, result, held) {
         const edition = options.edition;
+        const module = options.module;
         const url = new URL(options.dataFile || DATA_FILE, env.base).href;
-        const result = { source: 'network', edition, url, stored: false, timings: {} };
+        const limit = env.limits.check;
+        result.url = url;
         const begin = now();
         const mark = name => { result.timings[name] = Math.round(now() - begin); };
         const network = reason => Object.assign(result, { source: 'network', stored: false, reason });
@@ -215,10 +362,13 @@
             return network('Cache Storage is unavailable in this browser');
         }
         let head;
+        const abort = env.AbortController ? new env.AbortController() : null;
         try {
-            head = await env.fetch(url, { method: 'HEAD', cache: 'no-store', credentials: 'same-origin' });
+            head = await deadline(env.fetch(url, { method: 'HEAD', cache: 'no-store', credentials: 'same-origin',
+                signal: abort ? abort.signal : undefined }), limit, 'The version check');
         } catch (error) {
-            return network('the version check failed: ' + (error && error.message || error));
+            if (abort) abort.abort();
+            return network('the version check failed: ' + message(error));
         }
         mark('head');
         if (!head.ok) return network('the version check answered HTTP ' + head.status);
@@ -227,45 +377,56 @@
         if (!etag) return network('the server sent no ETag');
         if (!size) return network('the server sent no size');
         Object.assign(result, { etag, size });
-        let cache;
-        try {
-            cache = await env.caches.open(cacheName(edition));
-        } catch (error) {
-            return network('Cache Storage is unavailable: ' + (error && error.message || error));
-        }
         const key = cacheKey(edition, etag, url);
-        let stored = await cache.match(key);
+        let cache;
+        let stored;
+        try {
+            cache = await deadline(env.caches.open(cacheName(edition)), limit, 'Cache Storage');
+            stored = await deadline(cache.match(key), limit, 'Cache Storage');
+        } catch (error) {
+            return network('Cache Storage is unavailable: ' + message(error));
+        }
         mark('match');
         if (stored && stored.headers.get('X-UQM-Size') !== String(size)) {
             say('the stored copy has the wrong size; downloading it again');
-            await cache.delete(key);
             stored = null;
         }
+        const files = engineFiles(env, options.template);
         if (stored) {
             result.source = 'cache';
+            compileEarly(env, module, files && files.wasm, result, say);
             // Older versions normally left already; never let them linger.
             removeOtherVersions(cache, key).catch(() => {});
         } else {
-            // Free the old version first, so an update never needs room for two copies.
-            result.removed = await removeOtherVersions(cache, key);
-            if (!await hasRoom(env.storage, size)) return network('there is not enough browser storage for ' + megabytes(size) + ' MB');
+            try {
+                // Free the old version first (and a copy of the wrong size), so an update never needs room for two copies.
+                await deadline(cache.delete(key), limit, 'Cache Storage');
+                result.removed = await deadline(removeOtherVersions(cache, key), limit, 'Cache Storage');
+            } catch (error) {
+                return network('Cache Storage is unavailable: ' + message(error));
+            }
+            const problem = await storageProblem(env.storage, size, limit);
+            if (problem) return network(problem);
+            if (files) warmScript(env, files.js);
+            compileEarly(env, module, files && files.wasm, result, say);
             let saved;
             try {
                 saved = await downloadToCache(env, url, cache, edition, { etag, size }, (done, total) => report.progress('download', done, total));
+                mark('download');
+                stored = await deadline(cache.match(saved.key), limit, 'Cache Storage');
             } catch (error) {
-                return network('the download could not be stored: ' + (error && error.message || error));
+                return network('the download could not be stored: ' + message(error));
             }
-            mark('download');
             Object.assign(result, { source: 'download', etag: saved.etag, size: saved.size, stored: true });
-            stored = await cache.match(saved.key);
             if (!stored) return network('the stored copy disappeared');
             requestPersistence(env.storage, say);
         }
         try {
-            result.buffer = await readBody(stored, result.size, (done, total) => report.progress('stored', done, total));
+            held.buffer = await readBody(stored, result.size, (done, total) => report.progress('stored', done, total), env.limits.read);
         } catch (error) {
-            await cache.delete(cacheKey(edition, result.etag, url)).catch(() => {});
-            return network('the stored copy could not be read: ' + (error && error.message || error));
+            // A copy that reads wrong is removed; a slow one is kept for the next visit.
+            if (!error.timeout) cache.delete(cacheKey(edition, result.etag, url)).catch(() => {});
+            return network('the stored copy could not be read: ' + message(error));
         }
         mark('read');
         return result;
@@ -273,7 +434,7 @@
 
     /** Starts the scripts that emcc wrote into the page's inert template. */
     function startEngine(template, document) {
-        const inert = template && template.content ? Array.from(template.content.querySelectorAll('script')) : [];
+        const inert = engineScripts(template);
         if (!inert.length) throw new Error('The page has no engine script.');
         for (const source of inert) {
             const script = document.createElement('script');
@@ -286,22 +447,25 @@
         }
     }
 
-    /** options: { module, edition, template, status?, progress?, dataFile?, and test seams }. */
+    /** options: { module, edition, template, onProgress?, dataFile?, limits?, and test seams }. */
     function start(options) {
         const module = options.module;
         const env = environment(options);
-        const say = message => {
-            try { (module.printErr || module.print || console.log)('Game data: ' + message); } catch (_) { /* Logging is optional. */ }
+        const say = text => {
+            try { (module.printErr || module.print || console.log)('Game data: ' + text); } catch (_) { /* Logging is optional. */ }
         };
-        const report = reporter(options, module);
+        // Module.gameData: what the page and the tests can read while the data loads and afterwards.
+        const result = { source: 'pending', edition: options.edition, stored: false, timings: {}, steps: [], loading: null };
+        module.gameData = result;
+        const held = { buffer: null };
+        const report = reporter(options, module, env, result);
         const begin = now();
-        return load(options, env, report, say).catch(error => ({
-            source: 'network', edition: options.edition, reason: String(error && error.message || error),
-        })).then(result => {
-            let buffer = result.buffer || null;
-            delete result.buffer;
+        return load(options, env, report, say, result, held).catch(error => Object.assign(result, {
+            source: 'network', stored: false, reason: message(error),
+        })).then(() => {
+            let buffer = held.buffer;
+            held.buffer = null;
             result.ms = Math.round(now() - begin);
-            module.gameData = result;
             if (buffer) {
                 const expected = result.url;
                 module.getPreloadedPackage = function (name, packageSize) {
@@ -321,7 +485,7 @@
                 say(result.source === 'cache'
                     ? 'loaded ' + megabytes(result.size) + ' MB saved in this browser (' + result.etag + ') in ' + result.ms + ' ms'
                     : 'downloaded ' + megabytes(result.size) + ' MB and saved it in this browser for the next visit');
-                report.text('Starting the game…');
+                report.text('starting', 'Starting the game…');
             } else {
                 say('downloading it the usual way: ' + result.reason);
             }
@@ -332,12 +496,43 @@
             return result;
         }).catch(error => {
             // Only a page without its engine template gets here; say so instead of waiting forever.
-            const message = String(error && error.message || error);
-            say(message);
-            if (typeof module.onAbort === 'function') module.onAbort(message);
-            return { source: 'error', reason: message };
+            const text = message(error);
+            say(text);
+            if (typeof module.onAbort === 'function') module.onAbort(text);
+            return Object.assign(result, { source: 'error', reason: text });
         });
     }
 
-    return { start, startEngine, readBody, normalizeETag, byteCount, cacheName, cacheKey, storedLabel, DATA_FILE };
+    async function storedCaches(caches) {
+        return (await caches.keys()).filter(name => name.indexOf(CACHE_PREFIX) === 0);
+    }
+
+    /** The stored copies in this browser: [{ edition, etag }]. Reads no game data. */
+    async function storedCopies(options = {}) {
+        const caches = environment(options).caches;
+        if (!caches) return [];
+        const copies = [];
+        for (const name of await storedCaches(caches)) {
+            const cache = await caches.open(name);
+            for (const request of await cache.keys()) {
+                const etag = decodeURIComponent(new URL(request.url).pathname.split('/').pop());
+                copies.push({ edition: name.slice(CACHE_PREFIX.length), etag });
+            }
+        }
+        return copies;
+    }
+
+    /** Frees the space of the stored game data (one edition, or every edition) and keeps the
+        saved games. The next visit downloads the data again. Resolves to the editions removed. */
+    async function removeStoredData(edition, options = {}) {
+        const caches = environment(options).caches;
+        if (!caches) return 0;
+        const names = edition ? [cacheName(edition)] : await storedCaches(caches);
+        let removed = 0;
+        for (const name of names) if (await caches.delete(name)) removed++;
+        return removed;
+    }
+
+    return { start, startEngine, readBody, normalizeETag, byteCount, cacheName, cacheKey, storedLabel,
+        storedCopies, removeStoredData, DATA_FILE, LIMITS, TEMPORARY_QUOTA };
 });
