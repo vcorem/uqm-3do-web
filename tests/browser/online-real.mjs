@@ -58,7 +58,7 @@ try {
   result.hook = await page.evaluate(() => Module.supportsNetplayHook === true);
   await shot(s.screen === 'lobby' ? 'lobby-over-game' : 'restart-over-game');
   if (process.env.UQM_KEEP_AWAKE_CHECK === '1') {
-    // The main menu's two-minute inactivity timeout must not run while the lobby covers it.
+    // The main menu's inactivity timeout (20 s, or 2 min with music) must not run while the lobby covers it.
     const screens = new Set();
     for (let t = 0; t < 150; t += 5) { await sleep(5000); screens.add(await page.evaluate(() => Module.gameScreen)); }
     result.screensUnderLobby = [...screens];

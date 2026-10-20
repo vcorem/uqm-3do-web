@@ -45,9 +45,10 @@ sessions, when `Module.gameScreen === 'mainMenu'` and
 the role once (if the engine is away from its main menu at that moment, the
 role waits until it is back there). A session ends when `Module.gameScreen`
 goes from `melee` back to `mainMenu`. Without the hook the page offers a
-reload. The main menu goes back to the intro after two minutes without input;
-while the lobby covers it, the page sends a Left key to the game canvas every
-30 s (the main menu ignores Left, but it counts as input).
+reload. The Original main menu goes back to the intro after 20 s without
+input (2 minutes with its music); while the lobby covers it, the page sends a
+Left key to the game canvas every 8 s (the main menu ignores Left, but it
+counts as input).
 
 Lobby (B): `UQMNetplay.watchLobby({ edition, onRooms, onStatus })` gives the
 room list (`{ id, name, engine, created }`, newest first); `onStatus` states

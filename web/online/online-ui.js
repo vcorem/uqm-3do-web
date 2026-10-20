@@ -613,13 +613,15 @@
             ctx.fillRect(x0, y0, Math.round((x + w) * k) - x0, Math.round((y + h) * k) - y0);
         }
         // DrawStarConBox (util.c): top/left lines, then bottom/right lines, then the inside.
+        // HD lines are half a logical pixel (two screen pixels) wide.
         function starconBox(x, y, w, h, border, tl, br, fill) {
-            const p = 1 / (a > 1 ? 2 : 1);
+            const p = a > 1 ? 0.5 : 1;
             for (let i = 0; i < border; i++) {
-                rect(x + i, y + i, w - 2 * i, p, tl);
-                rect(x + i, y + i, p, h - 2 * i, tl);
-                rect(x + w - 1 - i + (1 - p), y + 1 + i, p, h - 1 - 2 * i, br);
-                rect(x + i, y + h - 1 - i + (1 - p), w - 2 * i, p, br);
+                const o = i * p;
+                rect(x + o, y + o, w - 2 * o, p, tl);
+                rect(x + o, y + o, p, h - 2 * o, tl);
+                rect(x + w - o - p, y + o + p, p, h - 2 * o - p, br);
+                rect(x + o, y + h - o - p, w - 2 * o, p, br);
             }
             if (fill) rect(x + border * p, y + border * p, w - 2 * border * p, h - 2 * border * p, fill);
         }
@@ -1159,7 +1161,7 @@
             get(key) { try { return options.storage().getItem(key); } catch (_) { return null; } },
             set(key, value) { try { options.storage().setItem(key, value); } catch (_) { /* Private mode. */ } },
         };
-        let renderer = null, frame = 0, hits = new Map(), hitSignature = '', input = null, lastScreen = null;
+        let renderer = null, frame = 0, hits = new Map(), hitSignature = '', input = null, dirty = true, lastDraw = -1e9;
         const sounds = createSounds(win);
         const startedAt = win.performance ? win.performance.now() : Date.now();
 
@@ -1199,7 +1201,7 @@
             },
             focusGame() { win.setTimeout(() => { if (overlay.hidden) gameCanvas.focus(); }, 0); },
             sound: name => sounds.play(name),
-            changed: () => schedule(),
+            changed: () => { dirty = true; schedule(); },
         });
         const state = controller.state;
 
@@ -1284,6 +1286,7 @@
             const visible = state.screen !== 'hidden';
             if (overlay.hidden === visible) {
                 overlay.hidden = !visible;
+                if (visible) keepAwake();
                 if (!visible) {
                     // Give the keyboard back to the game.
                     if (document.activeElement && overlay.contains(document.activeElement)) gameCanvas.focus();
@@ -1293,16 +1296,19 @@
                 }
             }
             corner.hidden = visible || state.session !== null || state.engineScreen !== 'mainMenu' || !options.game.started();
-            if (lastScreen !== state.screen) { lastScreen = state.screen; }
             announce();
             if (!visible) return;
             if (!renderer) {
                 drawFallback();
                 return;
             }
-            const t = (time || 0) - startedAt;
-            const regions = renderer.draw(state, t);
-            syncRegions(regions);
+            // Changes are drawn at once; the small animations (pulse, cursor, dots) at about 20 frames a second.
+            const now = time || 0;
+            if (dirty || now - lastDraw >= 50) {
+                dirty = false;
+                lastDraw = now;
+                syncRegions(renderer.draw(state, now - startedAt));
+            }
             if (animating()) schedule();
         }
         function drawFallback() {
@@ -1333,6 +1339,7 @@
                 },
             });
             drawCorner(false);
+            dirty = true;
             schedule();
         }).catch(error => {
             if (options.onLog) options.onLog(String(error && error.message || error));
@@ -1340,7 +1347,6 @@
         });
         // Without the art (offline page copy, blocked request) the menu still works as plain buttons.
         function useHtmlFallback() {
-            overlay.classList.add('plain');
             renderer = {
                 draw(s) {
                     const ctx = canvas.getContext('2d');
@@ -1365,9 +1371,9 @@
             schedule();
         }
 
-        // The game's main menu goes back to its intro after two minutes without
-        // input. While the lobby covers it, a Left key (which the main menu
-        // ignores) keeps it there, so the match can start from it.
+        // The game's main menu goes back to its intro after 20 s (2 min with its
+        // music) without input. While the lobby covers it, a Left key (which the
+        // main menu ignores) keeps it there, so the match can start from it.
         function keepAwake() {
             if (overlay.hidden || state.engineScreen !== 'mainMenu' || !options.game.started()) return;
             const send = type => {
@@ -1380,13 +1386,16 @@
             send('keydown');
             win.setTimeout(() => send('keyup'), 150);
         }
-        win.setInterval(keepAwake, options.keepAwakeMs || 30000);
+        win.setInterval(keepAwake, options.keepAwakeMs || 8000);
 
         // Keyboard: the menu takes arrows, Enter and Esc while it is shown.
         document.addEventListener('keydown', event => {
             if (event.uqmKeepAwake || event.ctrlKey || event.altKey || event.metaKey) return;
             if (!overlay.hidden) {
                 const target = event.target;
+                // Page controls outside the frame keep their keys.
+                const active = document.activeElement;
+                if (active && active !== document.body && active !== gameCanvas && active !== corner && !overlay.contains(active)) return;
                 const typing = target === input;
                 if (typing) {
                     if (event.key === 'Enter') { event.preventDefault(); controller.activate('open'); return; }
