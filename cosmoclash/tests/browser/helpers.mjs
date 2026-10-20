@@ -6,6 +6,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import zlib from 'node:zlib';
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const executablePath = process.env.CHROME_BIN || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : undefined);
@@ -61,6 +62,69 @@ export const recordKeyboardLock = () => {
   }
 };
 
+// ---------------------------------------------------------------- screenshots
+/**
+ * After a new viewport size: the page draws two frames, then a short wait. A
+ * fixed wait alone sometimes gave an old frame on a busy computer.
+ */
+export async function settle(page, ms = 150) {
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForTimeout(ms);
+}
+/** The pixels of an 8-bit RGB or RGBA PNG (as Chrome makes them for screenshots). */
+export function decodePng(bytes) {
+  let offset = 8, width = 0, height = 0, depth = 0, colour = 0, interlace = 0;
+  const data = [];
+  while (offset < bytes.length) {
+    const length = bytes.readUInt32BE(offset), type = bytes.toString('latin1', offset + 4, offset + 8), chunk = bytes.subarray(offset + 8, offset + 8 + length);
+    if (type === 'IHDR') { width = chunk.readUInt32BE(0); height = chunk.readUInt32BE(4); depth = chunk[8]; colour = chunk[9]; interlace = chunk[12]; }
+    else if (type === 'IDAT') data.push(chunk);
+    else if (type === 'IEND') break;
+    offset += 12 + length;
+  }
+  if (depth !== 8 || (colour !== 2 && colour !== 6) || interlace) throw new Error(`Unsupported PNG (depth ${depth}, colour type ${colour}, interlace ${interlace})`);
+  const bpp = colour === 6 ? 4 : 3, stride = width * bpp, raw = zlib.inflateSync(Buffer.concat(data)), pixels = Buffer.alloc(stride * height);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)], line = y * (stride + 1) + 1, out = y * stride;
+    for (let x = 0; x < stride; x++) {
+      const a = x >= bpp ? pixels[out + x - bpp] : 0, b = y ? pixels[out - stride + x] : 0, c = y && x >= bpp ? pixels[out - stride + x - bpp] : 0;
+      let value = raw[line + x];
+      if (filter === 1) value += a;
+      else if (filter === 2) value += b;
+      else if (filter === 3) value += (a + b) >> 1;
+      else if (filter === 4) { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); value += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
+      pixels[out + x] = value & 255;
+    }
+  }
+  return { width, height, bpp, pixels };
+}
+/**
+ * A screenshot of an old compositor frame after a new viewport size can have
+ * the top of the page again at the bottom: the last N rows are the same as the
+ * first N rows. Returns N, or 0. Rows that are all the same (a plain
+ * background, the black bars) do not count: only a strip with something on it.
+ */
+export function repeatsTop(bytes, min = 24) {
+  const { width, height, bpp, pixels } = decodePng(bytes);
+  const stride = width * bpp;
+  const rows = Array.from({ length: height }, (_, y) => createHash('sha1').update(pixels.subarray(y * stride, (y + 1) * stride)).digest('hex'));
+  for (let n = Math.floor(height / 2); n >= min; n--) {
+    let same = true, varied = false;
+    for (let y = 0; y < n && same; y++) { same = rows[y] === rows[height - n + y]; varied ||= rows[y] !== rows[0]; }
+    if (same && varied) return n;
+  }
+  return 0;
+}
+/** Saves a screenshot, and takes it again when it shows an old frame (repeatsTop). */
+export async function screenshot(page, file, tries = 5) {
+  for (let n = 1; ; n++) {
+    const bytes = await page.screenshot();
+    if (!repeatsTop(bytes)) { await fs.writeFile(file, bytes); return file; }
+    if (n >= tries) throw new Error(`${path.basename(file)}: the bottom of the screenshot repeats its top ${tries} times (an old frame)`);
+    await settle(page, 300);
+  }
+}
+
 // ---------------------------------------------------------------- the next ship (screenshots and checks)
 export const SIZES = [[1280, 720], [1024, 768], [1920, 1080]];
 /**
@@ -74,27 +138,13 @@ export async function nextShipShots(prefix) {
   for (const name of await fs.readdir(dir)) if (name.startsWith(prefix + '-')) await fs.rm(path.join(dir, name), { force: true });
   let counter = 0;
   const files = [];
-  /** Saves the page at the three sizes (check runs at each size first) and goes back to the first size. */
-  async function save(page, name, { sizes = SIZES, check, back = [1280, 720] } = {}) {
-    const n = String(++counter).padStart(2, '0');
-    for (const [width, height] of sizes) {
-      await page.setViewportSize({ width, height });
-      await page.waitForTimeout(150);
-      assert.deepEqual(await textOutside(page), [], `text outside the game frame (${name} ${width}x${height})`);
-      if (check) await check(width, height);
-      const file = path.join(dir, `${prefix}-${n}-${name}-${width}x${height}.png`);
-      await page.screenshot({ path: file });
-      files.push(path.relative(root, file));
-    }
-    await page.setViewportSize({ width: back[0], height: back[1] });
-  }
   /** Copies a screenshot that a test saved anyway (name without the size). */
   async function add(file, name, size) {
     const target = path.join(dir, `${prefix}-${String(++counter).padStart(2, '0')}-${name}-${size}.png`);
     await fs.copyFile(file, target);
     files.push(path.relative(root, target));
   }
-  return { dir, files, save, add };
+  return { dir, files, add };
 }
 /** The visible texts of the game that are outside the game frame (clipped or overflowing text). */
 export function textOutside(page) {

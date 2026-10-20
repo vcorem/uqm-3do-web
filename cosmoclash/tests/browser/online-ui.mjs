@@ -17,7 +17,7 @@ import path from 'node:path';
 import { createNetplayServer } from '../../../server/netplay.mjs';
 import { createRustRelay } from '../../../tests/helpers/rust-relay.mjs';
 import { createCosmoServer } from '../../scripts/cosmo-server.mjs';
-import { root, launch, poll, read, screen, setKeys, botKeys, watchPage, recordKeyboardLock, wasmHash, nextShipShots, shipSpace, textOutside } from './helpers.mjs';
+import { root, launch, poll, read, screen, setKeys, botKeys, watchPage, recordKeyboardLock, wasmHash, nextShipShots, shipSpace, textOutside, settle, screenshot } from './helpers.mjs';
 
 const output = path.resolve(root, process.env.COSMO_ONLINE_UI_DIR || 'test-results/online-ui');
 await fs.rm(output, { recursive: true, force: true });
@@ -34,12 +34,12 @@ const next = await nextShipShots('online');
 async function capture(page, name, who, sizes = SIZES, options = {}) {
   const n = String(++counter).padStart(2, '0');
   for (const [width, height] of sizes) {
-    if (width !== 1280 || height !== 720) { await page.setViewportSize({ width, height }); await page.waitForTimeout(120); }
-    else await page.waitForTimeout(80);
+    if (width !== 1280 || height !== 720) { await page.setViewportSize({ width, height }); await settle(page, 120); }
+    else await settle(page, 80);
     if (options.next) assert.deepEqual(await textOutside(page), [], `text outside the game frame (${name} ${width}x${height})`);
     if (options.check) await options.check(width, height);
     const file = path.join(output, `${n}-${name}-${who}-${width}x${height}.png`);
-    await page.screenshot({ path: file });
+    await screenshot(page, file);
     shots.push(path.relative(root, file));
     if (options.next) await next.add(file, `${name}-${who}`, `${width}x${height}`);
   }

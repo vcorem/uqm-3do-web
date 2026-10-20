@@ -16,7 +16,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createRustRelay } from '../../../tests/helpers/rust-relay.mjs';
 import { createCosmoServer } from '../../scripts/cosmo-server.mjs';
-import { root, launch, read, setKeys, botKeys, wasmHash, nextShipShots, shipSpace, textOutside, waitGame } from './helpers.mjs';
+import { root, launch, read, setKeys, botKeys, wasmHash, nextShipShots, shipSpace, textOutside, waitGame, settle, screenshot } from './helpers.mjs';
 
 const output = path.resolve(root, process.env.COSMO_BROWSER_RESULTS_DIR || 'test-results/browser');
 await fs.mkdir(output, { recursive: true });
@@ -39,11 +39,11 @@ async function capture(name, check, options = {}) {
   const n = String(++counter).padStart(2, '0');
   for (const [width, height] of SIZES) {
     await page.setViewportSize({ width, height });
-    await page.waitForTimeout(150);
+    await settle(page);
     await textInside();
     if (check) await check(width, height);
     const file = path.join(shotsDir, `${n}-${name}-${width}x${height}.png`);
-    await page.screenshot({ path: file });
+    await screenshot(page, file);
     shots.push(path.relative(root, file));
     if (options.next) await next.add(file, name, `${width}x${height}`);
   }
