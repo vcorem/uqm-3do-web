@@ -38,7 +38,7 @@ export interface RoomInfo { token: string; role: Role; name: string; listed: boo
 export interface FleetState {
   /** The ship that the 3D carousel shows (0 MichiGichi, 1 Gondi, 2 Sholev). */
   carousel: number;
-  /** This player's picks in battle order (1 to 3 for Ready). */
+  /** This player's picks (1 to 3 for Ready): the first opens the match, the order of the others does not matter. */
   picks: number[];
   preparing: boolean;
   banner: string;

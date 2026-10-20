@@ -219,7 +219,7 @@ export class CosmoNetplay {
       this.keepalive();
     }, this.options.keepaliveMs ?? KEEPALIVE_MS);
   }
-  /** The picks so far (0 to 3 different ships, in battle order). */
+  /** The picks so far (0 to 3 different ships; the first opens the match, the loser chooses the next ones). */
   chooseFleet(fleet: number[]): void {
     if (!validPicks(fleet)) throw new Error('Choose up to three different ships.');
     if (!['idle', 'connecting', 'waiting', 'handshake', 'lobby'].includes(this.phase) || this.localReady) return;

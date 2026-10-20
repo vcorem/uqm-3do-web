@@ -181,9 +181,8 @@ function showSelection(player:0|1):void {
   }else if(left){
     const other=(1-player) as 0|1;
     selectionUI.setHeader(`Player ${player+1}: Choose Your Next Ship`);
+    // Space is the fire key of Player 2: only Enter chooses (chooseKey), as the hint says.
     selectionUI.setSubtitle(`Your ${shipName(lastLost(player))} was destroyed. Player ${other+1} has ${plural(match!.alive(other),'ship')} left.`);
-    // Space is the fire key of Player 2: only Enter chooses.
-    selectionUI.setHint('← → Browse  |  Enter to Select  |  Esc Menu');
   }
   selectionUI.show(player+1,selection.getCurrentCharacter());
   if(left)selectionUI.showRemaining(left.length);

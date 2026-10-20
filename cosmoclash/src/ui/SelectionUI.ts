@@ -18,7 +18,6 @@ export class SelectionUI {
   private arrows: HTMLButtonElement[] = [];
   private chooseButton: HTMLButtonElement | null = null;
   private bottom: HTMLDivElement | null = null;
-  private controlsHint: HTMLDivElement;
   private headerText = '';
 
   constructor(parent: HTMLElement, controls?: SelectionControls) {
@@ -60,7 +59,6 @@ export class SelectionUI {
     const controlsHint = document.createElement('div');
     controlsHint.className = 'selection-controls';
     controlsHint.textContent = '← → Browse  |  Enter to Select  |  Esc Menu';
-    this.controlsHint = controlsHint;
 
     this.remainingEl = document.createElement('div');
     this.remainingEl.className = 'selection-remaining';
@@ -127,15 +125,6 @@ export class SelectionUI {
   setSubtitle(text: string): void {
     this.subEl.textContent = text;
     this.subEl.style.display = text ? '' : 'none';
-  }
-
-  /** The key line under the ship ('' keeps the default). */
-  setHint(text: string): void { this.controlsHint.textContent = text || '← → Browse  |  Enter to Select  |  Esc Menu'; }
-
-  /** A line under the ship card, for example "Your last ship" ('' hides it). */
-  setNote(text: string): void {
-    this.remainingEl.textContent = text;
-    this.remainingEl.style.display = text ? '' : 'none';
   }
 
   showRemaining(count: number): void {
