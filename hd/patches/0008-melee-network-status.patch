@@ -1,0 +1,200 @@
+--- a/src/uqm/supermelee/melee.c
++++ b/src/uqm/supermelee/melee.c
+@@ -125,6 +125,8 @@
+ #define MELEE_STATUS_WIDTH  (NUM_MELEE_COLUMNS * \
+ 		(MELEE_BOX_WIDTH + MELEE_BOX_SPACE))
+ #define MELEE_STATUS_HEIGHT RES_SCALE (38)
++#define MELEE_STATUS_MIN_HEIGHT RES_SCALE (25)
++		// Two lines of MicroFont, with descenders
+ 
+ #define MELEE_BACKGROUND_COLOR \
+ 		BUILD_COLOR (MAKE_RGB15 (0x14, 0x00, 0x00), 0x04)
+@@ -813,7 +815,8 @@
+ 
+ 	if (PlayerControl[which_side] & NETWORK_CONTROL)
+ 	{
+-		DrawMeleeIcon (35 + (HiLite ? 1 : 0) + 2 * (1 - which_side), HiLite);
++		DrawMeleeIcon (NETWORK_CON_TOP + (HiLite ? 1 : 0)
++				+ 2 * (1 - which_side), HiLite);
+ 				/* "Network Control" */
+ 		return;
+ 	}
+@@ -927,8 +930,14 @@
+ 	SetContextFontEffect (OldFontEffect);
+ }
+ 
+-void
+-RepairMeleeFrame (const RECT *pRect)
++#ifdef NETPLAY
++static void RepairMeleeStatus (const RECT *pRect);
++#endif
++
++// Draw the background and the teams again in pRect, which is relative to the
++// melee frame origin (SAFE_X, SAFE_Y).
++static void
++RepairMeleeArea (const RECT *pRect)
+ {
+ 	RECT r;
+ 	CONTEXT OldContext;
+@@ -983,8 +992,19 @@
+ 	SetContextOrigin (oldOrigin);
+ 	SetContextClipRect (&OldRect);
+ 	SetContext (OldContext);
++}
+ 
++void
++RepairMeleeFrame (const RECT *pRect)
++{
++	BatchGraphics ();
++	RepairMeleeArea (pRect);
++#ifdef NETPLAY
++	RepairMeleeStatus (pRect);
++#else
+ 	DrawBorderPadding (0);
++#endif
++	UnbatchGraphics ();
+ }
+ 
+ static void
+@@ -1196,6 +1216,9 @@
+ }
+ 
+ #ifdef NETPLAY
++// The message on the status line; empty when there is none.
++static char meleeStatusText[256];
++
+ // This function is generic. It should probably be moved to elsewhere.
+ static void
+ multiLineDrawText (TEXT *textIn, RECT *clipRect) {
+@@ -1236,41 +1259,98 @@
+ 	SetContextClipRect (&oldRect);
+ }
+ 
+-// Use an empty string to clear the status area.
++// The status line is below the bottom team, in melee frame coordinates.
++// In the 3DO layout (SAFE_Y) the space below the team is too low for two
++// lines, so the line starts a little higher and continues into the bottom
++// screen border.
+ static void
+-DrawMeleeStatusMessage (const char *message)
++GetMeleeStatusRect (RECT *r)
+ {
++	COORD bottom = SCREEN_HEIGHT - SAFE_Y;
++			// The bottom of the screen, in frame coordinates
++
++	r->corner.x = MELEE_STATUS_X_OFFS;
++	r->corner.y = MELEE_STATUS_Y_OFFS;
++	if (r->corner.y > bottom - MELEE_STATUS_MIN_HEIGHT)
++		r->corner.y = bottom - MELEE_STATUS_MIN_HEIGHT;
++	r->extent.width = MELEE_STATUS_WIDTH;
++	r->extent.height = MELEE_STATUS_HEIGHT;
++	if (r->corner.y + r->extent.height > bottom)
++		r->extent.height = bottom - r->corner.y;
++}
++
++static void
++DrawMeleeStatusText (void)
++{
+ 	CONTEXT oldContext;
+ 	RECT r;
++	TEXT lfText;
+ 
++	if (meleeStatusText[0] == '\0')
++		return;
++
+ 	oldContext = SetContext (SpaceContext);
+ 
+-	r.corner.x = MELEE_STATUS_X_OFFS;
+-	r.corner.y = MELEE_STATUS_Y_OFFS;
+-	r.extent.width = MELEE_STATUS_WIDTH;
+-	r.extent.height = MELEE_STATUS_HEIGHT;
++	// multiLineDrawText() sets r as the clip rect, which is in screen
++	// coordinates. RepairMeleeFrame() uses the same offset.
++	GetMeleeStatusRect (&r);
++	r.corner.x += SAFE_X;
++	r.corner.y += SAFE_Y;
++
++	lfText.pStr = meleeStatusText;
++	lfText.align = ALIGN_LEFT;
++	lfText.CharCount = (COUNT)~0;
+ 
+-	RepairMeleeFrame (&r);
+-	
+-	if (message[0] != '\0')
+-	{
+-		TEXT lfText;
+-		lfText.pStr = message;
+-		lfText.align = ALIGN_LEFT;
+-		lfText.CharCount = (COUNT)~0;
++	SetContextFont (MicroFont);
++	SetContextForeGroundColor (MELEE_STATUS_COLOR);
+ 
+-		SetContextFont (MicroFont);
+-		SetContextForeGroundColor (MELEE_STATUS_COLOR);
+-		
+-		BatchGraphics ();
+-		multiLineDrawText (&lfText, &r);
+-		UnbatchGraphics ();
+-	}
++	BatchGraphics ();
++	multiLineDrawText (&lfText, &r);
++	UnbatchGraphics ();
+ 
+ 	SetContext (oldContext);
+ }
+ 
++// Called by RepairMeleeFrame() after the repair of pRect.
++// The border padding hides the part of the status line in the screen
++// border, and a repair can cover a part of the line. Thus the line is drawn
++// again on its background after each repair.
+ static void
++RepairMeleeStatus (const RECT *pRect)
++{
++	RECT r;
++
++	if (pRect->corner.x == 0 && pRect->corner.y == 0
++			&& pRect->extent.width == SCREEN_WIDTH
++			&& pRect->extent.height == SCREEN_HEIGHT)
++	{	// A full redraw removes the status message.
++		meleeStatusText[0] = '\0';
++	}
++
++	GetMeleeStatusRect (&r);
++	if (meleeStatusText[0] != '\0' && (pRect->corner.x != r.corner.x
++			|| pRect->corner.y != r.corner.y
++			|| pRect->extent.width != r.extent.width
++			|| pRect->extent.height != r.extent.height))
++		RepairMeleeArea (&r);
++
++	DrawBorderPadding (0);
++	DrawMeleeStatusText ();
++}
++
++// Use an empty string to clear the status area.
++static void
++DrawMeleeStatusMessage (const char *message)
++{
++	RECT r;
++
++	// Erase the old message before the new message is drawn.
++	utf8StringCopy (meleeStatusText, sizeof (meleeStatusText), message);
++	GetMeleeStatusRect (&r);
++	RepairMeleeFrame (&r);
++}
++
++static void
+ UpdateMeleeStatusMessage (ssize_t player)
+ {
+ 	NetConnection *conn;
+@@ -2512,7 +2592,10 @@
+ 			BOOLEAN confirmed;
+ 
+ #ifdef __EMSCRIPTEN__
+-			DrawMeleeStatusMessage ("Open an Online Melee room in the browser launcher.");
++			if (webNetplayRole >= 0)
++				DrawMeleeStatusMessage ("Player sides are assigned by the online room.");
++			else
++				DrawMeleeStatusMessage ("For Online Melee, press O in the main menu.");
+ 			break;
+ #endif
+ 			which_side = pMS->MeleeOption == NET_TOP ? 1 : 0;

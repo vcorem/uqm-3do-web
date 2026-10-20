@@ -1827,7 +1827,10 @@ MeleeOptionSelect (MELEE_STATE *pMS)
 			BOOLEAN confirmed;
 
 #ifdef __EMSCRIPTEN__
-			DrawMeleeStatusMessage ("Open an Online Melee room in the browser launcher.");
+			if (webNetplayRole >= 0)
+				DrawMeleeStatusMessage ("Player sides are assigned by the online room.");
+			else
+				DrawMeleeStatusMessage ("For Online Melee, press O in the main menu.");
 			break;
 #endif
 			which_side = pMS->MeleeOption == NET_TOP ? 1 : 0;

@@ -59,6 +59,83 @@ setBrowserGameScreen (const char *screen)
 #endif
 }
 
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+// The page can start an online Super Melee while the main menu is shown.
+// Module.takePendingNetplayRole() returns 0 (host), 1 (guest) or -1
+// (nothing). Before it returns a role, the page sets Module.webNet to the
+// connection of that room.
+// While Module.holdMainMenu is true (the page's online lobby is open), or
+// Module.webNet is a waiting or ready room, the main menu does not time out
+// into the intro and the credits.
+#define WEB_PAGE_ROLE_MASK  3
+#define WEB_PAGE_HOLDS_MENU 4
+
+static void
+announceWebNetplayHook (void)
+{
+	MAIN_THREAD_EM_ASM({ Module.supportsNetplayHook = true; });
+}
+
+// One call to the page per frame, because each call waits for the browser's
+// main thread. It returns the role plus one in WEB_PAGE_ROLE_MASK, and
+// WEB_PAGE_HOLDS_MENU.
+static int
+pollWebNetplayPage (void)
+{
+	return MAIN_THREAD_EM_ASM_INT({
+		var role = -1;
+		var take = Module.takePendingNetplayRole;
+		if (typeof take === 'function') {
+			try {
+				role = take();
+			} catch (error) {
+				role = -1;
+			}
+		}
+		if (role !== 0 && role !== 1)
+			role = -1;
+		var net = Module.webNet;
+		var hold = Module.holdMainMenu ||
+				(net && (net.state === 'waiting' || net.state === 'ready'));
+		return (role + 1) | (hold ? 4 : 0);
+	});
+}
+
+// Prepares the session of a role from pollWebNetplayPage(), as the
+// --web-netplay command line option does. TryStartGame() plays it.
+static BOOLEAN
+takeWebNetplayRole (int page)
+{
+	int role = (page & WEB_PAGE_ROLE_MASK) - 1;
+
+	if (role != 0 && role != 1)
+		return FALSE;
+
+	webNetplayRole = role;
+	netplayOptions.inputDelay = 3;
+	return TRUE;
+}
+
+// For the credits that follow a main menu time-out: they end when the page
+// starts an online Super Melee, so that a role never waits for them.
+BOOLEAN
+TakeWebNetplayRole (void)
+{
+	return takeWebNetplayRole (pollWebNetplayPage ());
+}
+
+// One online Super Melee in the browser room of Module.webNet.
+static void
+playWebMelee (void)
+{
+	FreeGameData ();
+	setBrowserGameScreen ("melee");
+	Melee ();
+	webNetplayRole = -1;
+	GLOBAL (CurrentActivity) = 0;
+}
+#endif
+
 
 enum
 {
@@ -120,12 +197,19 @@ DoRestart (MENU_STATE *pMS)
 	static TimeCount LastInputTime;
 	static TimeCount InactTimeOut;
 	TimeCount TimeIn = GetTimeCounter ();
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+	int webPage = 0;
+#endif
 
 	/* Cancel any presses of the Pause key. */
 	GamePaused = FALSE;
 
 	if (pMS->Initialized)
 		Flash_process(pMS->flashContext);
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+	if (pMS->Initialized && !(GLOBAL (CurrentActivity) & CHECK_ABORT))
+		webPage = pollWebNetplayPage ();
+#endif
 
 	if (!pMS->Initialized)
 	{
@@ -153,11 +237,23 @@ DoRestart (MENU_STATE *pMS)
 
 		SleepThreadUntil (FadeScreen (FadeAllToColor, ONE_SECOND / 2));
 		setBrowserGameScreen ("mainMenu");
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+		announceWebNetplayHook ();
+#endif
 	}
 	else if (GLOBAL (CurrentActivity) & CHECK_ABORT)
 	{
 		return FALSE;
 	}
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+	else if (takeWebNetplayRole (webPage))
+	{	// The page opened an online room; TryStartGame() plays it.
+		GLOBAL (CurrentActivity) = SUPER_MELEE;
+		setBrowserGameScreen ("transition");
+		Flash_pause(pMS->flashContext);
+		return FALSE;
+	}
+#endif
 	else if (PulsedInputState.menu[KEY_MENU_SELECT])
 	{
 		setBrowserGameScreen ("transition");
@@ -238,6 +334,7 @@ DoRestart (MENU_STATE *pMS)
 	}
 	else if (MouseButtonDown)
 	{
+		setBrowserGameScreen ("transition");
 		Flash_pause(pMS->flashContext);
 		DoPopupWindow (GAME_STRING (MAINMENU_STRING_BASE + 54));
 				// Mouse not supported message
@@ -249,11 +346,16 @@ DoRestart (MENU_STATE *pMS)
 		ScreenTransition (3, NULL);
 		UnbatchGraphics ();
 		Flash_continue(pMS->flashContext);
+		setBrowserGameScreen ("mainMenu");
 
 		LastInputTime = GetTimeCounter ();
 	}
 	else
 	{	// No input received, check if timed out
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+		if (webPage & WEB_PAGE_HOLDS_MENU)
+			LastInputTime = GetTimeCounter ();
+#endif
 		if (GetTimeCounter () - LastInputTime > InactTimeOut)
 		{
 			SleepThreadUntil (FadeMusic (0, ONE_SECOND));
@@ -373,16 +475,20 @@ TryStartGame (void)
 	if (webNetplayRole >= 0)
 	{
 		// The browser room determines the two players for this session.
-		FreeGameData ();
-		setBrowserGameScreen ("melee");
-		Melee ();
-		webNetplayRole = -1;
-		GLOBAL (CurrentActivity) = 0;
+		playWebMelee ();
 	}
 #endif
 
 	while (!RestartMenu (&MenuState))
 	{	// spin until a game is started or loaded
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+		if (webNetplayRole >= 0)
+		{	// The page started an online session from the main menu.
+			playWebMelee ();
+			MenuState.Initialized = FALSE;
+			continue;
+		}
+#endif
 		if (LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE &&
 				!(GLOBAL (CurrentActivity) & CHECK_ABORT))
 		{

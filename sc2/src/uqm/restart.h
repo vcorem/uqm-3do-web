@@ -25,6 +25,9 @@ extern "C" {
 
 
 extern BOOLEAN StartGame (void);
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+extern BOOLEAN TakeWebNetplayRole (void);
+#endif
 
 #if defined(__cplusplus)
 }

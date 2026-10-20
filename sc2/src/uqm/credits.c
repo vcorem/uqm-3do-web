@@ -28,6 +28,7 @@
 #include "settings.h"
 #include "sounds.h"
 #include "setup.h"
+#include "restart.h"
 #include "libs/graphics/drawable.h"
 #include <math.h>
 
@@ -688,6 +689,10 @@ typedef struct
 	BOOLEAN AllowSpeedChange;
 	BOOLEAN CloseWhenDone;
 	DWORD CloseTimeOut;
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+	// The page can start an online Super Melee during these credits.
+	BOOLEAN WebNetplayCanStart;
+#endif
 
 } CREDITS_INPUT_STATE;
 
@@ -700,6 +705,13 @@ DoCreditsInput (void *pIS)
 	{	// cancel timeout if resumed (or just running)
 		pCIS->CloseTimeOut = 0;
 	}
+
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+	if (pCIS->WebNetplayCanStart && TakeWebNetplayRole ())
+	{	// StartGame() plays the online Super Melee next.
+		return FALSE;
+	}
+#endif
 
 	if ((GLOBAL (CurrentActivity) & CHECK_ABORT)
 			|| (pCIS->AllowCancel &&
@@ -816,6 +828,10 @@ Credits (BOOLEAN WithOuttakes)
 		cis.AllowCancel = !WithOuttakes;
 		cis.CloseWhenDone = !WithOuttakes;
 		cis.AllowSpeedChange = TRUE;
+#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+		// Only the credits after a main menu time-out, not the ending.
+		cis.WebNetplayCanStart = !WithOuttakes;
+#endif
 		SetMenuSounds (MENU_SOUND_NONE, MENU_SOUND_NONE);
 		DoInput (&cis, TRUE);
 	}

@@ -111,6 +111,42 @@ Review the resulting diff and repeat public-symbol, C/Rust differential,
 browser startup/campaign, and network gameplay tests before adopting it.
 Compilation and symbol coverage alone do not establish gameplay equivalence.
 
+### Changing translated C code
+
+Change the C source first (Original: `sc2/src`; HD: a new patch in
+`hd/patches`, applied with `scripts/apply-hd-patches.py`). Then update the
+source hashes in `original-inputs.json` / `hd-inputs.json`, the hashes of these
+locks and of each new HD patch in `provenance.json`, and regenerate the whole
+edition with the commands above. Do not edit generated Rust by hand.
+
+The translator writes absolute `__FILE__` paths, and the line breaks of the
+generated code depend on their length; `package.py` then removes the path.
+For byte-identical output, give the source tree the same absolute path length
+as the recorded translation: 47 characters for Original (for example a copy at
+`<repository>/.tools/osc2` when the repository path has 35 characters) and 68
+for HD. With equal lengths, the regeneration of the unchanged locked sources
+gives the checked-in crates byte for byte (only `README.md` is not
+generated). `package.py` needs the staging crate's `Cargo.lock`; it is the
+checked-in lock with the package named `generated`, version `0.0.0`, and
+without `uqm-core`.
+
+Expect these differences in addition to the changed units: the new hashes in
+`SOURCE-MAP.json`; renumbered `uqm_em_asm_<n>` data symbols in
+`uqm_asm_consts.c`, `asm-const-report.json` and the units that use them, when
+`EM_ASM` blocks are added; and for HD, `lua-propagation-report.json`. After the
+complete C build of the edition, `capture-exports.py --output` makes the new
+export snapshot; keep it only if the public symbols are unchanged or the change
+is reviewed.
+
+The 2026-10-20 main-menu online session hook (`restart.c` in both editions)
+and the HD status line fix (`hd/patches/0008-melee-network-status.patch`,
+`0009-web-netplay-menu-hook.patch`) were adopted this way, and so was the
+review follow-up of the same day (one page call per menu frame, the
+Original credits that take a role, `gameScreen` in the menu's sub-screens,
+the NET... button text: Original `restart.c`, `restart.h`, `credits.c`,
+`melee.c`; HD 0008 and 0009). Its only new public symbol is Original's
+`TakeWebNetplayRole`.
+
 ## Validation performed during this migration
 
 The portable regeneration script was rerun over all 340 Original and 350 HD

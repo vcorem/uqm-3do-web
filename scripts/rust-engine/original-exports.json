@@ -2513,7 +2513,7 @@
     },
     {
       "source": "src/uqm/credits.c",
-      "source_sha256": "8d74a36303d97b9e5c637771458ac0ee1d05fcd83cb6436cf5795e06994ea252",
+      "source_sha256": "bc091e722410c7e7288dc3256b67f1fb584d5810f8f05753a5e9f0b4886bf307",
       "symbols": {
         "Credits": "T"
       }
@@ -2911,9 +2911,10 @@
     },
     {
       "source": "src/uqm/restart.c",
-      "source_sha256": "d8474ae3d1fa4001b64c4f575e7cc255aa509d635ffae9449dd410980d737d41",
+      "source_sha256": "9770eddd2203f2eb7b1928b993f9293b5ef8ae79c756d55f5639294eb0b5212c",
       "symbols": {
-        "StartGame": "T"
+        "StartGame": "T",
+        "TakeWebNetplayRole": "T"
       }
     },
     {
@@ -4090,7 +4091,7 @@
     },
     {
       "source": "src/uqm/supermelee/melee.c",
-      "source_sha256": "36694109d031b08146d161c89c606f1cb857879ba5f3a8de39618168b9445479",
+      "source_sha256": "3abfd82c225b8251ecad980d0d28a6128d3d30dce67e52894c170ed16c797b6f",
       "symbols": {
         "DoMelee": "T",
         "DrawMeleeIcon": "T",

@@ -3258,7 +3258,7 @@
     },
     {
       "source": "src/uqm/restart.c",
-      "source_sha256": "c2d2b4c0af707754285fdc752a99e955aa53c23d52744cf6d6c6d979c37d49e7",
+      "source_sha256": "04d63e62519923fc53edc62240bc7adb71c5d3bbfd8e9e971f2cd9b220478bce",
       "symbols": {
         "DrawToolTips": "T",
         "InitMenuMusic": "T",
@@ -4711,7 +4711,7 @@
     },
     {
       "source": "src/uqm/supermelee/melee.c",
-      "source_sha256": "c3991d24a606ceb95b4ab12b6b4e8790192e82d4522af4eaa840b1176bb55637",
+      "source_sha256": "a2911d0e6fd44218016fde89f80b26a2840d076eddc38092043e98b2f8ba91c7",
       "symbols": {
         "AtlasArray": "D",
         "ButtonFont": "D",

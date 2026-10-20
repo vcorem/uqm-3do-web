@@ -18,8 +18,8 @@
   "reproduction_sha256": {
     "scripts/rust-engine/c2rust-wasm.patch": "8e1cf577f5f10c976ba3dbb622aeac5dca5079342792208d8d70afe97431f8e9",
     "scripts/rust-engine/hd-starmap-prelude.h": "8b9e16fca0acd5b16a5461ae01abad5a41103b64569a7eae0352af6d3027a543",
-    "scripts/rust-engine/original-inputs.json": "f8aadbe1351c04287aa827ddc0f72bbdfccfa1551d79b1f676ab3c2b752ae31a",
-    "scripts/rust-engine/hd-inputs.json": "d0bff1df7a2b4e5797ddbe6444a51fd4a34b876ea9956b5f96df7f6f1a729fa1",
+    "scripts/rust-engine/original-inputs.json": "77b028606fb96a6ba78a8f3178787f7e23edb23870ad290739c790f0c861b805",
+    "scripts/rust-engine/hd-inputs.json": "23046443c4a30423a6daf3c0550de4e8e1855b4021e25378ff686eccb8f0560c",
     "scripts/rust-engine/setup-translator.sh": "d717e195f99b0b57a810452ab2bd88f35d29af1c6045333c4f2583564c04be3c",
     "scripts/rust-engine/compile-db.py": "d2a4d7a5ae10a0214554c82eb19b38b6ffe291c0935f948467c29f7b34d8004e",
     "scripts/rust-engine/regenerate.py": "081b562b3c0095dcb2ae0b2b2508873dc18df0e55a4758b533de0a13f30466e6",
@@ -34,7 +34,9 @@
     "scripts/rust-engine/lua-propagate/src/main.rs": "e653e01ef39cf1df52d1d9218b515fdc21f1a4562fc2ddc666b3bdc24fd94da3",
     "scripts/rust-engine/verify-provenance.py": "f1a49556098fd4dc30a3cd660ea9dd15234fb44606acf78f22e62708000a12ac",
     "hd/patches/0006-web-netplay.patch": "54b392de0a110eb663ce6cace3b245d3a556ea434446dde7d9a17c82c7f6b15c",
-    "hd/patches/0007-rust-netplay-crc.patch": "fd55e6653cfb22f3821e91cbd9eab23f7e0fe3c95ec82aacc5ee556b5bede0e1"
+    "hd/patches/0007-rust-netplay-crc.patch": "fd55e6653cfb22f3821e91cbd9eab23f7e0fe3c95ec82aacc5ee556b5bede0e1",
+    "hd/patches/0008-melee-network-status.patch": "3df22c90b6d2a0f5da7e7147a110d7e7338be2fadda30fc150619c4f1c1453bf",
+    "hd/patches/0009-web-netplay-menu-hook.patch": "12f348d731cd913c70f31e0383afcb515127a4f1d37d1d1529bfab12517e7506"
   },
   "hd_web_netplay_source_commit": "5d7810ba5302803abe537f1b669d696a3af073ad",
   "hd_web_netplay_repository": "https://github.com/vcorem/uqm-3do-web"
