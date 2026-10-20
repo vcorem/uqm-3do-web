@@ -68,17 +68,20 @@ npm run build --prefix cosmoclash
 npm start --prefix cosmoclash -- --port 10000
 ```
 
-Open `http://127.0.0.1:10000`. The existing UQM preview on port 9999 is independent.
-The production build writes `cosmoclash/dist/`; generated Wasm and build output
-are deliberately not tracked. `npm run dev --prefix cosmoclash` uses Vite, whose
-WebSocket proxy expects the separately running relay on port 10000.
+Open `http://127.0.0.1:10000/cosmoclash/`. The existing UQM preview on port 9999
+is independent. The production build writes `cosmoclash/dist/` for the site path
+`/cosmoclash/` (the Vite base); generated Wasm and build output are deliberately
+not tracked. `npm start --prefix cosmoclash` (`cosmoclash/scripts/serve.mjs`)
+serves the game at `/cosmoclash/` with the site's isolation headers, and online
+play with the Node relay and the Cosmo Clash room list (`-- --relay rust`: the
+Rust relay, which has no room list; the game then offers private rooms with an
+invite link). `npm run dev --prefix cosmoclash` uses Vite, whose WebSocket proxy
+expects that server on port 10000.
 
-`npm start --prefix cosmoclash` uses the Rust relay, which has no room list. For
-the site form, at `/cosmoclash/` and with the Cosmo Clash room list, use the
-Node server:
+The root Node server can serve the same build next to the UQM editions, with the
+same room list:
 
 ```sh
-npm run build --prefix cosmoclash -- --base /cosmoclash/
 npm start -- --port 10000 --cosmoclash cosmoclash/dist
 ```
 
