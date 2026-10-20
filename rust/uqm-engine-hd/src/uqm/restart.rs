@@ -152,6 +152,7 @@ extern "C" {
     );
     fn Flash_UpdateOriginal(context: *mut FlashContext);
     static mut GameStrings: STRING;
+    static mut netplayOptions: NetplayOptions;
     static mut webNetplayRole: ::core::ffi::c_int;
     static mut ScreenContext: CONTEXT;
     static mut MicroFont: FONT;
@@ -607,6 +608,21 @@ pub struct _stringbank_chunk {
     pub len: ::core::ffi::c_int,
     pub next: *mut _stringbank_chunk,
 }
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetplayOptions {
+    pub metaServer: *const ::core::ffi::c_char,
+    pub metaPort: *const ::core::ffi::c_char,
+    pub peer: [NetplayPeerOptions; 2],
+    pub inputDelay: size_t,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetplayPeerOptions {
+    pub isServer: bool,
+    pub host: *const ::core::ffi::c_char,
+    pub port: *const ::core::ffi::c_char,
+}
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct C2Rust_Unnamed(pub ::core::ffi::c_uint);
@@ -754,6 +770,43 @@ unsafe extern "C" fn setBrowserGameScreen(mut screen: *const ::core::ffi::c_char
         &raw mut c2rust_lvalue as *mut ::core::ffi::c_char,
         screen,
     );
+}
+unsafe extern "C" fn announceWebNetplayHook() {
+    let mut c2rust_lvalue: [::core::ffi::c_char; 1] = ['\0' as ::core::ffi::c_char];
+    emscripten_asm_const_int_sync_on_main_thread(
+        ({
+            extern "C" { static uqm_em_asm_2: [::core::ffi::c_char; 39]; }
+            &raw const uqm_em_asm_2 as *const ::core::ffi::c_char
+        }),
+        &raw mut c2rust_lvalue as *mut ::core::ffi::c_char,
+    );
+}
+unsafe extern "C" fn takePendingWebMelee() -> BOOLEAN {
+    let mut c2rust_lvalue: [::core::ffi::c_char; 1] = ['\0' as ::core::ffi::c_char];
+    let mut role: ::core::ffi::c_int = emscripten_asm_const_int_sync_on_main_thread(
+        ({
+            extern "C" { static uqm_em_asm_3: [::core::ffi::c_char; 190]; }
+            &raw const uqm_em_asm_3 as *const ::core::ffi::c_char
+        }),
+        &raw mut c2rust_lvalue as *mut ::core::ffi::c_char,
+    );
+    if role != 0 as ::core::ffi::c_int && role != 1 as ::core::ffi::c_int {
+        return BOOLEAN::FALSE;
+    }
+    webNetplayRole = role;
+    netplayOptions.inputDelay = 3 as size_t;
+    GlobData.Game_state.CurrentActivity = C2Rust_Unnamed_2::SUPER_MELEE.0
+        as ::core::ffi::c_int as ACTIVITY;
+    return BOOLEAN::TRUE;
+}
+unsafe extern "C" fn playWebMelee() {
+    optShipSeed = OPT_ENABLABLE::OPTVAL_DISABLED;
+    uqm_lua_checked!(ReloadMasterShipList(None), ());
+    uqm_lua_checked!(FreeGameData(), ());
+    setBrowserGameScreen(b"melee\0".as_ptr() as *const ::core::ffi::c_char);
+    uqm_lua_checked!(Melee(), ());
+    webNetplayRole = -1 as ::core::ffi::c_int;
+    GlobData.Game_state.CurrentActivity = 0 as ACTIVITY;
 }
 #[no_mangle]
 pub static mut menuMusic: MUSIC_REF = ::core::ptr::null_mut::<*mut TFB_SoundSample>();
@@ -1363,6 +1416,7 @@ unsafe extern "C" fn DoRestart(mut pMS: *mut MENU_STATE) -> BOOLEAN {
             ),
         ), BOOLEAN(0));
         setBrowserGameScreen(b"mainMenu\0".as_ptr() as *const ::core::ffi::c_char);
+        announceWebNetplayHook();
     } else if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
         & C2Rust_Unnamed_2::CHECK_ABORT.0 as ::core::ffi::c_int != 0
     {
@@ -1372,6 +1426,10 @@ unsafe extern "C" fn DoRestart(mut pMS: *mut MENU_STATE) -> BOOLEAN {
                 (840 as ::core::ffi::c_int / 2 as ::core::ffi::c_int) as SIZE,
             ),
         ), BOOLEAN(0));
+        return BOOLEAN::FALSE;
+    } else if takePendingWebMelee().0 != 0 {
+        setBrowserGameScreen(b"transition\0".as_ptr() as *const ::core::ffi::c_char);
+        Flash_pause((*pMS).flashContext);
         return BOOLEAN::FALSE;
     } else if PulsedInputState
         .menu[C2Rust_Unnamed::KEY_MENU_SELECT.0 as ::core::ffi::c_int as usize] != 0
@@ -1733,14 +1791,13 @@ unsafe extern "C" fn TryStartGame() -> BOOLEAN {
         DoRestart as unsafe extern "C" fn(*mut MENU_STATE) -> BOOLEAN,
     ) as Option<unsafe extern "C" fn(*mut menu_state) -> BOOLEAN>;
     if webNetplayRole >= 0 as ::core::ffi::c_int {
-        uqm_lua_checked!(FreeGameData(), BOOLEAN(0));
-        setBrowserGameScreen(b"melee\0".as_ptr() as *const ::core::ffi::c_char);
-        uqm_lua_checked!(Melee(), BOOLEAN(0));
-        webNetplayRole = -1 as ::core::ffi::c_int;
-        GlobData.Game_state.CurrentActivity = 0 as ACTIVITY;
+        uqm_lua_checked!(playWebMelee(), BOOLEAN(0));
     }
     while uqm_lua_checked!(RestartMenu(&raw mut MenuState), BOOLEAN(0)).0 == 0 {
-        if GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
+        if webNetplayRole >= 0 as ::core::ffi::c_int {
+            uqm_lua_checked!(playWebMelee(), BOOLEAN(0));
+            MenuState.Initialized = BOOLEAN::FALSE.0 as ::core::ffi::c_int as SIZE;
+        } else if GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
             == C2Rust_Unnamed_2::SUPER_MELEE.0 as ::core::ffi::c_int
             && GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
                 & C2Rust_Unnamed_2::CHECK_ABORT.0 as ::core::ffi::c_int == 0

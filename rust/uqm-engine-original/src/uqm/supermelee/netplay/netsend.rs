@@ -337,8 +337,8 @@ unsafe extern "C" fn WebTransport_send(
     ];
     return emscripten_asm_const_int_sync_on_main_thread(
         ({
-            extern "C" { static uqm_em_asm_7: [::core::ffi::c_char; 202]; }
-            &raw const uqm_em_asm_7 as *const ::core::ffi::c_char
+            extern "C" { static uqm_em_asm_10: [::core::ffi::c_char; 202]; }
+            &raw const uqm_em_asm_10 as *const ::core::ffi::c_char
         }),
         &raw mut c2rust_lvalue as *mut ::core::ffi::c_char,
         data,

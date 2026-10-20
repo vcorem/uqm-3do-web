@@ -20,6 +20,12 @@ so the two editions cannot play one another. The HD browser transport and
 launcher are ported from main commit
 `5d7810ba5302803abe537f1b669d696a3af073ad`. `hd/patches/0006-web-netplay.patch` applies it to
 both the HD C build and the HD Rust translation.
+`hd/patches/0008-melee-network-status.patch` puts the online status line below
+the bottom team (in the 3DO layout it continues into the bottom border),
+erases the old message before it draws a new one, and shows the NETWORK
+CONTROL box for the remote side. `hd/patches/0009-web-netplay-menu-hook.patch`
+lets the page start an online session from the main menu
+(`Module.takePendingNetplayRole`), as in Original.
 
 ## Online Melee
 

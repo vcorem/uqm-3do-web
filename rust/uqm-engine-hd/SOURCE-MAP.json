@@ -1385,7 +1385,7 @@
   {
     "rust": "src/uqm/restart.rs",
     "c": "src/uqm/restart.c",
-    "source_sha256": "c2d2b4c0af707754285fdc752a99e955aa53c23d52744cf6d6c6d979c37d49e7"
+    "source_sha256": "b94d1aaeaec10935de94c123edcfd0697c19b8f5ea5ef4361d0b40b32bbc0998"
   },
   {
     "rust": "src/uqm/save.rs",
@@ -1610,7 +1610,7 @@
   {
     "rust": "src/uqm/supermelee/melee.rs",
     "c": "src/uqm/supermelee/melee.c",
-    "source_sha256": "c3991d24a606ceb95b4ab12b6b4e8790192e82d4522af4eaa840b1176bb55637"
+    "source_sha256": "171c85bc0ab46de5d08246b80c007a8555e1a147f49071bf070a57d296404780"
   },
   {
     "rust": "src/uqm/supermelee/meleesetup.rs",

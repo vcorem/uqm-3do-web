@@ -1,0 +1,140 @@
+--- a/src/uqm/restart.c
++++ b/src/uqm/restart.c
+@@ -65,8 +65,75 @@
+ 	MAIN_THREAD_EM_ASM({ Module.gameScreen = UTF8ToString($0); }, screen);
+ #else
+ 	(void) screen;
++#endif
++}
++
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++// The page can start an online Super Melee while the main menu is shown.
++// Module.takePendingNetplayRole() returns 0 (host), 1 (guest) or -1
++// (nothing). Before it returns a role, the page sets Module.webNet to the
++// connection of that room.
++static void
++announceWebNetplayHook (void)
++{
++	MAIN_THREAD_EM_ASM({ Module.supportsNetplayHook = true; });
++}
++
++static BOOLEAN
++takePendingWebMelee (void)
++{
++	int role = MAIN_THREAD_EM_ASM_INT({
++		var take = Module.takePendingNetplayRole;
++		if (typeof take !== 'function')
++			return -1;
++		try {
++			var role = take();
++			return role === 0 || role === 1 ? role : -1;
++		} catch (error) {
++			return -1;
++		}
++	});
++
++	if (role != 0 && role != 1)
++		return FALSE;
++
++	// The same start as the --web-netplay command line option.
++	webNetplayRole = role;
++	netplayOptions.inputDelay = 3;
++	GLOBAL (CurrentActivity) = SUPER_MELEE;
++	return TRUE;
++}
++
++#ifndef DEBUG
++// While the page has an open room, or holds the menu for its online lobby,
++// the main menu does not time out into the intro and the credits.
++// Otherwise a session that starts during the credits would wait for them.
++static BOOLEAN
++webNetplayHoldsMainMenu (void)
++{
++	return MAIN_THREAD_EM_ASM_INT({
++		var net = Module.webNet;
++		if (Module.holdMainMenu)
++			return 1;
++		return net && (net.state === 'waiting' || net.state === 'ready') ? 1 : 0;
++	});
++}
+ #endif
++
++// One online Super Melee in the browser room of Module.webNet.
++static void
++playWebMelee (void)
++{
++	// The same ships for both players, as Super Melee from the menu uses.
++	optShipSeed = OPTVAL_DISABLED;
++	ReloadMasterShipList (NULL);
++	FreeGameData ();
++	setBrowserGameScreen ("melee");
++	Melee ();
++	webNetplayRole = -1;
++	GLOBAL (CurrentActivity) = 0;
+ }
++#endif
+ 
+ enum
+ {
+@@ -518,6 +585,9 @@
+ 
+ 		SleepThreadUntil (FadeScreen (FadeAllToColor, ONE_SECOND / 2));
+ 		setBrowserGameScreen ("mainMenu");
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++		announceWebNetplayHook ();
++#endif
+ 	}
+ 	else if (GLOBAL (CurrentActivity) & CHECK_ABORT)
+ 	{
+@@ -525,6 +595,14 @@
+ 				FadeScreen (FadeAllToBlack, ONE_SECOND / 2));
+ 		return FALSE;
+ 	}
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++	else if (takePendingWebMelee ())
++	{	// The page opened an online room; TryStartGame() plays it.
++		setBrowserGameScreen ("transition");
++		Flash_pause (pMS->flashContext);
++		return FALSE;
++	}
++#endif
+ 	else if (PulsedInputState.menu[KEY_MENU_SELECT])
+ 	{
+ 		switch (pMS->CurState)
+@@ -666,6 +744,10 @@
+ #ifndef DEBUG
+ 	else
+ 	{	// No input received, check if timed out
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++		if (webNetplayHoldsMainMenu ())
++			LastInputTime = GetTimeCounter ();
++#endif
+ 		if (GetTimeCounter () - LastInputTime > InactTimeOut)
+ 		{
+ 			GLOBAL (CurrentActivity) = (ACTIVITY)~0;
+@@ -819,16 +901,20 @@
+ 	if (webNetplayRole >= 0)
+ 	{
+ 		// The browser room determines the two players for this session.
+-		FreeGameData ();
+-		setBrowserGameScreen ("melee");
+-		Melee ();
+-		webNetplayRole = -1;
+-		GLOBAL (CurrentActivity) = 0;
++		playWebMelee ();
+ 	}
+ #endif
+ 
+ 	while (!RestartMenu (&MenuState))
+ 	{	// spin until a game is started or loaded
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++		if (webNetplayRole >= 0)
++		{	// The page started an online session from the main menu.
++			playWebMelee ();
++			MenuState.Initialized = FALSE;
++			continue;
++		}
++#endif
+ 		if (LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE &&
+ 				!(GLOBAL (CurrentActivity) & CHECK_ABORT))
+ 		{

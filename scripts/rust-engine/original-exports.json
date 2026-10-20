@@ -2911,7 +2911,7 @@
     },
     {
       "source": "src/uqm/restart.c",
-      "source_sha256": "d8474ae3d1fa4001b64c4f575e7cc255aa509d635ffae9449dd410980d737d41",
+      "source_sha256": "3228cea53c500556d60cb1d615ede2098d74a80df6997a340fea197e64e24613",
       "symbols": {
         "StartGame": "T"
       }

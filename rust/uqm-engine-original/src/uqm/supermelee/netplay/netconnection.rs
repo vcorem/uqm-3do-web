@@ -587,8 +587,8 @@ unsafe extern "C" fn WebTransport_status() -> ::core::ffi::c_int {
     let mut c2rust_lvalue: [::core::ffi::c_char; 1] = ['\0' as ::core::ffi::c_char];
     return emscripten_asm_const_int_sync_on_main_thread(
         ({
-            extern "C" { static uqm_em_asm_3: [::core::ffi::c_char; 191]; }
-            &raw const uqm_em_asm_3 as *const ::core::ffi::c_char
+            extern "C" { static uqm_em_asm_6: [::core::ffi::c_char; 191]; }
+            &raw const uqm_em_asm_6 as *const ::core::ffi::c_char
         }),
         &raw mut c2rust_lvalue as *mut ::core::ffi::c_char,
     );
@@ -598,8 +598,8 @@ unsafe extern "C" fn WebTransport_close() {
     let mut c2rust_lvalue: [::core::ffi::c_char; 1] = ['\0' as ::core::ffi::c_char];
     emscripten_asm_const_int_sync_on_main_thread(
         ({
-            extern "C" { static uqm_em_asm_4: [::core::ffi::c_char; 46]; }
-            &raw const uqm_em_asm_4 as *const ::core::ffi::c_char
+            extern "C" { static uqm_em_asm_7: [::core::ffi::c_char; 46]; }
+            &raw const uqm_em_asm_7 as *const ::core::ffi::c_char
         }),
         &raw mut c2rust_lvalue as *mut ::core::ffi::c_char,
     );
@@ -616,8 +616,8 @@ unsafe extern "C" fn WebTransport_engineState(
     ];
     emscripten_asm_const_int_sync_on_main_thread(
         ({
-            extern "C" { static uqm_em_asm_5: [::core::ffi::c_char; 118]; }
-            &raw const uqm_em_asm_5 as *const ::core::ffi::c_char
+            extern "C" { static uqm_em_asm_8: [::core::ffi::c_char; 118]; }
+            &raw const uqm_em_asm_8 as *const ::core::ffi::c_char
         }),
         &raw mut c2rust_lvalue as *mut ::core::ffi::c_char,
         state,

@@ -2119,7 +2119,7 @@ unsafe extern "C" fn DrawControls(mut which_side: COUNT, mut HiLite: BOOLEAN) {
             as ::core::ffi::c_int != 0
     {
         uqm_lua_checked!(DrawMeleeIcon(
-            (35 as ::core::ffi::c_int
+            (C2Rust_Unnamed_7::NETWORK_CON_TOP.0 as ::core::ffi::c_int
                 + if HiLite.0 != 0 {
                     1 as ::core::ffi::c_int
                 } else {
@@ -2304,8 +2304,7 @@ unsafe extern "C" fn DrawSuperMeleeTitle() {
     SetContextFont(OldFont);
     SetContextFontEffect(OldFontEffect);
 }
-#[no_mangle]
-pub unsafe extern "C" fn RepairMeleeFrame(mut pRect: *const RECT) {
+unsafe extern "C" fn RepairMeleeArea(mut pRect: *const RECT) {
     let mut r: RECT = RECT {
         corner: POINT { x: 0, y: 0 },
         extent: EXTENT { width: 0, height: 0 },
@@ -2424,7 +2423,13 @@ pub unsafe extern "C" fn RepairMeleeFrame(mut pRect: *const RECT) {
     SetContextOrigin(oldOrigin);
     SetContextClipRect(&raw mut OldRect);
     SetContext(OldContext);
-    uqm_lua_checked!(DrawBorderPadding(0 as DWORD), ());
+}
+#[no_mangle]
+pub unsafe extern "C" fn RepairMeleeFrame(mut pRect: *const RECT) {
+    BatchGraphics();
+    uqm_lua_checked!(RepairMeleeArea(pRect), ());
+    uqm_lua_checked!(RepairMeleeStatus(pRect), ());
+    UnbatchGraphics();
 }
 unsafe extern "C" fn RedrawMeleeFrame() {
     let mut r: RECT = RECT {
@@ -2796,6 +2801,7 @@ unsafe extern "C" fn DrawTeamString(
     UnbatchGraphics();
     return BOOLEAN::TRUE;
 }
+static mut meleeStatusText: [::core::ffi::c_char; 256] = [0; 256];
 unsafe extern "C" fn multiLineDrawText(mut textIn: *mut TEXT, mut clipRect: *mut RECT) {
     let mut oldRect: RECT = RECT {
         corner: POINT { x: 0, y: 0 },
@@ -2839,16 +2845,27 @@ unsafe extern "C" fn multiLineDrawText(mut textIn: *mut TEXT, mut clipRect: *mut
     }
     SetContextClipRect(&raw mut oldRect);
 }
-unsafe extern "C" fn DrawMeleeStatusMessage(mut message: *const ::core::ffi::c_char) {
-    let mut oldContext: CONTEXT = ::core::ptr::null_mut::<CONTEXT_DESC>();
-    let mut r: RECT = RECT {
-        corner: POINT { x: 0, y: 0 },
-        extent: EXTENT { width: 0, height: 0 },
-    };
-    oldContext = SetContext(SpaceContext);
-    r.corner.x = ((1 as ::core::ffi::c_int) << resolutionFactor) as COORD;
-    r.corner.y = ((201 as ::core::ffi::c_int) << resolutionFactor) as COORD;
-    r.extent.width = (if if optWindowType == 1 as DWORD {
+unsafe extern "C" fn GetMeleeStatusRect(mut r: *mut RECT) {
+    let mut bottom: COORD = (CanvasHeight
+        - (if if optWindowType == 1 as DWORD {
+            BOOLEAN::TRUE.0 as ::core::ffi::c_int
+        } else {
+            BOOLEAN::FALSE.0 as ::core::ffi::c_int
+        } != 0
+        {
+            16 as ::core::ffi::c_int
+        } else {
+            0 as ::core::ffi::c_int
+        } << resolutionFactor)) as COORD;
+    (*r).corner.x = ((1 as ::core::ffi::c_int) << resolutionFactor) as COORD;
+    (*r).corner.y = ((201 as ::core::ffi::c_int) << resolutionFactor) as COORD;
+    if (*r).corner.y as ::core::ffi::c_int
+        > bottom as ::core::ffi::c_int - ((25 as ::core::ffi::c_int) << resolutionFactor)
+    {
+        (*r).corner.y = (bottom as ::core::ffi::c_int
+            - ((25 as ::core::ffi::c_int) << resolutionFactor)) as COORD;
+    }
+    (*r).extent.width = (if if optWindowType == 1 as DWORD {
         BOOLEAN::TRUE.0 as ::core::ffi::c_int
     } else {
         BOOLEAN::FALSE.0 as ::core::ffi::c_int
@@ -2860,25 +2877,102 @@ unsafe extern "C" fn DrawMeleeStatusMessage(mut message: *const ::core::ffi::c_c
     }
         * (((34 as ::core::ffi::c_int) << resolutionFactor)
             + ((1 as ::core::ffi::c_int) << resolutionFactor))) as COORD;
-    r.extent.height = ((38 as ::core::ffi::c_int) << resolutionFactor) as COORD;
-    uqm_lua_checked!(RepairMeleeFrame(&raw mut r), ());
-    if *message.offset(0isize) as ::core::ffi::c_int != '\0' as ::core::ffi::c_int {
-        let mut lfText: TEXT = TEXT {
-            baseline: POINT { x: 0, y: 0 },
-            pStr: ::core::ptr::null::<UNICODE>(),
-            align: TEXT_ALIGN::ALIGN_LEFT,
-            CharCount: 0,
-        };
-        lfText.pStr = message as *const UNICODE;
-        lfText.align = TEXT_ALIGN::ALIGN_LEFT;
-        lfText.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
-        SetContextFont(MicroFont);
-        SetContextForeGroundColor(colorFromRgb15(0 as BYTE, 0x14 as BYTE, 0 as BYTE));
-        BatchGraphics();
-        uqm_lua_checked!(multiLineDrawText(&raw mut lfText, &raw mut r), ());
-        UnbatchGraphics();
+    (*r).extent.height = ((38 as ::core::ffi::c_int) << resolutionFactor) as COORD;
+    if (*r).corner.y as ::core::ffi::c_int + (*r).extent.height as ::core::ffi::c_int
+        > bottom as ::core::ffi::c_int
+    {
+        (*r).extent.height = (bottom as ::core::ffi::c_int
+            - (*r).corner.y as ::core::ffi::c_int) as COORD;
     }
+}
+unsafe extern "C" fn DrawMeleeStatusText() {
+    let mut oldContext: CONTEXT = ::core::ptr::null_mut::<CONTEXT_DESC>();
+    let mut r: RECT = RECT {
+        corner: POINT { x: 0, y: 0 },
+        extent: EXTENT { width: 0, height: 0 },
+    };
+    let mut lfText: TEXT = TEXT {
+        baseline: POINT { x: 0, y: 0 },
+        pStr: ::core::ptr::null::<UNICODE>(),
+        align: TEXT_ALIGN::ALIGN_LEFT,
+        CharCount: 0,
+    };
+    if meleeStatusText[0usize] as ::core::ffi::c_int == '\0' as ::core::ffi::c_int {
+        return;
+    }
+    oldContext = SetContext(SpaceContext);
+    GetMeleeStatusRect(&raw mut r);
+    r.corner.x = (r.corner.x as ::core::ffi::c_int
+        + (if if optWindowType == 1 as DWORD {
+            BOOLEAN::TRUE.0 as ::core::ffi::c_int
+        } else {
+            BOOLEAN::FALSE.0 as ::core::ffi::c_int
+        } != 0
+        {
+            16 as ::core::ffi::c_int
+        } else {
+            0 as ::core::ffi::c_int
+        } << resolutionFactor)) as COORD;
+    r.corner.y = (r.corner.y as ::core::ffi::c_int
+        + (if if optWindowType == 1 as DWORD {
+            BOOLEAN::TRUE.0 as ::core::ffi::c_int
+        } else {
+            BOOLEAN::FALSE.0 as ::core::ffi::c_int
+        } != 0
+        {
+            16 as ::core::ffi::c_int
+        } else {
+            0 as ::core::ffi::c_int
+        } << resolutionFactor)) as COORD;
+    lfText.pStr = &raw mut meleeStatusText as *mut ::core::ffi::c_char;
+    lfText.align = TEXT_ALIGN::ALIGN_LEFT;
+    lfText.CharCount = !(0 as ::core::ffi::c_int) as COUNT;
+    SetContextFont(MicroFont);
+    SetContextForeGroundColor(colorFromRgb15(0 as BYTE, 0x14 as BYTE, 0 as BYTE));
+    BatchGraphics();
+    uqm_lua_checked!(multiLineDrawText(&raw mut lfText, &raw mut r), ());
+    UnbatchGraphics();
     SetContext(oldContext);
+}
+unsafe extern "C" fn RepairMeleeStatus(mut pRect: *const RECT) {
+    let mut r: RECT = RECT {
+        corner: POINT { x: 0, y: 0 },
+        extent: EXTENT { width: 0, height: 0 },
+    };
+    if (*pRect).corner.x as ::core::ffi::c_int == 0 as ::core::ffi::c_int
+        && (*pRect).corner.y as ::core::ffi::c_int == 0 as ::core::ffi::c_int
+        && (*pRect).extent.width as ::core::ffi::c_int == CanvasWidth
+        && (*pRect).extent.height as ::core::ffi::c_int == CanvasHeight
+    {
+        meleeStatusText[0usize] = '\0' as ::core::ffi::c_char;
+    }
+    GetMeleeStatusRect(&raw mut r);
+    if meleeStatusText[0usize] as ::core::ffi::c_int != '\0' as ::core::ffi::c_int
+        && ((*pRect).corner.x as ::core::ffi::c_int != r.corner.x as ::core::ffi::c_int
+            || (*pRect).corner.y as ::core::ffi::c_int
+                != r.corner.y as ::core::ffi::c_int
+            || (*pRect).extent.width as ::core::ffi::c_int
+                != r.extent.width as ::core::ffi::c_int
+            || (*pRect).extent.height as ::core::ffi::c_int
+                != r.extent.height as ::core::ffi::c_int)
+    {
+        uqm_lua_checked!(RepairMeleeArea(&raw mut r), ());
+    }
+    uqm_lua_checked!(DrawBorderPadding(0 as DWORD), ());
+    uqm_lua_checked!(DrawMeleeStatusText(), ());
+}
+unsafe extern "C" fn DrawMeleeStatusMessage(mut message: *const ::core::ffi::c_char) {
+    let mut r: RECT = RECT {
+        corner: POINT { x: 0, y: 0 },
+        extent: EXTENT { width: 0, height: 0 },
+    };
+    utf8StringCopy(
+        &raw mut meleeStatusText as *mut ::core::ffi::c_char,
+        ::core::mem::size_of::<[::core::ffi::c_char; 256]>(),
+        message,
+    );
+    GetMeleeStatusRect(&raw mut r);
+    uqm_lua_checked!(RepairMeleeFrame(&raw mut r), ());
 }
 unsafe extern "C" fn UpdateMeleeStatusMessage(mut player: ssize_t) {
     let mut conn: *mut NetConnection = ::core::ptr::null_mut::<NetConnection>();
@@ -2889,7 +2983,7 @@ unsafe extern "C" fn UpdateMeleeStatusMessage(mut player: ssize_t) {
                     as *const ::core::ffi::c_char,
                 b"src/uqm/supermelee/melee.c\0"
                     .as_ptr() as *const ::core::ffi::c_char,
-                1278 as ::core::ffi::c_int,
+                1358 as ::core::ffi::c_int,
                 b"UpdateMeleeStatusMessage\0".as_ptr() as *const ::core::ffi::c_char,
             );
             0 as ::core::ffi::c_int != 0
@@ -3818,7 +3912,7 @@ unsafe extern "C" fn DoConfirmSettings(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
                         b"conn != NULL\0".as_ptr() as *const ::core::ffi::c_char,
                         b"src/uqm/supermelee/melee.c\0"
                             .as_ptr() as *const ::core::ffi::c_char,
-                        2034 as ::core::ffi::c_int,
+                        2114 as ::core::ffi::c_int,
                         b"DoConfirmSettings\0".as_ptr() as *const ::core::ffi::c_char,
                     );
                     0 as ::core::ffi::c_int != 0
@@ -5297,7 +5391,7 @@ pub unsafe extern "C" fn Melee_bootstrapSyncTeam(
                         .as_ptr() as *const ::core::ffi::c_char,
                     b"src/uqm/supermelee/melee.c\0"
                         .as_ptr() as *const ::core::ffi::c_char,
-                    3250 as ::core::ffi::c_int,
+                    3330 as ::core::ffi::c_int,
                     b"Melee_bootstrapSyncTeam\0".as_ptr() as *const ::core::ffi::c_char,
                 );
                 0 as ::core::ffi::c_int != 0
