@@ -3,6 +3,8 @@
 build.vars
 config.state
 config_unix.h
+# The C oracles compile against this committed stub, not a generated header.
+!tests/rust/include/config_unix.h
 sc2/obj
 sc2/uqm-debug
 sc2/uqm-wrapper

@@ -59,7 +59,6 @@ jobs:
         env:
           JOBS: '4'
         run: ./scripts/build-web.sh
-      # The Original build configures sc2/ (config_unix.h); the C oracles need that.
       - name: Compare Rust core, movement and geometry with actual C implementations
         run: |
           bash scripts/test-rust-core.sh --all
@@ -116,14 +115,6 @@ jobs:
           git clone --depth 1 https://github.com/emscripten-core/emsdk.git .tools/emsdk
           .tools/emsdk/emsdk install "$(cat .emscripten-version)"
           .tools/emsdk/emsdk activate "$(cat .emscripten-version)"
-      - name: Configure the Original source tree for the C oracles
-        # The oracles compile actual C sources that include the generated config_unix.h.
-        run: |
-          source .tools/emsdk/emsdk_env.sh >/dev/null
-          cd sc2
-          python3 ../scripts/prepare-emscripten-proxy.py wasm/compat
-          cp wasm/config.state.expected config.state
-          emconfigure ./build.sh uqm config </dev/null
       - name: Restore the Rust engine build cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
