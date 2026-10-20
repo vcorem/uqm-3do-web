@@ -7,7 +7,7 @@ import type { MatchStart, NetplayState, Role } from './CosmoNetplay';
 const token = (c: string) => c.repeat(32);
 function netState(over: Partial<NetplayState> = {}): NetplayState {
   return { phase: 'connecting', message: '', role: 'host', room: token('a'), round: 0, tick: 0, localFleet: [], peerFleet: [],
-    localReady: false, peerReady: false, localRematch: false, peerRematch: false, verifiedChecksums: 0, name: '', peerFleetKnown: false, changing: false, ...over };
+    localReady: false, peerReady: false, localRematch: false, peerRematch: false, verifiedChecksums: 0, name: '', peerFleetKnown: false, changing: false, next: null, ...over };
 }
 class FakeSession implements SessionLike {
   state: NetplayState = netState();

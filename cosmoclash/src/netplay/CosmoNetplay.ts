@@ -13,10 +13,19 @@
  * A ready player can take Ready back ("Change fleet"): the host decides, because
  * only the host starts the match (see unready()). While the players choose and
  * on the result screen, each peer sends a small "beat" packet every 20 s, so a
- * silent opponent is found in 2 minutes and a slow choice is not a lost one. */
+ * silent opponent is found in 2 minutes and a slow choice is not a lost one.
+ *
+ * Protocol 3: the first ship of a fleet opens the match; after a loss with two
+ * or more ships left the loser chooses the next ship. Both peers stop the
+ * lockstep at the same tick (the game calls awaitNext() from that frame), only
+ * the loser's "next" packet decides the ship, the other peer answers
+ * "next-ack", and each peer goes on with the next battle when it has both:
+ * the waiting peer when "next" comes, the loser when "next-ack" comes. The
+ * inputs of both peers stay in one ordered stream, so the next battle starts
+ * at the same tick with the same ship on both peers. The choice has beats too. */
 import { roomName } from './roomName';
 import { BASE } from '@/base';
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 export const INPUT_DELAY = 3;
 const MAX_PACKET = 2048;
 const MAX_BUFFERED = 65536;
@@ -32,9 +41,13 @@ const OTHER_LEFT = 'The other player disconnected.';
 const ROOM_WAIT_MS = 11 * 60000;
 const ROOM_TOKEN = /^[0-9a-f]{32}$/;
 export type Role = 'host' | 'guest';
-export type Phase = 'idle' | 'connecting' | 'waiting' | 'handshake' | 'lobby' | 'starting' | 'playing' | 'finishing' | 'ended' | 'closed' | 'error';
+export type Phase = 'idle' | 'connecting' | 'waiting' | 'handshake' | 'lobby' | 'starting' | 'playing' | 'choosing' | 'finishing' | 'ended' | 'closed' | 'error';
 export interface MatchStart { round: number; seed: number; fleets: [number[], number[]]; localPlayer: 0 | 1 }
 export interface Frame { tick: number; inputs: [number, number] }
+/** The next battle after a choice: battle number, the player who chose (0 host, 1 guest) and the ship. */
+export interface NextBattle { battle: number; player: 0 | 1; ship: number }
+/** A choice of the next ship: the ships that the loser can choose from, and the chosen one when known. */
+export interface NextChoice { battle: number; player: 0 | 1; ships: number[]; chosen: number | null }
 export interface NetplayState {
   phase: Phase; message: string; role: Role; room: string; round: number; tick: number;
   localFleet: number[]; peerFleet: number[]; localReady: boolean; peerReady: boolean;
@@ -45,6 +58,8 @@ export interface NetplayState {
   peerFleetKnown: boolean;
   /** A guest asked to take Ready back and waits for the host's answer. */
   changing: boolean;
+  /** Protocol 3: the choice of the next ship while the lockstep waits ('choosing'). */
+  next: NextChoice | null;
 }
 export interface SocketLike {
   binaryType: string; readyState: number; bufferedAmount: number;
@@ -65,6 +80,8 @@ export interface NetplayOptions {
   onStart: (start: MatchStart) => void;
   onFrame: (frame: Frame) => void;
   onEnd?: (winner: 0 | 1 | 2) => void;
+  /** The next ship is agreed: build the next battle before the next frame. */
+  onNext?: (next: NextBattle) => void;
 }
 type Packet = Record<string, unknown>;
 const integer = (value: unknown, max: number): value is number => Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= max;
@@ -141,6 +158,10 @@ export class CosmoNetplay {
   private lastPeerAt = Date.now();
   private rateStart = 0;
   private rateCount = 0;
+  /** Protocol 3: the choice of the next ship, a "next" packet that came before this peer reached the choice, the last battle chosen. */
+  private choice: NextChoice | null = null;
+  private earlyNext: { battle: number; ship: number } | null = null;
+  private lastBattle = 0;
   constructor(private readonly options: NetplayOptions) {
     if (!/^[a-zA-Z0-9._:-]{1,128}$/.test(options.buildId)) throw new Error('A stable build identity is required.');
     const initial = options.initialFleet ?? [];
@@ -151,8 +172,11 @@ export class CosmoNetplay {
     return {phase: this.phase, message: this.message, role: this.role, room: this.room, round: this.round, tick: this.tick,
       localFleet: [...this.localFleet], peerFleet: [...this.peerFleet], localReady: this.localReady, peerReady: this.peerReady,
       localRematch: this.localRematch, peerRematch: this.peerRematch, verifiedChecksums: this.verifiedChecksums,
-      name: this.name, peerFleetKnown: this.peerFleetKnown, changing: this.changing};
+      name: this.name, peerFleetKnown: this.peerFleetKnown, changing: this.changing,
+      next: this.choice ? {...this.choice, ships: [...this.choice.ships]} : null};
   }
+  /** This peer's player: the host is player 0 (left), the guest player 1. */
+  private get local(): 0 | 1 { return this.role === 'host' ? 0 : 1; }
   private emit(phase = this.phase, message = this.message): void {
     this.phase = phase; this.message = message; this.options.onState?.(this.state);
   }
@@ -176,7 +200,7 @@ export class CosmoNetplay {
       // The relay closes a room that waits too long, with its own message.
       if (this.phase === 'waiting') { if (now - this.waitingSince > (this.options.timeoutMs ?? ROOM_WAIT_MS)) this.fail('Nobody joined before the room expired.'); return; }
       // No game data while the players choose or read the result: a beat says that this peer is still here.
-      const patient = ['lobby', 'ended'].includes(this.phase);
+      const patient = ['lobby', 'choosing', 'ended'].includes(this.phase);
       if (patient && now - this.lastSentAt >= (this.options.beatMs ?? BEAT_MS)) this.send({type: 'beat', round: this.round});
       if (['closed', 'error'].includes(this.phase)) return;
       const timeout = this.options.timeoutMs ?? (patient ? QUIET_PEER_MS : 20000);
@@ -234,6 +258,48 @@ export class CosmoNetplay {
     try { this.options.onFrame(frame); } catch { this.fail('The game could not advance safely.'); }
     return true;
   }
+  /**
+   * Protocol 3: the battle ended and this player has two or more ships left:
+   * the lockstep waits for the choice of the next ship. Call it from the frame
+   * at which both peers know it (onFrame), after its checksum. player: the
+   * loser (0 host, 1 guest); ships: the ships that the loser can choose.
+   */
+  awaitNext({battle, player, ships}: {battle: number; player: 0 | 1; ships: number[]}): void {
+    if (this.phase !== 'playing' || this.choice) throw new Error('The next ship can be chosen only during a match.');
+    if (!integer(battle, MAX_TICK) || battle <= this.lastBattle || (player !== 0 && player !== 1) || !validPicks(ships) || ships.length < 2) throw new Error('Invalid choice of the next ship.');
+    this.choice = {battle, player, ships: [...ships], chosen: null};
+    this.emit('choosing', player === this.local ? 'Choose your next ship.' : 'Your opponent is choosing the next ship.');
+    const early = this.earlyNext;
+    this.earlyNext = null;
+    // emit() may have stopped the session (the page left the room).
+    if (early && (this.phase as Phase) === 'choosing') {
+      try { this.takeNext(early); } catch { this.fail('Invalid or incompatible game data received.'); }
+    }
+  }
+  /** Protocol 3: the loser's choice (or the first ship left when the time ran out). */
+  chooseNext(ship: number): void {
+    const choice = this.choice;
+    if (this.phase !== 'choosing' || !choice || choice.player !== this.local || choice.chosen !== null) return;
+    if (!choice.ships.includes(ship)) throw new Error('This ship cannot fly next.');
+    choice.chosen = ship;
+    this.send({type: 'next', round: this.round, battle: choice.battle, ship});
+    if (this.phase === 'choosing') this.emit();
+  }
+  /** The opponent's choice: answer next-ack and go on. */
+  private takeNext({battle, ship}: {battle: number; ship: number}): void {
+    const choice = this.choice;
+    if (!choice || choice.player === this.local || choice.chosen !== null || battle !== choice.battle || !choice.ships.includes(ship)) throw new Error();
+    choice.chosen = ship;
+    this.send({type: 'next-ack', round: this.round, battle});
+    if (this.phase === 'choosing') this.resume();
+  }
+  private resume(): void {
+    const choice = this.choice!;
+    const next: NextBattle = {battle: choice.battle, player: choice.player, ship: choice.chosen!};
+    this.choice = null; this.lastBattle = choice.battle;
+    this.emit('playing', 'The next battle starts.');
+    if (this.phase === 'playing') this.options.onNext?.(next);
+  }
   reportChecksum(tick: number, hash: string | number): void {
     if (!['playing', 'finishing'].includes(this.phase)) return;
     const value = String(hash);
@@ -262,6 +328,7 @@ export class CosmoNetplay {
     const socket = this.socket; this.socket = null;
     if (socket) { socket.onopen = null; socket.onmessage = null; socket.onclose = null; socket.onerror = null; try { socket.close(1000, 'Session ended'); } catch { /* Already closed. */ } }
     this.localInputs.clear(); this.peerInputs.clear(); this.localChecksums.clear(); this.peerChecksums.clear();
+    this.choice = null; this.earlyNext = null;
     this.emit(phase, message);
   }
   private fail(message: string): void { this.stop('error', message); }
@@ -358,11 +425,24 @@ export class CosmoNetplay {
       case 'go':
         if (this.role !== 'guest' || this.phase !== 'starting' || !shape(p, ['type', 'round'])) throw new Error();
         this.start(); break;
+      case 'next': {
+        if (!shape(p, ['type', 'round', 'battle', 'ship']) || !integer(p.battle, MAX_TICK) || !integer(p.ship, 2) || p.battle <= this.lastBattle) throw new Error();
+        const next = {battle: p.battle, ship: p.ship};
+        // The loser chose before this peer reached the end of the battle: keep it for awaitNext().
+        if (this.phase === 'playing' && !this.choice) { if (this.earlyNext) throw new Error(); this.earlyNext = next; break; }
+        if (this.phase !== 'choosing') throw new Error();
+        this.takeNext(next); break;
+      }
+      case 'next-ack': {
+        const choice = this.choice;
+        if (this.phase !== 'choosing' || !choice || choice.player !== this.local || choice.chosen === null || !shape(p, ['type', 'round', 'battle']) || p.battle !== choice.battle) throw new Error();
+        this.resume(); break;
+      }
       case 'input':
-        if (!['playing', 'finishing', 'ended'].includes(this.phase) || !shape(p, ['type', 'round', 'tick', 'input']) || !integer(p.tick, MAX_TICK) || p.tick !== this.receiveTick || p.tick > this.tick + 2 * INPUT_DELAY + 1 || !integer(p.input, 31)) throw new Error();
+        if (!['playing', 'choosing', 'finishing', 'ended'].includes(this.phase) || !shape(p, ['type', 'round', 'tick', 'input']) || !integer(p.tick, MAX_TICK) || p.tick !== this.receiveTick || p.tick > this.tick + 2 * INPUT_DELAY + 1 || !integer(p.input, 31)) throw new Error();
         this.receiveTick++; this.peerInputs.set(p.tick, p.input); break;
       case 'hash':
-        if (!['playing', 'finishing', 'ended'].includes(this.phase) || !shape(p, ['type', 'round', 'tick', 'hash']) || !integer(p.tick, MAX_TICK) || p.tick <= this.lastPeerChecksum || p.tick > this.tick + INPUT_DELAY || typeof p.hash !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(p.hash) || this.peerChecksums.size >= 120) throw new Error();
+        if (!['playing', 'choosing', 'finishing', 'ended'].includes(this.phase) || !shape(p, ['type', 'round', 'tick', 'hash']) || !integer(p.tick, MAX_TICK) || p.tick <= this.lastPeerChecksum || p.tick > this.tick + INPUT_DELAY || typeof p.hash !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(p.hash) || this.peerChecksums.size >= 120) throw new Error();
         this.lastPeerChecksum = p.tick; this.peerChecksums.set(p.tick, p.hash); this.compareHash(p.tick); break;
       case 'finish':
         if (!['playing', 'finishing'].includes(this.phase) || this.peerFinish || !shape(p, ['type', 'round', 'tick', 'winner']) || !integer(p.tick, MAX_TICK) || p.tick < this.tick - 1 || p.tick > this.tick + INPUT_DELAY || p.tick !== this.lastPeerChecksum || !integer(p.winner, 2)) throw new Error();
@@ -403,6 +483,7 @@ export class CosmoNetplay {
     this.round++; this.tick = 0; this.sendTick = INPUT_DELAY; this.receiveTick = INPUT_DELAY;
     this.localReady = false; this.peerReady = false; this.localRematch = false; this.peerRematch = false; this.peerFleetKnown = false; this.changing = false;
     this.localFinish = null; this.peerFinish = null; this.pendingStart = null;
+    this.choice = null; this.earlyNext = null; this.lastBattle = 0;
     this.localInputs.clear(); this.peerInputs.clear(); this.localChecksums.clear(); this.peerChecksums.clear();
     this.lastLocalChecksum = -1; this.lastPeerChecksum = -1; this.verifiedChecksums = 0;
     this.phase = 'lobby';

@@ -7,7 +7,7 @@ import { createNetplayServer } from '../../../server/netplay.mjs';
 import { createRustRelay } from '../../../tests/helpers/rust-relay.mjs';
 // @ts-ignore ws is provided by the repository's root dependencies.
 import { WebSocket } from 'ws';
-import { CosmoNetplay, createRoomId, invitationURL, parseRoom, readInvite, roomURL, PROTOCOL_VERSION, INPUT_DELAY, BEAT_MS, QUIET_PEER_MS, type Frame, type NetplayOptions, type SocketLike } from './CosmoNetplay';
+import { CosmoNetplay, createRoomId, invitationURL, parseRoom, readInvite, roomURL, PROTOCOL_VERSION, INPUT_DELAY, BEAT_MS, QUIET_PEER_MS, type Frame, type NetplayOptions, type NextBattle, type SocketLike } from './CosmoNetplay';
 const cleanup: (() => Promise<void> | void)[] = [];
 afterEach(async () => { for (const fn of cleanup.splice(0).reverse()) await fn(); });
 const sleep = (ms = 2) => new Promise(resolve => setTimeout(resolve, ms));
@@ -22,14 +22,20 @@ async function pair(kind = 'node', jitter = false, guestBuild = 'test-rust-v1', 
   const sockets: any[] = []; const starts: any[][] = [[], []]; const frames: Frame[][] = [[], []];
   let peers: CosmoNetplay[] = [];
   let endAt = -1; let corruptHash = false;
+  // Protocol 3: the battle that ends at this tick needs a choice of the next ship.
+  let pause: { tick: number; battle: number; player: 0 | 1; ships: number[] } | null = null;
+  const nexts: (NextBattle & { tick: number })[][] = [[], []];
   peers = [0, 1].map(index => new CosmoNetplay({
     buildId: index ? guestBuild : 'test-rust-v1', randomSeed: () => 123456789, ...extra,
     socketFactory: url => { const ws = new WebSocket(url, {origin}); sockets[index] = ws; return ws as SocketLike; },
     onStart: value => { starts[index].push(value); frames[index] = []; },
+    onNext: next => nexts[index].push({ ...next, tick: peers[index].state.tick }),
     onFrame: frame => {
       frames[index].push(frame);
-      if (frame.tick % 30 === 0 || frame.tick === endAt) peers[index].reportChecksum(frame.tick, (corruptHash && index ? 'bad' : 'ok') + frame.tick);
+      const pausing = pause?.tick === frame.tick;
+      if (frame.tick % 30 === 0 || frame.tick === endAt || pausing) peers[index].reportChecksum(frame.tick, (corruptHash && index ? 'bad' : 'ok') + frame.tick);
       if (frame.tick === endAt) peers[index].finish(0);
+      if (pausing) peers[index].awaitNext(pause!);
     },
   }));
   cleanup.push(() => { peers.forEach(peer => peer.close()); });
@@ -38,8 +44,9 @@ async function pair(kind = 'node', jitter = false, guestBuild = 'test-rust-v1', 
   peers[1].connect({origin, room, role: 'guest'});
   const states = () => peers.map(peer => peer.state);
   await until(() => peers.every(peer => peer.state.phase === 'lobby' && peer.state.peerFleetKnown) || peers.some(peer => peer.state.phase === 'error'), states);
-  return {peers, sockets, states, starts, frames, origin, app, room,
+  return {peers, sockets, states, starts, frames, origin, app, room, nexts,
     endAt(tick: number) { endAt = tick; }, corruptHash() { corruptHash = true; },
+    pauseAt(tick: number, player: 0 | 1, ships: number[], battle = 1) { pause = { tick, battle, player, ships }; },
     async start() {
       peers[0].chooseFleet([2, 0]); peers[1].chooseFleet([1]);
       // Fleet and ready packets share one ordered WebSocket stream.
@@ -49,7 +56,7 @@ async function pair(kind = 'node', jitter = false, guestBuild = 'test-rust-v1', 
     },
     async pump(tick: number) {
       const deadline = Date.now() + 10000;
-      while (peers.some(peer => peer.state.tick < tick && peer.state.phase === 'playing')) {
+      while (peers.some(peer => peer.state.tick < tick && ['playing', 'choosing'].includes(peer.state.phase)) && !peers.every(peer => peer.state.phase === 'choosing')) {
         if (Date.now() > deadline) throw new Error(`Stalled: ${JSON.stringify(states())}`);
         peers.forEach((peer, index) => peer.advance((peer.state.tick * (index + 3)) & 31));
         if (peers.some(peer => peer.state.phase === 'error')) throw new Error(JSON.stringify(states()));
@@ -143,20 +150,21 @@ it('room URLs: a listed host (name and engine=rust), a private host and a guest'
   expect(() => roomURL('http://h/', room, 'host', 'x'.repeat(25))).toThrow(/Room names need 1 to 24 visible characters/);
   expect(() => roomURL('http://h/', 'A'.repeat(32), 'host')).toThrow(/Invalid/);
   expect(() => roomURL('http://user:pw@h/', room, 'host')).toThrow(/Invalid/);
-  expect(PROTOCOL_VERSION).toBe(2);
+  expect(PROTOCOL_VERSION).toBe(3);
 });
 
 /** One peer against a scripted relay socket (no network): control messages and keepalive. */
 function scripted(options: { name?: string; keepaliveMs?: number; role?: 'host' | 'guest' } = {}) {
-  const sent: (string | Record<string, unknown>)[] = []; const states: string[] = [];
+  const sent: (string | Record<string, unknown>)[] = []; const states: string[] = []; const nexts: NextBattle[] = [];
   const socket: SocketLike & { closed: boolean; url: string } = { url: '', closed: false, readyState: 1, binaryType: '', bufferedAmount: 0,
     onopen: null, onclose: null, onerror: null, onmessage: null, close() { this.closed = true; },
     send(data) { sent.push(typeof data === 'string' ? data : JSON.parse(new TextDecoder().decode(data))); } };
   const peer = new CosmoNetplay({ buildId: 'scripted', keepaliveMs: options.keepaliveMs, onStart: () => {}, onFrame: () => {},
+    onNext: next => nexts.push(next),
     onState: state => states.push(state.phase), socketFactory: url => { socket.url = url; return socket; } });
   peer.connect({ origin: 'http://127.0.0.1:1/cosmoclash/', room: 'cd'.repeat(16), role: options.role ?? 'host', name: options.name });
   socket.onopen?.({});
-  return { peer, socket, sent, states,
+  return { peer, socket, sent, states, nexts,
     relay(value: unknown) { socket.onmessage?.({ data: typeof value === 'string' ? value : JSON.stringify(value) }); },
     game(value: unknown) { socket.onmessage?.({ data: new TextEncoder().encode(JSON.stringify(value)) }); } };
 }
@@ -187,7 +195,7 @@ it('relay control messages: waiting, ready, error and peer-left', () => {
   expect(p.peer.state.message).toBe('Waiting for your opponent to join…');
   p.relay({ type: 'ready', role: 'host' });
   expect(p.peer.state.phase).toBe('handshake');
-  expect(p.sent).toEqual([{ type: 'hello', version: 2, build: 'scripted', role: 'host', delay: INPUT_DELAY }]);
+  expect(p.sent).toEqual([{ type: 'hello', version: 3, build: 'scripted', role: 'host', delay: INPUT_DELAY }]);
   p.relay({ type: 'peer-left', message: 'The other player disconnected.' });
   expect(p.peer.state).toMatchObject({ phase: 'closed', message: 'Your opponent left the room.' });
   const e = scripted(); e.relay({ type: 'error', message: 'Room already exists or has expired. Create a new room.' });
@@ -202,7 +210,7 @@ it('relay control messages: waiting, ready, error and peer-left', () => {
 it('protocol 2: the picks so far go to the other player, and Ready needs one ship', () => {
   const p = scripted();
   p.relay({ type: 'waiting' }); p.relay({ type: 'ready', role: 'host' });
-  p.game({ type: 'hello', version: 2, build: 'scripted', role: 'guest', delay: INPUT_DELAY });
+  p.game({ type: 'hello', version: 3, build: 'scripted', role: 'guest', delay: INPUT_DELAY });
   expect(p.peer.state.phase).toBe('lobby');
   expect(p.sent.at(-1)).toEqual({ type: 'fleet', round: 0, ships: [] });
   p.peer.ready(); expect(p.peer.state.localReady).toBe(false);
@@ -217,13 +225,14 @@ it('protocol 2: the picks so far go to the other player, and Ready needs one shi
   p.peer.chooseFleet([0]); expect(p.peer.state.localFleet).toEqual([2, 0]);
   // A Ready from a player without ships is invalid.
   const q = scripted(); q.relay({ type: 'waiting' }); q.relay({ type: 'ready', role: 'host' });
-  q.game({ type: 'hello', version: 2, build: 'scripted', role: 'guest', delay: INPUT_DELAY });
+  q.game({ type: 'hello', version: 3, build: 'scripted', role: 'guest', delay: INPUT_DELAY });
   q.game({ type: 'fleet', round: 0, ships: [] }); q.game({ type: 'ready', round: 0 });
   expect(q.peer.state.phase).toBe('error');
-  // Protocol 1 clients cannot play protocol 2 clients.
+  // Protocol 2 clients (fleets in a fixed order) cannot play protocol 3 clients.
   const o = scripted(); o.relay({ type: 'waiting' }); o.relay({ type: 'ready', role: 'host' });
-  o.game({ type: 'hello', version: 1, build: 'scripted', role: 'guest', delay: INPUT_DELAY });
+  o.game({ type: 'hello', version: 2, build: 'scripted', role: 'guest', delay: INPUT_DELAY });
   expect(o.peer.state.message).toMatch(/versions differ/);
+  expect(o.peer.state.phase).toBe('error');
 });
 
 it('requires a final checksum and rejects conflicting fleet match winners', async () => {
@@ -294,7 +303,7 @@ describe.each(['node', 'rust'])('beats and Change fleet through the real %s rela
 function inLobby(role: 'host' | 'guest') {
   const p = scripted({ role });
   p.relay({ type: 'waiting' }); p.relay({ type: 'ready', role });
-  p.game({ type: 'hello', version: 2, build: 'scripted', role: role === 'host' ? 'guest' : 'host', delay: INPUT_DELAY });
+  p.game({ type: 'hello', version: 3, build: 'scripted', role: role === 'host' ? 'guest' : 'host', delay: INPUT_DELAY });
   p.game({ type: 'fleet', round: 0, ships: [1] });
   return p;
 }
@@ -376,4 +385,144 @@ it('beats: the last round is accepted just after a rematch; other rounds, extra 
   }
   const early = scripted(); early.relay({ type: 'waiting' }); early.relay({ type: 'ready', role: 'host' });
   early.game({ type: 'beat', round: 0 }); expect(early.peer.state.phase).toBe('error');
+});
+
+describe.each(['node', 'rust'])('protocol 3: the next ship through the real %s relay', kind => {
+  it('the loser chooses; both peers stop at the same tick, go on at the next tick with the same ship, and keep the same frames and checksums', async () => {
+    const p = await pair(kind, kind === 'rust');
+    p.pauseAt(59, 1, [0, 2]); p.endAt(149); await p.start();
+    await p.pump(150);
+    await until(() => p.peers.every(peer => peer.state.phase === 'choosing'), p.states);
+    expect(p.peers.map(peer => peer.state.tick)).toEqual([60, 60]);
+    expect(p.peers.map(peer => peer.state.next)).toEqual([0, 1].map(() => ({ battle: 1, player: 1, ships: [0, 2], chosen: null })));
+    expect(p.peers.map(peer => peer.state.message)).toEqual(['Your opponent is choosing the next ship.', 'Choose your next ship.']);
+    // The lockstep waits: no frame, and the winner cannot choose for the loser.
+    for (let n = 0; n < 20; n++) p.peers.forEach(peer => expect(peer.advance(31)).toBe(false));
+    p.peers[0].chooseNext(0);
+    expect(p.peers[0].state.next?.chosen).toBe(null);
+    expect(() => p.peers[1].chooseNext(1)).toThrow();
+    await sleep(30);
+    expect(p.peers.map(peer => peer.state.phase)).toEqual(['choosing', 'choosing']);
+    p.peers[1].chooseNext(2);
+    expect(p.peers[1].state.next?.chosen).toBe(2);
+    await until(() => p.peers.every(peer => peer.state.phase === 'playing'), p.states);
+    expect(p.nexts).toEqual([[{ battle: 1, player: 1, ship: 2, tick: 60 }], [{ battle: 1, player: 1, ship: 2, tick: 60 }]]);
+    expect(p.peers.map(peer => peer.state.next)).toEqual([null, null]);
+    await p.pump(150); await until(() => p.peers.every(peer => peer.state.phase === 'ended'), p.states);
+    expect(p.frames[0]).toEqual(p.frames[1]); expect(p.frames[0]).toHaveLength(150);
+    expect(p.peers.map(peer => peer.state.verifiedChecksums)).toEqual([7, 7]);
+  }, 20000);
+});
+
+/** A host or a guest in a running battle against a scripted relay. Its fleet is [0, 2, 1]; the other player has [1]. */
+function playing(role: 'host' | 'guest') {
+  const p = inLobby(role);
+  p.peer.chooseFleet([0, 2, 1]); p.peer.ready();
+  p.game({ type: 'ready', round: 0 });
+  if (role === 'host') p.game({ type: 'ack', round: 0 });
+  else { p.game({ type: 'start', round: 0, seed: 5, fleets: [[1], [0, 2, 1]] }); p.game({ type: 'go', round: 0 }); }
+  expect(p.peer.state.phase).toBe('playing');
+  return p;
+}
+const local = (role: 'host' | 'guest') => (role === 'host' ? 0 : 1) as 0 | 1;
+it.each(['host', 'guest'] as const)('protocol 3 (%s): the loser sends next and goes on with next-ack; the winner answers next-ack and goes on', role => {
+  const loser = playing(role);
+  loser.peer.awaitNext({ battle: 1, player: local(role), ships: [2, 1] });
+  expect(loser.peer.state).toMatchObject({ phase: 'choosing', next: { battle: 1, player: local(role), ships: [2, 1], chosen: null } });
+  expect(loser.peer.advance(0)).toBe(false);
+  expect(() => loser.peer.chooseNext(0)).toThrow();
+  loser.peer.chooseNext(1);
+  expect(loser.sent.at(-1)).toEqual({ type: 'next', round: 0, battle: 1, ship: 1 });
+  loser.peer.chooseNext(2);
+  expect(sentTypes(loser, 'next')).toHaveLength(1);
+  expect(loser.peer.state.phase).toBe('choosing');
+  loser.game({ type: 'next-ack', round: 0, battle: 1 });
+  expect(loser.peer.state).toMatchObject({ phase: 'playing', next: null });
+  expect(loser.nexts).toEqual([{ battle: 1, player: local(role), ship: 1 }]);
+  // The winner waits for the loser's packet and never chooses.
+  const winner = playing(role);
+  const other = (1 - local(role)) as 0 | 1;
+  winner.peer.awaitNext({ battle: 1, player: other, ships: [0, 2] });
+  winner.peer.chooseNext(0);
+  expect(sentTypes(winner, 'next')).toEqual([]);
+  winner.game({ type: 'next', round: 0, battle: 1, ship: 2 });
+  expect(winner.sent.at(-1)).toEqual({ type: 'next-ack', round: 0, battle: 1 });
+  expect(winner.peer.state).toMatchObject({ phase: 'playing', next: null });
+  expect(winner.nexts).toEqual([{ battle: 1, player: other, ship: 2 }]);
+  // The next choice needs a later battle.
+  expect(() => winner.peer.awaitNext({ battle: 1, player: other, ships: [0, 1] })).toThrow();
+  winner.peer.awaitNext({ battle: 3, player: other, ships: [0, 1] });
+  expect(winner.peer.state.phase).toBe('choosing');
+});
+it('protocol 3: a next packet that came before this peer reached the choice is kept for it', () => {
+  const p = playing('host');
+  p.game({ type: 'next', round: 0, battle: 1, ship: 0 });
+  expect(p.peer.state.phase).toBe('playing');
+  expect(p.nexts).toEqual([]);
+  p.peer.awaitNext({ battle: 1, player: 1, ships: [0, 2] });
+  expect(p.sent.at(-1)).toEqual({ type: 'next-ack', round: 0, battle: 1 });
+  expect(p.peer.state.phase).toBe('playing');
+  expect(p.nexts).toEqual([{ battle: 1, player: 1, ship: 0 }]);
+  // An early choice that does not fit the choice stops the match.
+  const bad = playing('host');
+  bad.game({ type: 'next', round: 0, battle: 1, ship: 1 });
+  bad.peer.awaitNext({ battle: 1, player: 1, ships: [0, 2] });
+  expect(bad.peer.state).toMatchObject({ phase: 'error', message: 'Invalid or incompatible game data received.' });
+  const twice = playing('host');
+  twice.game({ type: 'next', round: 0, battle: 1, ship: 0 }); twice.game({ type: 'next', round: 0, battle: 1, ship: 0 });
+  expect(twice.peer.state.phase).toBe('error');
+});
+it.each([
+  ['the winner sends next', 'loser-local', { type: 'next', round: 0, battle: 1, ship: 2 }],
+  ['a ship that is not left', 'peer', { type: 'next', round: 0, battle: 1, ship: 1 }],
+  ['another battle', 'peer', { type: 'next', round: 0, battle: 2, ship: 2 }],
+  ['an extra field', 'peer', { type: 'next', round: 0, battle: 1, ship: 2, x: 1 }],
+  ['another round', 'peer', { type: 'next', round: 1, battle: 1, ship: 2 }],
+  ['next-ack without a choice', 'loser-local', { type: 'next-ack', round: 0, battle: 1 }],
+  ['next-ack to the waiting peer', 'peer', { type: 'next-ack', round: 0, battle: 1 }],
+  ['next-ack of another battle', 'chosen', { type: 'next-ack', round: 0, battle: 2 }],
+  ['next after the end of the match', 'ended', { type: 'next', round: 0, battle: 1, ship: 2 }],
+] as const)('protocol 3 refuses %s', (_name, setup, packet) => {
+  const p = playing('host');
+  if (setup === 'ended') {
+    p.peer.advance(0); p.game({ type: 'input', round: 0, tick: 3, input: 0 });
+    for (let n = 0; n < 4; n++) p.peer.advance(0);
+    p.peer.reportChecksum(p.peer.state.tick - 1, 'x'); p.game({ type: 'hash', round: 0, tick: p.peer.state.tick - 1, hash: 'x' });
+    p.game({ type: 'finish', round: 0, tick: p.peer.state.tick - 1, winner: 1 }); p.peer.finish(1);
+    expect(p.peer.state.phase).toBe('ended');
+  } else p.peer.awaitNext({ battle: 1, player: setup === 'peer' ? 1 : 0, ships: [0, 2] });
+  if (setup === 'chosen') p.peer.chooseNext(2);
+  p.game(packet);
+  expect(p.peer.state.phase).toBe('error');
+});
+it('protocol 3: awaitNext needs a match and a real choice (two or more ships)', () => {
+  const p = playing('guest');
+  expect(() => p.peer.awaitNext({ battle: 1, player: 0, ships: [2] })).toThrow();
+  expect(() => p.peer.awaitNext({ battle: 0, player: 0, ships: [0, 2] })).toThrow();
+  expect(() => p.peer.awaitNext({ battle: 1, player: 0, ships: [2, 2] })).toThrow();
+  const lobby = inLobby('host');
+  expect(() => lobby.peer.awaitNext({ battle: 1, player: 0, ships: [0, 2] })).toThrow();
+  expect(p.peer.state.phase).toBe('playing');
+});
+it('protocol 3: the choice has beats and the 2-minute limit (a 20 s choice never ends the room); inputs and checksums of the last battle are accepted', () => {
+  vi.useFakeTimers();
+  try {
+    const p = playing('host');
+    p.peer.advance(0); p.peer.advance(0);
+    p.peer.awaitNext({ battle: 1, player: 1, ships: [0, 2] });
+    p.game({ type: 'input', round: 0, tick: 3, input: 1 }); p.game({ type: 'input', round: 0, tick: 4, input: 1 });
+    p.game({ type: 'hash', round: 0, tick: 0, hash: 'h' });
+    expect(p.peer.state.phase).toBe('choosing');
+    vi.advanceTimersByTime(25000);
+    expect(p.peer.state.phase).toBe('choosing');
+    expect(sentTypes(p, 'beat')).toEqual([{ type: 'beat', round: 0 }]);
+    vi.advanceTimersByTime(QUIET_PEER_MS - 20000);
+    expect(p.peer.state).toMatchObject({ phase: 'error', message: 'Your opponent stopped responding.' });
+  } finally { vi.useRealTimers(); }
+});
+it('protocol 3: the opponent leaves during the choice: the room closes with the reason', () => {
+  const p = playing('guest');
+  p.peer.awaitNext({ battle: 1, player: 1, ships: [0, 2] });
+  p.relay({ type: 'peer-left', message: 'The other player disconnected.' });
+  expect(p.peer.state).toMatchObject({ phase: 'closed', message: 'Your opponent left the room.', next: null });
 });

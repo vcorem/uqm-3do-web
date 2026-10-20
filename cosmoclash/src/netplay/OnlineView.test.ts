@@ -21,7 +21,7 @@ function setup() {
     watchLobby: handlers => { lobby = handlers; return { state: 'connecting', rooms: [], close() {} } as unknown as LobbyWatcher; },
     createSession: handlers => {
       let state: NetplayState = { phase: 'connecting', message: '', role: 'host', room: 'a'.repeat(32), round: 0, tick: 0, localFleet: [], peerFleet: [],
-        localReady: false, peerReady: false, localRematch: false, peerRematch: false, verifiedChecksums: 0, name: '', peerFleetKnown: false, changing: false };
+        localReady: false, peerReady: false, localRematch: false, peerRematch: false, verifiedChecksums: 0, name: '', peerFleetKnown: false, changing: false, next: null };
       session = { handlers, get state() { return state; }, connect() {}, chooseFleet(fleet) { state = { ...state, localFleet: fleet }; }, ready() {}, unready() {}, rematch() {}, close() {},
         set(over) { state = { ...state, ...over }; handlers.onState(state); } };
       return session!;

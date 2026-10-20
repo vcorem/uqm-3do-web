@@ -322,7 +322,7 @@ const online=new OnlineController({
   createToken:createRoomId,
   watchLobby:handlers=>watchLobby({origin:location.href,...handlers}),
   createSession:handlers=>{
-    netSession=new CosmoNetplay({buildId:`cosmo2:${engine.buildId}`,onState:handlers.onState,onStart:handlers.onStart,onEnd:handlers.onEnd,onFrame:onlineFrame});
+    netSession=new CosmoNetplay({buildId:`cosmo3:${engine.buildId}`,onState:handlers.onState,onStart:handlers.onStart,onEnd:handlers.onEnd,onFrame:onlineFrame});
     return netSession;
   },
   inviteURL:token=>invitationURL(token),
