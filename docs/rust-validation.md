@@ -9,6 +9,13 @@ branch has not been publicly released or deployed. Main's separate hosting chang
 were not imported.
 The original `codex/web-netplay` checkout remains unchanged.
 
+Delivery status reviewed on 2026-10-20: the initial Rust port is committed locally
+as `84e963030d678aa6fedc7b05cd335ed67753f5b8`, followed by the HD netplay implementation
+commit above. The HTML handover was refreshed to record this status. This is a
+documentation-only update: the validation date and tested builds remain unchanged;
+no new gameplay run is claimed. The branch has not been pushed by this work.
+Linux CI and internet play between two physical computers remain unverified.
+
 ## Tested builds
 
 These are the final complete Rust engine builds, regenerated with both C2Rust

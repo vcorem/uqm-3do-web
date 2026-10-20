@@ -15,10 +15,10 @@
 <body>
 <main class="page">
 <header>
-<p class="eyebrow">UQM · ENGINEERING HANDOFF / 02</p>
+<p class="eyebrow">UQM · ENGINEERING HANDOFF / 03</p>
 <h1>Rust port<br>Developer handoff</h1>
 <p class="lead">Both game engines—Original and HD—build from Rust to WebAssembly. HD Online Melee from main is now ported into the Rust engine and room relay. This report records the implementation, validation evidence, and remaining work before hosting this Rust version.</p>
-<div class="meta"><span>19 October 2026</span><span><code>codex/rust-port</code></span><span>Commit <code>3e8597d4b</code></span><span>Local validation · Private alpha</span></div>
+<div class="meta"><span>Updated 20 October 2026</span><span><code>codex/rust-port</code></span><span>Tested implementation <code>3e8597d4b</code></span><span>Committed locally · Private alpha</span></div>
 </header>
 <div class="toolbar"><p>Self-contained HTML · Embedded screenshots · Print-ready layout</p><button class="print" onclick="window.print()" type="button">Print / Save as PDF</button></div>
 <div class="summary"><div class="stat"><strong>2 engines</strong><span>Original + HD built from Rust</span></div><div class="stat"><strong>25 / 25</strong><span>HD ships passed C-versus-Rust smoke checks</span></div><div class="stat"><strong>111 + 35</strong><span>Project tests and Rust unit tests passed</span></div></div>
@@ -27,7 +27,8 @@
 <section id="status">
 <h2><span class="n">01</span> Delivery status</h2>
 <p>The port covers both game engines: campaign logic, combat, ships, dialogue, saves, menus, resource management, rendering, audio/video orchestration, and threading. Work is isolated on a separate branch based on <code>783d8d3ce</code>. A combined playable browser package has been built and tested locally.</p>
-<div class="note warn"><p><strong>This Rust branch has not been pushed to GitHub as of this report.</strong> Share or publish the branch before the receiving developer attempts to fetch it. No deployment, domain change, or public release of this Rust version was performed by this work. Repository: <a href="https://github.com/vcorem/uqm-3do-web">vcorem/uqm-3do-web</a>.</p></div>
+<p><strong>Commit status, reviewed 20 October 2026:</strong> the Original and HD Rust port is committed as <code>84e963030</code>, and the HD Online Melee integration is committed as <code>3e8597d4b</code>. The tested implementation is complete and committed locally. This document revision updates delivery status only; it does not change game code or claim a new gameplay test run.</p>
+<div class="note warn"><p><strong>This work has not pushed the Rust branch to GitHub.</strong> Share or publish the branch before the receiving developer attempts to fetch it. No deployment, domain change, or public release of this Rust version was performed by this work. Repository: <a href="https://github.com/vcorem/uqm-3do-web">vcorem/uqm-3do-web</a>.</p></div>
 <p><strong>HD netplay provenance:</strong> imported from main’s commit <code>5d7810ba5302803abe537f1b669d696a3af073ad</code>, observed in main at <code>3ba129550</code>. The complete HD engine was regenerated with networking enabled, preserving network-dependent layouts throughout the game. Main’s separate Cloudflare deployment work was not imported or deployed by this change.</p>
 <p>This is a source port that preserves the C data model and algorithms. It retains substantial <code>unsafe</code> Rust. Most engine code was translated with C2Rust; selected shared modules were implemented manually and tested against the original C. Changing the source language does not by itself establish memory safety.</p>
 <div class="table-wrap"><table><thead><tr><th>Area</th><th>Delivered state</th></tr></thead><tbody>
@@ -107,6 +108,7 @@ bash scripts/build-rust-relay.sh</code></pre>
 
 <section id="validation">
 <h2><span class="n">05</span> Validation results and reproduction</h2>
+<p class="small muted">Validation record: 19 October 2026. The saved results were reviewed again on 20 October 2026 for this documentation update. Linux CI and internet play between two physical computers remain unverified.</p>
 <p>The HD netplay evidence, including the complete 25-ship matrix, refers to the new complete Rust build identified in Section 08; retained baseline checks are identified separately. The rebuilt Original Wasm remains byte-identical to its earlier validated version. Differential combat tests hash the exact Wasm response bytes forwarded to each browser, verifying that the Rust client and independent C client use different engines.</p>
 <div class="table-wrap"><table><thead><tr><th>Check</th><th>Result and scope</th></tr></thead><tbody>
 <tr><td>Unit tests and tooling</td><td><span class="tag">Passed</span> 35 Rust unit tests, 111 project tests, 13 regeneration-helper tests, and eight HD patch-upgrade checks. Formatting and Clippy passed for the core/relay workspace.</td></tr>
@@ -217,7 +219,9 @@ bash tests/rust/test-lua.sh --wasm</code></pre>
 
 <section id="reference">
 <h2><span class="n">08</span> Build identity and repository references</h2>
+<div class="hash-item"><p class="label">Initial Original and HD Rust port commit</p><span class="hash">84e963030d678aa6fedc7b05cd335ed67753f5b8</span></div>
 <div class="hash-item"><p class="label">Tested implementation commit</p><span class="hash">3e8597d4bd25fc55f36cb1c6dba3ca37603f032b</span></div>
+<p class="small muted">Documentation commits follow the tested implementation without changing the game. In the shared checkout, <code>git log -1 --format=%H -- docs/rust-developer-handoff.html</code> identifies the latest committed handover revision.</p>
 <div class="hash-item"><p class="label">SHA-256 · Original Rust Wasm</p><span class="hash">1955130068121e6c480bf30639257e74561d2c3d8b25d13befc36f537068e924</span></div>
 <div class="hash-item"><p class="label">SHA-256 · HD Rust Wasm</p><span class="hash">c706dc738c0eed78335a80eaff285e0e78b8c20814d0be550c71a9fda4c18fb3</span></div>
 <div class="hash-item"><p class="label">SHA-256 · Independent Original C reference Wasm</p><span class="hash">ad1b2bb56eac5bf70387df0a5060a4c5e9424bb9165e9b6bffae0bf790615f97</span></div>
@@ -236,7 +240,7 @@ bash tests/rust/test-lua.sh --wasm</code></pre>
 </tbody></table></div>
 <p class="small">All paths are relative to the repository root. Preserve source and media attribution files. The embedded screenshots document tests; they are not new replacement game assets.</p>
 </section>
-<footer class="foot">Engineering handoff · UQM 3DO Web / Rust Port · 19 October 2026<br>Prepared from the repository and local validation records. Share this HTML file by itself: styling and screenshots are embedded.</footer>
+<footer class="foot">Engineering handoff · UQM 3DO Web / Rust Port · Updated 20 October 2026<br>Validation record: 19 October 2026. Share this HTML file by itself: styling and screenshots are embedded.</footer>
 </main>
 </body>
 </html>
