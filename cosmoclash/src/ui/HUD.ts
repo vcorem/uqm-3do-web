@@ -1,3 +1,5 @@
+import { assetURL } from '@/base';
+
 export const SEGMENT_COUNT = 40;
 
 export interface RGB {
@@ -90,7 +92,7 @@ export class HUD {
     healthRow.className = 'bar-row';
     const healthIcon = document.createElement('img');
     healthIcon.className = 'bar-icon';
-    healthIcon.src = '/textures/heart.png';
+    healthIcon.src = assetURL('textures/heart.png');
     healthIcon.alt = 'Health';
     healthRow.appendChild(healthIcon);
     const healthBar = document.createElement('div');
@@ -108,7 +110,7 @@ export class HUD {
     energyRow.className = 'bar-row';
     const energyIcon = document.createElement('img');
     energyIcon.className = 'bar-icon';
-    energyIcon.src = '/textures/power.png';
+    energyIcon.src = assetURL('textures/power.png');
     energyIcon.alt = 'Energy';
     energyRow.appendChild(energyIcon);
     const energyBar = document.createElement('div');

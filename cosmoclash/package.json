@@ -1,7 +1,7 @@
 {
   "name": "cosmoclash-rust-web",
   "version": "1.0.0",
-  "description": "Cosmo Clash: Rust WebAssembly gameplay and private online fleet battles",
+  "description": "Cosmo Clash: Rust WebAssembly gameplay, local play and online fleet battles with a room list",
   "main": "index.js",
   "directories": {
     "doc": "docs"
@@ -12,13 +12,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:rust": "bash scripts/build-rust.sh",
-    "start": "bash scripts/serve.sh",
-    "test:browser": "node tests/browser/solo.mjs && node tests/browser/game.mjs",
+    "start": "node scripts/serve.mjs",
+    "test:browser": "node tests/browser/solo.mjs && node tests/browser/game.mjs && node tests/browser/online-ui.mjs",
     "pretest": "bash scripts/build-native.sh && bash ../scripts/build-rust-relay.sh",
     "test:wasm": "node tests/wasm.mjs",
     "test:provenance": "node tests/provenance.mjs",
     "test:rust": "bash scripts/test-rust.sh",
-    "pretest:browser": "bash ../scripts/build-rust-relay.sh"
+    "pretest:browser": "bash ../scripts/build-rust-relay.sh",
+    "test:online-ui": "node tests/browser/online-ui.mjs"
   },
   "repository": {
     "type": "git",

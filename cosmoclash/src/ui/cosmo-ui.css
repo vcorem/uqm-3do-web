@@ -1,0 +1,102 @@
+/* Shared look of the Cosmo Clash menu screens: the main-menu art, the glowing
+   cyan title of the logo, dark blue glass panels and the uppercase buttons of
+   the original menus. Sizes scale with --u (game height / 720, set by Viewport),
+   so the screens read the same at 1024x768, 1280x720, 1920x1080 and in full screen. */
+#game-container {
+  --u: 1;
+  --p1: #3fd6ff;
+  --p2: #ffa53f;
+  --glow: 0 0 calc(12px * var(--u)) rgba(100, 180, 255, 0.8);
+  --ink: #e6f0ff;
+  --muted: #9fb2d6;
+  --notice: #ffe066;
+  --error: #ff7a66;
+  --ok: #7dffb0;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  color: var(--ink);
+}
+#game-container :is(button, input) { font-family: inherit; }
+
+.cc-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.cc-screen {
+  position: absolute; inset: 0; z-index: 160;
+  display: flex; flex-direction: column; align-items: center;
+  padding: calc(34px * var(--u)) calc(40px * var(--u)) calc(22px * var(--u));
+  gap: calc(14px * var(--u));
+  font-size: max(12px, calc(17px * var(--u)));
+  line-height: 1.4;
+  text-align: center;
+}
+/* Lobby screens: the main-menu picture under a dark veil. */
+/* Zoomed to the sun and the ships, so that the logo of the picture is not under the title. */
+.cc-screen.cc-art { background: linear-gradient(rgba(0, 4, 22, 0.82), rgba(0, 2, 14, 0.9)), var(--cc-art) 100% 100% / 135% auto no-repeat, #00020e; }
+.cc-screen.cc-over { pointer-events: none; }
+.cc-screen.cc-over :is(button, .cc-panel, .cc-tray, .cc-arrow) { pointer-events: auto; }
+
+.cc-title {
+  margin: 0;
+  font-size: max(20px, calc(40px * var(--u)));
+  font-weight: bold; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #c9fbff;
+  text-shadow: 0 0 calc(10px * var(--u)) #00e5ff, 0 0 calc(26px * var(--u)) #0088ff;
+}
+.cc-sub { margin: 0; color: var(--muted); letter-spacing: 0.04em; }
+.cc-name { color: #ffffff; font-weight: bold; unicode-bidi: plaintext; }
+.cc-hint {
+  margin-top: auto; color: #7f93b8;
+  font-size: max(11px, calc(13px * var(--u))); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.cc-notice { margin: 0; min-height: 1.4em; color: var(--notice); }
+.cc-notice.error { color: var(--error); }
+.cc-notice.link { color: var(--ink); user-select: all; word-break: break-all; font-size: 0.85em; }
+.cc-error { margin: 0; min-height: 1.4em; color: var(--error); }
+
+.cc-panel {
+  background: rgba(0, 0, 20, 0.78);
+  border: 1px solid rgba(100, 150, 255, 0.45);
+  border-radius: calc(8px * var(--u));
+  box-shadow: 0 0 calc(24px * var(--u)) rgba(0, 40, 120, 0.45);
+  padding: calc(18px * var(--u)) calc(26px * var(--u));
+}
+.cc-buttons { display: flex; gap: calc(14px * var(--u)); justify-content: center; flex-wrap: wrap; }
+
+.cc-btn {
+  font-size: max(12px, calc(19px * var(--u)));
+  font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #ccddff;
+  background: rgba(0, 10, 40, 0.65);
+  border: 1px solid rgba(100, 150, 255, 0.45);
+  border-radius: calc(6px * var(--u));
+  padding: calc(10px * var(--u)) calc(26px * var(--u));
+  min-width: calc(180px * var(--u));
+  cursor: pointer;
+  text-shadow: var(--glow);
+  transition: background 150ms, border-color 150ms, color 150ms, box-shadow 150ms;
+}
+.cc-btn:hover { background: rgba(20, 40, 100, 0.75); border-color: rgba(100, 180, 255, 0.85); color: #fff; }
+/* The focus of the keyboard: clearly brighter, with a cyan ring. */
+.cc-btn.is-focus, .cc-btn:focus-visible {
+  outline: none;
+  color: #ffffff;
+  background: rgba(30, 70, 160, 0.85);
+  border-color: #9ff0ff;
+  box-shadow: 0 0 0 calc(2px * var(--u)) rgba(120, 230, 255, 0.85), 0 0 calc(18px * var(--u)) rgba(60, 200, 255, 0.75);
+  text-shadow: 0 0 calc(14px * var(--u)) rgba(150, 230, 255, 1);
+}
+.cc-btn[aria-disabled='true'] { color: #6d7d9c; text-shadow: none; border-style: dashed; }
+.cc-btn[aria-disabled='true'].is-focus { color: #b8c6e2; }
+.cc-btn.cc-small { font-size: max(11px, calc(14px * var(--u))); min-width: 0; padding: calc(6px * var(--u)) calc(14px * var(--u)); }
+
+/* The dialog over a match: "Leave the match?" */
+.cc-dialog-veil { position: absolute; inset: 0; z-index: 240; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 12, 0.6); }
+.cc-dialog { display: flex; flex-direction: column; gap: calc(14px * var(--u)); align-items: center; max-width: 70%; text-align: center; font-size: max(12px, calc(17px * var(--u))); }
+.cc-dialog h2 { margin: 0; font-size: max(16px, calc(28px * var(--u))); letter-spacing: 0.12em; text-transform: uppercase; color: #c9fbff; text-shadow: 0 0 calc(10px * var(--u)) #00e5ff; }
+.cc-dialog p { margin: 0; color: var(--muted); }
+
+.cc-p1 { color: var(--p1); }
+.cc-p2 { color: var(--p2); }
+.cc-dialog-veil.cc-solid { background: linear-gradient(rgba(0, 4, 22, 0.55), rgba(0, 2, 14, 0.8)); }
+.cc-dialog h2.won { font-size: max(24px, calc(56px * var(--u))); }
+.cc-dialog h2.lost { font-size: max(24px, calc(56px * var(--u))); color: #ffd6cf; text-shadow: 0 0 calc(12px * var(--u)) #ff5a3c, 0 0 calc(30px * var(--u)) #a01800; }
+.cc-dialog .cc-hint { margin-top: calc(4px * var(--u)); }

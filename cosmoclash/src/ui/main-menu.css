@@ -6,51 +6,67 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  padding-bottom: 12%;
+  gap: calc(8px * var(--u));
+  padding-bottom: calc(46px * var(--u));
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
+#main-menu .menu-list { display: flex; flex-direction: column; align-items: stretch; gap: calc(10px * var(--u)); }
 
 #main-menu .menu-btn {
-  font-family: 'Segoe UI', Arial, sans-serif;
-  font-size: 28px;
+  font-size: max(13px, calc(22px * var(--u)));
   font-weight: bold;
-  letter-spacing: 3px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #ccddff;
   background: rgba(0, 10, 40, 0.6);
   border: 1px solid rgba(100, 150, 255, 0.4);
-  border-radius: 6px;
-  padding: 14px 60px;
+  border-radius: calc(6px * var(--u));
+  padding: calc(10px * var(--u)) calc(30px * var(--u));
+  min-width: calc(400px * var(--u));
   cursor: pointer;
-  text-shadow: 0 0 12px rgba(100, 180, 255, 0.8);
-  transition: background 200ms, text-shadow 200ms, border-color 200ms;
+  text-shadow: 0 0 calc(12px * var(--u)) rgba(100, 180, 255, 0.8);
+  transition: background 200ms, text-shadow 200ms, border-color 200ms, box-shadow 200ms;
 }
 
 #main-menu .menu-btn:hover {
   background: rgba(20, 40, 100, 0.7);
   border-color: rgba(100, 180, 255, 0.8);
-  text-shadow: 0 0 20px rgba(100, 200, 255, 1);
+  text-shadow: 0 0 calc(20px * var(--u)) rgba(100, 200, 255, 1);
   color: #ffffff;
+}
+/* The keyboard focus. */
+#main-menu .menu-btn.is-focus, #main-menu .menu-btn:focus-visible {
+  outline: none;
+  color: #ffffff;
+  background: rgba(30, 70, 160, 0.85);
+  border-color: #9ff0ff;
+  box-shadow: 0 0 0 calc(2px * var(--u)) rgba(120, 230, 255, 0.85), 0 0 calc(18px * var(--u)) rgba(60, 200, 255, 0.75);
+  text-shadow: 0 0 calc(16px * var(--u)) rgba(150, 230, 255, 1);
 }
 
 #main-menu .menu-credits {
   position: absolute;
-  bottom: 16px;
-  left: 20px;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  font-size: 11px;
+  bottom: calc(14px * var(--u));
+  left: calc(20px * var(--u));
+  font-size: max(10px, calc(12px * var(--u)));
   letter-spacing: 0.5px;
-  color: rgba(150, 170, 210, 0.6);
-  text-shadow: 0 0 6px rgba(60, 100, 180, 0.3);
+  color: rgba(170, 190, 230, 0.75);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
 }
+.menu-fullscreen {
+  position: absolute; top: calc(14px * var(--u)); right: calc(16px * var(--u)); z-index: 151;
+  font-size: max(10px, calc(13px * var(--u))); font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #ccddff; background: rgba(0, 10, 40, 0.55); cursor: pointer;
+  border: 1px solid rgba(100, 150, 255, 0.4); border-radius: calc(5px * var(--u));
+  padding: calc(5px * var(--u)) calc(12px * var(--u));
+}
+.menu-fullscreen:hover { color: #fff; background: rgba(20, 40, 100, 0.75); border-color: rgba(100, 180, 255, 0.85); }
+.menu-controls, .menu-keys { margin: 0 10px; text-align: center; text-shadow: 0 1px 4px black, 0 0 8px black; }
+.menu-controls { color: #d7e7ff; font-size: max(11px, calc(15px * var(--u))); margin-top: calc(4px * var(--u)); }
+.menu-keys { color: #8fa6cc; font-size: max(10px, calc(13px * var(--u))); letter-spacing: 0.08em; text-transform: uppercase; }
 
-#main-menu { gap: 10px; padding-bottom: 8%; }
-#main-menu .menu-btn { font-size: clamp(13px, 2vw, 22px); padding: 10px 24px; min-width: 280px; letter-spacing: 1px; }
-.menu-controls { color: #d7e7ff; font: 13px Arial, sans-serif; margin: 5px 10px; text-align: center; text-shadow: 0 1px 4px black; }
-.cosmo-message { position:absolute; inset:0; z-index:250; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:18px; background:rgba(0,8,24,.94); color:#e3efff; font:18px/1.6 Arial,sans-serif; padding:24px; text-align:center; }
-.cosmo-message button { padding:12px 24px; font:inherit; color:white; background:#193a66; border:1px solid #799ecb; border-radius:8px; cursor:pointer; }
-.cosmo-battle-info { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); color:#e3efff; font:13px/1.5 Arial,sans-serif; background:#071327cc; padding:6px 12px; border-radius:6px; text-align:center; pointer-events:none; }
-.cosmo-exit { position:absolute; top:50%; left:8px; z-index:120; padding:7px; border:1px solid #577da4; border-radius:5px; background:#071327aa; color:#d7e7ff; cursor:pointer; }
-@media(max-height:500px){#main-menu{gap:5px;padding-bottom:6%}#main-menu .menu-btn{padding:7px 16px}.menu-controls{font-size:11px}}
+.cosmo-message { position:absolute; inset:0; z-index:250; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:calc(18px * var(--u)); background:rgba(0,8,24,.94); color:#e3efff; font-size:max(13px, calc(19px * var(--u))); line-height:1.6; padding:24px; text-align:center; }
+.cosmo-message .cosmo-message-title { margin:0; font-size:max(20px, calc(44px * var(--u))); font-weight:bold; letter-spacing:.12em; text-transform:uppercase; color:#c9fbff; text-shadow:0 0 calc(12px * var(--u)) #00e5ff, 0 0 calc(30px * var(--u)) #0088ff; }
+.cosmo-message p { margin:0; }
