@@ -72,6 +72,19 @@ const active = () => page.evaluate(() => document.activeElement?.textContent?.tr
 const fleetTitle = () => page.locator('.cc-local-fleet h1').textContent();
 const chips = side => page.locator(`.match-side.${side} .match-ship`).allTextContents();
 const NAMES = ['MichiGichi', 'Gondi', 'Sholev'];
+const hint = () => page.locator('.selection-controls').textContent();
+/**
+ * Choose Your Next Ship (local): Esc asks to leave (the hint says so), and both
+ * fleets show as chips with the destroyed ships of the chooser struck through.
+ */
+async function nextShipScreen(titles, chooser) {
+  assert.equal(await hint(), '← → Browse  |  Enter to Select  |  Esc Leave');
+  const lines = page.locator('.selection-fleets .cc-fleet-line');
+  assert.deepEqual(await lines.locator('b').allTextContents(), titles.map(title => title + ':'));
+  const s = await read(page);
+  assert.equal(await lines.nth(chooser).locator('.cc-chip.lost').count(), s.fleet.sides[chooser].lost);
+  assert.equal(await lines.nth(chooser).locator('.cc-chip.current').count(), 0, 'the chooser has no ship in battle');
+}
 const P2 = { ArrowLeft: 'a', ArrowRight: 'd', ArrowUp: 'w', '/': ' ', '.': 'Shift' };
 try {
   browser = await launch();
@@ -124,6 +137,8 @@ try {
   await page.getByText('Easy', { exact: true }).click();
   await waitState('selection');
   assert.equal(await page.locator('.selection-header').textContent(), 'Choose Your Ship');
+  assert.equal(await hint(), '← → Browse  |  Enter to Select  |  Esc Menu');
+  assert.equal(await page.locator('.selection-fleets').count(), 0, 'no fleets before the match');
   await capture('vs-computer-ship-choice');
   await page.keyboard.press('Enter');
   await waitState('playing');
@@ -219,12 +234,13 @@ try {
       assert.ok(chooser === 0 || chooser === 1, JSON.stringify(s.fleet));
       assert.equal(await page.locator('.selection-header').textContent(), `Player ${chooser + 1}: Choose Your Next Ship`);
       assert.equal(s.fleet.sides[chooser].ships.length - s.fleet.sides[chooser].lost, 2, 'a choice only with two ships left');
+      await nextShipScreen(['Player 1', 'Player 2'], chooser);
       if (!localMatch.choices.length) {
         // Space (the fire key of Player 2) never chooses; Esc asks first; Space does not answer either.
         await page.keyboard.press(' ');
         await page.waitForTimeout(300);
         assert.equal(await state(), 'selection', 'Space does not choose the next ship in Two Players');
-        await capture('two-players-next-ship', null, { next: true });
+        await capture('two-players-next-ship', () => shipSpace(page, '.selection-info-panel', '.selection-fleets'), { next: true });
         await page.keyboard.press('Escape');
         await page.waitForFunction(() => document.querySelector('.cc-dialog h2')?.textContent === 'Leave this game?');
         assert.equal(await active(), 'Keep playing');
@@ -343,9 +359,10 @@ try {
       assert.match(await page.locator('.selection-sub').textContent(), /^Your \w+ was destroyed\. The computer has [123] ships? left\.$/);
       assert.equal(await page.locator('.selection-remaining').textContent(), 'You have 2 ships left');
       assert.equal(vs.lastShip, null, 'no choice with one ship left');
+      await nextShipScreen(['You', 'Computer'], 0);
       if (!vs.nextShip) {
         vs.nextShip = true;
-        await capture('vs-computer-next-ship', null, { next: true });
+        await capture('vs-computer-next-ship', () => shipSpace(page, '.selection-info-panel', '.selection-fleets'), { next: true });
         // Esc asks first; Keep playing (Esc) stays in this game.
         await page.keyboard.press('Escape');
         await page.waitForFunction(() => document.querySelector('.cc-dialog h2')?.textContent === 'Leave this game?');

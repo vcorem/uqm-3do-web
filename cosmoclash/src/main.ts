@@ -184,6 +184,11 @@ function showSelection(player:0|1):void {
     // Space is the fire key of Player 2: only Enter chooses (chooseKey), as the hint says.
     selectionUI.setSubtitle(`Your ${shipName(lastLost(player))} was destroyed. Player ${other+1} has ${plural(match!.alive(other),'ship')} left.`);
   }
+  if(left){
+    // Esc asks "Leave this game?" here (askLeaveGame); both fleets as chips, as on the online choice.
+    selectionUI.setHint('← → Browse  |  Enter to Select  |  Esc Leave');
+    selectionUI.setFleets(fleetLines());
+  }
   selectionUI.show(player+1,selection.getCurrentCharacter());
   if(left)selectionUI.showRemaining(left.length);
   sound.playMusic('intro');

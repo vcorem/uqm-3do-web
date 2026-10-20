@@ -3,6 +3,7 @@ import './selection.css';
 import { announce } from './live';
 
 export interface SelectionControls { prev(): void; next(): void; choose(): void }
+const DEFAULT_HINT = '← → Browse  |  Enter to Select  |  Esc Menu';
 
 export class SelectionUI {
   private root: HTMLDivElement;
@@ -18,6 +19,8 @@ export class SelectionUI {
   private arrows: HTMLButtonElement[] = [];
   private chooseButton: HTMLButtonElement | null = null;
   private bottom: HTMLDivElement | null = null;
+  private hintEl: HTMLDivElement;
+  private fleetsEl: HTMLDivElement | null = null;
   private headerText = '';
 
   constructor(parent: HTMLElement, controls?: SelectionControls) {
@@ -58,7 +61,8 @@ export class SelectionUI {
 
     const controlsHint = document.createElement('div');
     controlsHint.className = 'selection-controls';
-    controlsHint.textContent = '← → Browse  |  Enter to Select  |  Esc Menu';
+    controlsHint.textContent = DEFAULT_HINT;
+    this.hintEl = controlsHint;
 
     this.remainingEl = document.createElement('div');
     this.remainingEl.className = 'selection-remaining';
@@ -120,6 +124,21 @@ export class SelectionUI {
 
   /** A header in place of "Player N — Choose Your Ship" ('' for the default). */
   setHeader(text: string): void { this.headerText = text; }
+
+  /** The key hint ('' for the default: Esc goes to the menu). */
+  setHint(text: string): void { this.hintEl.textContent = text || DEFAULT_HINT; }
+
+  /** The fleets of the match as chips, over the button under the ship (an empty list: none). */
+  setFleets(lines: HTMLElement[]): void {
+    if (!this.bottom) return;
+    if (!lines.length) { this.fleetsEl?.remove(); this.fleetsEl = null; return; }
+    if (!this.fleetsEl) {
+      this.fleetsEl = document.createElement('div');
+      this.fleetsEl.className = 'selection-fleets';
+      this.bottom.prepend(this.fleetsEl);
+    }
+    this.fleetsEl.replaceChildren(...lines);
+  }
 
   /** A second line under the header, for example the opponent of this battle. */
   setSubtitle(text: string): void {

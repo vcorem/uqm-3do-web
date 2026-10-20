@@ -72,6 +72,16 @@
   pointer-events: none; font-family: 'Segoe UI', Tahoma, sans-serif;
 }
 .selection-bottom .selection-controls { margin-top: 0; text-shadow: 0 0 6px #000; }
+/* Choose Your Next Ship: both fleets as chips (src/ui/fleetChips.ts) over the button. */
+.selection-fleets {
+  display: flex; flex-direction: column; gap: calc(6px * var(--u));
+  background: rgba(0, 0, 20, 0.75);
+  border: 1px solid rgba(100, 150, 255, 0.4);
+  border-radius: calc(8px * var(--u));
+  padding: calc(8px * var(--u)) calc(22px * var(--u));
+  font-size: max(12px, calc(16px * var(--u)));
+  max-width: 92%;
+}
 .selection-choose {
   pointer-events: auto;
   font-size: max(12px, calc(16px * var(--u)));

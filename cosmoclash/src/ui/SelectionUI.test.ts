@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SelectionUI } from './SelectionUI';
+import { fleetLine } from './fleetChips';
 
 describe('SelectionUI', () => {
   let ui: SelectionUI;
@@ -44,6 +45,25 @@ describe('SelectionUI', () => {
     expect(document.querySelector('.selection-remaining')?.textContent).toBe('You have 2 ships left');
     ui.showRemaining(1);
     expect(document.querySelector('.selection-remaining')?.textContent).toBe('You have 1 ship left');
+  });
+
+  it('Choose Your Next Ship: the Esc hint and both fleets as chips over the button', () => {
+    ui.destroy();
+    ui = new SelectionUI(document.body, { prev() {}, next() {}, choose() {} });
+    const hint = () => document.querySelector('.selection-controls')?.textContent;
+    expect(hint()).toBe('← → Browse  |  Enter to Select  |  Esc Menu');
+    ui.setHint('← → Browse  |  Enter to Select  |  Esc Leave');
+    expect(hint()).toBe('← → Browse  |  Enter to Select  |  Esc Leave');
+    ui.setFleets([fleetLine('Player 1', 0, { ships: [1, 2, 0], lost: 1, current: -1 }), fleetLine('Player 2', 1, { ships: [2, 0], lost: 0, current: 0 })]);
+    const bottom = document.querySelector('.selection-bottom')!;
+    expect(bottom.firstElementChild?.className).toBe('selection-fleets');
+    expect([...bottom.querySelectorAll('.cc-fleet-line')].map(line => line.textContent)).toEqual(['Player 1:GondiSholevMichiGichi', 'Player 2:SholevMichiGichi']);
+    expect(bottom.querySelectorAll('.cc-chip.lost')).toHaveLength(1);
+    expect(bottom.querySelector('.selection-choose')?.textContent).toBe('Choose this ship');
+    ui.setFleets([]);
+    expect(document.querySelector('.selection-fleets')).toBeNull();
+    ui.setHint('');
+    expect(hint()).toBe('← → Browse  |  Enter to Select  |  Esc Menu');
   });
 
   it('destroy removes element from DOM', () => {
