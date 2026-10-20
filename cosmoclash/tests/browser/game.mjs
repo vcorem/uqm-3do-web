@@ -47,6 +47,8 @@ async function onlineScenario(name, latency, fullMatch) {
     await screen(guest, 'invite');
     await guest.keyboard.press('Enter');
     await Promise.all(pages.map(p => screen(p, 'fleet', 15000)));
+    // A new fleet screen ignores Enter for 600 ms (a key pressed for the last screen).
+    await host.waitForTimeout(700);
     // Gondi first for contact and weapon fire. The full run keeps all three ships
     // (Gondi, Sholev, MichiGichi); the jitter run uses Gondi alone.
     for (const page of pages) {
@@ -81,11 +83,14 @@ async function onlineScenario(name, latency, fullMatch) {
       assert.ok(states.every(s => s.net.phase === 'ended'), 'Full fleet match must finish naturally'); assert.ok(maxBattle >= 2, 'Losing fleet must advance through all3ships'); assert.deepEqual([...seenShips].sort(), ['gondi', 'michiGichi', 'sholev']);
       await Promise.all(pages.map((p, i) => setKeys(p, new Set(), held[i])));
       await Promise.all(pages.map(p => screen(p, 'result')));
-      // Rematch: the host asks, the guest accepts; the last fleets stay and Enter says Ready.
+      // Rematch: the host asks, the guest accepts; the last fleets stay and Enter says Ready
+      // (the result and fleet screens ignore Enter for their first 600 ms).
+      await host.waitForTimeout(700);
       await host.keyboard.press('Enter');
       await guest.waitForFunction(() => document.querySelector('[data-item="rematch"]')?.textContent === 'Accept rematch');
       await guest.keyboard.press('Enter');
       await Promise.all(pages.map(p => p.waitForFunction(() => window.__cosmo?.online?.screen === 'fleet' && window.__cosmo.netplay.round === 1, {}, { timeout: 15000 })));
+      await host.waitForTimeout(700);
       for (const page of pages) await page.keyboard.press('Enter');
       await Promise.all(pages.map(p => p.waitForFunction(() => window.__cosmo?.netplay?.phase === 'playing' && window.__cosmo.netplay.round === 1, {}, { timeout: 15000 })));
       await poll(async () => (await Promise.all(pages.map(read))).every(s => s.net.verifiedChecksums >= 3), 20000, 'rematch checksums'); result.rematch = true;

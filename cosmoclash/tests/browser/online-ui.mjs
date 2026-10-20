@@ -2,10 +2,12 @@
 // and the cosmoclash room list (the relay's own, or scripts/cosmo-lobby.mjs).
 // The host creates a named room with the keyboard; the guest sees it in the
 // list and joins with the keyboard; both choose fleets in the 3D ship choice;
-// a real battle with verified checksums; rematch; the opponent leaves -> lobby.
-// Then a relay without room lists (the Rust relay): a private room, its invite
-// link and the Join screen, with the mouse. Every screen is saved at
-// 1280x720, 1024x768 and 1920x1080 in test-results/online-ui/.
+// Change fleet (host and guest); a real battle with verified checksums;
+// rematch; the opponent leaves -> lobby; Open room before the room list
+// answers; full screen again after the browser left it, and F. Then a relay
+// without room lists (the Rust relay): a private room, its invite link and the
+// Join screen, with the mouse. Every screen is saved at 1280x720, 1024x768 and
+// 1920x1080 in test-results/online-ui/.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -63,7 +65,7 @@ try {
   const [A, B] = await Promise.all([newPage(browsers[0], 0), newPage(browsers[1], 1)]);
   // The guest's room list and room sockets wait for these gates, to show "connecting" and "joining".
   let openLobby, openRoom;
-  const lobbyGate = new Promise(resolve => { openLobby = resolve; });
+  let lobbyGate = new Promise(resolve => { openLobby = resolve; });
   const roomGate = new Promise(resolve => { openRoom = resolve; });
   await B.routeWebSocket(/\/netplay\/lobby/, async ws => { await lobbyGate; ws.connectToServer(); });
   await B.routeWebSocket(/\/netplay\/cosmoclash\//, async ws => { await roomGate; ws.connectToServer(); });
@@ -92,14 +94,21 @@ try {
   assert.match((await read(A)).live, /^Online Melee lobby\. No open rooms\./);
   assert.equal(await focusClass(A), 'Create room');
   await capture(A, 'lobby-empty', 'host');
+  // The browser leaves full screen (Esc in Firefox and Safari): the next choice asks again.
+  await A.evaluate(() => document.exitFullscreen());
+  await A.waitForFunction(() => window.__cosmo.fullscreen === null);
 
-  // Name dialog: a default name, a refused name with the reason, then the room.
+  // Name dialog: a default name (selected: typing replaces it), a refused name with the reason, then the room.
   await A.keyboard.press('Enter');
   await screen(A, 'name');
+  await A.waitForFunction(() => window.__cosmo.fullscreen === 'cosmo-frame');
+  result.checks.fullscreenAgain = true;
   const defaultName = await A.locator('#cosmo-online input').inputValue();
   assert.match(defaultName, /^Pilot \d\d$/);
   await capture(A, 'name', 'host');
-  await A.keyboard.press('ControlOrMeta+A'); await A.keyboard.type('x'.repeat(25)); await A.keyboard.press('Enter');
+  await A.keyboard.type('x'.repeat(25));
+  assert.equal(await A.locator('#cosmo-online input').inputValue(), 'x'.repeat(25), 'typing replaces the default name');
+  await A.keyboard.press('Enter');
   await A.waitForFunction(() => document.querySelector('#cosmo-online .cc-error')?.textContent === 'Use at most 24 characters.');
   assert.equal((await read(A)).online.screen, 'name');
   await capture(A, 'name-refused', 'host');
@@ -150,16 +159,45 @@ try {
   assert.equal(await activeText(A), 'Ready · 2 ships');
   await A.keyboard.press('Enter');
   await A.waitForFunction(() => window.__cosmo.netplay?.localReady);
+  await B.waitForFunction(() => document.querySelector('.cc-opponent')?.textContent === 'Opponent: ready with 2 ships');
   await capture(A, 'fleet-ready-waiting', 'host');
-  // The guest fills the fleet, takes two ships back out and finishes with one.
+  // Change fleet (host): Ready is taken back at once, and the guest sees it.
+  await A.keyboard.press('ArrowDown');
+  assert.equal(await activeText(A), 'Change fleet');
+  await A.keyboard.press('Enter');
+  await A.waitForFunction(() => window.__cosmo.netplay && !window.__cosmo.netplay.localReady);
+  await B.waitForFunction(() => document.querySelector('.cc-opponent')?.textContent === 'Opponent: choosing · 2 of 3 picked');
+  // Esc on the fleet screen asks first; Stay (the default) keeps the room.
+  await B.keyboard.press('Escape');
+  await B.waitForFunction(() => window.__cosmo.online.confirm);
+  assert.equal(await activeText(B), 'Stay');
+  await capture(B, 'fleet-leave-question', 'guest');
+  await B.keyboard.press('Enter');
+  assert.equal((await read(B)).online.confirm, false);
+  // The guest fills the fleet and says Ready, takes Ready back (the host answers),
+  // takes two ships back out and finishes with one.
   await B.keyboard.press('Enter'); await B.keyboard.press('Enter'); await B.keyboard.press('Enter');
   assert.deepEqual((await read(B)).online.picks, [0, 1, 2]);
   assert.equal(await activeText(B), 'Ready · 3 ships');
-  await B.waitForFunction(() => document.querySelector('.cc-opponent')?.textContent === 'Opponent: ready with 2 ships');
   await capture(B, 'fleet-full', 'guest');
+  await B.keyboard.press('Enter');
+  await B.waitForFunction(() => window.__cosmo.netplay?.localReady);
+  await A.waitForFunction(() => document.querySelector('.cc-opponent')?.textContent === 'Opponent: ready with 3 ships');
+  await B.keyboard.press('ArrowDown');
+  assert.equal(await activeText(B), 'Change fleet');
+  await capture(B, 'fleet-ready-change', 'guest');
+  await B.keyboard.press('Enter');
+  await B.waitForFunction(() => window.__cosmo.netplay && !window.__cosmo.netplay.localReady && !window.__cosmo.netplay.changing);
+  await A.waitForFunction(() => document.querySelector('.cc-opponent')?.textContent === 'Opponent: choosing · 3 of 3 picked');
+  result.checks.changeFleet = true;
   await B.keyboard.press('Backspace'); await B.keyboard.press('Backspace');
   assert.deepEqual((await read(B)).online.picks, [0]);
   await capture(B, 'fleet-one-pick', 'guest');
+  // The host says Ready again (the focus is on the ship after Change fleet), then the guest.
+  await A.keyboard.press('ArrowDown');
+  assert.equal(await activeText(A), 'Ready · 2 ships');
+  await A.keyboard.press('Enter');
+  await B.waitForFunction(() => document.querySelector('.cc-opponent')?.textContent === 'Opponent: ready with 2 ships');
   await B.keyboard.press('ArrowDown'); await B.keyboard.press('Enter');
   await Promise.all([screen(A, 'countdown'), screen(B, 'countdown')]);
   await capture(A, 'countdown', 'host');
@@ -220,6 +258,8 @@ try {
   assert.equal((await read(A)).net.round, 1);
   assert.equal(await activeText(A), 'Ready · 2 ships');
   await capture(A, 'fleet-rematch', 'host', [[1280, 720]]);
+  // A new fleet screen ignores Enter for 600 ms (a double press of Accept rematch).
+  await A.waitForTimeout(700);
   await A.keyboard.press('Enter'); await B.keyboard.press('Enter');
   await Promise.all([screen(A, 'battle'), screen(B, 'battle')]);
   await poll(async () => (await Promise.all([A, B].map(read))).every(s => s.net.verifiedChecksums >= 3), 30000, 'rematch checksums');
@@ -232,6 +272,29 @@ try {
   await A.waitForFunction(() => window.__cosmo.online.notice === 'Your opponent left the room.');
   await capture(B, 'lobby-you-left', 'guest', [[1280, 720]]);
   await capture(A, 'lobby-opponent-left', 'host');
+
+  // Open room before the room list answers: the game waits for the list, then the room is in the list.
+  lobbyGate = new Promise(resolve => { openLobby = resolve; });
+  await B.keyboard.press('Escape');
+  await B.waitForFunction(() => window.__cosmo.state === 'menu');
+  await B.keyboard.press('Enter');
+  await screen(B, 'lobby');
+  assert.equal((await read(B)).online.lobby, 'connecting');
+  await B.keyboard.press('Enter');
+  await screen(B, 'name');
+  const nameB = await B.locator('#cosmo-online input').inputValue();
+  await B.keyboard.press('Enter');
+  await B.waitForFunction(() => window.__cosmo.online.opening);
+  assert.equal((await read(B)).online.screen, 'name');
+  await capture(B, 'name-checking-list', 'guest');
+  openLobby();
+  await screen(B, 'waiting');
+  assert.equal((await read(B)).online.room, nameB);
+  await A.waitForFunction(name => window.__cosmo.online.rooms.includes(name), nameB);
+  await B.keyboard.press('Escape');
+  await screen(B, 'lobby');
+  await A.waitForFunction(name => !window.__cosmo.online.rooms.includes(name), nameB);
+  result.checks.openRoomWaitsForList = true;
 
   // A lost room list: Try again reconnects.
   if (app.adapter) {
@@ -246,14 +309,33 @@ try {
     await A.waitForFunction(() => window.__cosmo.online.lobby === 'open');
     result.checks.lostList = true;
   }
-  // The name is remembered; Esc goes back step by step to the main menu.
+  // The name is remembered (and selected); Esc goes back step by step to the main menu.
   await A.keyboard.press('Enter');
   await screen(A, 'name');
   assert.equal(await A.locator('#cosmo-online input').inputValue(), ROOM);
+  assert.deepEqual(await A.evaluate(() => { const input = document.querySelector('#cosmo-online input'); return [input.selectionStart, input.selectionEnd]; }), [0, ROOM.length]);
   await A.keyboard.press('Escape'); await screen(A, 'lobby');
   await A.keyboard.press('Escape');
   await A.waitForFunction(() => window.__cosmo.state === 'menu');
   assert.equal(await activeText(A), 'Online Melee');
+  // F turns full screen off; then menu choices do not turn it on again; F or the corner button does.
+  await A.waitForFunction(() => window.__cosmo.fullscreen === 'cosmo-frame');
+  await A.keyboard.press('f');
+  await A.waitForFunction(() => window.__cosmo.fullscreen === null);
+  // The label follows the fullscreenchange event (one frame after the change).
+  await A.waitForFunction(() => document.querySelector('.menu-fullscreen')?.textContent === 'Full screen (F)');
+  await capture(A, 'menu-windowed', 'host', [[1280, 720]]);
+  await A.keyboard.press('Enter');
+  await screen(A, 'lobby');
+  await A.waitForTimeout(300);
+  assert.equal((await read(A)).fullscreen, null, 'a choice does not undo F');
+  await A.keyboard.press('Escape');
+  await A.waitForFunction(() => window.__cosmo.state === 'menu');
+  await A.locator('.menu-fullscreen').click();
+  await A.waitForFunction(() => window.__cosmo.fullscreen === 'cosmo-frame');
+  await A.waitForFunction(() => document.querySelector('.menu-fullscreen')?.textContent === 'Exit full screen (F)');
+  assert.equal(await activeText(A), 'Online Melee', 'the corner button leaves the focus in the menu');
+  result.checks.fullscreenKey = true;
   const hostSockets = sink.sockets.filter(s => /role=host&name=/.test(s));
   assert.ok(hostSockets.length >= 1 && hostSockets.every(s => s.endsWith('&engine=rust')), JSON.stringify(sink.sockets));
   assert.ok(sink.sockets.includes('/netplay/lobby?edition=cosmoclash'));
