@@ -1,17 +1,22 @@
 // Local play in a real browser: Play vs Computer (AI, morph, audio, mute),
-// Two Players on one computer (shield, slime, a real battle to the game
-// over screen), the menus with the keyboard and the mouse, Esc pause, and
-// the removed debug keys. Then Play vs Computer to the end: the battle
-// message after a lost ship (no overlap with its second line), "Choose Your
-// Next Ship", "Leave this game?" and the game over screen. The game is served
-// at /cosmoclash/. The local screens are saved at 1280x720, 1024x768 and
-// 1920x1080 in test-results/local-ui/.
+// Two Players on one computer as a fleet match (the fleet choice of each
+// player with Enter only, shield, slime, a "Player N: Choose Your Next Ship"
+// after a loss, the last ship by itself, the game over with both fleets), the
+// menus with the keyboard and the mouse, Esc pause, and the removed debug
+// keys. Then Play vs Computer to the end: the battle message after a lost
+// ship (no overlap with its second line), "Choose Your Next Ship" with two
+// ships left, "Leave this game?", the last ship by itself ("Your last ship")
+// and the game over screen. The game is served at /cosmoclash/. The local
+// screens are saved at 1280x720, 1024x768 and 1920x1080 in
+// test-results/local-ui/, the new and changed ones also in test-results/next-ship/.
+// The waits for the computer count only the time in which the game runs
+// (waitGame): a busy computer runs the game slower.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createRustRelay } from '../../../tests/helpers/rust-relay.mjs';
 import { createCosmoServer } from '../../scripts/cosmo-server.mjs';
-import { root, launch, read, setKeys, botKeys, wasmHash } from './helpers.mjs';
+import { root, launch, read, setKeys, botKeys, wasmHash, nextShipShots, shipSpace, textOutside, waitGame } from './helpers.mjs';
 
 const output = path.resolve(root, process.env.COSMO_BROWSER_RESULTS_DIR || 'test-results/browser');
 await fs.mkdir(output, { recursive: true });
@@ -21,23 +26,16 @@ await fs.mkdir(shotsDir, { recursive: true });
 const SIZES = [[1280, 720], [1024, 768], [1920, 1080]];
 const shots = [];
 let counter = 0;
+const next = await nextShipShots('solo');
 /** Every visible text of the game is inside the game frame (no clipped or overflowing text). */
 async function textInside() {
-  const outside = await page.evaluate(() => {
-    const frame = document.getElementById('game-container').getBoundingClientRect();
-    const bad = [];
-    for (const node of document.querySelectorAll('#game-container *')) {
-      if (!node.childNodes.length || ![...node.childNodes].some(child => child.nodeType === 3 && child.textContent.trim())) continue;
-      const box = node.getBoundingClientRect();
-      if (!box.width || !box.height || getComputedStyle(node).visibility === 'hidden') continue;
-      if (box.left < frame.left - 1 || box.right > frame.right + 1 || box.top < frame.top - 1 || box.bottom > frame.bottom + 1) bad.push(node.textContent.trim().slice(0, 60));
-    }
-    return bad;
-  });
-  assert.deepEqual(outside, [], 'text outside the game frame');
+  assert.deepEqual(await textOutside(page), [], 'text outside the game frame');
 }
-/** Saves the screen at the three sizes (after the checks) and returns to 960x720. */
-async function capture(name, check) {
+/**
+ * Saves the screen at the three sizes (after the checks) and returns to 960x720.
+ * options.next: a new or changed screen of the fleet match, also in test-results/next-ship/.
+ */
+async function capture(name, check, options = {}) {
   const n = String(++counter).padStart(2, '0');
   for (const [width, height] of SIZES) {
     await page.setViewportSize({ width, height });
@@ -47,6 +45,7 @@ async function capture(name, check) {
     const file = path.join(shotsDir, `${n}-${name}-${width}x${height}.png`);
     await page.screenshot({ path: file });
     shots.push(path.relative(root, file));
+    if (options.next) await next.add(file, name, `${width}x${height}`);
   }
   await page.setViewportSize({ width: 960, height: 720 });
 }
@@ -70,6 +69,9 @@ const errors = [], failed = [];
 const state = () => page.evaluate(() => window.__cosmo?.state);
 const waitState = (value, timeout = 10000) => page.waitForFunction(v => window.__cosmo?.state === v, value, { timeout });
 const active = () => page.evaluate(() => document.activeElement?.textContent?.trim() ?? '');
+const fleetTitle = () => page.locator('.cc-local-fleet h1').textContent();
+const chips = side => page.locator(`.match-side.${side} .match-ship`).allTextContents();
+const NAMES = ['MichiGichi', 'Gondi', 'Sholev'];
 const P2 = { ArrowLeft: 'a', ArrowRight: 'd', ArrowUp: 'w', '/': ' ', '.': 'Shift' };
 try {
   browser = await launch();
@@ -104,13 +106,14 @@ try {
   await waitState('menu');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await waitState('selection');
-  assert.match(await page.locator('.selection-header').textContent(), /Player 2/);
+  await waitState('fleet');
+  assert.equal(await fleetTitle(), 'Player 2 · Choose Your Fleet');
   // Two Players: Space is the fire key of Player 2, not a choice.
   await page.keyboard.press(' ');
   await page.waitForTimeout(200);
-  assert.match(await page.locator('.selection-header').textContent(), /Player 2/, 'Space does not choose in Two Players');
-  await capture('two-players-ship-choice-p2');
+  assert.deepEqual((await read(page)).pick.picks, [], 'Space does not choose in Two Players');
+  assert.equal(await active(), 'MichiGichiPlasma Blast · Transform between fast and weak / slow and strongEnter adds it · it opens the match');
+  await capture('two-players-fleet-p2-empty', () => shipSpace(page), { next: true });
   await page.keyboard.press('Escape');
   await waitState('menu');
   assert.equal(await active(), 'Two Players · Same Computer', 'the menu keeps the last choice');
@@ -155,13 +158,33 @@ try {
   await waitState('menu');
   result.pause = true;
 
-  // Two players on one computer.
+  // Two players on one computer: a fleet match. Player 2 chooses first: Sholev opens, then MichiGichi
+  // and Gondi (a full fleet puts the focus on Done). Space (the fire key of Player 2) never chooses.
   await page.getByRole('menuitem', { name: 'Two Players · Same Computer', exact: true }).click();
+  await waitState('fleet');
   await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('Enter');
-  assert.match(await page.locator('.selection-header').textContent(), /Player 1/);
-  await capture('two-players-ship-choice-p1');
-  await page.keyboard.press('ArrowRight'); await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+  assert.deepEqual((await read(page)).pick, { player: 1, picks: [2, 0, 1], carousel: 1, focus: 'done', notice: '' });
+  assert.equal(await active(), 'Done · 3 ships');
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(200);
+  assert.equal((await read(page)).pick.player, 1, 'Space does not say Done');
+  await capture('two-players-fleet-p2', () => shipSpace(page), { next: true });
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__cosmo.pick?.player === 0);
+  assert.equal(await fleetTitle(), 'Player 1 · Choose Your Fleet');
+  // Player 1: Gondi opens, then Sholev and MichiGichi.
+  await page.keyboard.press('ArrowRight'); await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+  assert.deepEqual((await read(page)).pick.picks, [1, 2]);
+  await capture('two-players-fleet-p1', () => shipSpace(page), { next: true });
+  await page.keyboard.press('Enter');
+  assert.deepEqual((await read(page)).pick.picks, [1, 2, 0]);
+  await page.keyboard.press('Enter');
   await waitState('playing');
+  // Both fleets as battle chips, the opening ships in battle.
+  assert.deepEqual([await chips('left'), await chips('right')], [['Gondi', 'Sholev', 'MichiGichi'], ['Sholev', 'MichiGichi', 'Gondi']]);
+  assert.equal(await page.locator('.match-side.left .match-ship.current').textContent(), 'Gondi');
+  await capture('two-players-battle-fleets', null, { next: true });
   await page.keyboard.down('ArrowUp'); await page.keyboard.down('/'); await page.keyboard.down('.'); await page.keyboard.down('w'); await page.keyboard.down(' '); await page.keyboard.down('Shift');
   await page.waitForFunction(() => window.__cosmo.snapshot.players[1].frostShieldActive, {}, { timeout: 10000 }); await page.keyboard.up('Shift');
   await page.waitForFunction(() => window.__cosmo.snapshot.players[1].frostShieldActive && window.__cosmo.snapshot.snots.length > 0 && window.__cosmo.snapshot.tick > 40, {}, { timeout: 15000 });
@@ -175,36 +198,95 @@ try {
   await page.keyboard.press(' ');
   await page.waitForTimeout(200);
   assert.equal(await page.evaluate(() => window.__cosmo.paused), true, 'Space does not resume in Two Players');
-  await capture('two-players-paused');
+  await capture('two-players-paused', null, { next: true });
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !window.__cosmo.paused);
 
-  // Both players fly with real keys until one ship is destroyed: the game over screen.
+  // Both players fly with real keys until a fleet has no ships. After a loss with two ships left the
+  // loser chooses the next ship ("Player N: Choose Your Next Ship", Enter only); the last ship comes
+  // by itself. After the first choice only Player 1 flies, so that the match ends sooner.
   const held = new Set();
   const started = Date.now();
-  while ((await state()) !== 'gameOver') {
+  const localMatch = { choices: [], lastShip: null };
+  let frames = -1, movedAt = Date.now();
+  for (;;) {
     const s = await read(page);
+    if (s.state === 'gameOver') break;
+    if (s.frames !== frames) { frames = s.frames; movedAt = Date.now(); }
+    if (s.state === 'selection') {
+      await setKeys(page, new Set(), held);
+      const chooser = s.fleet.nextChooser;
+      assert.ok(chooser === 0 || chooser === 1, JSON.stringify(s.fleet));
+      assert.equal(await page.locator('.selection-header').textContent(), `Player ${chooser + 1}: Choose Your Next Ship`);
+      assert.equal(s.fleet.sides[chooser].ships.length - s.fleet.sides[chooser].lost, 2, 'a choice only with two ships left');
+      if (!localMatch.choices.length) {
+        // Space (the fire key of Player 2) never chooses; Esc asks first; Space does not answer either.
+        await page.keyboard.press(' ');
+        await page.waitForTimeout(300);
+        assert.equal(await state(), 'selection', 'Space does not choose the next ship in Two Players');
+        await capture('two-players-next-ship', null, { next: true });
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => document.querySelector('.cc-dialog h2')?.textContent === 'Leave this game?');
+        assert.equal(await active(), 'Keep playing');
+        await page.keyboard.press(' ');
+        await page.waitForTimeout(200);
+        assert.equal(await page.locator('.cc-dialog h2').count(), 1, 'Space does not answer in Two Players');
+        await capture('two-players-leave-question', null, { next: true });
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => !document.querySelector('.cc-dialog'));
+        // The other ship of the two.
+        await page.keyboard.press('ArrowRight');
+      }
+      const ship = NAMES.indexOf(await page.locator('.selection-ship-name').textContent());
+      await page.keyboard.press('Enter');
+      await waitState('playing');
+      assert.equal((await read(page)).fleet.current[chooser], ship, 'the chosen ship flies next');
+      localMatch.choices.push({ player: chooser, ship });
+      continue;
+    }
+    if (s.state === 'roundOver' && !localMatch.lastShip) {
+      // The battle text goes when the next screen comes: read it without waiting.
+      const [text, sub] = await page.evaluate(() => ['.match-message', '.match-message-sub'].map(selector => document.querySelector(selector)?.textContent ?? ''));
+      if (/^Player [12]'s last ship: /.test(sub)) {
+        await setKeys(page, new Set(), held);
+        localMatch.lastShip = { text, sub };
+        await capture('two-players-last-ship', async () => { await messageLayout(); }, { next: true });
+        // No choice: the next battle starts by itself.
+        const after = await waitGame(page, () => window.__cosmo.state !== 'roundOver' && window.__cosmo.state, { label: 'the battle after the last ship message' });
+        assert.ok(['playing', 'gameOver'].includes(after) && after !== 'selection', 'the last ship comes by itself: ' + after);
+        continue;
+      }
+    }
     const keys = new Set();
     if (s.state === 'playing' && s.snapshot) {
       for (const key of botKeys(s.snapshot, 0)) keys.add(key);
-      for (const key of botKeys(s.snapshot, 1)) keys.add(P2[key]);
+      if (!localMatch.choices.length) for (const key of botKeys(s.snapshot, 1)) keys.add(P2[key]);
     }
     await setKeys(page, keys, held);
-    if (Date.now() - started > 240000) throw new Error('The local battle did not end');
+    if (Date.now() - movedAt > 90000) throw new Error('The game stopped during the Two Players match');
+    if (Date.now() - started > 1200000) throw new Error('The Two Players fleet match did not end');
     await page.waitForTimeout(100);
   }
   await setKeys(page, new Set(), held);
+  assert.ok(localMatch.choices.length >= 1, 'a loss with two ships left has a choice');
+  assert.ok(localMatch.lastShip, 'the last ship came by itself');
   assert.match(await page.locator('.cc-dialog h2').textContent(), /^Player [12] wins$/);
+  // The game over shows both fleets; the loser's three ships are destroyed.
+  const winnerNumber = Number((await page.locator('.cc-dialog h2').textContent()).match(/\d/)[0]);
+  assert.equal(await page.locator('.cc-dialog p', { hasText: `Player ${3 - winnerNumber} has no ships left.` }).count(), 1);
+  assert.equal(await page.locator('.cc-dialog .cc-fleet-line').count(), 2);
+  assert.equal(await page.locator('.cc-dialog .cc-fleet-line').nth(2 - winnerNumber).locator('.cc-chip.lost').count(), 3);
   assert.equal(await active(), 'Play again');
   // The fire key of Player 2 does not choose on the game over screen.
   await page.keyboard.press(' ');
   await page.waitForTimeout(700);
   assert.equal(await state(), 'gameOver', 'Space does not choose on the game over screen in Two Players');
   await page.screenshot({ path: path.join(output, 'local-game-over.png') });
-  await capture('two-players-game-over');
-  result.localGameOver = { elapsedMs: Date.now() - started };
+  await capture('two-players-game-over', null, { next: true });
+  result.localGameOver = { elapsedMs: Date.now() - started, ...localMatch };
   await page.keyboard.press('Enter');
-  await waitState('selection');
+  await waitState('fleet');
+  assert.equal(await fleetTitle(), 'Player 2 · Choose Your Fleet');
   await page.keyboard.press('Escape');
   await waitState('menu');
 
@@ -216,6 +298,7 @@ try {
   await waitState('menu');
 
   // Play vs Computer to the end. The player does not fly: the Hard computer destroys the ships.
+  // With two ships left the player chooses the next one; the last ship comes by itself.
   assert.equal(await active(), 'Play vs Computer');
   await page.keyboard.press('Enter');
   await waitState('difficulty');
@@ -224,40 +307,81 @@ try {
   await page.keyboard.press('Enter');
   await waitState('playing');
   const gauntlet = Date.now();
-  await page.waitForFunction(() => !document.querySelector('.match-centre')?.hidden && !!document.querySelector('.match-message')?.textContent, {}, { timeout: 180000 });
-  const message = await page.locator('.match-message').textContent();
-  result.battleMessage = { text: message, sub: await page.locator('.match-message-sub').textContent(), boxes: [] };
-  await capture('vs-computer-battle-message', async () => { result.battleMessage.boxes.push(await messageLayout()); });
-  // The computer may lose a ship first (the sun): then the next one comes, until the player lost one.
-  await waitState('selection', 240000);
-  assert.equal(await page.locator('.selection-header').textContent(), 'Choose Your Next Ship');
-  assert.match(await page.locator('.selection-sub').textContent(), /^Your MichiGichi was destroyed\. The computer has [123] ships? left\.$/);
-  await capture('vs-computer-next-ship');
-  // Esc asks first; Keep playing (Esc) stays in this game.
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(() => document.querySelector('.cc-dialog h2')?.textContent === 'Leave this game?');
-  assert.equal(await active(), 'Keep playing');
-  await capture('vs-computer-leave-question');
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(() => !document.querySelector('.cc-dialog'));
-  assert.equal(await state(), 'selection');
+  const vs = { handled: [], nextShip: false, lastShip: null, games: 1 };
+  /** The next event of the game: the message after a battle, a ship choice or the game over. */
+  const vsEvent = () => waitGame(page, handled => {
+    const c = window.__cosmo;
+    if (c.state === 'selection' || c.state === 'gameOver') return { kind: c.state, battle: c.fleet.battle };
+    const centre = document.querySelector('.match-centre');
+    if (c.state === 'roundOver' && centre && !centre.hidden && !handled.includes(c.fleet.battle)) {
+      return { kind: 'message', battle: c.fleet.battle, text: document.querySelector('.match-message').textContent, sub: document.querySelector('.match-message-sub').textContent };
+    }
+    return null;
+  }, { arg: vs.handled, label: 'the next event of the game against the computer' });
   for (;;) {
-    const now = await state();
-    if (now === 'gameOver') break;
-    if (now === 'selection') await page.keyboard.press('Enter');
-    if (Date.now() - gauntlet > 480000) throw new Error('Play vs Computer did not end');
-    await page.waitForTimeout(250);
+    const event = await vsEvent();
+    if (event.kind === 'message') {
+      vs.handled.push(event.battle);
+      if (!result.battleMessage) {
+        result.battleMessage = { text: event.text, sub: event.sub, boxes: [] };
+        await capture('vs-computer-battle-message', async () => { result.battleMessage.boxes.push(await messageLayout()); }, { next: true });
+      }
+      if (/^Your last ship: /.test(event.sub)) {
+        assert.match(event.text, /^Your \w+ was destroyed$/);
+        vs.lastShip = { text: event.text, sub: event.sub };
+        await capture('vs-computer-last-ship', async () => { await messageLayout(); }, { next: true });
+        // No ship choice: the next battle starts by itself with the last ship.
+        const after = await waitGame(page, b => (window.__cosmo.state !== 'roundOver' || window.__cosmo.fleet.battle !== b) && window.__cosmo.state, { arg: event.battle, label: 'the battle with the last ship' });
+        assert.equal(after, 'playing', 'the last ship comes by itself');
+        const ship = NAMES.indexOf(event.sub.replace('Your last ship: ', ''));
+        assert.equal((await read(page)).snapshot.players[0].shipId, ['michiGichi', 'gondi', 'sholev'][ship]);
+      }
+      continue;
+    }
+    if (event.kind === 'selection') {
+      assert.equal(await page.locator('.selection-header').textContent(), 'Choose Your Next Ship');
+      assert.match(await page.locator('.selection-sub').textContent(), /^Your \w+ was destroyed\. The computer has [123] ships? left\.$/);
+      assert.equal(await page.locator('.selection-remaining').textContent(), 'You have 2 ships left');
+      assert.equal(vs.lastShip, null, 'no choice with one ship left');
+      if (!vs.nextShip) {
+        vs.nextShip = true;
+        await capture('vs-computer-next-ship', null, { next: true });
+        // Esc asks first; Keep playing (Esc) stays in this game.
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => document.querySelector('.cc-dialog h2')?.textContent === 'Leave this game?');
+        assert.equal(await active(), 'Keep playing');
+        await capture('vs-computer-leave-question');
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => !document.querySelector('.cc-dialog'));
+        assert.equal(await state(), 'selection');
+      }
+      await page.keyboard.press('Enter');
+      await waitState('playing');
+      continue;
+    }
+    const over = await page.locator('.cc-dialog h2').textContent();
+    assert.ok(['Defeat', 'Victory'].includes(over), over);
+    if (vs.lastShip) {
+      assert.equal(await page.locator('.cc-dialog .cc-fleet-line').count(), 2, 'the game over shows both fleets');
+      result.vsComputerEnd = { title: over, elapsedMs: Date.now() - gauntlet, games: vs.games, lastShip: vs.lastShip };
+      await capture('vs-computer-game-over', null, { next: true });
+      break;
+    }
+    // The computer lost its ships before the player came to the last ship (the sun): play again.
+    if (++vs.games > 3) throw new Error('Play vs Computer never came to the last ship');
+    vs.handled.length = 0;
+    await page.waitForTimeout(700);
+    await page.keyboard.press('Enter');
+    await waitState('selection');
+    await page.keyboard.press('Enter');
+    await waitState('playing');
   }
-  const over = await page.locator('.cc-dialog h2').textContent();
-  assert.ok(['Defeat', 'Victory'].includes(over), over);
-  result.vsComputerEnd = { title: over, elapsedMs: Date.now() - gauntlet };
-  await capture('vs-computer-game-over');
   await page.keyboard.press('Escape');
   await waitState('menu');
   await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: path.join(output, 'mobile-menu.png') });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   assert.deepEqual(errors, []); assert.deepEqual(failed, []);
-  Object.assign(result, { passed: true, soloMorph: true, localTwoPlayer: true, slime: true, frostShield: true, allShipsRendered: true, errors, failed, screenshots: shots });
+  Object.assign(result, { passed: true, soloMorph: true, localTwoPlayer: true, slime: true, frostShield: true, allShipsRendered: true, errors, failed, screenshots: shots, nextShipScreenshots: next.files });
   console.log(JSON.stringify(result));
 } catch (error) {
   result.error = String(error); result.errors = errors; result.failed = failed;
