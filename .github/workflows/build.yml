@@ -87,7 +87,7 @@ jobs:
         run: UQM_RELAY=rust UQM_DIST=.tools/c-reference UQM_PEER_DIST=dist UQM_TEST_OUTPUT=test-results/hook-c-rust npm run test:netplay-hook
       - name: Check the browser package and script syntax
         run: |
-          for artifact in index.html uqm-debug.js uqm-debug.wasm uqm-debug.data uqm-debug.worker.js netplay-client.js game-help.js COPYING.txt toolchain-fixes.json; do
+          for artifact in index.html uqm-debug.js uqm-debug.wasm uqm-debug.data uqm-debug.worker.js netplay-client.js game-help.js engine-loader.js COPYING.txt toolchain-fixes.json; do
             test -s "dist/$artifact"
           done
           bash -n scripts/build-web.sh scripts/build-hd-web.sh scripts/build-editions.sh scripts/build-rust-core.sh scripts/build-rust-relay.sh scripts/run-rust-relay.sh scripts/rust-env.sh scripts/test-rust-core.sh scripts/rust-engine/build.sh tests/rust/test-velocity.sh tests/rust/test-queue-geometry.sh tests/rust/test-bbox.sh tests/rust/test-png.sh tests/rust/test-lua.sh tests/rust/test-allocator.sh

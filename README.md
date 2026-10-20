@@ -43,6 +43,19 @@ Build the selection screen and both editions with `./scripts/build-editions.sh`.
 The first HD download is about 640 MB; the original artwork and HD artwork
 use separate engines and save databases.
 
+The browser keeps each edition's game data after the first visit
+([`web/engine-loader`](web/engine-loader/engine-loader.js)). A later visit asks
+the server only for the data file's version (its ETag) and starts from the
+stored copy; the C and Rust engines of an edition share it. A new version
+replaces the old copy. `scripts/serve.py` and the Cloudflare Worker send the
+ETag. Private windows, browsers without Cache Storage and servers without an
+ETag download the data on every visit, as before. To free the space (about
+300 MB for Original, 640 MB for HD) and keep the saved games, remove only the
+site's Cache Storage (in the browser's developer tools, Application or Storage,
+Cache Storage, `uqm-game-data-original` / `uqm-game-data-hd`), or run
+`UQMEngineLoader.removeStoredData()` in the console of a game page. Clearing
+all site data also deletes the saved games.
+
 ## Play the installed local game
 
 On macOS, double-click **Play UQM.command**. Keep the terminal window open,

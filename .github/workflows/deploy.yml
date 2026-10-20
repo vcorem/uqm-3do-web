@@ -140,6 +140,8 @@ jobs:
         run: UQM_EDITION=hd UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-rust-dist UQM_TEST_OUTPUT=test-results/hd-c-rust npm run test:browser
       - name: Split data files into Cloudflare asset parts
         run: python3 deploy/split-data.py --site .tools/release-web --output .tools/site --manifest deploy/data-parts.json
+      - name: Test that return visits start from the game data kept in the browser
+        run: UQM_DATA_CACHE_LEAN=1 UQM_DIST=.tools/release-web UQM_SITE=.tools/site UQM_SITE_MANIFEST=deploy/data-parts.json UQM_TEST_OUTPUT=test-results/data-cache npm run test:data-cache
       - name: Deploy the Worker and static assets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
