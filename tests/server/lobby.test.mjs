@@ -134,7 +134,7 @@ test('Cosmo Clash has its own room list: its rooms are listed there only, with t
   for (const peer of [original, hd]) assert.deepEqual(await peer.next(), { type: 'waiting' });
   await watchers.original.rooms(rooms => rooms.length === 1);
   await watchers.hd.rooms(rooms => rooms.length === 1);
-  // A Cosmo Clash room takes only the rust tag; without a tag it lists null.
+  // A Cosmo Clash room takes only the rust tag; a named room without a tag is listed as rust too.
   for (const url of [`/netplay/cosmoclash/${roomId()}?role=host&name=a&engine=c`,
     `/netplay/cosmoclash/${roomId()}?role=host&engine=rust`, `/netplay/cosmoclash/${roomId()}?role=guest&engine=rust`]) {
     const refused = socket(url);
@@ -143,7 +143,7 @@ test('Cosmo Clash has its own room list: its rooms are listed there only, with t
   const untagged = roomId();
   const plain = host(untagged, { edition: 'cosmoclash', name: 'No tag' });
   await plain.next();
-  assert.equal((await watchers.cosmoclash.rooms(rooms => rooms.length === 2)).find(room => room.id === untagged).engine, null);
+  assert.equal((await watchers.cosmoclash.rooms(rooms => rooms.length === 2)).find(room => room.id === untagged).engine, 'rust');
   // A guest who picks the Cosmo Clash room joins it, not the UQM room with the same token.
   const joining = guest(id, 'cosmoclash');
   assert.deepEqual(await joining.next(), { type: 'waiting' });
@@ -157,6 +157,7 @@ test('Cosmo Clash has its own room list: its rooms are listed there only, with t
   for (const snapshot of watchers.original.all) assert.ok(snapshot.rooms.every(room => room.name === 'UQM duel'));
   for (const snapshot of watchers.hd.all) assert.ok(snapshot.rooms.every(room => room.name === 'HD duel'));
   for (const snapshot of watchers.cosmoclash.all) assert.ok(snapshot.rooms.every(room => ['Cosmo duel', 'No tag'].includes(room.name)));
+  for (const snapshot of watchers.cosmoclash.all) assert.ok(snapshot.rooms.every(room => room.engine === 'rust'));
   assert.equal(app.stats.listedRooms, 3);
   watchers.cosmoclash.ws.send('ping');
   assert.equal(await watchers.cosmoclash.next(value => value === 'pong'), 'pong');
@@ -308,6 +309,12 @@ test('the room URL parser accepts parameters in any order but each one only once
   assert.deepEqual(parseRoomURL(`/netplay/cosmoclash/${id}?role=host&name=Cosmo&engine=rust`),
     { edition: 'cosmoclash', token: id, role: 'host', name: 'Cosmo', engine: 'rust' });
   assert.ok(parseRoomURL(`/netplay/cosmoclash/${id}?role=host&name=Cosmo&engine=c`).error);
+  // Cosmo Clash has one engine: a named room without a tag gets it. UQM rooms and private rooms keep none.
+  assert.equal(parseRoomURL(`/netplay/cosmoclash/${id}?role=host&name=Cosmo`).engine, 'rust');
+  assert.equal(parseRoomURL(`/netplay/cosmoclash/${id}?role=host`).engine, null);
+  assert.equal(parseRoomURL(`/netplay/cosmoclash/${id}?role=guest`).engine, null);
+  assert.equal(parseRoomURL(`/netplay/${id}?role=host&name=UQM`).engine, null);
+  assert.equal(parseRoomURL(`/netplay/hd/${id}?role=host&name=HD`).engine, null);
   for (const url of [`/netplay/${id}?role=host&role=host`, `/netplay/${id}?Role=host`, `/netplay/${id}?role=host&name`,
     `/netplay/${id}?role=host#x`, `/netplay/${id}`, `/netplay/lobby?edition=hd`]) {
     assert.ok(parseRoomURL(url).error, url);

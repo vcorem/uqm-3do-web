@@ -128,8 +128,8 @@ first, at most 50 rooms:
 {"type":"rooms","rooms":[{"id":"<32 hex token>","name":"Friday duel","engine":"c","created":1760950000000}]}
 ```
 
-`engine` is `"c"`, `"rust"` or `null` (Cosmo Clash rooms: `"rust"` or
-`null`); `created` is the creation time in
+`engine` is `"c"`, `"rust"` or `null` (Cosmo Clash rooms: always `"rust"`,
+also when the host sends no `engine`); `created` is the creation time in
 milliseconds since the Unix epoch. Snapshots go out at most twice a second to
 all watchers; the last change always goes out. The list accepts no messages
 except `ping`: any other message closes the socket with code 1008.
@@ -159,7 +159,8 @@ parameters:
   each name to its row.
 - `engine` is optional and allowed only together with `name`. Cosmo Clash has
   one engine (its Rust gameplay Wasm), so a Cosmo Clash room takes only
-  `engine=rust`; `engine=c` gets "Invalid room URL or role.".
+  `engine=rust`; `engine=c` gets "Invalid room URL or role.". A named Cosmo
+  Clash room without `engine` is listed with `"engine":"rust"`.
 - Guests use the normal `?role=guest` URL with no other parameter.
 
 The room enters the list once its host is connected, and leaves it when a guest

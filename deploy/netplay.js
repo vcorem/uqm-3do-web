@@ -91,7 +91,8 @@ export function addressKey(ip) {
 /**
  * Strict room URL: role=host|guest, and for a host only an optional name
  * (which lists the room in its edition's lobby) and engine=c|rust (Cosmo
- * Clash: engine=rust). Each parameter at most once; nothing else.
+ * Clash: engine=rust, also the tag of a named room without one). Each
+ * parameter at most once; nothing else.
  */
 export function parseRoomURL(pathname, search) {
   const path = ROOM_PATH.exec(pathname);
@@ -118,7 +119,11 @@ export function parseRoomURL(pathname, search) {
     catch { name = null; }
     if (name === null) return { error: INVALID_NAME };
   }
-  return { edition, token: path[2], role, name, engine };
+  // An edition with one engine (Cosmo Clash: rust) lists every named room with
+  // that tag, also when the host sends none, so that the list never shows null.
+  const engines = ENGINES[edition ?? 'original'];
+  const tag = engine ?? (name !== null && engines.length === 1 ? engines[0] : null);
+  return { edition, token: path[2], role, name, engine: tag };
 }
 
 function integer(raw, fallback, min, max) {

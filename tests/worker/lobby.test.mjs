@@ -94,12 +94,16 @@ test('Cosmo Clash has its own room list: its rooms are listed there only, with t
   for (const peer of [original, hd]) assert.deepEqual(await peer.next(), { type: 'waiting' });
   await watchers.original.rooms(rooms => ids(rooms).includes(id));
   await watchers.hd.rooms(rooms => ids(rooms).includes(id));
-  // A Cosmo Clash room takes only the rust tag.
+  // A Cosmo Clash room takes only the rust tag; a named room without a tag is listed as rust too.
   for (const url of [`/netplay/cosmoclash/${roomId()}?role=host&name=a&engine=c`,
     `/netplay/cosmoclash/${roomId()}?role=host&engine=rust`, `/netplay/cosmoclash/${roomId()}?role=guest&engine=rust`]) {
     const refused = socket(url, address());
     assert.match((await refused.next()).message, /Invalid room URL/, url);
   }
+  const untagged = roomId();
+  const plain = host(untagged, { edition: 'cosmoclash', name: 'No tag' });
+  assert.deepEqual(await plain.next(), { type: 'waiting' });
+  assert.equal((await watchers.cosmoclash.rooms(rooms => ids(rooms).includes(untagged))).find(room => room.id === untagged).engine, 'rust');
   // A guest who picks the Cosmo Clash room joins it, not the UQM rooms with the same token.
   const joining = guest(id, 'cosmoclash');
   assert.deepEqual(await joining.next(), { type: 'waiting' });
@@ -113,9 +117,10 @@ test('Cosmo Clash has its own room list: its rooms are listed there only, with t
   for (const snapshot of watchers.original.all) assert.ok(!snapshot.rooms.some(room => room.name === 'Cosmo duel' || room.name === 'HD duel'));
   for (const snapshot of watchers.hd.all) assert.ok(!snapshot.rooms.some(room => room.name === 'Cosmo duel' || room.name === 'UQM duel'));
   for (const snapshot of watchers.cosmoclash.all) assert.ok(!snapshot.rooms.some(room => room.name.endsWith('duel') && room.name !== 'Cosmo duel'));
+  for (const snapshot of watchers.cosmoclash.all) assert.ok(snapshot.rooms.every(room => room.engine === 'rust'));
   watchers.cosmoclash.ws.send('ping');
   assert.equal(await watchers.cosmoclash.next(value => value === 'pong'), 'pong');
-  for (const peer of [cosmo, joining, original, hd, ...Object.values(watchers)]) peer.ws.close();
+  for (const peer of [cosmo, plain, joining, original, hd, ...Object.values(watchers)]) peer.ws.close();
 });
 
 test('private rooms are never listed, and invites to listed rooms keep working', async () => {
