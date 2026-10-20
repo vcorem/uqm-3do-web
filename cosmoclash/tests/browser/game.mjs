@@ -1,9 +1,13 @@
 // Online fleet matches through the Rust relay, which has no room list: the
 // host opens a private room from the game's lobby, the guest opens its
-// invite link and joins, both choose fleets with the keyboard, and the
-// browsers play with real keys. The full run is a complete three-ship fleet
-// match with a rematch; the jitter run adds relay latency and jitter. Both
-// end with a disconnect back to the lobby.
+// invite link and joins, both choose fleets of three ships with the keyboard,
+// and the browsers play with real keys. After each loss with two ships left
+// the loser chooses the next ship (protocol 3): both peers stop at the same
+// tick with the same state, and the chosen ship flies next on both. The full
+// run is a complete fleet match (the loser takes the other ship with the
+// keyboard each time, checksums verified across all battles) with a rematch
+// and a disconnect in battle; the jitter run adds relay latency and jitter and
+// ends when the waiting player leaves during the first choice.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -49,20 +53,19 @@ async function onlineScenario(name, latency, fullMatch) {
     await Promise.all(pages.map(p => screen(p, 'fleet', 15000)));
     // A new fleet screen ignores Enter for 600 ms (a key pressed for the last screen).
     await host.waitForTimeout(700);
-    // Gondi first for contact and weapon fire. The full run keeps all three ships
-    // (Gondi, Sholev, MichiGichi); the jitter run uses Gondi alone.
+    // Gondi opens for contact and weapon fire; Sholev and MichiGichi are in both fleets
+    // (a full fleet puts the focus on Ready). The first loss always has a choice.
     for (const page of pages) {
-      await page.keyboard.press('ArrowRight'); await page.keyboard.press('Enter');
-      if (fullMatch) { await page.keyboard.press('Enter'); await page.keyboard.press('Enter'); }
-      else await page.keyboard.press('ArrowDown');
-      assert.deepEqual((await read(page)).online.picks, fullMatch ? [1, 2, 0] : [1]);
+      await page.keyboard.press('ArrowRight'); await page.keyboard.press('Enter'); await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+      assert.deepEqual((await read(page)).online.picks, [1, 2, 0]);
       await page.keyboard.press('Enter');
     }
     await Promise.all(pages.map(p => screen(p, 'battle', 20000)));
     const initial = await Promise.all(pages.map(read));
     const initialPositions = initial.map(s => s.snapshot.players.map(p => ({ ...p.position })));
     const started = Date.now(); let progressAt = started; const seenShips = new Set(); let states; let shots = 0, motion = false, maxChecks = 0, maxBattle = 0;
-    while (Date.now() - started < (fullMatch ? (process.env.CI ? 480000 : 300000) : 30000)) {
+    const choices = []; let leaveAt = null;
+    while (Date.now() - started < (process.env.CI ? 480000 : 360000)) {
       states = await Promise.all(pages.map(read));
       for (const [index, s] of states.entries()) {
         assert.ok(!['error', 'closed'].includes(s.net.phase), JSON.stringify(s.net)); assert.ok(s.snapshot);
@@ -72,15 +75,42 @@ async function onlineScenario(name, latency, fullMatch) {
       }
       if (Date.now() - progressAt > 10000) { progressAt = Date.now(); console.log(JSON.stringify({ scenario: name, elapsedMs: progressAt - started, ticks: states.map(s => s.net.tick), battles: states.map(s => s.fleet.battle), checksums: states.map(s => s.net.verifiedChecksums) })); }
       if (states.every(s => s.net.phase === 'ended')) break;
+      // The choice of the next ship: pages[ci] lost and chooses, the other page waits.
+      const ci = states.findIndex(s => s.online.screen === 'next' && s.online.next?.mine);
+      if (ci >= 0 && states[1 - ci].online.screen === 'next') {
+        await Promise.all(pages.map((p, i) => setKeys(p, new Set(), held[i])));
+        const choice = states[ci].online.next;
+        assert.equal(states[0].net.tick, states[1].net.tick, 'both peers stop at the same tick');
+        assert.equal(states[0].hash, states[1].hash, 'both peers have the same state during the choice');
+        assert.deepEqual(states[1 - ci].online.next.ships, choice.ships);
+        if (!fullMatch) { leaveAt = { chooser: ci, ...choice, checksums: states.map(s => s.net.verifiedChecksums) }; break; }
+        // The loser takes the other ship (not the first ship left) with the keyboard.
+        await pages[ci].waitForTimeout(700);
+        await pages[ci].keyboard.press('ArrowLeft');
+        const ship = (await read(pages[ci])).online.next.carousel;
+        assert.notEqual(ship, choice.ships[0]);
+        await pages[ci].keyboard.press('Enter');
+        await Promise.all(pages.map(p => screen(p, 'battle', 20000)));
+        const after = await Promise.all(pages.map(read));
+        for (const s of after) {
+          assert.equal(s.fleet.current[choice.player], ship, 'both peers fly the chosen ship');
+          assert.equal(s.snapshot.players[choice.player].shipId, ['michiGichi', 'gondi', 'sholev'][ship]);
+        }
+        choices.push({ battle: choice.battle, player: choice.player, ships: choice.ships, ship, tick: states[0].net.tick, checksums: states.map(s => s.net.verifiedChecksums) });
+        continue;
+      }
       await Promise.all(pages.map((p, i) => setKeys(p, states[i].net.phase === 'playing' ? botKeys(states[i].snapshot, i) : new Set(), held[i])));
-      if (!fullMatch && maxChecks >= 8) break;
       await new Promise(r => setTimeout(r, 150));
     }
     states = await Promise.all(pages.map(read)); assert.ok(motion, 'Actual ships must move'); assert.ok(shots > 0, 'Actual weapons must spawn'); assert.ok(states.every(s => s.net.verifiedChecksums >= 5), 'Both engines must verify state repeatedly');
     await Promise.all(pages.map((p, i) => p.screenshot({ path: path.join(output, `${name}-${i}.png`) })));
-    Object.assign(result, { elapsedMs: Date.now() - started, seenShips: [...seenShips].sort(), frames: states.map(s => s.net.tick), verifiedChecksums: states.map(s => s.net.verifiedChecksums), maxShots: shots, motion, battleTransitions: maxBattle });
+    Object.assign(result, { elapsedMs: Date.now() - started, seenShips: [...seenShips].sort(), frames: states.map(s => s.net.tick), verifiedChecksums: states.map(s => s.net.verifiedChecksums), maxShots: shots, motion, battleTransitions: maxBattle, choices });
     if (fullMatch) {
       assert.ok(states.every(s => s.net.phase === 'ended'), 'Full fleet match must finish naturally'); assert.ok(maxBattle >= 2, 'Losing fleet must advance through all3ships'); assert.deepEqual([...seenShips].sort(), ['gondi', 'michiGichi', 'sholev']);
+      // At least one choice; the checksums of both peers go on after each choice, up to the end of the match.
+      assert.ok(choices.length >= 1, 'the first loss has a choice of the next ship');
+      for (const choice of choices) assert.ok(states.every((s, i) => s.net.verifiedChecksums > choice.checksums[i] + 3), 'checksums verified after the choice: ' + JSON.stringify(choice));
+      assert.deepEqual(states[0].fleet.sides, states[1].fleet.sides, 'both peers end with the same fleets');
       await Promise.all(pages.map((p, i) => setKeys(p, new Set(), held[i])));
       await Promise.all(pages.map(p => screen(p, 'result')));
       // Rematch: the host asks, the guest accepts; the last fleets stay and Enter says Ready
@@ -96,9 +126,19 @@ async function onlineScenario(name, latency, fullMatch) {
       await poll(async () => (await Promise.all(pages.map(read))).every(s => s.net.verifiedChecksums >= 3), 20000, 'rematch checksums'); result.rematch = true;
     }
     await Promise.all(pages.map((p, i) => setKeys(p, new Set(), held[i])));
-    // The guest leaves (Esc, then Leave); the host is back in the lobby with the reason.
-    await guest.keyboard.press('Escape'); await guest.keyboard.press('ArrowRight'); await guest.keyboard.press('Enter');
-    await host.waitForFunction(() => window.__cosmo?.online?.screen === 'lobby' && window.__cosmo.online.notice === 'Your opponent left the room.', {}, { timeout: 10000 });
+    // The full run: the guest leaves in a battle. The jitter run: the waiting player leaves during
+    // the choice of the next ship. Esc asks, then Leave; the other page is back in the lobby with the reason.
+    let leaver = guest, stayer = host;
+    if (!fullMatch) {
+      assert.ok(leaveAt, 'the jitter run reached the choice of the next ship');
+      assert.ok(leaveAt.checksums.every(n => n >= 8), 'both peers verified the state before the choice');
+      leaver = pages[1 - leaveAt.chooser]; stayer = pages[leaveAt.chooser];
+      result.leftDuringChoice = leaveAt;
+    }
+    await leaver.keyboard.press('Escape'); await leaver.waitForFunction(() => window.__cosmo.online.confirm);
+    await leaver.keyboard.press('ArrowRight'); await leaver.keyboard.press('Enter');
+    await stayer.waitForFunction(() => window.__cosmo?.online?.screen === 'lobby' && window.__cosmo.online.notice === 'Your opponent left the room.', {}, { timeout: 10000 });
+    await leaver.waitForFunction(() => window.__cosmo?.online?.screen === 'lobby' && window.__cosmo.online.notice === 'You left the room.', {}, { timeout: 10000 });
     await host.keyboard.press('Escape');
     await guest.keyboard.press('Escape');
     await Promise.all(pages.map(p => p.waitForFunction(() => window.__cosmo?.state === 'menu', {}, { timeout: 10000 })));
