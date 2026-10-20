@@ -18,7 +18,7 @@
 <p class="eyebrow">UQM · ENGINEERING HANDOFF / 03</p>
 <h1>Rust port<br>Developer handoff</h1>
 <p class="lead">Both game engines—Original and HD—build from Rust to WebAssembly. HD Online Melee from main is now ported into the Rust engine and room relay. This report records the implementation, validation evidence, and remaining work before hosting this Rust version.</p>
-<div class="meta"><span>Updated 20 October 2026</span><span><code>codex/rust-port</code></span><span>Tested implementation <code>3e8597d4b</code></span><span>Committed locally · Private alpha</span></div>
+<div class="meta"><span>Updated 20 October 2026</span><span><code>codex/rust-port</code></span><span>Tested implementation <code>3e8597d4b</code></span><span>Pushed to GitHub · Private alpha</span></div>
 </header>
 <div class="toolbar"><p>Self-contained HTML · Embedded screenshots · Print-ready layout</p><button class="print" onclick="window.print()" type="button">Print / Save as PDF</button></div>
 <div class="summary"><div class="stat"><strong>2 engines</strong><span>Original + HD built from Rust</span></div><div class="stat"><strong>25 / 25</strong><span>HD ships passed C-versus-Rust smoke checks</span></div><div class="stat"><strong>111 + 35</strong><span>Project tests and Rust unit tests passed</span></div></div>
@@ -27,8 +27,8 @@
 <section id="status">
 <h2><span class="n">01</span> Delivery status</h2>
 <p>The port covers both game engines: campaign logic, combat, ships, dialogue, saves, menus, resource management, rendering, audio/video orchestration, and threading. Work is isolated on a separate branch based on <code>783d8d3ce</code>. A combined playable browser package has been built and tested locally.</p>
-<p><strong>Commit status, reviewed 20 October 2026:</strong> the Original and HD Rust port is committed as <code>84e963030</code>, and the HD Online Melee integration is committed as <code>3e8597d4b</code>. The tested implementation is complete and committed locally. This document revision updates delivery status only; it does not change game code or claim a new gameplay test run.</p>
-<div class="note warn"><p><strong>This work has not pushed the Rust branch to GitHub.</strong> Share or publish the branch before the receiving developer attempts to fetch it. No deployment, domain change, or public release of this Rust version was performed by this work. Repository: <a href="https://github.com/vcorem/uqm-3do-web">vcorem/uqm-3do-web</a>.</p></div>
+<p><strong>Commit status, reviewed 20 October 2026:</strong> the Original and HD Rust port is committed as <code>84e963030</code>, and the HD Online Melee integration is committed as <code>3e8597d4b</code>. The tested implementation and handover have been pushed to GitHub on <code>codex/rust-port</code>. This document revision updates delivery status only; it does not change game code or claim a new gameplay test run.</p>
+<div class="note"><p><strong>The Rust branch is available on GitHub.</strong> Fetch <code>codex/rust-port</code> from <a href="https://github.com/vcorem/uqm-3do-web/tree/codex/rust-port">vcorem/uqm-3do-web</a>. This work has not merged the branch into main or deployed or released this Rust version.</p></div>
 <p><strong>HD netplay provenance:</strong> imported from main’s commit <code>5d7810ba5302803abe537f1b669d696a3af073ad</code>, observed in main at <code>3ba129550</code>. The complete HD engine was regenerated with networking enabled, preserving network-dependent layouts throughout the game. Main’s separate Cloudflare deployment work was not imported or deployed by this change.</p>
 <p>This is a source port that preserves the C data model and algorithms. It retains substantial <code>unsafe</code> Rust. Most engine code was translated with C2Rust; selected shared modules were implemented manually and tested against the original C. Changing the source language does not by itself establish memory safety.</p>
 <div class="table-wrap"><table><thead><tr><th>Area</th><th>Delivered state</th></tr></thead><tbody>
@@ -73,7 +73,7 @@
 <section id="build">
 <h2><span class="n">04</span> Build and run from a clean checkout</h2>
 <p>Run all commands in <strong>Bash, from the root of the Rust branch checkout</strong>. Prerequisites: Git, Make, Python 3.10+, Node.js 22+, Rustup, and native C build tools. macOS requires the Xcode command-line tools; Linux requires a working native compiler toolchain.</p>
-<div class="note"><p><strong>Receiving the code:</strong> once the branch is shared or pushed, select <code>codex/rust-port</code> and verify that its history includes the full commit recorded in Section 08. The <code>.tools/</code>, <code>dist/</code>, and raw test-result directories are ignored by Git. Rebuild the package and rerun validation on the receiving machine.</p></div>
+<div class="note"><p><strong>Receiving the code:</strong> fetch and select <code>codex/rust-port</code> from the GitHub repository, then verify that its history includes the full commit recorded in Section 08. The <code>.tools/</code>, <code>dist/</code>, and raw test-result directories are ignored by Git. Rebuild the package and rerun validation on the receiving machine.</p></div>
 <h3>A. Install the pinned toolchains</h3>
 <pre><code>mkdir -p .tools
 git clone --depth 1 https://github.com/emscripten-core/emsdk.git .tools/emsdk
@@ -208,7 +208,7 @@ bash tests/rust/test-lua.sh --wasm</code></pre>
 <section id="next">
 <h2><span class="n">07</span> Recommended next steps</h2>
 <ol>
-<li><strong>Share the branch and reproduce the build.</strong> Transfer the commit, build on a second machine, and run the expanded Linux CI workflow. Retain the hashes and reports from that build.</li>
+<li><strong>Fetch the branch and reproduce the build.</strong> Build on a second machine and verify a passing run of the expanded Linux CI workflow. Retain the hashes and reports from that build.</li>
 <li><strong>Create a server staging environment.</strong> Build the Linux relay, deploy the full package to a test domain, and verify HTTPS, browser isolation, media loading, and WebSocket routing.</li>
 <li><strong>Test two computers on separate networks.</strong> For each edition, exercise room creation/joining, fleet selection, a complete match, rematch, disconnects, and persistence. Check latency and the real proxy admission limits.</li>
 <li><strong>Run longer gameplay validation.</strong> Complete a campaign path and exercise dialogue branches and situational ship abilities beyond the short smoke checks. Review media playback and the 3DO compatibility checklist.</li>
