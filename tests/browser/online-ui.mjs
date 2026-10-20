@@ -112,8 +112,17 @@ async function keyboardFlow(edition, viewport) {
   s = await until(host, s => s.screen === 'name' && /Type a name/.test(s.nameError), 'name error');
   await shot(host, 'name-error');
   await host.page.keyboard.type("Zelnick's room");
-  await press(host, 'Enter');
+  // A held Enter: the first press opens the room, the repeat must not close it.
+  await host.page.keyboard.down('Enter');
+  await sleep(150);
+  await host.page.keyboard.down('Enter');
+  await sleep(150);
+  await host.page.keyboard.up('Enter');
   await screenIs(host, 'waiting');
+  await sleep(400);
+  s = await ui(host);
+  assert.equal(s.screen, 'waiting', 'a held Enter keeps the room open');
+  assert.equal(s.focus, 'copy');
   await until(host, () => stub.listings[edition].size === 1, 'room listed');
   const listed = [...stub.listings[edition].values()][0];
   assert.equal(listed.name, "Zelnick's room");
@@ -127,6 +136,10 @@ async function keyboardFlow(edition, viewport) {
   await shot(guest, 'guest-lobby');
   await press(guest, 'Enter');
   await Promise.all([screenIs(host, 'found'), screenIs(guest, 'found')]);
+  // A reflex Enter on "Opponent found" does not cancel the match (the countdown may end meanwhile).
+  await press(guest, 'Enter');
+  s = await ui(guest);
+  assert.ok(['found', 'hidden'].includes(s.screen) && !s.notice, 'Enter did not cancel: ' + JSON.stringify(s));
   await Promise.all([shot(host, 'found-host'), shot(guest, 'found-guest')]);
   assert.equal(stub.listings[edition].size, 0, 'A paired room leaves the list');
   // The countdown starts the match: the first session uses --web-netplay.
@@ -148,8 +161,21 @@ async function keyboardFlow(edition, viewport) {
   await press(host, 'Escape');
   s = await until(host, s => s.screen === 'hidden' && s.corner, 'corner button at the main menu');
   await shot(host, 'main-menu');
+  if (viewport.width === 1280) {
+    // The corner button's pointer look (drawn once, picked by CSS).
+    await host.page.locator('#online-corner').hover();
+    const looks = await host.page.evaluate(() => [...online.corner.querySelectorAll('canvas')].map(c => getComputedStyle(c).display));
+    assert.deepEqual(looks, ['none', 'block'], 'the hover look shows under the pointer');
+    await host.page.locator('#online-corner').screenshot({ path: path.join(output, `${edition}-corner-hover.png`) });
+    await host.page.mouse.move(5, viewport.height - 5);
+    await host.page.locator('#canvas').focus();
+  }
+  // O opens the lobby while a game key is still held: its release must reach the game.
+  await host.page.keyboard.down('ArrowUp');
   await press(host, 'o');
   await screenIs(host, 'lobby');
+  await host.page.keyboard.up('ArrowUp');
+  assert.deepEqual(await host.page.evaluate(() => [...fakeHeld]), [], 'the game saw the held key go up');
   // A second session from the main menu uses the engine hook.
   await press(host, 'ArrowRight', 'Enter');
   await screenIs(host, 'name');
@@ -177,9 +203,16 @@ async function mouseFlow(edition, viewport) {
   await until(host, s => s.screen === 'lobby' && s.lobby === 'open', 'mouse lobby');
   await click(host, 'create');
   await screenIs(host, 'name');
-  await host.page.locator('.uqm-online-hit[data-id="name"]').fill('Mouse room');
+  // A name the relay would refuse (a zero-width joiner) stays in the dialog with the reason.
+  await host.page.locator('.uqm-online-hit[data-id="name"]').fill('Ship‍Captain');
+  await click(host, 'open');
+  const refused = await until(host, s => s.screen === 'name' && /visible/.test(s.nameError), 'hidden character refused');
+  assert.equal(await host.page.evaluate(() => localStorage.getItem('uqm.online.roomName.v1')), null, 'a refused name is not kept');
+  await host.page.locator('.uqm-online-hit[data-id="name"]').fill('Mouse   room');
   await click(host, 'open');
   await screenIs(host, 'waiting');
+  assert.equal(await host.page.evaluate(() => online.state.room.name), 'Mouse room', 'the name as the list shows it');
+  assert.ok(refused);
   await click(guest, 'online');
   const room = await until(guest, s => s.rooms === 1, 'mouse guest sees the room');
   await guest.page.locator(`.uqm-online-hit[data-id="${room.items[0]}"]`).hover();
@@ -198,6 +231,8 @@ async function otherScreens(edition, viewport) {
   await screenIs(host, 'lobby');
   await press(host, 'ArrowRight', 'Enter', 'Enter');
   await screenIs(host, 'waiting');
+  // The room opens when the host's game has loaded.
+  await until(host, () => stub.listings[edition].size === 1, 'invite room listed');
   const id = [...stub.listings[edition].keys()][0];
   await host.page.locator('.uqm-online-hit[data-id="copy"]').click();
   await until(host, s => /copied|Copy this link/.test(s.notice || ''), 'invite copied');
@@ -211,6 +246,45 @@ async function otherScreens(edition, viewport) {
   await noErrors(host, invited);
   await host.context.close();
   await invited.context.close();
+
+  // Rooms chosen while the game downloads: they open (or are joined) when it is ready.
+  const slowHost = await player(edition, viewport, '&fakeLoadMs=12000');
+  await press(slowHost, 'ArrowDown', 'Enter');
+  await until(slowHost, s => s.screen === 'lobby' && s.lobby === 'open', 'slow host lobby');
+  await press(slowHost, 'ArrowRight', 'Enter', 'Enter');
+  await until(slowHost, s => s.screen === 'waiting', 'slow host waiting');
+  const early = await slowHost.page.evaluate(() => ({ status: online.state.room.status, ready: runtimeReady }));
+  assert.ok(!early.ready, 'the test chose the room during the download');
+  assert.equal(early.status, 'loading');
+  assert.equal(stub.listings[edition].size, 0, 'the room is not listed before the game is ready');
+  const slowGuest = await player(edition, viewport, '&fakeLoadMs=12000');
+  await until(slowHost, () => stub.listings[edition].size === 1, 'room listed once the game is ready', 30000);
+  await press(slowGuest, 'ArrowDown', 'Enter');
+  await until(slowGuest, s => s.rooms === 1, 'slow guest sees the room', 20000);
+  await press(slowGuest, 'Enter');
+  await until(slowGuest, s => s.screen === 'joining' || s.screen === 'found', 'slow guest joins');
+  await Promise.all([until(slowHost, s => s.gameScreen === 'melee', 'slow host match', 30000), until(slowGuest, s => s.gameScreen === 'melee', 'slow guest match', 30000)]);
+  await noErrors(slowHost, slowGuest);
+  await slowHost.context.close();
+  await slowGuest.context.close();
+  // The same screens for review, with a download that does not end during the test.
+  const frozen = await player(edition, viewport, '&fakeLoadMs=600000');
+  await press(frozen, 'ArrowDown', 'Enter');
+  await until(frozen, s => s.screen === 'lobby' && s.lobby === 'open', 'frozen lobby');
+  await press(frozen, 'ArrowRight', 'Enter', 'Enter');
+  await until(frozen, s => s.screen === 'waiting', 'frozen waiting');
+  await shot(frozen, 'waiting-loading');
+  await press(frozen, 'Escape');
+  await until(frozen, s => s.screen === 'lobby', 'frozen back in the lobby');
+  stub.addFakeRoom(edition, { id: token(240), name: 'Waiting room', engine: 'rust', created: Date.now() - 70000 });
+  await until(frozen, s => s.rooms === 1 && s.focus === 'room:' + token(240), 'frozen sees a room');
+  await press(frozen, 'Enter');
+  await until(frozen, s => s.screen === 'joining', 'frozen joining');
+  await shot(frozen, 'joining-loading');
+  assert.equal(await frozen.page.evaluate(() => online.state.room.status), 'loading');
+  stub.clear();
+  await noErrors(frozen);
+  await frozen.context.close();
 
   // An engine without the main-menu hook: the lobby offers a reload instead.
   const old = await player(edition, viewport, '&fakeHook=0');

@@ -57,8 +57,10 @@ try {
   s = await state();
   result.hook = await page.evaluate(() => Module.supportsNetplayHook === true);
   await shot(s.screen === 'lobby' ? 'lobby-over-game' : 'restart-over-game');
+  assert.equal(await page.evaluate(() => Module.holdMainMenu), true, 'the menu over the game holds the main menu');
   if (process.env.UQM_KEEP_AWAKE_CHECK === '1') {
-    // The main menu's inactivity timeout (20 s, or 2 min with music) must not run while the lobby covers it.
+    // The main menu's inactivity timeout (20 s, or 2 min with music) must not run while the lobby
+    // covers it. Needs an engine that reads Module.holdMainMenu (the main-menu hook build).
     const screens = new Set();
     for (let t = 0; t < 150; t += 5) { await sleep(5000); screens.add(await page.evaluate(() => Module.gameScreen)); }
     result.screensUnderLobby = [...screens];
@@ -70,6 +72,7 @@ try {
   await sleep(500);
   s = await state();
   assert.equal(s.gameScreen, 'mainMenu', 'the O key and Esc did not reach the game menu');
+  assert.equal(await page.evaluate(() => Module.holdMainMenu), false, 'the main menu runs as usual again');
   assert.equal(await page.evaluate(() => document.activeElement === canvas), true);
   await shot('back-to-menu');
   assert.deepEqual(errors, []);

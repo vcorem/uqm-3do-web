@@ -4,7 +4,8 @@
 (function () {
   'use strict';
   const params = new URLSearchParams(location.search);
-  const loadMs = Number(params.get('fakeLoadMs') || 1200);
+  // The last value wins, so a test can add its own to a default query.
+  const loadMs = Number(params.getAll('fakeLoadMs').pop() || 1200);
   const hook = params.get('fakeHook') !== '0';
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
@@ -25,6 +26,10 @@
     }
   }, loadMs / steps);
   const log = window.fakeEngineLog = [];
+  // Like SDL: the keys held down on the game canvas.
+  const held = window.fakeHeld = new Set();
+  canvas.addEventListener('keydown', event => held.add(event.code + ':' + event.keyCode));
+  canvas.addEventListener('keyup', event => held.delete(event.code + ':' + event.keyCode));
   function paint(screen) {
     const w = canvas.width, h = canvas.height;
     ctx.fillStyle = screen === 'melee' ? '#000040' : '#000';
