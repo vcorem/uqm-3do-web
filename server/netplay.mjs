@@ -8,7 +8,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.wasm': 'application/wasm', '.data': 'application/octet-stream', '.json': 'application/json',
-  '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
+  '.css': 'text/css; charset=utf-8', '.glb': 'model/gltf-binary', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
 const isolatedHeaders = { 'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Embedder-Policy': 'require-corp', 'Cross-Origin-Resource-Policy': 'same-origin',
   'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' };
@@ -200,9 +200,9 @@ export function createNetplayServer(options = {}) {
         endRoom(ws.room, ws);
       });
       ws.on('message', (data, isBinary) => receive(ws, data, isBinary));
-      // HD and Original engines cannot stay in sync. Namespace active and
+      // Different games and editions cannot stay in sync. Namespace active and
       // retired rooms by edition, even when their random token is identical.
-      const match = /^\/netplay\/(?:(hd)\/)?([0-9a-f]{32})\?role=(host|guest)$/.exec(req.url);
+      const match = /^\/netplay\/(?:(hd|cosmoclash)\/)?([0-9a-f]{32})\?role=(host|guest)$/.exec(req.url);
       if (!match) return reject(ws, 'Invalid room URL or role.');
       const [, edition, token, role] = match;
       const id = (edition ? edition + ':' : '') + token;

@@ -525,9 +525,12 @@ impl App {
 fn room_path(target: &str) -> Option<(&str, bool)> {
     let tail = target.strip_prefix("/netplay/")?;
     let (id, role) = tail.split_once("?role=")?;
-    // Keep the edition prefix in the room and retired-ID key. Original and HD
-    // engines cannot stay in sync, even if players use the same room token.
-    let token = id.strip_prefix("hd/").unwrap_or(id);
+    // Keep the game/edition prefix in active and retired room keys. None of
+    // these engines may share streams, even when the random token is equal.
+    let token = id
+        .strip_prefix("hd/")
+        .or_else(|| id.strip_prefix("cosmoclash/"))
+        .unwrap_or(id);
     if token.len() != 32
         || !token
             .bytes()
@@ -649,6 +652,9 @@ fn mime(path: &Path) -> &'static str {
         "html" => "text/html; charset=utf-8",
         "js" => "text/javascript; charset=utf-8",
         "wasm" => "application/wasm",
+        "glb" => "model/gltf-binary",
+        "ogg" => "audio/ogg",
+        "wav" => "audio/wav",
         "json" => "application/json",
         "css" => "text/css; charset=utf-8",
         "png" => "image/png",
@@ -1368,6 +1374,17 @@ mod tests {
             room_path("/netplay/hd/0123456789abcdef0123456789abcdef?role=guest"),
             Some(("hd/0123456789abcdef0123456789abcdef", false))
         );
+        for role in ["host", "guest"] {
+            assert_eq!(
+                room_path(&format!(
+                    "/netplay/cosmoclash/0123456789abcdef0123456789abcdef?role={role}"
+                )),
+                Some((
+                    "cosmoclash/0123456789abcdef0123456789abcdef",
+                    role == "host"
+                ))
+            );
+        }
         for bad in [
             "/netplay/ABCDEF0123456789abcdef0123456789?role=host",
             "/netplay/0123456789abcdef0123456789abcdef?role=host&x=1",

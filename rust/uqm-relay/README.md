@@ -38,10 +38,18 @@ exhaustion while shutdown remains responsive.
 
 ## Protocol and resource guarantees
 
-The endpoint, JSON notifications, roles, binary payload limit, queue bounds,
+The endpoints, JSON notifications, roles, binary payload limit, queue bounds,
 message/control quotas, heartbeats, room retirement and timeouts match the
 [Node relay contract](../../docs/netplay-server.md). In particular:
 
+- Original uses `/netplay/<token>`, HD uses `/netplay/hd/<token>`, and
+  Cosmo Clash uses `/netplay/cosmoclash/<token>`, each followed by the exact
+  `?role=host` or `?role=guest` query. Tokens are 32 lowercase hexadecimal
+  characters. Active and retired IDs include the game/edition prefix; identical
+  tokens across games cannot pair, exchange data or disconnect each other.
+  All namespaces share the same capacity limits.
+- Static Cosmo Clash assets use `model/gltf-binary`, `audio/ogg` and `audio/wav`
+  for GLB models and Ogg/WAV audio, alongside existing WASM/image types.
 - Binary data retains order and bytes; it is never accepted before pairing.
 - A room has at most one host and one guest. Admission and teardown share one
   registry lock; a duplicate participant cannot displace another.
@@ -67,7 +75,7 @@ cargo clippy --locked --manifest-path rust/Cargo.toml -p uqm-relay \
 node --test tests/server/rust-netplay.test.mjs
 ```
 
-The socket tests run all 20 reference Node contract cases against a separate
+The socket tests run the reference Node contract cases against a separate
 Rust process, plus raw malformed/fragmented frames, simultaneous joins,
 IP/global exhaustion, forwarded-header spoofing, independent byte-rate limits,
 delayed-data heartbeat behavior, close-code echo, shutdown and HTTP validation.
