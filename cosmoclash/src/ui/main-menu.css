@@ -55,6 +55,14 @@
   color: rgba(170, 190, 230, 0.75);
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
 }
+.menu-fullscreen {
+  position: absolute; top: calc(14px * var(--u)); right: calc(16px * var(--u)); z-index: 151;
+  font-size: max(10px, calc(13px * var(--u))); font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #ccddff; background: rgba(0, 10, 40, 0.55); cursor: pointer;
+  border: 1px solid rgba(100, 150, 255, 0.4); border-radius: calc(5px * var(--u));
+  padding: calc(5px * var(--u)) calc(12px * var(--u));
+}
+.menu-fullscreen:hover { color: #fff; background: rgba(20, 40, 100, 0.75); border-color: rgba(100, 180, 255, 0.85); }
 .menu-controls, .menu-keys { margin: 0 10px; text-align: center; text-shadow: 0 1px 4px black, 0 0 8px black; }
 .menu-controls { color: #d7e7ff; font-size: max(11px, calc(15px * var(--u))); margin-top: calc(4px * var(--u)); }
 .menu-keys { color: #8fa6cc; font-size: max(10px, calc(13px * var(--u))); letter-spacing: 0.08em; text-transform: uppercase; }

@@ -31,6 +31,20 @@ describe('main menu', () => {
     expect(chosen).toEqual(['local']);
     expect(document.querySelectorAll('[role=menuitem]')).toHaveLength(3);
   });
+  it('a corner button turns full screen on and off; the menu keeps the keyboard focus', () => {
+    let active = false, toggles = 0;
+    const menu = new MainMenu(document.body, () => {}, 'online', { active: () => active, toggle: () => { toggles++; active = !active; document.dispatchEvent(new Event('fullscreenchange')); } });
+    const corner = document.querySelector<HTMLButtonElement>('.menu-fullscreen')!;
+    expect(corner.textContent).toBe('Full screen (F)');
+    expect(corner.closest('[role=menu]')).toBe(null);
+    expect(document.querySelector('.menu-keys')?.textContent).toContain('F full screen');
+    corner.click();
+    expect(toggles).toBe(1);
+    expect(corner.textContent).toBe('Exit full screen (F)');
+    expect(document.activeElement?.textContent).toBe('Online Melee');
+    menu.destroy();
+    expect(document.querySelector('.menu-fullscreen')).toBe(null);
+  });
   it('difficulty: arrows, Enter, Space and a Back button', () => {
     const levels: number[] = [];
     let back = 0;

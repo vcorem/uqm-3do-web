@@ -10,13 +10,18 @@ const ITEMS: { id: MenuChoice; label: string }[] = [
   { id: 'online', label: 'Online Melee' },
 ];
 
+/** Full screen on and off: the F key, and this corner button for the mouse. */
+export interface FullscreenToggle { active(): boolean; toggle(): void }
+
 /** The main menu over the title art. Arrows choose, Enter or a click starts the focused item. */
 export class MainMenu {
   private root: HTMLDivElement;
   private focus: MenuChoice;
   private buttons = new Map<MenuChoice, HTMLButtonElement>();
+  private corner: HTMLButtonElement | null = null;
+  private onFullscreen = () => this.showFullscreen();
 
-  constructor(parent: HTMLElement, private readonly onChoose: (choice: MenuChoice) => void, focus: MenuChoice = 'ai') {
+  constructor(parent: HTMLElement, private readonly onChoose: (choice: MenuChoice) => void, focus: MenuChoice = 'ai', private readonly fullscreen?: FullscreenToggle) {
     this.focus = focus;
     this.root = el('div', { id: 'main-menu', role: 'menu', aria: { label: 'Cosmo Clash main menu' } });
     this.root.style.backgroundImage = `url(${assetURL('textures/main-bk.jpg')})`;
@@ -31,9 +36,18 @@ export class MainMenu {
     }
     this.root.append(list,
       el('p', { class: 'menu-controls', text: 'Fly: ↑ thrust · ← → turn · / fire · . special  ·  M mute' }),
-      el('p', { class: 'menu-keys', text: '↑ ↓ choose · Enter start' }),
+      el('p', { class: 'menu-keys', text: fullscreen ? '↑ ↓ choose · Enter start · F full screen' : '↑ ↓ choose · Enter start' }),
       el('div', { class: 'menu-credits', text: 'Made by Ori Hanegby, Guy Corem, Orr Kowarsky' }));
     parent.appendChild(this.root);
+    if (fullscreen) {
+      // Outside the menu list: the arrows do not stop on it, and the pointer does not take the keyboard focus.
+      this.corner = el('button', { type: 'button', class: 'menu-fullscreen' });
+      this.corner.addEventListener('mousedown', event => event.preventDefault());
+      this.corner.addEventListener('click', () => { fullscreen.toggle(); this.buttons.get(this.focus)?.focus({ preventScroll: true }); });
+      parent.appendChild(this.corner);
+      document.addEventListener('fullscreenchange', this.onFullscreen);
+      this.showFullscreen();
+    }
     this.setFocus(focus, true);
     announce('Cosmo Clash main menu. ' + ITEMS.find(item => item.id === focus)!.label + '.');
   }
@@ -65,5 +79,13 @@ export class MainMenu {
     this.onChoose(id);
   }
 
-  destroy(): void { this.root.remove(); }
+  private showFullscreen(): void {
+    if (this.corner) this.corner.textContent = this.fullscreen?.active() ? 'Exit full screen (F)' : 'Full screen (F)';
+  }
+
+  destroy(): void {
+    this.root.remove();
+    this.corner?.remove();
+    document.removeEventListener('fullscreenchange', this.onFullscreen);
+  }
 }

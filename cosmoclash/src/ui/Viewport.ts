@@ -10,6 +10,9 @@ export class Viewport {
   readonly frame: HTMLDivElement;
   readonly container: HTMLDivElement;
   private listeners: (() => void)[] = [];
+  /** The player turned full screen off (F or the menu button): menu choices do not turn it on again. */
+  private windowed = false;
+  private request: Promise<boolean> | null = null;
 
   constructor() {
     // Black background for letterbox bars
@@ -67,16 +70,43 @@ export class Viewport {
   requestFullscreen(): Promise<boolean> {
     try {
       if (document.fullscreenElement) return Promise.resolve(true);
+      if (this.request) return this.request;
       if (!this.frame.requestFullscreen) return Promise.resolve(false);
-      return Promise.resolve(this.frame.requestFullscreen({ navigationUI: 'hide' })).then(() => {
+      const request = Promise.resolve(this.frame.requestFullscreen({ navigationUI: 'hide' })).then(() => {
         const keyboard = (navigator as Navigator & { keyboard?: { lock?(keys: string[]): Promise<void> } }).keyboard;
         keyboard?.lock?.(['Escape']).catch(() => {});
         return true;
-      }, () => false);
+      }, () => false).finally(() => { if (this.request === request) this.request = null; });
+      this.request = request;
+      return request;
     } catch {
       return Promise.resolve(false);
     }
   }
+
+  /**
+   * A menu choice made with a user gesture: full screen, unless the game is in
+   * full screen already or the player turned it off. So full screen comes back
+   * at the next choice when Esc (Firefox, Safari) or the browser left it.
+   */
+  fullscreenGesture(): Promise<boolean> {
+    if (document.fullscreenElement) return Promise.resolve(true);
+    if (this.windowed) return Promise.resolve(false);
+    return this.requestFullscreen();
+  }
+
+  /** F or the menu button: full screen on or off; "off" stays until the player turns it on. */
+  toggleFullscreen(): Promise<boolean> {
+    if (document.fullscreenElement) {
+      this.windowed = true;
+      try { Promise.resolve(document.exitFullscreen?.()).catch(() => {}); } catch { /* Not in full screen. */ }
+      return Promise.resolve(false);
+    }
+    this.windowed = false;
+    return this.requestFullscreen();
+  }
+
+  get fullscreen(): boolean { return !!document.fullscreenElement; }
 
   get width(): number {
     return this.container.clientWidth;

@@ -74,19 +74,19 @@ let roundSeed=1;
 let frames=0;
 let lastHash='';
 let netSession:CosmoNetplay|null=null;
-let fullscreenAsked=false;
 const seed=()=>crypto.getRandomValues(new Uint32Array(1))[0]||1;
 const shipName=(index:number)=>CHARACTER_REGISTRY[index]?.name??'?';
 const DIFFICULTY_NAMES={easy:'Easy',medium:'Medium',hard:'Hard'};
+
+/**
+ * A menu choice is a user gesture: the game frame goes full screen then, also
+ * again after Esc or the browser left full screen. F (or the menu button) turns
+ * it off for good, and on again.
+ */
+const fullscreenGesture=():Promise<boolean>=>viewport.fullscreenGesture();
+const fullscreenToggle={active:()=>viewport.fullscreen,toggle:()=>{void viewport.toggleFullscreen();}};
 /** Two Players on one computer: Space is the fire key of Player 2, so only Enter chooses in the menus. */
 const chooseKey=(key:string)=>key==='Enter'||(key===' '&&mode!=='local');
-
-/** The first menu choice is a user gesture: the game frame goes full screen then (once). */
-function fullscreenGesture():Promise<boolean> {
-  if(fullscreenAsked)return Promise.resolve(true);
-  fullscreenAsked=true;
-  return viewport.requestFullscreen().then(ok=>{if(!ok)fullscreenAsked=false;return ok;});
-}
 function clearMessage():void { message?.remove();message=null; }
 function showMessage(text:string,button?:{label:string;run:()=>void},title=''):void {
   clearMessage();message=document.createElement('div');message.className='cosmo-message';message.setAttribute('role','alert');
@@ -120,7 +120,7 @@ function showMenu(focus:MenuChoice=mode):void {
     if(choice==='ai')showDifficulty();
     else if(choice==='local')showSelection(1);
     else {state='online';online.openLobby();}
-  },focus);
+  },focus,fullscreenToggle);
   render();
   sound.playMusic('intro');
 }
@@ -356,6 +356,11 @@ function render():void {
 }
 
 // ------------------------------------------------------------------ keys
+/** A ship flies now (local or online): the keys belong to the battle. */
+function flying():boolean {
+  if((state==='playing'||state==='roundOver')&&mode!=='online')return !panel;
+  return online.visible&&['battle','countdown'].includes(online.state.screen)&&!online.state.confirm;
+}
 /** One handler for every menu: one action per key press (held-key repeats do nothing). */
 function menuKey(e:KeyboardEvent):boolean {
   const key=e.key;
@@ -394,6 +399,8 @@ window.addEventListener('keydown',e=>{
   // skips the logo would also start a game), so it never runs.
   if(e.key==='Enter'||e.key===' ')e.preventDefault();
   if(e.key.toLowerCase()==='m'&&!e.repeat&&state!=='loading')sound.toggleMute();
+  // F: full screen on or off, on the menu screens (in a battle F is too near the keys of Player 2).
+  if(e.key.toLowerCase()==='f'&&!e.shiftKey&&!flying()&&state!=='loading'){if(!e.repeat)void viewport.toggleFullscreen();e.preventDefault();return;}
   if(menuKey(e)){e.preventDefault();e.stopPropagation();}
 },true);
 // A focused button also reacts to Space on key release: the menus already used the press.
