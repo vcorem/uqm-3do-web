@@ -112,10 +112,12 @@ jobs:
           cache: npm
       - name: Install locked Node dependencies
         run: npm ci
-      - name: Install the pinned Rust toolchains
+      - name: Install the pinned Rust toolchains and build the relay
         run: |
           rustup toolchain install 1.85.1 --profile minimal --target wasm32-unknown-emscripten
           rustup toolchain install "$(cat .rust-wasm-toolchain)" --profile minimal --component rust-src --target wasm32-unknown-emscripten
+          # The HD match tests below run through the Rust relay (UQM_RELAY=rust).
+          cargo build --manifest-path rust/Cargo.toml -p uqm-relay --release --locked
       - name: Install pinned Emscripten SDK
         run: |
           mkdir -p .tools

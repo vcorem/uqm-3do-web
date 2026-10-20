@@ -27,6 +27,8 @@ export async function buildHarness(output, editions = ['original', 'hd']) {
     await writeFile(path.join(dir, 'index.html'), shell.replace('{{{ SCRIPT }}}', '<script src="fake-engine.js"></script>'));
     await copyFile(path.join(root, 'tests/browser/fixtures/fake-engine.js'), path.join(dir, 'fake-engine.js'));
     await copyFile(path.join(root, 'web/game-help/game-help.js'), path.join(dir, 'game-help.js'));
+    // The shells start the engine through the data loader (it finds no data file here and starts it as usual).
+    await copyFile(path.join(root, 'web/engine-loader/engine-loader.js'), path.join(dir, 'engine-loader.js'));
     await copyFile(path.join(root, 'web/online/online-ui.js'), path.join(dir, 'online-ui.js'));
     await copyFile(path.join(root, 'sc2/wasm/netplay-client.js'), path.join(dir, 'netplay-client.js'));
     built.push(edition);
