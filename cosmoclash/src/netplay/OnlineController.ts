@@ -13,7 +13,7 @@
  */
 import { checkRoomName, defaultRoomName } from './roomName';
 import type { LobbyRoom, LobbyStatus, LobbyWatcher } from './CosmoLobby';
-import type { MatchStart, NetplayState, NextBattle, Role } from './CosmoNetplay';
+import { NEXT_MS, type MatchStart, type NetplayState, type NextBattle, type Role } from './CosmoNetplay';
 import type { FleetView } from '@/match/FleetMatch';
 
 export const NAME_KEY = 'cosmoclash.online.roomName.v1';
@@ -29,8 +29,8 @@ const BANNER_MS = 2500;
 export const INPUT_LOCK_MS = 600;
 /** Open room waits this long for the room list to answer (named room or private room). */
 export const LIST_WAIT_MS = 10000;
-/** The loser chooses the next ship in this time; then the first ship left in fleet order comes. */
-export const NEXT_MS = 20000;
+/** The loser chooses the next ship in this time (a rule of the room protocol); then the first ship left in fleet order comes. */
+export { NEXT_MS };
 
 export type Screen = 'hidden' | 'lobby' | 'name' | 'waiting' | 'joining' | 'invite' | 'fleet' | 'countdown' | 'battle' | 'next' | 'result';
 export interface Notice { text: string; kind: 'info' | 'error' | 'link' }

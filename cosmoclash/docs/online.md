@@ -167,10 +167,16 @@ the last ship (the next battle starts at tick T+1, as before), or a choice:
    is kept and used at `awaitNext`. A `next` from the winner, of another battle
    or with a ship that cannot fly next, a second early `next` and a `next-ack`
    without a choice stop the match ("Invalid or incompatible game data").
-5. The choice is a patient phase: beats every 20 s and the two-minute silence
-   limit (the battle limit of 20 s does not apply), so a full 20 s choice never
-   ends the room. A Leave or a lost connection during the choice goes back to
-   the lobby with the reason ("Your opponent left the room.").
+5. The choice has beats every 20 s (the battle limit of 20 s of silence does
+   not apply), so a full 20 s choice never ends the room. It has its own
+   limits, because the loser's game always sends `next` within 20 s
+   (`NEXT_MS`): the waiting peer stops 40 s after its pause without `next`
+   (`NEXT_WAIT_MS`), and the loser 20 s after its `next` without `next-ack`
+   (`NEXT_ACK_MS`), "Your opponent stopped responding." (a connection that
+   dropped without a close, for example a laptop that sleeps). While the loser
+   chooses, its own limit is the two-minute silence limit. A Leave or a lost
+   connection during the choice goes back to the lobby with the reason ("Your
+   opponent left the room.").
 
 The input lockstep, the checksums, the result agreement and the rematch do not
 change. The build id is the Wasm hash only: a later change to these packets in

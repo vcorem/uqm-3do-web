@@ -638,6 +638,11 @@ describe('the next ship (protocol 3)', () => {
       h.advance(NEXT_MS);
       expect(h.session.nexts).toEqual([]);
     }
+    // A connection that dropped without a close: the session's limit of the choice ends it.
+    const h = inChoice('guest', 0);
+    h.advance(NEXT_MS);
+    h.session.set({ phase: 'error', message: 'Your opponent stopped responding.' });
+    expect(h.s).toMatchObject({ screen: 'lobby', next: null, notice: { text: 'Your opponent stopped responding.', kind: 'error' } });
   });
 });
 

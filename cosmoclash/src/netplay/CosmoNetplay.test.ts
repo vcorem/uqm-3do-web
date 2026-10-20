@@ -7,7 +7,7 @@ import { createNetplayServer } from '../../../server/netplay.mjs';
 import { createRustRelay } from '../../../tests/helpers/rust-relay.mjs';
 // @ts-ignore ws is provided by the repository's root dependencies.
 import { WebSocket } from 'ws';
-import { CosmoNetplay, createRoomId, invitationURL, parseRoom, readInvite, roomURL, PROTOCOL_VERSION, INPUT_DELAY, BEAT_MS, QUIET_PEER_MS, type Frame, type NetplayOptions, type NextBattle, type SocketLike } from './CosmoNetplay';
+import { CosmoNetplay, createRoomId, invitationURL, parseRoom, readInvite, roomURL, PROTOCOL_VERSION, INPUT_DELAY, BEAT_MS, QUIET_PEER_MS, NEXT_MS, NEXT_WAIT_MS, NEXT_ACK_MS, type Frame, type NetplayOptions, type NextBattle, type SocketLike } from './CosmoNetplay';
 const cleanup: (() => Promise<void> | void)[] = [];
 afterEach(async () => { for (const fn of cleanup.splice(0).reverse()) await fn(); });
 const sleep = (ms = 2) => new Promise(resolve => setTimeout(resolve, ms));
@@ -504,9 +504,10 @@ it('protocol 3: awaitNext needs a match and a real choice (two or more ships)', 
   expect(() => lobby.peer.awaitNext({ battle: 1, player: 0, ships: [0, 2] })).toThrow();
   expect(p.peer.state.phase).toBe('playing');
 });
-it('protocol 3: the choice has beats and the 2-minute limit (a 20 s choice never ends the room); inputs and checksums of the last battle are accepted', () => {
+it('protocol 3: the choice has beats; the waiting peer stops when no next comes in NEXT_WAIT_MS (a full 20 s choice never ends the room); inputs and checksums of the last battle are accepted', () => {
   vi.useFakeTimers();
   try {
+    expect(NEXT_WAIT_MS).toBe(NEXT_MS + 20000);
     const p = playing('host');
     p.peer.advance(0); p.peer.advance(0);
     p.peer.awaitNext({ battle: 1, player: 1, ships: [0, 2] });
@@ -516,8 +517,47 @@ it('protocol 3: the choice has beats and the 2-minute limit (a 20 s choice never
     vi.advanceTimersByTime(25000);
     expect(p.peer.state.phase).toBe('choosing');
     expect(sentTypes(p, 'beat')).toEqual([{ type: 'beat', round: 0 }]);
-    vi.advanceTimersByTime(QUIET_PEER_MS - 20000);
-    expect(p.peer.state).toMatchObject({ phase: 'error', message: 'Your opponent stopped responding.' });
+    // The loser's game always sends next within NEXT_MS: its beats do not keep the wait open
+    // (a connection that dropped without a close ends in 40 s, not after 2 minutes of silence).
+    p.game({ type: 'beat', round: 0 });
+    vi.advanceTimersByTime(NEXT_WAIT_MS - 25000 - 1500);
+    expect(p.peer.state.phase).toBe('choosing');
+    // The limits are checked once a second.
+    vi.advanceTimersByTime(3000);
+    expect(p.peer.state).toMatchObject({ phase: 'error', message: 'Your opponent stopped responding.', next: null });
+    // A next just before the limit: the next battle.
+    const q = playing('host');
+    q.peer.awaitNext({ battle: 1, player: 1, ships: [0, 2] });
+    vi.advanceTimersByTime(NEXT_WAIT_MS - 1500);
+    q.game({ type: 'next', round: 0, battle: 1, ship: 2 });
+    expect(q.peer.state.phase).toBe('playing');
+    expect(q.nexts).toEqual([{ battle: 1, player: 1, ship: 2 }]);
+  } finally { vi.useRealTimers(); }
+});
+it('protocol 3: the loser has the 2-minute limit while it chooses, then NEXT_ACK_MS for next-ack', () => {
+  vi.useFakeTimers();
+  try {
+    const p = playing('guest');
+    p.peer.awaitNext({ battle: 1, player: 1, ships: [0, 2] });
+    // Its own game decides when it chooses; the opponent's beats keep the room open meanwhile.
+    for (let n = 0; n < 3; n++) { vi.advanceTimersByTime(BEAT_MS); p.game({ type: 'beat', round: 0 }); }
+    expect(p.peer.state.phase).toBe('choosing');
+    p.peer.chooseNext(2);
+    vi.advanceTimersByTime(NEXT_ACK_MS - 1500);
+    expect(p.peer.state.phase).toBe('choosing');
+    vi.advanceTimersByTime(3000);
+    expect(p.peer.state).toMatchObject({ phase: 'error', message: 'Your opponent stopped responding.', next: null });
+    // A next-ack in time: the next battle, with the battle limit of silence again.
+    const q = playing('guest');
+    q.peer.awaitNext({ battle: 1, player: 1, ships: [0, 2] });
+    vi.advanceTimersByTime(NEXT_MS);
+    q.peer.chooseNext(0);
+    vi.advanceTimersByTime(NEXT_ACK_MS - 1500);
+    q.game({ type: 'next-ack', round: 0, battle: 1 });
+    expect(q.peer.state.phase).toBe('playing');
+    expect(q.nexts).toEqual([{ battle: 1, player: 1, ship: 0 }]);
+    vi.advanceTimersByTime(10000);
+    expect(q.peer.state.phase).toBe('playing');
   } finally { vi.useRealTimers(); }
 });
 it('protocol 3: the opponent leaves during the choice: the room closes with the reason', () => {

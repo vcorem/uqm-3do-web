@@ -22,7 +22,10 @@
  * "next-ack", and each peer goes on with the next battle when it has both:
  * the waiting peer when "next" comes, the loser when "next-ack" comes. The
  * inputs of both peers stay in one ordered stream, so the next battle starts
- * at the same tick with the same ship on both peers. The choice has beats too. */
+ * at the same tick with the same ship on both peers. The choice has beats too,
+ * and its own limits: the loser's game sends "next" within NEXT_MS, so the
+ * waiting peer stops after NEXT_WAIT_MS without it, and the loser after
+ * NEXT_ACK_MS without "next-ack" (a connection that dropped without a close). */
 import { roomName } from './roomName';
 import { BASE } from '@/base';
 export const PROTOCOL_VERSION = 3;
@@ -35,6 +38,11 @@ export const KEEPALIVE_MS = 30000;
 /** Fleet choice and result: a beat packet this often, and the limit without any packet. */
 export const BEAT_MS = 20000;
 export const QUIET_PEER_MS = 120000;
+/** Protocol 3: the loser's game chooses the next ship in this time (then the first ship left comes). */
+export const NEXT_MS = 20000;
+/** The waiting peer's limit for the loser's "next", from awaitNext(); the loser's limit for "next-ack", from its "next". */
+export const NEXT_WAIT_MS = NEXT_MS + 20000;
+export const NEXT_ACK_MS = 20000;
 /** The relay's text when the other socket closed: the opponent left. Other peer-left texts say why the room ended. */
 const OTHER_LEFT = 'The other player disconnected.';
 // Longer than the longest relay wait (10 min for a listed room): the relay closes rooms itself.
@@ -162,6 +170,8 @@ export class CosmoNetplay {
   private choice: NextChoice | null = null;
   private earlyNext: { battle: number; ship: number } | null = null;
   private lastBattle = 0;
+  /** When the waiting peer began to wait for "next", or the loser sent it (the limits of the choice). */
+  private nextSince = 0;
   constructor(private readonly options: NetplayOptions) {
     if (!/^[a-zA-Z0-9._:-]{1,128}$/.test(options.buildId)) throw new Error('A stable build identity is required.');
     const initial = options.initialFleet ?? [];
@@ -203,6 +213,11 @@ export class CosmoNetplay {
       const patient = ['lobby', 'choosing', 'ended'].includes(this.phase);
       if (patient && now - this.lastSentAt >= (this.options.beatMs ?? BEAT_MS)) this.send({type: 'beat', round: this.round});
       if (['closed', 'error'].includes(this.phase)) return;
+      // The choice of the next ship: the other peer answers in a known time, not only after 2 minutes of silence.
+      const choice = this.phase === 'choosing' ? this.choice : null;
+      if (choice && (choice.player !== this.local || choice.chosen !== null) && now - this.nextSince > (choice.player !== this.local ? NEXT_WAIT_MS : NEXT_ACK_MS)) {
+        this.fail('Your opponent stopped responding.'); return;
+      }
       const timeout = this.options.timeoutMs ?? (patient ? QUIET_PEER_MS : 20000);
       if (now - this.lastPeerAt > timeout) this.fail('Your opponent stopped responding.');
     }, Math.min(1000, this.options.beatMs ?? BEAT_MS));
@@ -268,6 +283,7 @@ export class CosmoNetplay {
     if (this.phase !== 'playing' || this.choice) throw new Error('The next ship can be chosen only during a match.');
     if (!integer(battle, MAX_TICK) || battle <= this.lastBattle || (player !== 0 && player !== 1) || !validPicks(ships) || ships.length < 2) throw new Error('Invalid choice of the next ship.');
     this.choice = {battle, player, ships: [...ships], chosen: null};
+    this.nextSince = Date.now();
     this.emit('choosing', player === this.local ? 'Choose your next ship.' : 'Your opponent is choosing the next ship.');
     const early = this.earlyNext;
     this.earlyNext = null;
@@ -282,6 +298,7 @@ export class CosmoNetplay {
     if (this.phase !== 'choosing' || !choice || choice.player !== this.local || choice.chosen !== null) return;
     if (!choice.ships.includes(ship)) throw new Error('This ship cannot fly next.');
     choice.chosen = ship;
+    this.nextSince = Date.now();
     this.send({type: 'next', round: this.round, battle: choice.battle, ship});
     if (this.phase === 'choosing') this.emit();
   }
