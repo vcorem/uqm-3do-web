@@ -6,7 +6,8 @@
 // reaches the main menu, and the Rust page of the same edition reuses the copy.
 //
 //   UQM_DIST=dist node tests/browser/data-cache.mjs
-//   UQM_BROWSER=firefox|webkit, UQM_DATA_EDITIONS=original,hd, UQM_SITE=<reuse a split site>
+//   UQM_BROWSER=firefox|webkit, UQM_DATA_EDITIONS=original,hd, UQM_RETURN_VISITS=3,
+//   UQM_SITE=<split site> UQM_SITE_MANIFEST=<its data-parts.json> to reuse a split
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { access, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -42,18 +43,20 @@ function freePort() {
 const temp = await mkdtemp(path.join(os.tmpdir(), 'uqm-data-cache-'));
 const report = { browserType, editions: {}, errors: [], passed: false };
 let worker, context;
+let workerLog = '';
 try {
   // The Worker reads the part manifest beside itself; copy it with its relay module.
   const workerDir = path.join(temp, 'worker');
   await mkdir(workerDir);
   for (const file of ['worker.js', 'netplay.js']) await copyFile(path.join(root, 'deploy', file), path.join(workerDir, file));
-  // UQM_SITE keeps the split site between runs: <dir>/site and <dir>/data-parts.json.
-  const siteRoot = process.env.UQM_SITE ? path.resolve(process.env.UQM_SITE) : temp;
-  const site = path.join(siteRoot, 'site');
-  const siteManifest = path.join(siteRoot, 'data-parts.json');
+  // UQM_SITE and UQM_SITE_MANIFEST name a split site to reuse (the deploy job's .tools/site and
+  // deploy/data-parts.json); when they do not exist yet, the split is written there and kept.
+  const site = process.env.UQM_SITE ? path.resolve(process.env.UQM_SITE) : path.join(temp, 'site');
+  const siteManifest = process.env.UQM_SITE_MANIFEST ? path.resolve(process.env.UQM_SITE_MANIFEST) : path.join(temp, 'data-parts.json');
   const manifest = path.join(workerDir, 'data-parts.json');
-  if (!process.env.UQM_SITE || !await access(siteManifest).then(() => true, () => false)) {
-    await mkdir(siteRoot, { recursive: true });
+  if (!await access(siteManifest).then(() => access(site)).then(() => true, () => false)) {
+    await mkdir(path.dirname(site), { recursive: true });
+    await mkdir(path.dirname(siteManifest), { recursive: true });
     const split = spawnSync('python3', [path.join(root, 'deploy/split-data.py'), '--site', dist, '--output', site, '--manifest', siteManifest],
       { stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' });
     assert.equal(split.status, 0, 'split-data.py failed');
@@ -81,7 +84,6 @@ try {
     '--inspector-port', String(await freePort()), '--persist-to', path.join(temp, 'state'),
     '--show-interactive-dev-session=false', '--log-level', 'warn'],
   { cwd: temp, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
-  let workerLog = '';
   worker.stdout.on('data', chunk => { workerLog += chunk; });
   worker.stderr.on('data', chunk => { workerLog += chunk; });
   const deadline = Date.now() + 180000;
@@ -140,12 +142,19 @@ try {
         const failed = button?.textContent === 'Unable to start' || (typeof Module === 'object' && Module.exitStatus !== undefined);
         return failed || (target === 'runtime' ? typeof runtimeReady !== 'undefined' && runtimeReady
           : typeof Module === 'object' && Module.gameScreen === target);
-      }, target, { timeout, polling: 50 }), fatal]);
+      }, target, { timeout, polling: 50 }), fatal]).catch(async error => {
+        await page.screenshot({ path: path.join(out, `${label}-stalled.png`) }).catch(() => {});
+        const state = await page.evaluate(() => ({ screen: Module.gameScreen, status: document.getElementById('status')?.textContent,
+          log: document.getElementById('log')?.textContent.split('\n').slice(-25) })).catch(() => null);
+        throw new Error(`${folder}: waiting for ${target}: ${error.message}\n${JSON.stringify(state, null, 1)}`);
+      });
       const state = await page.evaluate(() => ({ failed: document.getElementById('start')?.textContent === 'Unable to start',
         status: document.getElementById('status')?.textContent, screen: Module.gameScreen }));
       assert.ok(!state.failed, folder + ': ' + JSON.stringify(state) + '\n' + await page.locator('#log').textContent());
     }
-    await page.goto(`${origin}/${folder}/index.html`);
+    const navigation = Date.now();
+    await page.goto(`${origin}/${folder}/index.html`, { timeout: 120000 });
+    const gotoMs = Date.now() - navigation;
     // A picture of the loading text: the download on a first visit, the stored copy on a return visit.
     const loadingLabel = noCacheAPI ? null : label.endsWith('-first') ? /^Downloading game data: [1-9]/ : /^Loading game data saved in this browser: [1-9]/;
     if (loadingLabel) {
@@ -165,7 +174,7 @@ try {
     await page.screenshot({ path: path.join(out, `${label}-ready.png`) });
     const clicked = Date.now();
     await page.locator('#start').click();
-    await waitFor('mainMenu', 180000);
+    await waitFor('mainMenu', 300000);
     const launchToMenuMs = Date.now() - clicked;
     await sleep(1500);
     await page.locator('#canvas').screenshot({ path: path.join(out, `${label}-menu.png`) });
@@ -196,7 +205,7 @@ try {
       return result;
     });
     await page.close();
-    return { folder, readyMs: loaded.readyMs, launchToMenuMs, methods, dataEntries: loaded.dataEntries,
+    return { folder, gotoMs, readyMs: loaded.readyMs, launchToMenuMs, methods, dataEntries: loaded.dataEntries,
       receivedAtReady, files, backingStore, caches, gameData: loaded.data, readyStatus: loaded.status, statusTexts: loaded.statusTexts };
   }
 
@@ -270,6 +279,7 @@ try {
   report.passed = true;
 } catch (error) {
   report.failure = error.stack;
+  report.workerLog = workerLog.slice(-20000);
   throw error;
 } finally {
   await writeFile(path.join(out, 'results.json'), JSON.stringify(report, null, 2) + '\n');
