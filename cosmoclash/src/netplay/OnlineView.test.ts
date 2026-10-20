@@ -61,6 +61,9 @@ describe('online screens in the page', () => {
     t.controller.activate('create');
     const input = t.view.root.querySelector<HTMLInputElement>('input')!;
     expect(document.activeElement).toBe(input);
+    // Hovering a button does not take the focus from the field.
+    t.view.root.querySelector('[data-item="cancel"]')!.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    expect(document.activeElement).toBe(input);
     input.value = '   ';
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));

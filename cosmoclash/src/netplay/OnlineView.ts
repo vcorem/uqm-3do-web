@@ -37,6 +37,8 @@ export class OnlineView {
       if (item?.dataset.item && item !== this.input) this.controller.activate(item.dataset.item);
     });
     this.root.addEventListener('mouseover', event => {
+      // The pointer moves the focus, but never out of the text field while the player types.
+      if (this.input && document.activeElement === this.input) return;
       const item = (event.target as HTMLElement).closest<HTMLElement>('[data-item]');
       if (item?.dataset.item && item !== this.input) this.controller.focus(item.dataset.item);
     });
@@ -323,7 +325,8 @@ export class OnlineView {
       case 'name': texts['name-error'] = s.nameError; break;
       case 'waiting': {
         const phase = net?.phase;
-        const dots = '.'.repeat(1 + Math.floor(now / 500) % 3);
+        // The screen is drawn once a second: one dot more each second.
+        const dots = '.'.repeat(1 + Math.floor(now / 1000) % 3);
         texts['wait-status'] = !phase || phase === 'connecting' ? 'Opening the room…'
           : phase === 'handshake' ? 'Opponent found! Checking game versions…' : 'Waiting for an opponent' + dots;
         const minutes = s.room?.listed ? LISTED_ROOM_MINUTES : PRIVATE_ROOM_MINUTES;
