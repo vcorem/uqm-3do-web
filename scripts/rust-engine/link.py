@@ -61,6 +61,8 @@ subprocess.run([str(emcc), *map(str, objects), str(library), *link_flags,
                 '-o', str(output / 'uqm-debug.html')], cwd=source, check=True)
 shutil.copy2(output / 'uqm-debug.html', output / 'index.html')
 shutil.copy2(source / 'wasm/compat/toolchain-fixes.json', output / 'toolchain-fixes.json')
+# Page help (download progress, keys panel, How to start) is shared by every engine build.
+shutil.copy2(root / 'web/game-help/game-help.js', output / 'game-help.js')
 if args.edition == 'original':
     shutil.copy2(source / 'COPYING', output / 'COPYING.txt')
     shutil.copy2(source / 'wasm/netplay-client.js', output / 'netplay-client.js')

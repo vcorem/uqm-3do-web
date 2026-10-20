@@ -6,18 +6,21 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 
 const origin = process.env.UQM_ORIGIN || 'https://urquanmasters.org';
 const edition = process.env.UQM_EDITION || 'original';
 const role = process.env.UQM_ROLE;
 const token = process.env.UQM_ROOM;
 const joinTimeout = Number(process.env.UQM_JOIN_TIMEOUT_MS || 15 * 60 * 1000);
-const output = path.resolve(process.env.UQM_TEST_OUTPUT || `test-results/peer-${edition}-${role}`);
+const output = path.resolve(process.env.UQM_TEST_OUTPUT || `test-results/peer-${process.env.UQM_PAGE || edition}-${role}`);
 if (!['original', 'hd'].includes(edition)) throw new Error('UQM_EDITION must be original or hd');
 if (!['host', 'guest'].includes(role)) throw new Error('UQM_ROLE must be host or guest');
 if (!/^[0-9a-f]{32}$/.test(token || '')) throw new Error('UQM_ROOM must be a 32-character hex room token');
-const meleeConfig = (edition === 'hd' ? '/home/web_user/.uqm-hd' : '/home/web_user/.uqm') + '/melee.cfg';
+// UQM_PAGE chooses the published build: original, original-rust, hd or hd-rust (default: the C build).
+const pageFolder = process.env.UQM_PAGE || edition;
+if (!new RegExp('^' + edition + '(-rust)?$').test(pageFolder)) throw new Error('UQM_PAGE must be ' + edition + ' or ' + edition + '-rust');
+const defaultConfigDir = edition === 'hd' ? '/home/web_user/.uqm-hd' : '/home/web_user/.uqm';
 await mkdir(output, { recursive: true });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const log = message => console.log(`[${new Date().toISOString()}] ${edition} ${role}: ${message}`);
@@ -34,13 +37,16 @@ function seedFleet(file) {
   FS.writeFile(file, bytes);
 }
 
-const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+const engine = process.env.UQM_BROWSER || 'chromium';
+if (!['chromium', 'firefox', 'webkit'].includes(engine)) throw new Error('UQM_BROWSER must be chromium, firefox or webkit');
+const browser = await { chromium, firefox, webkit }[engine].launch(
+  engine === 'chromium' ? { args: ['--autoplay-policy=no-user-gesture-required'] } : {});
 const page = await (await browser.newContext({ viewport: { width: 1100, height: 1100 } })).newPage();
 page.setDefaultTimeout(30000);
 const failures = [];
 page.on('pageerror', error => failures.push(error.message));
 page.on('crash', () => failures.push('page crashed'));
-const result = { edition, role, origin, passed: false, started: new Date().toISOString() };
+const result = { edition, page: pageFolder, role, engine, browserVersion: browser.version(), origin, passed: false, started: new Date().toISOString() };
 const readState = () => page.evaluate(() => ({ ...Module.webNet.stats, connection: Module.webNet.state }));
 const waitState = (state, timeout = 120000) => page.waitForFunction(
   state => Module.webNet.stats.engineState === state, state, { polling: 100, timeout });
@@ -66,9 +72,14 @@ async function checkSynchronization(minimum) {
 }
 
 try {
-  await page.goto(origin + (edition === 'hd' ? '/hd/index.html' : '/original/index.html'));
+  await page.goto(origin + '/' + pageFolder + '/index.html');
   await page.waitForFunction(() => runtimeReady, null, { polling: 250, timeout: 300000 });
   log('game loaded');
+  // Rust pages keep their saves in their own folder (UQM_VARIANT); C pages use the default.
+  const meleeConfig = (await page.evaluate(() => Module.uqmSavePath || null) || defaultConfigDir) + '/melee.cfg';
+  result.meleeConfig = meleeConfig;
+  result.engineLabel = await page.locator('.edition').textContent();
+  result.wasm = await page.evaluate(async () => { const r = performance.getEntriesByType('resource').find(e => e.name.endsWith('uqm-debug.wasm')); return r ? r.name : null; });
   await page.evaluate(seedFleet, meleeConfig);
   await page.evaluate(() => new Promise((resolve, reject) => FS.syncfs(false, error => error ? reject(error) : resolve())));
   // openRoom is the page's own room function behind Create room / Join room.

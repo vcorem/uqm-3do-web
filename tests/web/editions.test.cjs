@@ -9,17 +9,19 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const script = fs.readFileSync(path.join(root, 'editions.js'), 'utf8');
 const token = '0123456789abcdef0123456789abcdef';
 
-function harness({ saved, storageFailure, href = 'https://game.example/', navigationFailure } = {}) {
+function harness({ saved, savedEngine, storageFailure, href = 'https://game.example/', navigationFailure, page = html } = {}) {
     const entries = new Map(saved === undefined ? [] : [[editions.STORAGE_KEY, saved]]);
+    if (savedEngine !== undefined) entries.set(editions.ENGINE_KEY, savedEngine);
     const navigations = [], requests = [], writes = [];
     const pageHandlers = {};
     const elements = new Map();
-    for (const match of html.matchAll(/<[^>]+\bid="([^"]+)"[^>]*>/g)) {
+    for (const match of page.matchAll(/<[^>]+\bid="([^"]+)"[^>]*>/g)) {
         const handlers = {};
         elements.set(match[1], {
             value: match[0].match(/\bvalue="([^"]*)"/)?.[1] || '',
             checked: /\bchecked\b/.test(match[0]), disabled: /\bdisabled\b/.test(match[0]),
             hidden: /\bhidden\b/.test(match[0]), textContent: '',
+            getAttribute(name) { return match[0].match(new RegExp('\\b' + name + '="([^"]*)"'))?.[1] ?? null; },
             addEventListener(type, handler) { handlers[type] = handler; },
             trigger(type) { handlers[type]?.call(this, { preventDefault() {} }); },
         });
@@ -44,6 +46,7 @@ function harness({ saved, storageFailure, href = 'https://game.example/', naviga
     vm.runInNewContext(script, context, { filename: 'editions.js' });
     return { elements, entries, navigations, requests, writes,
         choose(edition) { const radio = elements.get('edition-' + edition); radio.checked = true; radio.trigger('change'); },
+        chooseEngine(engine) { const radio = elements.get('engine-' + engine); radio.checked = true; radio.trigger('change'); },
         submit() { elements.get('edition-form').trigger('submit'); },
         pageShow(persisted = true) { pageHandlers.pageshow?.({ persisted }); } };
 }
@@ -181,4 +184,43 @@ test('restored invitation remains Original-only without overwriting the saved HD
     assert.deepEqual(h.navigations, Array(2).fill('https://game.example/original/index.html#room=' + token));
     assert.equal(h.entries.get(editions.STORAGE_KEY), 'hd');
     assert.equal(h.writes.length, 0);
+});
+
+test('the engine switch opens the Rust builds and remembers the choice', () => {
+    assert.equal(editions.destination('https://game.example/', 'original', 'rust'), 'https://game.example/original-rust/index.html');
+    assert.equal(editions.destination('https://game.example/', 'hd', 'rust'), 'https://game.example/hd-rust/index.html');
+    assert.equal(editions.destination('https://game.example/', 'hd', 'other'), 'https://game.example/hd/index.html');
+    assert.equal(editions.destination('https://game.example/', 'hd'), 'https://game.example/hd/index.html');
+    const h = harness();
+    assert.equal(h.elements.get('engine-choice').hidden, false);
+    assert.equal(h.elements.get('engine-c').checked, true);
+    h.chooseEngine('rust');
+    h.choose('hd');
+    assert.match(h.elements.get('launch-label').textContent, /Play Redrawn HD · Rust/);
+    assert.match(h.elements.get('selection-note').textContent, /own saves/);
+    h.submit();
+    assert.deepEqual(h.navigations, ['https://game.example/hd-rust/index.html']);
+    assert.equal(h.entries.get(editions.ENGINE_KEY), 'rust');
+    const again = harness({ saved: 'original', savedEngine: 'rust' });
+    assert.equal(again.elements.get('engine-rust').checked, true);
+    again.submit();
+    assert.deepEqual(again.navigations, ['https://game.example/original-rust/index.html']);
+    assert.deepEqual(again.requests, []);
+});
+
+test('an invitation keeps Original but lets the guest choose the Rust engine', () => {
+    const h = harness({ savedEngine: 'rust', href: 'https://game.example/#room=' + token });
+    assert.equal(h.elements.get('edition-hd').disabled, true);
+    assert.equal(h.elements.get('engine-rust').disabled, false);
+    h.submit();
+    assert.deepEqual(h.navigations, ['https://game.example/original-rust/index.html#room=' + token]);
+});
+
+test('a package without Rust builds hides the switch and never opens a Rust page', () => {
+    const page = html.replace('data-engines="c,rust"', 'data-engines="c"');
+    assert.notEqual(page, html);
+    const h = harness({ page, saved: 'hd', savedEngine: 'rust' });
+    assert.equal(h.elements.get('engine-choice').hidden, true);
+    h.submit();
+    assert.deepEqual(h.navigations, ['https://game.example/hd/index.html']);
 });

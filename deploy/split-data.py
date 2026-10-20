@@ -23,22 +23,35 @@ def split(source, output, manifest_path):
         shutil.rmtree(output)
     shutil.copytree(source, output)
     manifest = {}
+    by_hash = {}
     for data in sorted(output.glob('*/' + DATA_NAME)):
         url = '/' + data.relative_to(output).as_posix()
+        size = data.stat().st_size
         digest = hashlib.sha256()
-        parts = []
         with data.open('rb') as handle:
             while chunk := handle.read(PART_SIZE):
                 digest.update(chunk)
+        sha = digest.hexdigest()
+        if sha in by_hash:
+            # The C and Rust builds of an edition package the same content: share one set of parts.
+            manifest[url] = dict(manifest[by_hash[sha]])
+            data.unlink()
+            print('%s: same bytes as %s, parts shared' % (url, by_hash[sha]))
+            continue
+        parts = []
+        with data.open('rb') as handle:
+            while chunk := handle.read(PART_SIZE):
                 part = data.with_name('%s.p%03d' % (DATA_NAME, len(parts)))
                 part.write_bytes(chunk)
                 parts.append('/' + part.relative_to(output).as_posix())
-        size = data.stat().st_size
         data.unlink()
-        manifest[url] = {'size': size, 'sha256': digest.hexdigest(), 'parts': parts}
+        by_hash[sha] = url
+        manifest[url] = {'size': size, 'sha256': sha, 'parts': parts}
         print('%s: %d bytes in %d parts' % (url, size, len(parts)))
-    if set(manifest) != {'/original/' + DATA_NAME, '/hd/' + DATA_NAME}:
-        raise ValueError('Expected the Original and HD data files, found: ' + ', '.join(sorted(manifest)))
+    required = {'/original/' + DATA_NAME, '/hd/' + DATA_NAME}
+    allowed = required | {'/original-rust/' + DATA_NAME, '/hd-rust/' + DATA_NAME}
+    if not required <= set(manifest) <= allowed:
+        raise ValueError('Expected the Original and HD data files (and optional Rust copies), found: ' + ', '.join(sorted(manifest)))
     for path in output.rglob('*'):
         if path.is_file() and path.stat().st_size > ASSET_LIMIT:
             raise ValueError('Asset larger than 25 MiB: ' + str(path))

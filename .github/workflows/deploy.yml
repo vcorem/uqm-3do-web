@@ -1,5 +1,9 @@
 name: Deploy to Cloudflare
 
+# Four published engines: Original and HD, each in C (/original/, /hd/) and in the
+# Rust port (/original-rust/, /hd-rust/). The two Rust engines build in parallel
+# jobs; the deploy job builds the C engines, adds the Rust builds, tests C against
+# Rust in real two-browser matches and deploys.
 on:
   push:
     branches: [deploy/cloudflare]
@@ -13,9 +17,60 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  rust-engine:
+    strategy:
+      matrix:
+        edition: [original, hd]
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Install the pinned Rust toolchains
+        run: |
+          rustup toolchain install 1.85.1 --profile minimal --target wasm32-unknown-emscripten
+          rustup toolchain install "$(cat .rust-wasm-toolchain)" --profile minimal --component rust-src --target wasm32-unknown-emscripten
+      - name: Restore the Rust engine build cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            .tools/rust-engine-${{ matrix.edition }}
+          key: rust-engine-${{ matrix.edition }}-${{ hashFiles('.rust-wasm-toolchain', format('rust/uqm-engine-{0}/**', matrix.edition), 'rust/uqm-core/**', 'rust/uqm-png/**', 'rust/uqm-lua/**', 'scripts/rust-engine/**') }}
+          restore-keys: rust-engine-${{ matrix.edition }}-
+      - name: Install pinned Emscripten SDK
+        run: |
+          mkdir -p .tools
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git .tools/emsdk
+          .tools/emsdk/emsdk install "$(cat .emscripten-version)"
+          .tools/emsdk/emsdk activate "$(cat .emscripten-version)"
+      - name: Build the ${{ matrix.edition }} Rust engine
+        env:
+          JOBS: '4'
+          UQM_CORE: rust
+        run: |
+          if [ "${{ matrix.edition }}" = hd ]; then
+            HD_BUILD_OUTPUT="$PWD/.tools/out" BUILD_OUTPUT="$PWD/.tools/out" ./scripts/build-hd-web.sh
+          else
+            BUILD_OUTPUT="$PWD/.tools/out" ./scripts/build-web.sh
+          fi
+          # The data file is the same as the C build's; only its hash travels to the deploy job.
+          sha256sum .tools/out/uqm-debug.data | cut -d' ' -f1 > .tools/out/uqm-debug.data.sha256
+          rm .tools/out/uqm-debug.data
+          cat .tools/out/engine-language.json
+          ls -la .tools/out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rust-${{ matrix.edition }}
+          path: .tools/out
+          retention-days: 1
+          if-no-files-found: error
+
+  deploy:
+    needs: rust-engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -26,7 +81,9 @@ jobs:
           cache: npm
       - name: Install locked Node dependencies
         run: npm ci
-      - name: Test browser helpers and real WebSocket relay
+      - name: Install the pinned Rust toolchain (relay tests)
+        run: rustup toolchain install 1.85.1 --profile minimal
+      - name: Test browser helpers and real WebSocket relays
         run: npm test
       - name: Test the Cloudflare relay under wrangler dev
         timeout-minutes: 10
@@ -37,18 +94,48 @@ jobs:
           git clone --depth 1 https://github.com/emscripten-core/emsdk.git .tools/emsdk
           .tools/emsdk/emsdk install "$(cat .emscripten-version)"
           .tools/emsdk/emsdk activate "$(cat .emscripten-version)"
-      - name: Build both editions into a clean release package
+      - name: Build the Original and HD C engines
         env:
           JOBS: '4'
-        run: BUILD_OUTPUT="$PWD/.tools/release-web" ./scripts/build-editions.sh
+          UQM_CORE: c
+        run: |
+          BUILD_OUTPUT="$PWD/.tools/original-dist" ./scripts/build-web.sh
+          HD_BUILD_OUTPUT="$PWD/.tools/hd-dist" BUILD_OUTPUT="$PWD/.tools/hd-dist" ./scripts/build-hd-web.sh
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: rust-original
+          path: .tools/original-rust-dist
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: rust-hd
+          path: .tools/hd-rust-dist
+      - name: Add the shared data files to the Rust builds
+        run: |
+          for edition in original hd; do
+            expected="$(cat .tools/$edition-rust-dist/uqm-debug.data.sha256)"
+            actual="$(sha256sum .tools/$edition-dist/uqm-debug.data | cut -d' ' -f1)"
+            echo "$edition data: C $actual, Rust $expected"
+            test "$actual" = "$expected"
+            cp .tools/$edition-dist/uqm-debug.data .tools/$edition-rust-dist/uqm-debug.data
+            rm .tools/$edition-rust-dist/uqm-debug.data.sha256
+            python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['core']=='c', d" .tools/$edition-dist/engine-language.json
+            python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['core']=='rust' and d['game_engine']=='rust', d" .tools/$edition-rust-dist/engine-language.json
+          done
+          sha256sum .tools/*-dist/uqm-debug.wasm
+      - name: Package the four engines behind the edition picker
+        run: |
+          python3 scripts/package-editions.py --original .tools/original-dist --hd .tools/hd-dist \
+            --original-rust .tools/original-rust-dist --hd-rust .tools/hd-rust-dist --output .tools/release-web
       - name: Run actual-source Wasm transport and disconnect regressions
         run: bash sc2/src/uqm/supermelee/netplay/tests/run.sh
-      - name: Test the edition picker with both real engines
+      - name: Test the edition picker with the real engines
         run: |
           npx playwright install --with-deps chromium
           UQM_DIST=.tools/release-web npm run test:editions
-      - name: Test real two-browser HD Online Melee matches and disconnects
-        run: UQM_EDITION=hd UQM_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/hd-netplay npm run test:browser
+      - name: Test Original C against Original Rust in real two-browser matches
+        run: UQM_DIST=.tools/original-dist UQM_PEER_DIST=.tools/original-rust-dist UQM_TEST_OUTPUT=test-results/original-c-rust npm run test:browser
+      - name: Test HD C against HD Rust in real two-browser matches
+        run: UQM_EDITION=hd UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-rust-dist UQM_TEST_OUTPUT=test-results/hd-c-rust npm run test:browser
       - name: Split data files into Cloudflare asset parts
         run: python3 deploy/split-data.py --site .tools/release-web --output .tools/site --manifest deploy/data-parts.json
       - name: Deploy the Worker and static assets
@@ -65,13 +152,20 @@ jobs:
           curl -fsSI https://urquanmasters.org/original/index.html | tee headers.txt
           grep -qi '^cross-origin-embedder-policy: require-corp' headers.txt
           grep -qi '^cross-origin-opener-policy: same-origin' headers.txt
-          curl -fsSI https://urquanmasters.org/original/uqm-debug.wasm | grep -qi '^content-type: application/wasm'
-          for edition in original hd; do
-            expected="$(python3 -c "import json,sys; print(json.load(open('deploy/data-parts.json'))['/' + sys.argv[1] + '/uqm-debug.data']['sha256'])" "$edition")"
-            actual="$(curl -fsS "https://urquanmasters.org/$edition/uqm-debug.data" | sha256sum | cut -d' ' -f1)"
-            echo "$edition data: $actual"
+          for folder in original hd original-rust hd-rust; do
+            curl -fsSI "https://urquanmasters.org/$folder/uqm-debug.wasm" | grep -qi '^content-type: application/wasm'
+            want="$(sha256sum .tools/release-web/$folder/uqm-debug.wasm | cut -d' ' -f1)"
+            got="$(curl -fsS "https://urquanmasters.org/$folder/uqm-debug.wasm" | sha256sum | cut -d' ' -f1)"
+            echo "$folder wasm: $got"
+            test "$got" = "$want"
+            expected="$(python3 -c "import json,sys; print(json.load(open('deploy/data-parts.json'))['/' + sys.argv[1] + '/uqm-debug.data']['sha256'])" "$folder")"
+            actual="$(curl -fsS "https://urquanmasters.org/$folder/uqm-debug.data" | sha256sum | cut -d' ' -f1)"
+            echo "$folder data: $actual"
             test "$actual" = "$expected"
           done
+          curl -fsS https://urquanmasters.org/original-rust/index.html | grep -q 'UQM_VARIANT'
+          curl -fsS https://urquanmasters.org/hd-rust/index.html | grep -q 'UQM_VARIANT'
+          ! curl -fsS https://urquanmasters.org/original/index.html | grep -q 'UQM_VARIANT'
       - name: Check the live Online Melee relay
         run: |
           node --input-type=module -e "
@@ -88,3 +182,10 @@ jobs:
               process.exit(JSON.parse(data).type === 'waiting' ? 0 : 1);
             });
           "
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: deploy-test-results
+          path: test-results
+          retention-days: 7
+          if-no-files-found: ignore

@@ -1,7 +1,8 @@
 Module.preRun ||= [];
 
 Module.preRun.push(function () {
-    const savePath = "/home/web_user/.uqm";
+    // A packaged Rust page sets its own folder, so C and Rust saves never mix.
+    const savePath = Module.uqmSavePath || "/home/web_user/.uqm";
     const reportedWarnings = new Set();
     let mounted = false;
     let storageReady = false;

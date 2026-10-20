@@ -13,7 +13,8 @@ const ISOLATION = {
   'Cross-Origin-Resource-Policy': 'same-origin',
   'X-Content-Type-Options': 'nosniff',
 };
-const INDEX = { '/': '/index.html', '/original/': '/original/index.html', '/hd/': '/hd/index.html' };
+const INDEX = { '/': '/index.html' };
+for (const folder of ['original', 'hd', 'original-rust', 'hd-rust']) INDEX['/' + folder + '/'] = '/' + folder + '/index.html';
 const PART = /\.data\.p\d{3}$/;
 
 export default {

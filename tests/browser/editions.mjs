@@ -198,9 +198,61 @@ try {
   }));
   assert.deepEqual(saved.bytes, Array.from(fixture));
   assert.equal(saved.hdMounted, false);
+  // A package with the Rust builds offers an engine switch. The Rust pages must boot,
+  // say which engine runs, and keep their saves apart from the C saves.
+  const offersRust = (await readFile(path.join(dist, 'index.html'), 'utf8')).includes('data-engines="c,rust"');
+  if (offersRust) {
+    report.rust = {};
+    for (const [edition, folder, saveDir, button] of [
+      ['original', 'original-rust', '/home/web_user/.uqm-rust', 'Launch game'],
+      ['hd', 'hd-rust', '/home/web_user/.uqm-hd-rust', 'Launch HD game']]) {
+      await page.goto(origin);
+      await page.waitForFunction(() => typeof UQMEditions === 'object');
+      await page.locator('#engine-rust').check();
+      await page.locator('#edition-' + edition).check();
+      assert.match(await page.locator('#launch-label').textContent(), /· Rust$/);
+      await page.locator('#launch-edition').click();
+      await waitForGame('runtime', 240000);
+      assert.equal(new URL(page.url()).pathname, '/' + folder + '/index.html');
+      const state = await page.evaluate(([saveDir, edition]) => ({
+        savePath: Module.uqmSavePath, args: Module.arguments, label: document.querySelector('.edition').textContent,
+        rustMounted: FS.analyzePath(saveDir).exists,
+        cSaveVisible: FS.analyzePath(edition === 'hd' ? '/home/web_user/.uqm-hd/edition-check.txt' : '/home/web_user/.uqm/save/uqmsave.00').exists,
+      }), [saveDir, edition]);
+      report.rust[folder] = state;
+      assert.equal(state.savePath, saveDir);
+      assert.ok(state.args.includes('--configdir=' + saveDir), JSON.stringify(state.args));
+      assert.match(state.label, /Rust engine/);
+      assert.equal(state.rustMounted, true);
+      assert.equal(state.cSaveVisible, false, 'A Rust page must not see the C saves');
+      const language = await (await page.request.get(origin + '/' + folder + '/engine-language.json')).json();
+      assert.equal(language.core, 'rust');
+      await page.evaluate(async ([saveDir, folder]) => {
+        FS.writeFile(saveDir + '/engine-check.txt', folder);
+        await new Promise((resolve, reject) => FS.syncfs(false, e => e ? reject(e) : resolve()));
+      }, [saveDir, folder]);
+      await page.reload();
+      await waitForGame('runtime', 240000);
+      assert.equal(await page.evaluate(saveDir => FS.readFile(saveDir + '/engine-check.txt', { encoding: 'utf8' }), saveDir), folder);
+      await page.getByRole('button', { name: button, exact: true }).click();
+      await waitForGame('mainMenu', 120000);
+      if (edition === 'hd') assert.equal(await page.evaluate(() => canvas.width), 1280);
+      await page.locator('#canvas').screenshot({ path: path.join(out, folder + '-menu.png') });
+    }
+    // The C saves are unchanged after both Rust engines ran.
+    await page.goto(origin + '/original/index.html');
+    await waitForGame('runtime', 180000);
+    const after = await page.evaluate(() => ({ bytes: Array.from(FS.readFile('/home/web_user/.uqm/save/uqmsave.00')),
+      rustCheck: FS.analyzePath('/home/web_user/.uqm/engine-check.txt').exists,
+      databases: indexedDB.databases ? null : 'unsupported' }));
+    assert.deepEqual(after.bytes, Array.from(fixture));
+    assert.equal(after.rustCheck, false);
+    report.rust.databases = await page.evaluate(async () => indexedDB.databases ? (await indexedDB.databases()).map(d => d.name).sort() : null);
+  }
   assert.deepEqual(report.errors, []);
   report.passed = true;
-  console.log(`${browserType}: both real engines boot; HD is 1280x960; audio and Melee work; saves isolated and persisted.`);
+  console.log(`${browserType}: both real engines boot; HD is 1280x960; audio and Melee work; saves isolated and persisted.` +
+    (offersRust ? ' Rust Original and HD boot from the engine switch with their own saves.' : ''));
 } catch (error) {
   report.failure = error.stack;
   if (page && !page.isClosed()) {

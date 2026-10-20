@@ -235,6 +235,12 @@
     onAbort: function (reason) { fail('The game could not start: ' + reason); },
     onExit: function () { if (room) room.close(); statusText.textContent = 'Game closed. Reload this page to play again.'; document.getElementById('overlay').hidden = false; startButton.hidden = true; }
   };
+  // package-editions.py sets UQM_VARIANT on the Rust pages: own save folder and engine label.
+  if (window.UQM_VARIANT) {
+    Module.uqmSavePath = UQM_VARIANT.saveDir;
+    Module.arguments.push('--configdir=' + UQM_VARIANT.saveDir);
+    document.querySelector('.edition').textContent += ' · ' + UQM_VARIANT.label;
+  }
   function launchGame(online) {
     if (started || !runtimeReady) return;
     if (online && (!room || room.state !== 'ready')) return;

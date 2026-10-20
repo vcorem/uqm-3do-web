@@ -20,7 +20,7 @@
       <h1 id="page-title">Return to the stars.</h1>
       <p class="intro-copy">The adventure you remember, in the edition you choose.</p>
     </section>
-    <form id="edition-form">
+    <form id="edition-form" data-engines="c,rust">
       <fieldset>
         <legend>Choose your edition</legend>
         <div class="editions">
@@ -46,6 +46,13 @@
           </label>
         </div>
       </fieldset>
+      <fieldset id="engine-choice" class="engine-choice">
+        <legend>Game engine</legend>
+        <div class="engines">
+          <label class="engine-option" for="engine-c"><input id="engine-c" type="radio" name="engine" value="c" checked aria-describedby="engine-c-details"><span><strong>C</strong> <span id="engine-c-details">The reference engine.</span></span></label>
+          <label class="engine-option" for="engine-rust"><input id="engine-rust" type="radio" name="engine" value="rust" aria-describedby="engine-rust-details"><span><strong>Rust</strong> <span id="engine-rust-details">The new port, for testing. Its own saves. Online Melee works with C players of the same edition.</span></span></label>
+        </div>
+      </fieldset>
       <p id="invite-note" class="invite-note" role="status" hidden>An Original 3DO room invitation is ready. Open the game, then choose Join room to connect.</p>
       <div class="launch-row">
         <div class="selection-copy">
@@ -55,9 +62,9 @@
         <button id="launch-edition" type="submit"><span id="launch-label">Play Original 3DO</span><span class="launch-arrow" aria-hidden="true">↗</span></button>
       </div>
     </form>
-    <noscript><p class="noscript">Choose an edition: <a href="original/index.html">Original 3DO</a> or <a href="hd/index.html">Redrawn HD</a>. JavaScript is required to run the game.</p></noscript>
+    <noscript><p class="noscript">Choose an edition: <a href="original/index.html">Original 3DO</a> or <a href="hd/index.html">Redrawn HD</a> (Rust engine: <a href="original-rust/index.html">Original</a>, <a href="hd-rust/index.html">HD</a>). JavaScript is required to run the game.</p></noscript>
     <footer>
-      <p>Desktop keyboard recommended. Each edition keeps its own browser saves.</p>
+      <p>Desktop keyboard recommended. Each edition and engine keeps its own browser saves.</p>
       <p>Star Control II by Toys for Bob. Built on the work of the UQM and HD communities.</p>
     </footer>
   </main>

@@ -202,6 +202,12 @@ var Module = {
     document.getElementById('overlay').hidden=false; startButton.hidden=true;
   }
 };
+// package-editions.py sets UQM_VARIANT on the Rust pages: own save folder and engine label.
+if (window.UQM_VARIANT) {
+  Module.uqmSavePath = UQM_VARIANT.saveDir;
+  Module.arguments = Module.arguments.map(function (arg) { return arg.indexOf('--configdir=') === 0 ? '--configdir=' + UQM_VARIANT.saveDir : arg; });
+  document.querySelector('.edition').textContent += ' · ' + UQM_VARIANT.label;
+}
   function launchGame(online) {
     if (started || !runtimeReady) return;
     if (online && (!room || room.state !== 'ready')) return;
