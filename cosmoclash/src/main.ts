@@ -415,7 +415,7 @@ Object.defineProperty(window,'__cosmo',{value:Object.freeze({
   get snapshot(){return snapshot?structuredClone(snapshot):null;},get hash(){return lastHash;},
   get frames(){return frames;},get netplay(){return netSession?.state??null;},
   get fleet(){return {indices:[...fleetIndex],battle:battleIndex};},
-  get online(){const s=online.state;return {screen:s.screen,focus:s.focus,items:[...s.items],confirm:s.confirm,lobby:s.lobby.status,rooms:s.lobby.rooms.map(r=>r.name),notice:s.notice?.text??'',picks:[...s.fleet.picks],carousel:s.fleet.carousel,room:s.room?.name??null};},
+  get online(){const s=online.state;return {screen:s.screen,focus:s.focus,items:[...s.items],confirm:s.confirm,lobby:s.lobby.status,rooms:s.lobby.rooms.map(r=>r.name),notice:s.notice?.text??'',picks:[...s.fleet.picks],carousel:s.fleet.carousel,room:s.room?.name??null,opening:s.opening};},
   get fullscreen(){return document.fullscreenElement?.id??null;},
   get paused(){return paused;},
 }),writable:false});

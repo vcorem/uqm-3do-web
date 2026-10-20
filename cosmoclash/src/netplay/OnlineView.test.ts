@@ -13,23 +13,25 @@ function setup() {
   let lobby: { onRooms(rooms: LobbyRoom[]): void; onStatus(status: LobbyStatus, message: string): void } | null = null;
   let session: (SessionLike & { set(over: Partial<NetplayState>): void; handlers: SessionHandlers }) | null = null;
   let view!: OnlineView;
+  // The controller's clock (the input lock of new screens); the texts use the real clock.
+  let now = Date.now();
   const controller = new OnlineController({
-    now: () => Date.now(), setTimeout: () => 0, clearTimeout: () => {},
+    now: () => now, setTimeout: () => 0, clearTimeout: () => {},
     origin: 'http://localhost/cosmoclash/', createToken: () => 'a'.repeat(32),
     watchLobby: handlers => { lobby = handlers; return { state: 'connecting', rooms: [], close() {} } as unknown as LobbyWatcher; },
     createSession: handlers => {
       let state: NetplayState = { phase: 'connecting', message: '', role: 'host', room: 'a'.repeat(32), round: 0, tick: 0, localFleet: [], peerFleet: [],
-        localReady: false, peerReady: false, localRematch: false, peerRematch: false, verifiedChecksums: 0, name: '', peerFleetKnown: false };
-      session = { handlers, get state() { return state; }, connect() {}, chooseFleet(fleet) { state = { ...state, localFleet: fleet }; }, ready() {}, rematch() {}, close() {},
+        localReady: false, peerReady: false, localRematch: false, peerRematch: false, verifiedChecksums: 0, name: '', peerFleetKnown: false, changing: false };
+      session = { handlers, get state() { return state; }, connect() {}, chooseFleet(fleet) { state = { ...state, localFleet: fleet }; }, ready() {}, unready() {}, rematch() {}, close() {},
         set(over) { state = { ...state, ...over }; handlers.onState(state); } };
-      return session;
+      return session!;
     },
     inviteURL: token => 'http://localhost/cosmoclash/?cosmoRoom=' + token,
     game: { menu() {}, start() {}, stop() {}, lost: () => [0, 0] },
     changed: () => view?.render(),
   });
   view = new OnlineView(container, controller);
-  return { container, controller, view, get lobby() { return lobby!; }, get session() { return session!; } };
+  return { container, controller, view, get lobby() { return lobby!; }, get session() { return session!; }, wait(ms: number) { now += ms; } };
 }
 const items = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>('[data-item]')].map(node => node.dataset.item);
 
@@ -86,6 +88,7 @@ describe('online screens in the page', () => {
     t.controller.activate('create');
     t.controller.activate('open');
     t.session.set({ phase: 'lobby', peerFleetKnown: true });
+    t.wait(1000);
     expect(t.view.root.querySelector('h1')?.textContent).toBe('Choose Your Fleet');
     expect(t.view.root.textContent).toContain('You are Player 1 · cyan · left');
     t.controller.key('Enter');
@@ -115,6 +118,7 @@ describe('online screens in the page', () => {
     expect(t.view.root.textContent).toContain('Private Room Open');
     expect(t.view.root.querySelector('.cc-link')?.textContent).toMatch(/\/cosmoclash\/\?cosmoRoom=a{32}$/);
     t.session.set({ phase: 'lobby', peerFleetKnown: true });
+    t.wait(1000);
     t.controller.key('Enter');
     t.session.set({ phase: 'playing' });
     t.session.handlers.onStart({ round: 0, seed: 1, fleets: [[0], [1]], localPlayer: 0 });
@@ -124,5 +128,65 @@ describe('online screens in the page', () => {
     t.session.set({ peerRematch: true });
     expect(t.view.root.querySelector('[data-item="rematch"]')?.textContent).toBe('Accept rematch');
     expect(t.view.root.textContent).toContain('Your opponent wants a rematch!');
+  });
+  it('the name field: the name is selected when the screen opens, so typing replaces it; an error keeps the caret', () => {
+    const t = setup();
+    t.controller.openLobby();
+    t.lobby.onStatus('open', '');
+    t.lobby.onRooms([]);
+    t.controller.activate('create');
+    const input = t.view.root.querySelector<HTMLInputElement>('input')!;
+    expect(input.value).toMatch(/^Pilot \d\d$/);
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, input.value.length]);
+    input.value = 'x'.repeat(30);
+    input.setSelectionRange(3, 3);
+    input.dispatchEvent(new Event('input'));
+    t.controller.activate('open');
+    expect(t.view.root.querySelector('.cc-error')?.textContent).toBe('Use at most 24 characters.');
+    expect(t.view.root.querySelector('input')).toBe(input);
+    expect([input.selectionStart, input.selectionEnd]).toEqual([3, 3]);
+    // Cancel and Create room again: a new field, selected again.
+    t.controller.activate('cancel');
+    t.controller.activate('create');
+    const again = t.view.root.querySelector<HTMLInputElement>('input')!;
+    expect(again).not.toBe(input);
+    expect([again.selectionStart, again.selectionEnd]).toEqual([0, again.value.length]);
+  });
+  it('Open room before the room list answers: "Checking the room list…" and a disabled Open room', () => {
+    const t = setup();
+    t.controller.openLobby();
+    t.controller.activate('create');
+    t.controller.activate('open');
+    expect(t.view.root.textContent).toContain('Checking the room list…');
+    const open = t.view.root.querySelector<HTMLElement>('[data-item="open"]')!;
+    expect(open.textContent).toBe('Opening…');
+    expect(open.getAttribute('aria-disabled')).toBe('true');
+    expect(announced()).toBe('Create room. Room name. Checking the room list.');
+    t.lobby.onStatus('open', '');
+    t.lobby.onRooms([]);
+    expect(t.view.root.textContent).toContain('Room Open');
+  });
+  it('a ready player has Change fleet; it waits while a guest asks and is off when both are ready', () => {
+    const t = setup();
+    t.controller.openLobby();
+    t.lobby.onStatus('open', '');
+    t.lobby.onRooms([]);
+    t.controller.activate('create');
+    t.controller.activate('open');
+    t.session.set({ phase: 'lobby', peerFleetKnown: true });
+    t.wait(1000);
+    t.controller.key('Enter');
+    t.session.set({ localReady: true });
+    const change = () => t.view.root.querySelector<HTMLElement>('[data-item="change"]')!;
+    expect(change().textContent).toBe('Change fleet');
+    expect(change().hasAttribute('aria-disabled')).toBe(false);
+    expect(t.view.root.querySelector('.cc-hint')?.textContent).toContain('↓ Change fleet');
+    t.session.set({ changing: true });
+    expect(change().textContent).toBe('Changing…');
+    expect(change().getAttribute('aria-disabled')).toBe('true');
+    expect(t.view.root.querySelector('.cc-self')?.textContent).toBe('Taking Ready back…');
+    t.session.set({ changing: false, peerReady: true });
+    expect(change().getAttribute('aria-disabled')).toBe('true');
+    expect(t.view.root.querySelector('.cc-self')?.textContent).toBe('Both ready! Starting…');
   });
 });

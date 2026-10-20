@@ -21,6 +21,10 @@ export const SHIP_COUNT = 3;
 export const LISTED_ROOM_MINUTES = 10;
 export const PRIVATE_ROOM_MINUTES = 2;
 const BANNER_MS = 2500;
+/** A new fleet or result screen ignores Enter and Space this long (a key pressed for the last screen). */
+export const INPUT_LOCK_MS = 600;
+/** Open room waits this long for the room list to answer (named room or private room). */
+export const LIST_WAIT_MS = 10000;
 
 export type Screen = 'hidden' | 'lobby' | 'name' | 'waiting' | 'joining' | 'invite' | 'fleet' | 'countdown' | 'battle' | 'result';
 export interface Notice { text: string; kind: 'info' | 'error' | 'link' }
@@ -54,6 +58,10 @@ export interface OnlineState {
   invite: string | null;
   /** Lobby: the player moved the focus (new rooms do not take it then). */
   touched: boolean;
+  /** Name: Open room waits for the room list (a listed room needs a server with room lists). */
+  opening: boolean;
+  /** Enter and Space do nothing before this time (env.now()). */
+  lockUntil: number;
 }
 
 /** What the controller needs from a room session (CosmoNetplay). */
@@ -62,6 +70,8 @@ export interface SessionLike {
   connect(options: { origin: string; room: string; role: Role; name?: string | null }): void;
   chooseFleet(fleet: number[]): void;
   ready(): void;
+  /** Take Ready back (Change fleet). */
+  unready(): void;
   rematch(): void;
   close(): void;
 }
@@ -82,7 +92,10 @@ export interface OnlineEnv {
   createSession(handlers: SessionHandlers): SessionLike;
   inviteURL(token: string): string;
   copy?(text: string): Promise<void>;
-  /** Requested at the first choice (a user gesture). Resolves false when refused. */
+  /**
+   * Called at each choice made with a user gesture (not Esc). The page asks for
+   * full screen when the game is not in full screen and the player did not turn it off.
+   */
   fullscreen?(): Promise<boolean> | boolean;
   /** Loads the battle assets before this player says Ready. */
   prepare?(): Promise<void>;
@@ -126,7 +139,7 @@ export class OnlineController {
   private retryTimer: unknown = null;
   private countdownTimer: unknown = null;
   private clockTimer: unknown = null;
-  private asked = false;
+  private listTimer: unknown = null;
   private lastRoom: string | null = null;
 
   constructor(private readonly env: OnlineEnv) {
@@ -135,7 +148,7 @@ export class OnlineController {
       lobby: { status: 'idle', rooms: [], error: '', retries: 0 },
       notice: null, name: '', nameError: '', room: null, net: null,
       fleet: { carousel: 0, picks: [], preparing: false, banner: '', bannerUntil: 0 },
-      start: null, countdownEnd: 0, result: null, invite: null, touched: false,
+      start: null, countdownEnd: 0, result: null, invite: null, touched: false, opening: false, lockUntil: 0,
     };
   }
 
@@ -156,7 +169,7 @@ export class OnlineController {
       case 'waiting': return ['copy', 'cancel'];
       case 'joining': return ['cancel'];
       case 'invite': return ['join', 'dismiss'];
-      case 'fleet': return this.localReady() ? ['ship', 'leave'] : ['ship', 'ready', 'undo', 'leave'];
+      case 'fleet': return this.localReady() ? ['ship', 'change', 'leave'] : ['ship', 'ready', 'undo', 'leave'];
       case 'countdown': case 'battle': return ['leave'];
       case 'result': return ['rematch', 'lobby'];
       default: return [];
@@ -173,6 +186,8 @@ export class OnlineController {
     const wasLobby = s.screen === 'lobby' || s.screen === 'name';
     // An open "Leave the match?" stays open when the countdown becomes the battle.
     if (screen !== s.screen) { s.touched = false; if (!(s.screen === 'countdown' && screen === 'battle')) s.confirm = false; }
+    if (screen !== s.screen && (screen === 'fleet' || screen === 'result')) s.lockUntil = this.env.now() + INPUT_LOCK_MS;
+    if (screen !== 'name') this.stopOpening();
     s.screen = screen;
     if (focus !== undefined) s.focus = focus;
     if (screen === 'lobby' || screen === 'name') this.watch(); else if (wasLobby) this.unwatch();
@@ -190,12 +205,10 @@ export class OnlineController {
       this.clockTimer = this.env.setTimeout(() => { this.clockTimer = null; this.tickClock(); this.changed(); }, 1000);
     }
   }
+  /** A choice with a user gesture: the page may ask for full screen again (env.fullscreen decides). */
   private gesture(): void {
-    if (this.asked || !this.env.fullscreen) return;
-    this.asked = true;
-    let request: Promise<boolean> | boolean;
-    try { request = this.env.fullscreen(); } catch { request = false; }
-    Promise.resolve(request).then(done => { if (done === false) this.asked = false; }, () => { this.asked = false; });
+    if (!this.env.fullscreen) return;
+    try { Promise.resolve(this.env.fullscreen()).catch(() => {}); } catch { /* No full screen here. */ }
   }
 
   // ------------------------------------------------------------ room list
@@ -207,16 +220,26 @@ export class OnlineController {
     const mine = () => !handle || this.watcher === handle;
     try {
       handle = this.env.watchLobby({
-        onRooms: rooms => { if (mine()) { lobby.status = 'open'; lobby.retries = 0; this.setRooms(rooms); } },
+        onRooms: rooms => {
+          if (!mine()) return;
+          lobby.status = 'open'; lobby.retries = 0; this.setRooms(rooms);
+          // Open room waited for this answer: the room is in the list.
+          if (this.state.opening) this.openNamed();
+        },
         onStatus: (status, message) => {
           if (!mine()) return;
           if (status === 'open') { lobby.status = 'open'; lobby.error = ''; lobby.retries = 0; this.changed(); return; }
           if (status === 'connecting') { if (lobby.status !== 'error') { lobby.status = 'connecting'; this.changed(); } return; }
           // No room list on this server (the Rust relay, older servers): private rooms with invite links.
-          if (status === 'unsupported') { lobby.status = 'unsupported'; this.watcher = null; this.changed(); return; }
+          if (status === 'unsupported') {
+            lobby.status = 'unsupported'; lobby.rooms = []; this.watcher = null; this.changed();
+            if (this.state.opening) this.openNamed();
+            return;
+          }
           if (status === 'error') {
             // The watcher reconnects by itself (1, 2, 4, 8, 15 s); Retry reconnects at once.
-            lobby.status = 'error'; lobby.retries++;
+            // The rooms of the lost list may be gone: they are not shown or joined.
+            lobby.status = 'error'; lobby.retries++; lobby.rooms = [];
             lobby.error = cleanMessage(message).replace(/\s*(Trying again|Reconnecting)…$/, '') || 'The room list is not available.';
             this.changed();
             return;
@@ -236,6 +259,8 @@ export class OnlineController {
     this.watcher = null;
     try { handle?.close(); } catch { /* Already closed. */ }
     if (this.state.lobby.status !== 'unsupported') this.state.lobby.status = 'idle';
+    // The next visit shows the rooms of a new list only: an old room may be gone.
+    this.state.lobby.rooms = [];
   }
   private setRooms(rooms: LobbyRoom[]): void {
     const s = this.state;
@@ -394,7 +419,7 @@ export class OnlineController {
   /** Enter on the ship: add it to the fleet, or take it out when it is in the fleet. */
   private toggleShip(): void {
     const s = this.state;
-    if (this.localReady()) { this.notice('You are ready. Waiting for your opponent.'); this.changed(); return; }
+    if (this.localReady()) { this.notice('You are ready. Choose Change fleet to pick other ships.'); this.changed(); return; }
     const ship = s.fleet.carousel;
     const picks = s.fleet.picks;
     if (picks.includes(ship)) {
@@ -417,6 +442,14 @@ export class OnlineController {
     s.fleet.carousel = last;
     s.focus = 'ship';
     this.notice(null);
+    this.changed();
+  }
+  /** Change fleet: take Ready back while the opponent is not ready yet. */
+  private unready(): void {
+    const net = this.state.net;
+    if (!this.session || !net?.localReady || net.peerReady || net.changing) return;
+    this.notice(null);
+    this.session.unready();
     this.changed();
   }
   private ready(): void {
@@ -482,11 +515,12 @@ export class OnlineController {
       case 'name': case 'open': {
         const checked = checkRoomName(s.name);
         if (!checked.ok) { s.nameError = checked.error ?? 'This name cannot be used.'; s.focus = 'name'; this.changed(); return; }
+        if (s.opening) return;
         // The name as the list shows it; remembered only once it is accepted.
         s.name = checked.name;
         s.nameError = '';
         this.env.storage?.set(NAME_KEY, checked.name);
-        this.connect('host', this.env.createToken(), checked.name);
+        this.openNamed();
         return;
       }
       case 'cancel': {
@@ -523,6 +557,7 @@ export class OnlineController {
         return;
       case 'ship': this.toggleShip(); return;
       case 'ready': this.ready(); return;
+      case 'change': this.unready(); return;
       case 'undo': this.undo(); return;
       case 'leave': s.confirm = true; s.confirmFocus = 'stay'; this.changed(); return;
       case 'rematch':
@@ -550,7 +585,46 @@ export class OnlineController {
   setName(value: string): void {
     this.state.name = Array.from(String(value)).slice(0, 64).join('');
     this.state.nameError = '';
+    // A new name: Open room again (the wait for the room list stops).
+    this.stopOpening();
     this.changed();
+  }
+  /**
+   * Open room with the accepted name in state.name. A named room is in the room
+   * list, so it needs a server with room lists: it opens when the list answered
+   * ('open'); without room lists ('unsupported') the room is private. While the
+   * list connects (or reconnects after an error) Open room waits LIST_WAIT_MS.
+   */
+  private openNamed(): void {
+    const s = this.state;
+    if (s.screen !== 'name') { this.stopOpening(); return; }
+    const status = s.lobby.status;
+    if (status === 'open' || status === 'unsupported') {
+      this.stopOpening();
+      const listed = status === 'open';
+      this.connect('host', this.env.createToken(), listed ? s.name : '');
+      // s.room stays only when the private room opened (a refused room goes back to the lobby).
+      if (!listed && s.room) {
+        this.notice('This server has no room list: your room is private.');
+        this.changed();
+      }
+      return;
+    }
+    s.opening = true;
+    if (!this.listTimer) {
+      this.listTimer = this.env.setTimeout(() => {
+        this.listTimer = null;
+        if (!s.opening) return;
+        s.opening = false;
+        if (s.screen === 'name') { s.nameError = 'The room list does not answer. Try again in a moment.'; s.focus = 'open'; }
+        this.changed();
+      }, LIST_WAIT_MS);
+    }
+    this.changed();
+  }
+  private stopOpening(): void {
+    this.state.opening = false;
+    if (this.listTimer) { this.env.clearTimeout(this.listTimer); this.listTimer = null; }
   }
   private move(delta: number): void {
     const s = this.state;
@@ -587,6 +661,8 @@ export class OnlineController {
   key(name: string): boolean {
     const s = this.state;
     if (s.screen === 'hidden') return false;
+    // A key pressed for the last screen (a double press, a held fire key) does not choose on a new one.
+    if ((name === 'Enter' || name === ' ') && this.env.now() < s.lockUntil && !s.confirm) return true;
     if (s.confirm) {
       if (name === 'ArrowLeft' || name === 'ArrowRight' || name === 'ArrowUp' || name === 'ArrowDown' || name === 'Tab') {
         s.confirmFocus = s.confirmFocus === 'stay' ? 'leave-confirm' : 'stay'; this.changed(); return true;
@@ -653,7 +729,8 @@ export class OnlineController {
   // ------------------------------------------------------------ page events
   openLobby(): void {
     this.notice(null);
-    this.show('lobby', this.state.lobby.rooms.length ? 'room:' + this.state.lobby.rooms[0].id : 'create');
+    // The rooms come with the first list; the newest room takes the focus then (setRooms).
+    this.show('lobby', 'create');
   }
   /** The page was opened with an invite link (?cosmoRoom=<token>). */
   invite(token: string): void {
@@ -661,9 +738,7 @@ export class OnlineController {
     this.state.invite = token;
     this.show('invite', 'join');
   }
-  /** The first choice of the main menu also asks for full screen. */
-  menuGesture(): void { this.gesture(); }
-  close(): void { this.closeRoom(); this.unwatch(); }
+  close(): void { this.stopOpening(); this.closeRoom(); this.unwatch(); }
   /** Hides the online screens without a callback (the page shows another screen). */
   reset(): void {
     this.close();

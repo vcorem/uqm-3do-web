@@ -22,6 +22,8 @@ export class OnlineView {
   readonly root: HTMLDivElement;
   private key = '';
   private input: HTMLInputElement | null = null;
+  /** A new name field: its text is selected once, so that typing replaces the default name. */
+  private selectName = false;
   private binds = new Map<string, HTMLElement>();
 
   constructor(private readonly container: HTMLElement, private readonly controller: OnlineController) {
@@ -57,8 +59,9 @@ export class OnlineView {
     if (!visible) { this.key = ''; this.root.replaceChildren(); this.input = null; return; }
     const key = this.structure(s);
     if (key !== this.key) {
+      // The name field stays while the name screen changes (an error, Open room waits): the caret stays too.
+      const keepInput = s.screen === 'name' && this.key.startsWith('name|') ? this.input : null;
       this.key = key;
-      const keepInput = s.screen === 'name' ? this.input : null;
       this.binds.clear();
       const screen = this.build(s, keepInput);
       const nodes: Node[] = [screen];
@@ -81,11 +84,11 @@ export class OnlineView {
     const net = s.net;
     switch (s.screen) {
       case 'lobby': return ['lobby', s.lobby.status, s.lobby.rooms.map(room => room.id).join(','), s.notice?.kind ?? '', s.items.join(',')].join('|');
-      case 'name': return 'name|' + (s.nameError ? 'error' : '');
+      case 'name': return ['name', s.nameError ? 'error' : '', s.opening].join('|');
       case 'waiting': return ['waiting', s.room?.listed, s.notice?.kind ?? ''].join('|');
       case 'joining': return 'joining|' + !!s.room?.name;
       case 'invite': return 'invite';
-      case 'fleet': return ['fleet', s.fleet.picks.join(','), net?.localReady, s.fleet.preparing, this.controller.bannerVisible(), s.notice?.kind ?? '', s.confirm].join('|');
+      case 'fleet': return ['fleet', s.fleet.picks.join(','), net?.localReady, net?.localReady && net.peerReady, net?.changing, s.fleet.preparing, this.controller.bannerVisible(), s.notice?.kind ?? '', s.confirm].join('|');
       case 'countdown': return ['countdown', s.confirm].join('|');
       case 'battle': return ['battle', s.confirm].join('|');
       case 'result': return ['result', s.result?.winner, net?.localRematch, net?.peerRematch, s.confirm].join('|');
@@ -153,15 +156,16 @@ export class OnlineView {
 
   private name(s: OnlineState, keep: HTMLInputElement | null): HTMLElement {
     const input = keep ?? this.makeInput();
+    if (!keep) this.selectName = true;
     this.input = input;
     input.setAttribute('aria-invalid', String(!!s.nameError));
     return this.screen('name', true,
       el('h1', { class: 'cc-title', text: 'Create Room' }),
       el('div', { class: 'cc-panel cc-name-panel' },
         el('label', { class: 'cc-label', text: 'Room name' }, input),
-        el('p', { class: 'cc-muted', text: 'Other players see this name in the room list.' }),
+        el('p', { class: 'cc-muted' + (s.opening ? ' cc-pulse' : ''), text: s.opening ? 'Checking the room list…' : 'Other players see this name in the room list.' }),
         el('p', { class: 'cc-error', bind: 'name-error', role: 'alert' })),
-      el('div', { class: 'cc-buttons' }, button('open', 'Open room'), button('cancel', 'Cancel')),
+      el('div', { class: 'cc-buttons' }, button('open', s.opening ? 'Opening…' : 'Open room', { aria: s.opening ? { disabled: 'true' } : {} }), button('cancel', 'Cancel')),
       el('p', { class: 'cc-hint', text: 'Enter open room · Esc cancel' }));
   }
   private makeInput(): HTMLInputElement {
@@ -230,7 +234,11 @@ export class OnlineView {
         el('span', { class: 'cc-slot-n', text: String(i + 1) }),
         el('span', { class: 'cc-slot-ship', text: ship !== undefined ? shipName(ship) : i === picks.length && !ready ? 'Next' : '—' })));
     }
-    const buttons = ready ? el('div', { class: 'cc-buttons' }, button('leave', 'Leave room'))
+    // Change fleet takes Ready back while the opponent still chooses (when both are ready the match starts).
+    const locked = !!s.net?.changing || !!s.net?.peerReady;
+    const buttons = ready ? el('div', { class: 'cc-buttons' },
+      button('change', s.net?.changing ? 'Changing…' : 'Change fleet', { aria: locked ? { disabled: 'true' } : {} }),
+      button('leave', 'Leave room'))
       : el('div', { class: 'cc-buttons' },
         button('ready', picks.length ? `Ready · ${plural(picks.length, 'ship')}` : 'Ready', { aria: picks.length && !s.fleet.preparing ? {} : { disabled: 'true' } }),
         button('undo', 'Undo', { aria: picks.length ? {} : { disabled: 'true' } }),
@@ -253,7 +261,7 @@ export class OnlineView {
           el('p', { class: 'cc-opponent', bind: 'opponent' })),
         this.notice(s),
         buttons,
-        el('p', { class: 'cc-hint', text: ready ? '← → look at the ships · Esc leave' : '← → ships · Enter add or remove · ↓ Ready · Backspace undo · Esc leave' })));
+        el('p', { class: 'cc-hint', text: ready ? '← → look at the ships · ↓ Change fleet · Esc leave' : '← → ships · Enter add or remove · ↓ Ready · Backspace undo · Esc leave' })));
     if (s.room?.role === 'guest') screen.classList.add('cc-p2-side');
     return screen;
   }
@@ -349,7 +357,7 @@ export class OnlineView {
         texts['ship-state'] = ready ? (at >= 0 ? `Ship ${at + 1} of your fleet` : 'Not in your fleet')
           : at >= 0 ? `In your fleet as ship ${at + 1} · Enter takes it out`
             : picks.length >= SHIP_COUNT ? 'Your fleet is full' : `Enter adds it as ship ${picks.length + 1}`;
-        texts.self = ready ? (net?.peerReady ? 'Both ready! Starting…' : 'You are ready. Waiting for your opponent…')
+        texts.self = ready ? (net?.changing ? 'Taking Ready back…' : net?.peerReady ? 'Both ready! Starting…' : 'You are ready. Waiting for your opponent…')
           : s.fleet.preparing ? 'Getting ready…'
             : picks.length ? `Pick up to ${SHIP_COUNT} ships, or say Ready with ${plural(picks.length, 'ship')}.` : 'Pick 1 to 3 ships. They fight in this order.';
         const peer = net?.peerFleet.length ?? 0;
@@ -380,7 +388,7 @@ export class OnlineView {
         const list = s.lobby.status === 'open' ? (n ? ` ${plural(n, 'open room')}.` : ' No open rooms.') : s.lobby.status === 'unsupported' ? ' No room list on this server.' : s.lobby.status === 'error' ? ' The room list is not available.' : '';
         return 'Online Melee lobby.' + list + notice;
       }
-      case 'name': return 'Create room. Room name.' + (s.nameError ? ' ' + s.nameError : '');
+      case 'name': return 'Create room. Room name.' + (s.opening ? ' Checking the room list.' : '') + (s.nameError ? ' ' + s.nameError : '');
       case 'waiting': return (s.net?.phase === 'handshake' ? 'Opponent found.' : s.room?.listed ? `Room ${s.room.name} is open. Waiting for an opponent.` : 'Private room open. Send the invite link.') + notice;
       case 'joining': return 'Joining the room.';
       case 'invite': return 'You have an invite to an online fleet battle. Join or Not now.';
@@ -416,6 +424,7 @@ export class OnlineView {
       return;
     }
     if (target && document.activeElement !== target) target.focus({ preventScroll: true });
+    if (this.selectName && this.input && target === this.input && document.activeElement === this.input) { this.selectName = false; this.input.select(); }
     if (target?.closest('.cc-rooms')) target.scrollIntoView?.({ block: 'nearest' });
   }
 }

@@ -1,18 +1,18 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { OnlineController, NAME_KEY, COUNTDOWN_MS, cleanMessage, clock, waitingTime, type SessionHandlers, type SessionLike } from './OnlineController';
+import { OnlineController, NAME_KEY, COUNTDOWN_MS, INPUT_LOCK_MS, LIST_WAIT_MS, cleanMessage, clock, waitingTime, type SessionHandlers, type SessionLike } from './OnlineController';
 import type { LobbyRoom, LobbyStatus, LobbyWatcher } from './CosmoLobby';
 import type { MatchStart, NetplayState, Role } from './CosmoNetplay';
 
 const token = (c: string) => c.repeat(32);
 function netState(over: Partial<NetplayState> = {}): NetplayState {
   return { phase: 'connecting', message: '', role: 'host', room: token('a'), round: 0, tick: 0, localFleet: [], peerFleet: [],
-    localReady: false, peerReady: false, localRematch: false, peerRematch: false, verifiedChecksums: 0, name: '', peerFleetKnown: false, ...over };
+    localReady: false, peerReady: false, localRematch: false, peerRematch: false, verifiedChecksums: 0, name: '', peerFleetKnown: false, changing: false, ...over };
 }
 class FakeSession implements SessionLike {
   state: NetplayState = netState();
   connected: { room: string; role: Role; name?: string | null } | null = null;
-  readied = false; rematched = false; closed = false; fleets: number[][] = [];
+  readied = false; rematched = false; closed = false; unreadied = 0; fleets: number[][] = [];
   constructor(readonly handlers: SessionHandlers, private readonly refuse = '') {}
   connect(options: { origin: string; room: string; role: Role; name?: string | null }): void {
     if (this.refuse) throw new Error(this.refuse);
@@ -22,6 +22,7 @@ class FakeSession implements SessionLike {
   set(over: Partial<NetplayState>): void { this.state = { ...this.state, ...over }; this.handlers.onState(this.state); }
   chooseFleet(fleet: number[]): void { this.fleets.push(fleet); this.state = { ...this.state, localFleet: [...fleet] }; }
   ready(): void { this.readied = true; this.set({ localReady: true }); }
+  unready(): void { this.unreadied++; this.set(this.state.role === 'host' ? { localReady: false } : { changing: true }); }
   rematch(): void { this.rematched = true; this.set({ localRematch: true }); }
   close(): void { this.closed = true; this.set({ phase: 'closed', message: 'You left the room.' }); }
   lobby(): void { this.set({ phase: 'lobby', peerFleetKnown: true }); }
@@ -88,6 +89,8 @@ function inFleet(role: Role = 'host') {
   h.session.set({ phase: 'waiting' });
   h.session.set({ phase: 'handshake' });
   h.session.lobby();
+  // A new fleet screen ignores Enter and Space for a moment.
+  h.advance(INPUT_LOCK_MS);
   return h;
 }
 
@@ -167,6 +170,7 @@ describe('name, waiting and joining', () => {
   it('Create room gives a default name, refuses bad names with the reason, and remembers an accepted name', () => {
     const h = harness();
     h.controller.openLobby();
+    h.rooms([]);
     h.keys('Enter');
     expect(h.s).toMatchObject({ screen: 'name', focus: 'name', name: 'Pilot 55' });
     h.controller.setName('   ');
@@ -180,11 +184,11 @@ describe('name, waiting and joining', () => {
     expect(h.s).toMatchObject({ screen: 'waiting', focus: 'copy' });
     expect(h.session.connected).toMatchObject({ role: 'host', name: 'Friday duel' });
     expect(h.store[NAME_KEY]).toBe('Friday duel');
-    expect(h.calls.filter(call => call === 'fullscreen')).toHaveLength(1);
     // Cancel closes the room; the next Create room offers the remembered name.
     h.keys('ArrowRight', 'Enter');
     expect(h.session.closed).toBe(true);
     expect(h.s).toMatchObject({ screen: 'lobby', focus: 'create', notice: { text: 'Your room is closed.' } });
+    h.rooms([]);
     h.keys('Enter');
     expect(h.s.name).toBe('Friday duel');
     h.keys('Escape');
@@ -193,17 +197,20 @@ describe('name, waiting and joining', () => {
   it('a name that the relay refuses goes back to the name dialog with its reason', () => {
     const h = harness();
     h.controller.openLobby();
+    h.rooms([]);
     h.keys('Enter', 'Enter');
     h.session.set({ phase: 'error', message: 'Room names need 1 to 24 visible characters.' });
     expect(h.s).toMatchObject({ screen: 'name', nameError: 'Room names need 1 to 24 visible characters.' });
     const refused = harness({ refuse: 'Room names need 1 to 24 visible characters.' });
     refused.controller.openLobby();
+    refused.rooms([]);
     refused.keys('Enter', 'Enter');
     expect(refused.s).toMatchObject({ screen: 'name', nameError: 'Room names need 1 to 24 visible characters.' });
   });
   it('a full room list or an expired room returns to the lobby with the relay message', () => {
     const h = harness();
     h.controller.openLobby();
+    h.rooms([]);
     h.keys('Enter', 'Enter');
     h.session.set({ phase: 'error', message: 'The room list is full. Try again in a few minutes.' });
     expect(h.s).toMatchObject({ screen: 'lobby', notice: { text: 'The room list is full. Try again in a few minutes.', kind: 'error' } });
@@ -219,8 +226,12 @@ describe('name, waiting and joining', () => {
     expect(h.s.screen).toBe('joining');
     h.session.set({ phase: 'error', message: 'Room does not exist or has expired.' });
     expect(h.s).toMatchObject({ screen: 'lobby', notice: { text: 'Could not join this room. Room does not exist or has expired.' } });
-    // The room is still in the list: Left goes to it, Enter joins again, Esc cancels.
-    h.keys('ArrowLeft', 'Enter');
+    // The lobby shows a new list only (not the old rooms); a room in it takes the focus; Enter joins, Esc cancels.
+    expect(h.s.lobby.rooms).toEqual([]);
+    expect(h.s.focus).toBe('create');
+    h.rooms([room('b', 'Their room')]);
+    expect(h.s.focus).toBe('room:' + token('b'));
+    h.keys('Enter');
     expect(h.s.screen).toBe('joining');
     h.keys('Escape');
     expect(h.s.screen).toBe('lobby');
@@ -279,9 +290,9 @@ describe('fleet choice, battle and result', () => {
     await flush();
     expect(h.calls).toContain('prepare');
     expect(h.session.readied).toBe(true);
-    expect(h.s.items).toEqual(['ship', 'leave']);
+    expect(h.s.items).toEqual(['ship', 'change', 'leave']);
     h.keys('Enter');
-    expect(h.s.notice?.text).toBe('You are ready. Waiting for your opponent.');
+    expect(h.s.notice?.text).toBe('You are ready. Choose Change fleet to pick other ships.');
     expect(h.s.fleet.picks).toEqual([0]);
   });
   it('Esc in the fleet screen asks first; Stay is the default', () => {
@@ -334,10 +345,17 @@ describe('fleet choice, battle and result', () => {
     h.session.handlers.onEnd(2);
     expect(h.s).toMatchObject({ screen: 'result', focus: 'rematch', result: { winner: 2, localPlayer: 1, fleets: [[2], [0]], lost: [1, 0] } });
     h.session.set({ peerRematch: true });
+    // A key pressed for the battle does not choose on the new result screen.
+    h.keys('Enter');
+    expect(h.session.rematched).toBe(false);
+    h.advance(INPUT_LOCK_MS);
     h.keys('Enter');
     expect(h.session.rematched).toBe(true);
     h.session.set({ phase: 'lobby', round: 1, localFleet: [0], localRematch: false, peerRematch: false });
     expect(h.s).toMatchObject({ screen: 'fleet', focus: 'ready', fleet: { picks: [0], banner: 'Rematch!' } });
+    // A double press of Accept rematch does not also say Ready with the last fleet.
+    h.keys('Enter');
+    expect(h.session.readied).toBe(false);
     const b = inFleet();
     b.keys('Enter');
     b.session.set({ phase: 'playing' });
@@ -360,22 +378,140 @@ describe('fleet choice, battle and result', () => {
       expect(h.controller.current).toBe(null);
     }
   });
-  it('full screen is asked at the first choice, not for Esc, and again after a refusal', async () => {
-    let answer = false;
+  it('each choice made with a key or a click may ask for full screen again (the page decides); Esc never asks', async () => {
     const calls: string[] = [];
     const h = harness();
-    (h.controller as unknown as { env: { fullscreen(): boolean } }).env.fullscreen = () => { calls.push('ask'); return answer; };
+    (h.controller as unknown as { env: { fullscreen(): Promise<boolean> } }).env.fullscreen = () => { calls.push('ask'); return Promise.reject(new Error('refused')); };
     h.controller.invite(token('e'));
     h.keys('Escape');
     expect(calls).toEqual([]);
     h.controller.openLobby();
+    h.rooms([]);
     h.keys('Enter');
     await flush();
     expect(calls).toEqual(['ask']);
-    answer = true;
-    h.keys('Escape', 'Enter');
-    await flush();
     h.keys('Escape', 'Enter');
     expect(calls).toEqual(['ask', 'ask']);
+    h.controller.activate('cancel', { escape: true });
+    expect(calls).toEqual(['ask', 'ask']);
+  });
+});
+
+describe('fresh room lists, Open room and Change fleet', () => {
+  it('a new visit does not show or focus the rooms of the last list; a lost list shows no rooms', () => {
+    const h = harness();
+    h.controller.openLobby();
+    h.rooms([room('b', 'Old room')]);
+    expect(h.s.focus).toBe('room:' + token('b'));
+    h.keys('Escape');
+    expect(h.s.screen).toBe('hidden');
+    // The room may have closed meanwhile: nothing of the old list shows while the new list connects.
+    h.controller.openLobby();
+    expect(h.s).toMatchObject({ screen: 'lobby', focus: 'create', items: ['create', 'back'], lobby: { status: 'connecting', rooms: [] } });
+    h.rooms([room('c', 'New room')]);
+    expect(h.s.focus).toBe('room:' + token('c'));
+    h.watcher.handlers.onStatus('error', 'Lost the connection to the room list. Reconnecting…');
+    expect(h.s.lobby.rooms).toEqual([]);
+    expect(h.s).toMatchObject({ items: ['retry', 'create', 'back'], focus: 'retry' });
+  });
+  it('Open room waits for the room list: the room is listed when the list answers', () => {
+    const h = harness();
+    h.controller.openLobby();
+    h.keys('Enter');
+    expect(h.s.screen).toBe('name');
+    h.keys('Enter');
+    expect(h.s).toMatchObject({ screen: 'name', opening: true });
+    expect(h.sessions).toHaveLength(0);
+    h.keys('Enter');
+    expect(h.sessions).toHaveLength(0);
+    h.rooms([]);
+    expect(h.s).toMatchObject({ screen: 'waiting', opening: false, room: { listed: true, name: 'Pilot 55' } });
+    expect(h.session.connected).toMatchObject({ role: 'host', name: 'Pilot 55' });
+  });
+  it('Open room on a server without room lists opens a private room and says so', () => {
+    const h = harness();
+    h.controller.openLobby();
+    h.keys('Enter', 'Enter');
+    expect(h.s.opening).toBe(true);
+    h.watcher.handlers.onStatus('unsupported', 'Invalid room URL or role.');
+    expect(h.s).toMatchObject({ screen: 'waiting', room: { listed: false, name: '' }, notice: { text: 'This server has no room list: your room is private.' } });
+    expect(h.session.connected).toMatchObject({ role: 'host', name: null });
+    // The list said 'unsupported' while the name screen was open: Open room gives a private room at once.
+    const u = harness();
+    u.controller.openLobby();
+    u.keys('Enter');
+    u.watcher.handlers.onStatus('unsupported', 'Invalid lobby URL.');
+    u.keys('Enter');
+    expect(u.s).toMatchObject({ screen: 'waiting', room: { listed: false } });
+    expect(u.session.connected).toMatchObject({ role: 'host', name: null });
+  });
+  it('Open room stops waiting after LIST_WAIT_MS, when the name changes, and with Esc', () => {
+    const h = harness();
+    h.controller.openLobby();
+    h.keys('Enter', 'Enter');
+    h.watcher.handlers.onStatus('error', 'Could not reach the room list. Trying again…');
+    expect(h.s.opening).toBe(true);
+    h.advance(LIST_WAIT_MS);
+    expect(h.s).toMatchObject({ screen: 'name', opening: false, nameError: 'The room list does not answer. Try again in a moment.', focus: 'open' });
+    expect(h.sessions).toHaveLength(0);
+    // A list that answers later opens nothing by itself; Open room then opens the listed room.
+    h.rooms([]);
+    expect(h.s.screen).toBe('name');
+    h.keys('Enter');
+    expect(h.s).toMatchObject({ screen: 'waiting', room: { listed: true } });
+    const c = harness();
+    c.controller.openLobby();
+    c.keys('Enter', 'Enter');
+    c.controller.setName('Other');
+    expect(c.s.opening).toBe(false);
+    c.keys('Enter');
+    expect(c.s.opening).toBe(true);
+    c.keys('Escape');
+    expect(c.s).toMatchObject({ screen: 'lobby', opening: false });
+    c.rooms([]);
+    expect(c.s.screen).toBe('lobby');
+    expect(c.sessions).toHaveLength(0);
+  });
+  it('a new fleet screen ignores Enter and Space for a moment (a key pressed for the last screen)', () => {
+    const h = harness();
+    h.controller.openLobby();
+    h.rooms([]);
+    h.keys('Enter', 'Enter');
+    h.session.set({ phase: 'waiting' });
+    h.session.lobby();
+    h.keys('Enter', ' ');
+    expect(h.s.fleet.picks).toEqual([]);
+    h.advance(INPUT_LOCK_MS);
+    h.keys('Enter');
+    expect(h.s.fleet.picks).toEqual([0]);
+  });
+  it('Change fleet takes Ready back while the opponent still chooses', async () => {
+    const h = inFleet();
+    h.keys('Enter', 'ArrowDown', 'Enter');
+    await flush();
+    expect(h.s).toMatchObject({ items: ['ship', 'change', 'leave'], focus: 'ship' });
+    h.keys('Enter');
+    expect(h.s.notice?.text).toBe('You are ready. Choose Change fleet to pick other ships.');
+    h.keys('ArrowDown');
+    expect(h.s.focus).toBe('change');
+    h.keys('Enter');
+    expect(h.session.unreadied).toBe(1);
+    expect(h.s).toMatchObject({ items: ['ship', 'ready', 'undo', 'leave'], focus: 'ship', fleet: { picks: [0] } });
+    // Both ready: the match starts, so Change fleet does nothing.
+    h.keys('ArrowDown', 'Enter');
+    await flush();
+    h.session.set({ peerReady: true });
+    h.keys('ArrowDown', 'Enter');
+    expect(h.session.unreadied).toBe(1);
+    // A guest asks the host and waits for the answer.
+    const g = inFleet('guest');
+    g.keys('Enter', 'ArrowDown', 'Enter');
+    await flush();
+    g.keys('ArrowDown', 'Enter');
+    expect(g.s.net?.changing).toBe(true);
+    g.keys('Enter');
+    expect(g.session.unreadied).toBe(1);
+    g.session.set({ changing: false, localReady: false });
+    expect(g.s.items).toEqual(['ship', 'ready', 'undo', 'leave']);
   });
 });
