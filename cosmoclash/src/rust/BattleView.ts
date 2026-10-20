@@ -9,6 +9,7 @@ import { FrostTrailEffect } from '@/game/FrostTrailEffect';
 import { SoundManager } from '@/audio/SoundManager';
 import { SOUND_CONFIG, SoundEffect } from '@/audio/SoundEffect';
 import { assetURL } from '@/base';
+import { ringSprite, labelSprite, disposeSprite, PLAYER_COLORS } from '@/ui/markers';
 import { SHIP_IDS, type Snapshot, type ShipId, type EntityView } from './Engine';
 
 type Visual = { object:THREE.Object3D; kind:string; ownedTexture?:THREE.Texture };
@@ -37,6 +38,9 @@ export class BattleView {
   private qRoll=new THREE.Quaternion();
   private zAxis=new THREE.Vector3(0,0,1);
   private forward=new THREE.Vector3();
+  /** Rings in the player colours (and "YOU" over the local ship) until this tick of the battle. */
+  private markers:THREE.Sprite[]=[];
+  private markerUntil=-1;
   constructor() {
     this.scene.add(this.stars,this.sunLight);
     this.sun=new THREE.Mesh(new THREE.SphereGeometry(65,32,32),new THREE.MeshBasicMaterial({blending:THREE.AdditiveBlending,depthWrite:false}));
@@ -86,7 +90,22 @@ export class BattleView {
     }
     this.lastTick=-1;
   }
+  /**
+   * Shows who is who at the start of a battle: a ring in each player's colour
+   * and a label over the local player's ship, until the given tick.
+   */
+  mark(local:0|1|null,untilTick:number,labels:[string,string]=['YOU','YOU']):void {
+    this.unmark();
+    for(let i=0;i<2;i++){
+      const ring=ringSprite(PLAYER_COLORS[i]);this.markers.push(ring);this.scene.add(ring);
+      if(local===i||local===null&&labels[i]){const label=labelSprite(labels[i],PLAYER_COLORS[i]);label.userData.player=i;label.userData.label=true;this.markers.push(label);this.scene.add(label);}
+      ring.userData.player=i;
+    }
+    this.markerUntil=untilTick;
+  }
+  private unmark():void { for(const node of this.markers)disposeSprite(node); this.markers=[]; this.markerUntil=-1; }
   clear():void {
+    this.unmark();
     for(const mesh of this.players)this.scene.remove(mesh);
     for(const mixer of this.mixers)mixer?.stopAllAction();
     this.players=[];this.mixers=[];this.actions=[];
@@ -148,6 +167,12 @@ export class BattleView {
     for(const e of snapshot.explosions){if(!e.alive)continue;active.add(e.id);const sprite=this.sprite(e.id,'explosion',e.size||(e.sourceType==='Asteroid'?150:300),9,9);this.position(sprite,e);sprite.scale.setScalar(e.size||(e.sourceType==='Asteroid'?150:300));this.setFrame(sprite.material.map!,e.currentFrame,9,9);}
     for(const a of snapshot.asteroids){if(!a.alive)continue;active.add(a.id);let entry=this.visuals.get(a.id);const kind=`asteroid-${a.asteroidType}`;if(entry?.kind!==kind){this.removeVisual(a.id);entry=undefined;}if(!entry){entry={object:this.asteroidModels[a.asteroidType].clone(),kind};this.visuals.set(a.id,entry);this.scene.add(entry.object);}this.position(entry.object,a);entry.object.rotation.set(a.curXAngle*RAD,a.curYAngle*RAD,0);}
     for(const id of this.visuals.keys())if(!active.has(id))this.removeVisual(id);
+    for(const node of this.markers){
+      const p=snapshot.players[node.userData.player as number];
+      node.visible=snapshot.tick<=this.markerUntil&&!!p?.alive;
+      if(p)node.position.set(p.position.x,p.position.y+(node.userData.label?48:0),p.position.z);
+      if(!node.userData.label&&node.visible){const pulse=1+0.08*Math.sin(snapshot.tick*0.15);node.scale.set(90*pulse,90*pulse,1);}
+    }
     if(changed)for(const event of snapshot.events){const sound=typeof event==='string'?event:event.sound;if(sound&&Object.prototype.hasOwnProperty.call(SOUND_CONFIG,sound))SoundManager.getInstance().play(sound as SoundEffect);}
     this.lastTick=snapshot.tick;
   }

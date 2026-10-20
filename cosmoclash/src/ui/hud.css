@@ -11,18 +11,22 @@
 
 .player-panel {
   position: absolute;
-  top: 16px;
+  top: calc(16px * var(--u, 1));
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .player-panel.left {
-  left: 16px;
+  left: calc(16px * var(--u, 1));
+  transform: scale(var(--u, 1));
+  transform-origin: top left;
 }
 
 .player-panel.right {
-  right: 16px;
+  right: calc(16px * var(--u, 1));
+  transform: scale(var(--u, 1));
+  transform-origin: top right;
 }
 
 .bar-row {
@@ -69,7 +73,7 @@
 }
 
 .hud-win-text {
-  font-size: 64px;
+  font-size: max(28px, calc(64px * var(--u, 1)));
   font-weight: bold;
   color: #00ffff;
   text-shadow:
