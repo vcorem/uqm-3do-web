@@ -77,12 +77,15 @@ Neo, Orca, Ptera, Lepid, Gondi, Tiktok, Sholev, Phyto — each with unique speed
 - Player 1: ArrowUp/Left/Right (thrust/rotate), `/` (fire), `.` (morph/secondary)
 - Player 2: WASD (thrust/rotate), Space (fire), Shift (secondary/snot)
 - M: toggle mute
-- Esc: pause a local battle; in an online match it asks "Leave the match?"
+- F: full screen on or off (menu screens only; never while a ship flies, F is near the keys of Player 2)
+- Esc: pause a local battle; in an online match it asks "Leave the match?"; on "Choose Your Next Ship" it asks "Leave this game?"
+- Two Players on one computer: Space is P2 fire, so menus there choose with Enter only (`chooseKey` in `src/main.ts`, `Panel` `chooseKeys`)
 
 ## Site path, menus and Online Melee (this repository)
 
 - The game is served at `/cosmoclash/` (Vite base; `/` in unit tests). Load files with `assetURL()` from `src/base.ts`; the upstream `src/game` code (kept unchanged for `tests/provenance.mjs`) gets the base through `installAssetBase()` (the Three.js default loading manager).
 - Do not edit `src/game`, `src/engine`, `src/ai` or `public/`: the provenance test compares them with the upstream SHA-256 manifest. Wrap them instead (for example `src/netplay/FleetBadges.ts` adds sprites to the public `SelectionScene.scene`).
+- Panels and screens that open by themselves (game over, the online fleet and result screens) ignore Enter/Space for 600 ms (`Panel` `lockMs`, `OnlineController` `lockUntil`): unit tests advance the clock first.
 - Menus: one window keydown handler in capture phase (`menuKey` in `src/main.ts`). It prevents the browser's own Enter/Space action and ignores held-key repeats in menus. The online screens are `OnlineController` (state machine, unit tested) and `OnlineView` (DOM). See `docs/online.md`.
 - `npm start` = `scripts/serve.mjs`: the build at `/cosmoclash/` with the Node relay and the room list (`scripts/cosmo-lobby.mjs` when the relay has none).
 

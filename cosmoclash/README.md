@@ -33,16 +33,19 @@ private rooms with an invite link. To play online on one computer, open the
 address in two browser windows.
 
 The main menu has **Play vs Computer**, **Two Players · Same Computer** and
-**Online Melee**. Arrows choose, Enter or a click starts; the first choice puts the
-game in full screen. Fly with the arrow keys, `/` fires, `.` is the special
-ability, `M` mutes. The second local player uses W/A/D, Space and Shift. Both online
-players use the first player's keys on their own computer. Esc pauses a local
-battle and asks before it leaves an online match.
+**Online Melee**. Arrows choose, Enter or a click starts; a choice puts the game
+in full screen, and `F` (or the corner button of the main menu) turns full screen
+on or off. Fly with the arrow keys, `/` fires, `.` is the special ability, `M`
+mutes. The second local player uses W/A/D, Space and Shift (so in Two Players only
+Enter chooses in the menus). Both online players use the first player's keys on
+their own computer. Esc pauses a local battle and asks before it leaves an online
+match or a game against the computer.
 
 **Online Melee** shows the open rooms. Pick one to play, or **Create room**, give it
 a name and wait: the match starts when someone joins (**Copy invite link** is there
 too). Each player then picks one to three ships in the 3D ship choice; the numbers
-are the order of battle. **Ready** when the fleet is complete. A destroyed ship
+are the order of battle. **Ready** when the fleet is complete (**Change fleet**
+takes it back while the opponent still chooses). A destroyed ship
 brings the next ship of that fleet; a destroyed fleet ends the match. **Rematch**
 needs both players. All screens are in the game; see [docs/online.md](docs/online.md).
 
@@ -75,7 +78,8 @@ with real keyboard and mouse input, state checksums and asset loading:
 rematch, jitter and disconnect through the Rust relay with an invite link) and
 `tests/browser/online-ui.mjs` (`npm run test:online-ui`: the in-game lobby with
 the room list, saving every screen at 1280x720, 1024x768 and 1920x1080 in
-`test-results/online-ui/`).
+`test-results/online-ui/`; `solo.mjs` saves the local screens in
+`test-results/local-ui/`).
 On macOS the browser runner defaults to installed Google Chrome; set `CHROME_BIN`
 to select another executable. Linux uses Playwright Chromium.
 
