@@ -11,7 +11,7 @@ import { SelectionUI } from '@/ui/SelectionUI';
 import { CHARACTER_REGISTRY } from '@/game/CharacterRegistry';
 import { HUD } from '@/ui/HUD';
 import { MatchHud, type SideInfo } from '@/ui/MatchHud';
-import { Panel } from '@/ui/Panel';
+import { Panel, PANEL_LOCK_MS } from '@/ui/Panel';
 import { attachLiveRegion, announce } from '@/ui/live';
 import { PLAYER_COLORS } from '@/ui/markers';
 import { SoundManager } from '@/audio/SoundManager';
@@ -78,6 +78,8 @@ let fullscreenAsked=false;
 const seed=()=>crypto.getRandomValues(new Uint32Array(1))[0]||1;
 const shipName=(index:number)=>CHARACTER_REGISTRY[index]?.name??'?';
 const DIFFICULTY_NAMES={easy:'Easy',medium:'Medium',hard:'Hard'};
+/** Two Players on one computer: Space is the fire key of Player 2, so only Enter chooses in the menus. */
+const chooseKey=(key:string)=>key==='Enter'||(key===' '&&mode!=='local');
 
 /** The first menu choice is a user gesture: the game frame goes full screen then (once). */
 function fullscreenGesture():Promise<boolean> {
@@ -174,7 +176,15 @@ function pauseLocal():void {
   paused=true;
   panel=new Panel(container,{title:'Paused',lines:[mode==='ai'?'Leaving ends this game against the computer.':'Leaving ends this battle.'],
     buttons:[{id:'resume',label:'Resume'},{id:'menu',label:'Main menu'}],escape:'resume',dialog:true,hint:'Enter choose · Esc resume',
+    chooseKeys:mode==='local'?['Enter']:undefined,
     onChoose:id=>{if(id==='resume'){clearPanel();accumulator=0;}else showMenu();}});
+}
+/** Esc on "Choose Your Next Ship" (vs Computer): the game is not lost without a question. */
+function askLeaveGame():void {
+  if(panel)return;
+  panel=new Panel(container,{title:'Leave this game?',lines:[`Leaving ends this game against the computer (${DIFFICULTY_NAMES[difficulty]}).`],
+    buttons:[{id:'stay',label:'Keep playing'},{id:'menu',label:'Main menu'}],escape:'stay',dialog:true,hint:'Enter choose · Esc keep playing',
+    onChoose:id=>{if(id==='stay')clearPanel();else showMenu('ai');}});
 }
 function localGameOver():void {
   state='gameOver';matchHud?.message('');
@@ -184,6 +194,8 @@ function localGameOver():void {
     title:ai?(won?'Victory':'Defeat'):`Player ${winner} wins`,titleClass:ai?(won?'won':'lost'):'won',
     lines:ai?[won?`You destroyed all three computer ships (${DIFFICULTY_NAMES[difficulty]}).`:'The computer destroyed all your ships.']:[`${shipName(selected[winner-1])} wins the battle.`],
     buttons:[{id:'again',label:'Play again'},{id:'menu',label:'Main menu'}],escape:'menu',hint:'Enter choose · Esc main menu',
+    // It opens by itself: a fire key that the players still press does not choose.
+    lockMs:PANEL_LOCK_MS,chooseKeys:ai?undefined:['Enter'],
     onChoose:id=>{if(id==='menu'){showMenu();return;}clearRound();if(ai){playerLost=[];aiDefeated=[];fleetReselect=false;showSelection(0);}else showSelection(1);},
   });
 }
@@ -361,11 +373,11 @@ function menuKey(e:KeyboardEvent):boolean {
     return difficultyUI.handleKey(key);
   }
   if(state==='selection'&&selection&&selectionUI){
-    if(e.repeat)return ['ArrowLeft','ArrowRight','Enter',' ','Escape'].includes(key);
+    if(e.repeat)return ['ArrowLeft','ArrowRight','Enter','Escape'].includes(key)||chooseKey(key);
     if(key==='ArrowLeft'){browseSelection(-1);return true;}
     if(key==='ArrowRight'){browseSelection(1);return true;}
-    if(key==='Enter'||key===' '){chooseSelection();return true;}
-    if(key==='Escape'){showMenu(mode);return true;}
+    if(chooseKey(key)){chooseSelection();return true;}
+    if(key==='Escape'){if(mode==='ai'&&fleetReselect)askLeaveGame();else showMenu(mode);return true;}
     return false;
   }
   if((state==='playing'||state==='roundOver')&&mode!=='online'){

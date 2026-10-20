@@ -13,14 +13,26 @@ export interface PanelOptions {
   dialog?: boolean;
   titleClass?: string;
   hint?: string;
+  /**
+   * The keys that choose the focused button (default Enter and Space). Two
+   * Players on one computer: Enter only, because Space is the fire key of Player 2.
+   */
+  chooseKeys?: string[];
+  /**
+   * The choose keys do nothing this long after the panel opens: for a panel
+   * that opens by itself (game over), where a key may still be pressed for the battle.
+   */
+  lockMs?: number;
   onChoose(id: string): void;
 }
+export const PANEL_LOCK_MS = 600;
 
 /** A small menu screen in the game's look: pause, game over. Arrows, Enter, Esc and the mouse. */
 export class Panel {
   private root: HTMLDivElement;
   private buttons: HTMLButtonElement[] = [];
   private focus: string;
+  private readonly openedAt = performance.now();
 
   constructor(parent: HTMLElement, private readonly options: PanelOptions) {
     this.focus = options.focus ?? options.buttons[0].id;
@@ -49,7 +61,10 @@ export class Panel {
       this.setFocus(ids[(index + delta + ids.length) % ids.length], true);
       return true;
     }
-    if (name === 'Enter' || name === ' ') { this.options.onChoose(this.focus); return true; }
+    if ((this.options.chooseKeys ?? ['Enter', ' ']).includes(name)) {
+      if (performance.now() - this.openedAt >= (this.options.lockMs ?? 0)) this.options.onChoose(this.focus);
+      return true;
+    }
     if (name === 'Escape' && this.options.escape) { this.options.onChoose(this.options.escape); return true; }
     return name === 'Escape';
   }
