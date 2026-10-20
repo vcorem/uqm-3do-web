@@ -993,13 +993,15 @@
                 return regions.slice();
             },
             measure, text, button, lineHeight,
-            // The main-menu corner button (54x30): a Super-Melee control box.
+            // The main-menu corner button (54x36): a Super-Melee control box.
             corner(hi) {
-                controlBox(0, 0, 54, 30, hi);
+                controlBox(0, 0, 54, 36, hi);
                 const color = hi ? RGB.ctrlTextHi : RGB.ctrlText;
-                text('label', 'ONLINE', 27, 4, color, 'center');
-                text('label', 'MELEE', 27, 5 + lineHeight('label'), color, 'center');
-                text('small', 'PRESS O', 27, 30 - lineHeight('small') - 3, RGB.btnText, 'center');
+                const lh = lineHeight('label'), sh = lineHeight('small');
+                const y = (36 - (2 * lh + 1 + sh)) / 2 + 0.5;
+                text('label', 'ONLINE', 27, y, color, 'center');
+                text('label', 'MELEE', 27, y + lh, color, 'center');
+                text('small', 'PRESS O', 27, y + 2 * lh + 1, RGB.btnText, 'center');
             },
         };
     }
@@ -1017,7 +1019,7 @@
         '.uqm-online input.uqm-online-hit { cursor: text; caret-color: transparent; font-size: 16px; padding: 0 6px; }',
         '.uqm-online input.uqm-online-hit::selection { background: transparent; }',
         '.uqm-online-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }',
-        '.uqm-online-corner { position: absolute; z-index: 1; top: 1.667%; right: 1.25%; width: 16.875%; aspect-ratio: 54 / 30; padding: 0; margin: 0;',
+        '.uqm-online-corner { position: absolute; z-index: 1; top: 1.667%; right: 1.25%; width: 16.875%; aspect-ratio: 54 / 36; padding: 0; margin: 0;',
         '  border: 0; border-radius: 0; background: transparent; cursor: pointer; opacity: .92; }',
         '.uqm-online-corner:hover, .uqm-online-corner:focus-visible { opacity: 1; outline: none; }',
         '.uqm-online-corner canvas { display: block; width: 100%; height: 100%; }',
@@ -1035,10 +1037,34 @@
         const allow = () => { allowed = true; };
         win.addEventListener('keydown', allow, true);
         win.addEventListener('pointerdown', allow, true);
+        // The sounds are 8-bit PCM WAV files at 8363 Hz; read them here, as some
+        // browsers do not decode such files.
+        function wav(data) {
+            const view = new DataView(data);
+            let pos = 12, format = null, samples = null;
+            while (pos + 8 <= view.byteLength) {
+                const id = String.fromCharCode(view.getUint8(pos), view.getUint8(pos + 1), view.getUint8(pos + 2), view.getUint8(pos + 3));
+                const size = view.getUint32(pos + 4, true);
+                if (id === 'fmt ') format = { channels: view.getUint16(pos + 10, true), rate: view.getUint32(pos + 12, true), bits: view.getUint16(pos + 22, true) };
+                else if (id === 'data') samples = { start: pos + 8, size: Math.min(size, view.byteLength - pos - 8) };
+                pos += 8 + size + (size & 1);
+            }
+            if (!format || !samples || ![8, 16].includes(format.bits) || !format.channels) return null;
+            const step = format.bits / 8 * format.channels;
+            const frames = Math.floor(samples.size / step);
+            const buffer = context.createBuffer(format.channels, frames, format.rate);
+            for (let c = 0; c < format.channels; c++) {
+                const out = buffer.getChannelData(c);
+                for (let i = 0; i < frames; i++) {
+                    const at = samples.start + i * step + c * format.bits / 8;
+                    out[i] = format.bits === 8 ? (view.getUint8(at) - 128) / 128 : view.getInt16(at, true) / 32768;
+                }
+            }
+            return buffer;
+        }
         function decode(name) {
             if (!buffers[name]) {
-                buffers[name] = win.fetch(sources[name]).then(response => response.arrayBuffer())
-                    .then(data => new Promise((resolve, reject) => context.decodeAudioData(data, resolve, reject))).catch(() => null);
+                buffers[name] = win.fetch(sources[name]).then(response => response.arrayBuffer()).then(wav).catch(() => null);
             }
             return buffers[name];
         }
@@ -1288,7 +1314,7 @@
         function drawCorner(hi) {
             const k = canvas.width / 320;
             cornerCanvas.width = Math.round(54 * k);
-            cornerCanvas.height = Math.round(30 * k);
+            cornerCanvas.height = Math.round(36 * k);
             const ctx = cornerCanvas.getContext('2d');
             const surface = { width: canvas.width, height: canvas.height, getContext: () => ctx };
             createRenderer(surface, artData.art, artData.images, { edition, now: () => Date.now(), started: options.game.started }).corner(hi);
