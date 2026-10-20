@@ -413,7 +413,13 @@
             activate, key, move, openLobby,
             focus(id) { if (state.items.includes(id) && state.focus !== id) { state.focus = id; changed(); } },
             setName(value) { state.name = String(value).slice(0, 80); state.nameError = ''; changed(); },
-            progress(loading) { state.loading = Object.assign({}, state.loading, loading); if (!state.ready) changed(); },
+            progress(loading) {
+                const before = state.loading;
+                state.loading = Object.assign({}, before, loading);
+                // Download progress arrives very often; redraw only for a visible change.
+                const moved = Math.abs((state.loading.fraction || 0) - (before.fraction || 0)) >= 0.004;
+                if (!state.ready && (moved || state.loading.label !== before.label)) changed();
+            },
             ready() {
                 state.ready = true;
                 state.loading = { label: 'Ready.', fraction: 1 };
@@ -492,7 +498,7 @@
         const W = 320, H = 240;
         const k = canvas.width / W;              // device pixels per logical pixel
         const a = art.scale;                     // art pixels per logical pixel
-        const ctx = canvas.getContext('2d');
+        let ctx = canvas.getContext('2d');
         const tints = new Map();
         const atlas = images.atlas;
         ctx.imageSmoothingEnabled = a > 1;
@@ -692,10 +698,25 @@
 
         const ONLINE_TEXT = ['ONLINE MELEE: fight another player over the internet.',
             'Pick an open room, or create your own and wait.', 'The battle starts by itself when you are both ready.'];
-        function drawStart(state, t) {
+        // The start screen's picture and shading do not change: draw them once.
+        let startBackground = null;
+        function drawStartBackground() {
             image('title', 0, 0, W, H);
             gradientShade(edition === 'hd' ? 118 : 100, 172, 0.85);
             rect(0, 172, W, H - 172, [0, 0, 0], 0.85);
+        }
+        function drawStart(state, t) {
+            if (!startBackground && root.document && images.title) {
+                startBackground = root.document.createElement('canvas');
+                startBackground.width = canvas.width; startBackground.height = canvas.height;
+                const main = ctx;
+                ctx = startBackground.getContext('2d');
+                ctx.imageSmoothingEnabled = a > 1;
+                drawStartBackground();
+                ctx = main;
+            }
+            if (startBackground) ctx.drawImage(startBackground, 0, 0);
+            else drawStartBackground();
             const menu = MENU[edition];
             const items = [['play', 'Play'], ['online', 'Online Melee']];
             const mh = lineHeight('menu');
@@ -1302,14 +1323,15 @@
                 drawFallback();
                 return;
             }
-            // Changes are drawn at once; the small animations (pulse, cursor, dots) at about 20 frames a second.
+            // Changes are drawn within a frame or two; the small animations (pulse,
+            // cursor, dots) at about 20 frames a second. The game may be loading meanwhile.
             const now = time || 0;
-            if (dirty || now - lastDraw >= 50) {
+            if ((dirty && now - lastDraw >= 30) || now - lastDraw >= 50) {
                 dirty = false;
                 lastDraw = now;
                 syncRegions(renderer.draw(state, now - startedAt));
             }
-            if (animating()) schedule();
+            if (animating() || dirty) schedule();
         }
         function drawFallback() {
             const ctx = canvas.getContext('2d');
