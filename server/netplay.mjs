@@ -8,7 +8,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.wasm': 'application/wasm', '.data': 'application/octet-stream', '.json': 'application/json',
-  '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
+  '.css': 'text/css; charset=utf-8', '.glb': 'model/gltf-binary', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
 const isolatedHeaders = { 'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Embedder-Policy': 'require-corp', 'Cross-Origin-Resource-Policy': 'same-origin',
   'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' };
