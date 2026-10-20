@@ -237,10 +237,24 @@ describe('online screens in the page', () => {
     root.querySelector<HTMLElement>('[data-browse="1"]')!.click();
     expect(root.querySelector('.cc-ship-name')?.textContent).toBe('MichiGichi');
     expect(root.querySelector('.cc-ship-state')?.textContent).toBe('Enter launches it');
-    t.wait(15000);
-    t.controller.browse(1); t.controller.browse(1);
+    // The live region says the ship and the seconds left when the ship changes, not each second.
+    expect(announced()).toBe('MichiGichi. 20 seconds left.');
+    t.wait(8000);
+    t.view.render();
+    expect(announced()).toBe('MichiGichi. 20 seconds left.');
+    t.controller.browse(1);
+    expect(announced()).toBe('Sholev. 12 seconds left.');
+    // After the question the seconds left are said again.
+    t.controller.key('Escape');
+    expect(announced()).toBe('Leave the match? Stay or Leave.');
+    t.wait(1000);
+    t.controller.key('Escape');
+    expect(announced()).toBe('Sholev. 11 seconds left.');
+    t.wait(6000);
+    t.controller.browse(1);
     expect(root.querySelector('.cc-timer')?.classList.contains('low')).toBe(true);
     expect(root.querySelector('.cc-timer-n')?.textContent).toBe('5');
+    expect(announced()).toBe('MichiGichi. 5 seconds left.');
     root.querySelector<HTMLElement>('[data-item="ship"]')!.click();
     expect(root.querySelector('.cc-ship-state')?.textContent).toBe('MichiGichi launches');
     expect(root.querySelector('.cc-self')?.textContent).toBe('Starting the next battle…');
@@ -268,13 +282,22 @@ describe('online screens in the page', () => {
     expect(root.querySelector('.is-focus')).toBeNull();
     expect(root.querySelector('[data-item="leave"]')?.textContent).toBe('Leave (Esc)');
     expect(root.querySelector('.cc-self')?.textContent).toBe('Their choice: Gondi or Sholev · 20 seconds left');
-    expect(announced()).toBe('Your opponent is choosing the next ship. 20 seconds.');
+    expect(announced()).toBe('Your opponent is choosing the next ship. 20 seconds left.');
     t.controller.key('Escape');
     expect(root.querySelector('[role=alertdialog]')?.textContent).toContain('Leave the match?');
+    t.wait(3000);
     t.controller.key('Escape');
-    t.wait(20000);
+    expect(announced()).toBe('Your opponent is choosing the next ship. 17 seconds left.');
+    t.wait(1000);
+    t.view.render();
+    expect(announced()).toBe('Your opponent is choosing the next ship. 17 seconds left.');
+    t.wait(12000);
+    t.view.render();
+    expect(announced()).toBe('Your opponent is choosing the next ship. 4 seconds left.');
+    t.wait(4000);
     t.controller.state.lockUntil = 0; t.view.render();
     expect(root.querySelector('.cc-self')?.textContent).toBe('Waiting for your opponent…');
+    expect(announced()).toBe('Waiting for your opponent.');
     // The result: the ships in the order they flew, the destroyed ones struck through.
     t.setFleets([{ ships: [1, 0, 2], lost: 1, current: 1 }, { ships: [0, 1], lost: 2, current: -1 }]);
     t.session.set({ phase: 'ended' });

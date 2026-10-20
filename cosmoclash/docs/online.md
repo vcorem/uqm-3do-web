@@ -82,6 +82,8 @@ says so).
 - Enter never cancels: after Open room the focus is on Copy invite link; Joining
   ignores Enter; the Leave questions have Stay first.
 - One live region (`#cosmo-status`, `role=status`) says each screen and message.
+  On the choice of the next ship it says the ship and the seconds left when the
+  text changes (a new ship, the last 5 s, after a question), never each second.
 - A menu choice (a user gesture, not Esc) asks for full screen of the game
   frame (`#cosmo-frame`, which holds the 4:3 game container) and, in Chromium,
   `navigator.keyboard.lock(['Escape'])`, so Esc stays a game key. When the game

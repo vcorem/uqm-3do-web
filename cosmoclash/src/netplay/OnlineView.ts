@@ -28,6 +28,12 @@ export class OnlineView {
   /** A new name field: its text is selected once, so that typing replaces the default name. */
   private selectName = false;
   private binds = new Map<string, HTMLElement>();
+  /**
+   * The choice of the next ship in the live region: the seconds left are read
+   * only when its text changes (a new ship, the last 5 s, a notice, the end of
+   * a question), never each second. first: the first text of this choice.
+   */
+  private said: { key: string; left: number; first: boolean } | null = null;
 
   constructor(private readonly container: HTMLElement, private readonly controller: OnlineController) {
     this.root = el('div', { class: 'cc-online', id: 'cosmo-online' });
@@ -78,6 +84,7 @@ export class OnlineView {
     }
     if (this.input && s.screen === 'name' && this.input.value !== s.name) this.input.value = s.name;
     this.applyFocus(s);
+    if (s.screen !== 'next') this.said = null;
     announce(this.announcement(s));
   }
 
@@ -468,7 +475,11 @@ export class OnlineView {
 
   private announcement(s: OnlineState): string {
     const notice = s.notice && s.notice.kind !== 'link' ? ' ' + s.notice.text : '';
-    if (s.confirm) return s.screen === 'fleet' ? 'Leave the room? Stay or Leave.' : 'Leave the match? Stay or Leave.';
+    if (s.confirm) {
+      // After the question the choice says the seconds left again.
+      if (this.said) this.said.key = '';
+      return s.screen === 'fleet' ? 'Leave the room? Stay or Leave.' : 'Leave the match? Stay or Leave.';
+    }
     switch (s.screen) {
       case 'lobby': {
         const n = s.lobby.rooms.length;
@@ -489,9 +500,16 @@ export class OnlineView {
       case 'next': {
         const next = s.next;
         if (!next) return '';
-        if (!next.mine) return this.controller.nextLeft() > 0 ? `Your opponent is choosing the next ship. ${NEXT_MS / 1000} seconds.` + notice : 'Waiting for your opponent.' + notice;
+        const low = this.controller.nextMsLeft() <= 5000;
+        if (!next.mine) {
+          if (this.controller.nextLeft() <= 0) return 'Waiting for your opponent.' + notice;
+          const { left } = this.secondsSaid(['wait', next.battle, low, notice].join('|'));
+          return `Your opponent is choosing the next ship. ${plural(left, 'second')} left.` + notice;
+        }
         if (next.chosen !== null) return (next.auto ? 'Time is up. ' : '') + `${shipName(next.chosen)} launches.`;
-        return `Choose your next ship in ${NEXT_MS / 1000} seconds. ${shipName(next.carousel)}.` + notice;
+        const ship = shipName(next.carousel);
+        const { left, first } = this.secondsSaid(['choose', next.battle, next.carousel, low, notice].join('|'));
+        return (first ? `Choose your next ship in ${plural(left, 'second')}. ${ship}.` : `${ship}. ${plural(left, 'second')} left.`) + notice;
       }
       case 'battle': return 'Battle.';
       case 'result': {
@@ -501,6 +519,12 @@ export class OnlineView {
       }
       default: return '';
     }
+  }
+
+  /** The seconds left when this text of the choice was first said (see said). */
+  private secondsSaid(key: string): { left: number; first: boolean } {
+    if (this.said?.key !== key) this.said = { key, left: this.controller.nextLeft(), first: !this.said };
+    return this.said;
   }
 
   // ------------------------------------------------------------ focus
