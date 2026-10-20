@@ -54,9 +54,13 @@ function harness({ saved, savedEngine, storageFailure, href = 'https://game.exam
 test('chooser loads only its own interface assets, never an edition bundle', () => {
     const scripts = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map(match => match[1]);
     const styles = [...html.matchAll(/<link\b[^>]*\bhref="([^"]+)"/g)].map(match => match[1]);
+    const images = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g)].map(match => match[1]);
     assert.deepEqual(scripts, ['editions.js']);
     assert.deepEqual(styles, ['editions.css']);
-    assert.doesNotMatch(html, /<(?:iframe|object|embed|img)\b|\b(?:preload|prefetch)\b/i);
+    // One picture: the Cosmo Clash card art, a small copy of its title screen next to this page.
+    assert.deepEqual(images, ['cosmoclash-card.jpg']);
+    assert.ok(fs.statSync(path.join(root, images[0])).size < 120000, 'the card art stays small');
+    assert.doesNotMatch(html, /<(?:iframe|object|embed|video|audio)\b|\b(?:preload|prefetch)\b/i);
     assert.doesNotMatch(fs.readFileSync(path.join(root, 'editions.css'), 'utf8'), /\burl\s*\(/i);
     assert.ok(fs.existsSync(path.join(root, scripts[0])));
     assert.ok(fs.existsSync(path.join(root, styles[0])));
@@ -223,4 +227,60 @@ test('a package without Rust builds hides the switch and never opens a Rust page
     assert.equal(h.elements.get('engine-choice').hidden, true);
     h.submit();
     assert.deepEqual(h.navigations, ['https://game.example/hd/index.html']);
+});
+
+// The package without Cosmo Clash, as scripts/package-editions.py writes it.
+const withoutCosmo = html.replace(/\s*<!-- cosmoclash(?::[^>]*)? -->[\s\S]*?<!-- \/cosmoclash -->/g, '')
+    .replace('data-games="uqm,cosmoclash"', 'data-games="uqm"');
+
+test('the Cosmo Clash card opens /cosmoclash/, hides the engine switch and is remembered', () => {
+    assert.equal(editions.destination('https://game.example/', 'cosmoclash'), 'https://game.example/cosmoclash/');
+    assert.equal(editions.destination('https://game.example/', 'cosmoclash', 'rust'), 'https://game.example/cosmoclash/');
+    const h = harness({ savedEngine: 'rust' });
+    assert.equal(h.elements.get('edition-cosmoclash').checked, false, 'Original stays the default');
+    h.choose('cosmoclash');
+    assert.equal(h.elements.get('edition-cosmoclash').checked, true);
+    assert.equal(h.elements.get('edition-original').checked, false);
+    assert.equal(h.elements.get('launch-label').textContent, 'Play Cosmo Clash');
+    assert.match(h.elements.get('selection-note').textContent, /computer.*one keyboard.*online/);
+    assert.equal(h.elements.get('engine-choice').hidden, true, 'Cosmo Clash has one engine');
+    assert.equal(h.entries.get(editions.STORAGE_KEY), 'cosmoclash');
+    h.submit();
+    assert.deepEqual(h.navigations, ['https://game.example/cosmoclash/']);
+    assert.deepEqual(h.requests, []);
+    // Back from the game: the card is still chosen; a UQM edition shows the engine switch again.
+    h.pageShow();
+    assert.equal(h.elements.get('edition-cosmoclash').disabled, false);
+    h.choose('hd');
+    assert.equal(h.elements.get('engine-choice').hidden, false);
+    assert.match(h.elements.get('launch-label').textContent, /Play Redrawn HD · Rust/);
+    const revisit = harness({ saved: 'cosmoclash' });
+    assert.equal(revisit.elements.get('edition-cosmoclash').checked, true);
+    assert.equal(revisit.elements.get('engine-choice').hidden, true);
+    revisit.submit();
+    assert.deepEqual(revisit.navigations, ['https://game.example/cosmoclash/']);
+});
+
+test('an Original invitation keeps the Cosmo Clash card closed', () => {
+    const h = harness({ saved: 'cosmoclash', href: 'https://game.example/#room=' + token });
+    assert.equal(h.elements.get('edition-original').checked, true);
+    assert.equal(h.elements.get('edition-cosmoclash').disabled, true);
+    assert.equal(h.elements.get('engine-choice').hidden, false);
+    h.choose('cosmoclash');
+    h.submit();
+    assert.deepEqual(h.navigations, ['https://game.example/original/index.html#room=' + token]);
+    assert.equal(h.entries.get(editions.STORAGE_KEY), 'cosmoclash', 'the saved choice stays');
+    h.pageShow();
+    assert.equal(h.elements.get('edition-cosmoclash').disabled, true);
+});
+
+test('a package without Cosmo Clash has two cards and opens Original for a saved Cosmo Clash choice', () => {
+    assert.notEqual(withoutCosmo, html);
+    assert.doesNotMatch(withoutCosmo, /cosmoclash|Cosmo Clash|<img/i);
+    const h = harness({ page: withoutCosmo, saved: 'cosmoclash' });
+    assert.equal(h.elements.has('edition-cosmoclash'), false);
+    assert.equal(h.elements.get('edition-original').checked, true);
+    assert.equal(h.elements.get('launch-label').textContent, 'Play Original 3DO');
+    h.submit();
+    assert.deepEqual(h.navigations, ['https://game.example/original/index.html']);
 });
