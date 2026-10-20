@@ -14,7 +14,7 @@ const NAME_ERROR = /^Room names need 1 to 24 visible characters\.$/;
 const encodeName = name => { try { return encodeURIComponent(name); } catch { return '%ED%A0%80'; } };
 
 function roomPath(id, role, { edition, name, engine } = {}) {
-  let url = `/netplay/${edition === 'hd' ? 'hd/' : ''}${id}?role=${role}`;
+  let url = `/netplay/${edition && edition !== 'original' ? edition + '/' : ''}${id}?role=${role}`;
   if (name !== undefined) url += '&name=' + encodeName(name);
   if (engine !== undefined) url += '&engine=' + engine;
   return url;
@@ -114,6 +114,65 @@ test('the room list shows named rooms of its own edition only, newest first, wit
   assert.equal(app.stats.listedRooms, 4);
   assert.equal(app.stats.lobbyConnections, 2);
   assert.equal(app.stats.connections, 4, 'lobby sockets are not room connections');
+});
+
+test('Cosmo Clash has its own room list: its rooms are listed there only, with the rust engine tag', async t => {
+  const { host, guest, lobby, socket, app } = await fixture(t);
+  const watchers = { original: lobby('original'), hd: lobby('hd'), cosmoclash: lobby('cosmoclash') };
+  for (const watcher of Object.values(watchers)) assert.deepEqual(await watcher.next(), { type: 'rooms', rooms: [] });
+  const id = roomId();
+  const before = Date.now();
+  const cosmo = host(id, { edition: 'cosmoclash', name: '  Cosmo   duel ', engine: 'rust' });
+  assert.deepEqual(await cosmo.next(), { type: 'waiting' });
+  const [listed] = await watchers.cosmoclash.rooms(rooms => rooms.length === 1);
+  assert.deepEqual(Object.keys(listed).sort(), ['created', 'engine', 'id', 'name']);
+  assert.deepEqual({ id: listed.id, name: listed.name, engine: listed.engine }, { id, name: 'Cosmo duel', engine: 'rust' });
+  assert.ok(listed.created >= before && listed.created <= Date.now());
+  // The same token in the UQM editions makes independent rooms in their own lists.
+  const original = host(id, { name: 'UQM duel', engine: 'c' });
+  const hd = host(id, { edition: 'hd', name: 'HD duel' });
+  for (const peer of [original, hd]) assert.deepEqual(await peer.next(), { type: 'waiting' });
+  await watchers.original.rooms(rooms => rooms.length === 1);
+  await watchers.hd.rooms(rooms => rooms.length === 1);
+  // A Cosmo Clash room takes only the rust tag; without a tag it lists null.
+  for (const url of [`/netplay/cosmoclash/${roomId()}?role=host&name=a&engine=c`,
+    `/netplay/cosmoclash/${roomId()}?role=host&engine=rust`, `/netplay/cosmoclash/${roomId()}?role=guest&engine=rust`]) {
+    const refused = socket(url);
+    assert.match((await refused.next()).message, /Invalid room URL/, url);
+  }
+  const untagged = roomId();
+  const plain = host(untagged, { edition: 'cosmoclash', name: 'No tag' });
+  await plain.next();
+  assert.equal((await watchers.cosmoclash.rooms(rooms => rooms.length === 2)).find(room => room.id === untagged).engine, null);
+  // A guest who picks the Cosmo Clash room joins it, not the UQM room with the same token.
+  const joining = guest(id, 'cosmoclash');
+  assert.deepEqual(await joining.next(), { type: 'waiting' });
+  assert.deepEqual(await joining.next(), { type: 'ready', role: 'guest' });
+  assert.deepEqual(await cosmo.next(), { type: 'ready', role: 'host' });
+  assert.deepEqual(ids(await watchers.cosmoclash.rooms(rooms => rooms.length === 1)), [untagged]);
+  cosmo.ws.send(Buffer.from('cosmo'));
+  assert.deepEqual(await joining.next(Buffer.isBuffer), Buffer.from('cosmo'));
+  assert.equal(original.messages.length + hd.messages.length, 0, 'the UQM hosts with the same token got nothing');
+  await pause(600);
+  for (const snapshot of watchers.original.all) assert.ok(snapshot.rooms.every(room => room.name === 'UQM duel'));
+  for (const snapshot of watchers.hd.all) assert.ok(snapshot.rooms.every(room => room.name === 'HD duel'));
+  for (const snapshot of watchers.cosmoclash.all) assert.ok(snapshot.rooms.every(room => ['Cosmo duel', 'No tag'].includes(room.name)));
+  assert.equal(app.stats.listedRooms, 3);
+  watchers.cosmoclash.ws.send('ping');
+  assert.equal(await watchers.cosmoclash.next(value => value === 'pong'), 'pong');
+});
+
+test('the room list bounds count each edition apart, also for Cosmo Clash', async t => {
+  const { host, lobby } = await fixture(t, { maxListedRooms: 1 });
+  const watcher = lobby('cosmoclash');
+  await watcher.rooms();
+  const original = host(roomId(), { name: 'UQM' });
+  assert.deepEqual(await original.next(), { type: 'waiting' });
+  const first = host(roomId(), { edition: 'cosmoclash', name: 'First', engine: 'rust' });
+  assert.deepEqual(await first.next(), { type: 'waiting' });
+  const second = host(roomId(), { edition: 'cosmoclash', name: 'Second', engine: 'rust' });
+  assert.match((await second.next()).message, /room list is full/);
+  assert.deepEqual((await watcher.rooms(rooms => rooms.length === 1)).map(room => room.name), ['First']);
 });
 
 test('private rooms are never listed, and invites to listed rooms keep working', async t => {
@@ -246,6 +305,9 @@ test('the room URL parser accepts parameters in any order but each one only once
     { edition: null, token: id, role: 'host', name: 'A', engine: 'c' });
   assert.deepEqual(parseRoomURL(`/netplay/hd/${id}?role=guest`),
     { edition: 'hd', token: id, role: 'guest', name: null, engine: null });
+  assert.deepEqual(parseRoomURL(`/netplay/cosmoclash/${id}?role=host&name=Cosmo&engine=rust`),
+    { edition: 'cosmoclash', token: id, role: 'host', name: 'Cosmo', engine: 'rust' });
+  assert.ok(parseRoomURL(`/netplay/cosmoclash/${id}?role=host&name=Cosmo&engine=c`).error);
   for (const url of [`/netplay/${id}?role=host&role=host`, `/netplay/${id}?Role=host`, `/netplay/${id}?role=host&name`,
     `/netplay/${id}?role=host#x`, `/netplay/${id}`, `/netplay/lobby?edition=hd`]) {
     assert.ok(parseRoomURL(url).error, url);
@@ -310,7 +372,8 @@ test('lobby sockets check the origin, the URL and subprotocols, and have their o
   }
   for (const url of ['/netplay/lobby', '/netplay/lobby?edition=3do', '/netplay/lobby?edition=HD',
     '/netplay/lobby?edition=hd&x=1', '/netplay/lobby?edition=original&edition=hd', '/netplay/lobby?',
-    '/netplay/lobby/?edition=hd', '/netplay/lobby/hd', '/netplay/hd/lobby?edition=hd']) {
+    '/netplay/lobby/?edition=hd', '/netplay/lobby/hd', '/netplay/hd/lobby?edition=hd',
+    '/netplay/lobby?edition=cosmo', '/netplay/lobby?edition=CosmoClash', '/netplay/cosmoclash/lobby?edition=cosmoclash']) {
     const invalid = local.socket(url);
     assert.equal((await invalid.next()).type, 'error', url);
     assert.equal((await invalid.closure).code, 1008, url);

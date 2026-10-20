@@ -477,7 +477,9 @@ test('static serving isolates WASM, preserves files, supports HEAD, and blocks t
   const dist = path.join(temp, 'dist');
   await mkdir(dist);
   await mkdir(path.join(dist, 'folder'));
+  await mkdir(path.join(dist, 'cosmoclash'));
   await writeFile(path.join(dist, 'index.html'), '<canvas>game</canvas>');
+  await writeFile(path.join(dist, 'cosmoclash', 'index.html'), '<canvas>cosmo</canvas>');
   await writeFile(path.join(dist, 'game.wasm'), Buffer.from([0, 97, 115, 109]));
   for (const extension of ['glb', 'ogg', 'wav']) await writeFile(path.join(dist, `asset.${extension}`), 'fixture');
   await writeFile(path.join(temp, 'secret.txt'), 'outside');
@@ -499,13 +501,58 @@ test('static serving isolates WASM, preserves files, supports HEAD, and blocks t
   assert.equal(head.status, 200);
   assert.equal(head.headers['content-length'], '4');
   assert.equal(head.body.length, 0);
-  for (const url of ['/folder', '/folder/', '/../secret.txt', '/%2e%2e/secret.txt',
+  // A folder with a page: the slash form serves it, the other form redirects and keeps the query.
+  for (const url of ['/cosmoclash/', '/cosmoclash/?cosmoRoom=0123456789abcdef0123456789abcdef', '/cosmoclash/index.html']) {
+    const folder = await request(origin, url);
+    assert.equal(folder.status, 200, url);
+    assert.equal(folder.body.toString(), '<canvas>cosmo</canvas>', url);
+    assert.equal(folder.headers['content-type'], 'text/html; charset=utf-8', url);
+    assert.equal(folder.headers['cross-origin-embedder-policy'], 'require-corp', url);
+  }
+  for (const [url, location] of [['/cosmoclash', '/cosmoclash/'],
+    ['/cosmoclash?cosmoRoom=0123456789abcdef0123456789abcdef', '/cosmoclash/?cosmoRoom=0123456789abcdef0123456789abcdef']]) {
+    const redirect = await request(origin, url);
+    assert.equal(redirect.status, 301, url);
+    assert.equal(redirect.headers.location, location, url);
+  }
+  for (const url of ['//cosmoclash', '/folder', '/folder/', '/../secret.txt', '/%2e%2e/secret.txt',
     '/..%2fsecret.txt', '/linked.txt', '/.secret', '/bad%00name', '/bad%zz']) {
     assert.equal((await request(origin, url)).status, 404, url);
   }
   assert.equal((await request(origin, '/', 'POST')).status, 405);
 });
 
+test('a Cosmo Clash build can be served at /cosmoclash/ without a packaged site', async t => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'uqm-relay-'));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const site = path.join(temp, 'site');
+  const cosmo = path.join(temp, 'cosmo-dist');
+  for (const folder of [site, path.join(site, 'cosmoclash'), cosmo, path.join(cosmo, 'assets')]) await mkdir(folder);
+  await writeFile(path.join(site, 'index.html'), 'picker');
+  await writeFile(path.join(site, 'cosmoclash', 'index.html'), 'old packaged copy');
+  await writeFile(path.join(cosmo, 'index.html'), 'cosmo page');
+  await writeFile(path.join(cosmo, 'assets', 'index-AbCd1234.js'), 'export {};');
+  await writeFile(path.join(cosmo, 'cosmoclash.wasm'), Buffer.from([0, 97, 115, 109]));
+  await writeFile(path.join(temp, 'secret.txt'), 'outside');
+  await symlink(path.join(temp, 'secret.txt'), path.join(cosmo, 'linked.txt'));
+  for (const distDir of [site, false]) {
+    const { origin } = await fixture(t, { distDir, cosmoclashDir: cosmo });
+    assert.equal((await request(origin, '/')).status, distDir ? 200 : 404);
+    const page = await request(origin, '/cosmoclash/?cosmoRoom=0123456789abcdef0123456789abcdef');
+    assert.equal(page.body.toString(), 'cosmo page', 'the build, not the folder in the site');
+    assert.equal(page.headers['cross-origin-embedder-policy'], 'require-corp');
+    const redirect = await request(origin, '/cosmoclash?cosmoRoom=0123456789abcdef0123456789abcdef');
+    assert.equal(redirect.status, 301);
+    assert.equal(redirect.headers.location, '/cosmoclash/?cosmoRoom=0123456789abcdef0123456789abcdef');
+    const script = await request(origin, '/cosmoclash/assets/index-AbCd1234.js');
+    assert.equal(script.headers['content-type'], 'text/javascript; charset=utf-8');
+    assert.equal((await request(origin, '/cosmoclash/cosmoclash.wasm')).headers['content-type'], 'application/wasm');
+    for (const url of ['/cosmoclash/../secret.txt', '/cosmoclash/%2e%2e/secret.txt', '/cosmoclash/linked.txt',
+      '/cosmoclash/assets', '/cosmoclash/assets/', '/cosmoclashx/', '/cosmoclash/missing.js']) {
+      assert.equal((await request(origin, url)).status, 404, url);
+    }
+  }
+});
 
 test('Cosmo Clash rooms isolate active and retired identities from Original and HD', async t => {
   const {client} = await fixture(t);
