@@ -76,7 +76,7 @@ test('Original is the default; valid persisted choice restores and changes persi
     first.choose('hd');
     assert.equal(first.entries.get(editions.STORAGE_KEY), 'hd');
     assert.equal(first.elements.get('edition-original').checked, false);
-    assert.match(first.elements.get('selection-note').textContent, /1280 × 960.*Local play.*separate saves/);
+    assert.match(first.elements.get('selection-note').textContent, /1280 × 960.*Online Melee with HD players.*separate saves/);
     const revisit = harness({ saved: first.entries.get(editions.STORAGE_KEY) });
     assert.equal(revisit.elements.get('edition-hd').checked, true);
     revisit.choose('original');

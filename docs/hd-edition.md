@@ -14,14 +14,36 @@ automatic combat helpers by default. Cheats and extended campaign content are
 off by upstream default. It does not claim exact original-game parity. Choose
 Original 3DO for the original reference implementation.
 
-HD supports campaign, local Melee and Online Melee between two HD players.
-`hd/patches/0002-web-netplay.patch` ports the browser relay transport of the
-Original edition into MegaMod (`CHOICE_netplay_VALUE='web'`), and the HD page
-uses the same `netplay-client.js` with its own room path, `/netplay/hd/<token>`.
-HD changes combat coordinate calculations and its save format, so it must not
-join Original 3DO rooms: both relays name a room by edition and token, and an
-Original player cannot enter an HD room with the same token. HD invites open the
-HD page; invitations that reach the picker still open Original 3DO.
+HD supports campaign, local Melee and Online Melee with another HD player.
+Its combat coordinate calculations and save format differ from Original 3DO,
+so the two editions cannot play one another. The HD browser transport and
+launcher are ported from main commit
+`5d7810ba5302803abe537f1b669d696a3af073ad`. `hd/patches/0006-web-netplay.patch` applies it to
+both the HD C build and the HD Rust translation.
+
+## Online Melee
+
+On https://urquanmasters.org the Cloudflare relay serves both HD engines (C
+and Rust); locally, use `npm start`. Choose **Redrawn HD**, then
+click **Create room** on its launcher. Share the complete invitation. The other
+player opens that link and clicks **Join room**. Once the room is paired and
+both engines have loaded, each player clicks **Launch online Melee**. Configure
+fleets and confirm Start Melee on both sides before selecting ships. The host
+controls the bottom fleet and the guest controls the top fleet; both use the
+HD player-one arrow-key controls.
+
+The invitation preserves the current HD page address, for example
+`/hd/index.html#room=<token>` in a combined package. The HD launcher connects
+only to `/netplay/hd/<token>?role=host|guest`; Original uses
+`/netplay/<token>?role=host|guest`. The Cloudflare, Rust and Node relays keep
+edition and token together as the room identity. Identical tokens in different
+editions cannot pair, forward data or disconnect one another. Capacity limits
+remain shared. See [the relay contract](netplay-server.md#connection-contract).
+
+Leaving or losing a connection ends that room. Reload and create a new invite
+for another online session. **Launch HD game** still starts the local campaign
+and local Melee. The Python preview serves local play only; online play needs
+the relay and, outside localhost, HTTPS with WebSocket forwarding.
 
 ## Build and preview
 
@@ -30,7 +52,7 @@ main README, then run:
 
 ```sh
 BUILD_OUTPUT="$PWD/.tools/editions-dist" ./scripts/build-editions.sh
-node server/netplay.mjs --dist .tools/editions-dist --port 10001
+npm start -- --dist .tools/editions-dist --port 10001
 ```
 
 Open `http://127.0.0.1:10001/`. Choose an edition, then click its Launch button
@@ -66,8 +88,10 @@ editions. Clearing site data deletes both editions' browser storage.
 
 The selected edition is remembered separately in localStorage. A blocked
 storage API or invalid saved selection falls back to Original 3DO without
-preventing a manual choice. An invitation temporarily selects Original without
-replacing the user's remembered HD preference.
+preventing a manual choice. Legacy invitations opened at the root picker
+temporarily select Original without replacing the user's remembered HD
+preference. HD invitations go directly to the HD page; retain that path when
+sharing them.
 
 The HD launcher reapplies native HD resolution and subtitles at startup while
 preserving unrelated preferences. An unreadable IndexedDB runs in memory and
@@ -86,7 +110,24 @@ those upstream terms. No public release is performed by these scripts.
 ## Regression checks
 
 `npm test` checks selection, unavailable preference storage, invitation routing,
-separate save mounts and navigation while browser writes are queued.
+separate save mounts and navigation while browser writes are queued. It also
+checks the HD launcher's room and launch controls and edition isolation in both
+relay implementations.
+
+The online browser harness supports a standalone HD package:
+
+```sh
+UQM_EDITION=hd UQM_RELAY=rust UQM_DIST=.tools/hd-dist \
+  UQM_TEST_OUTPUT=test-results/hd-netplay npm run test:browser
+```
+
+It uses separate browser processes and tests fleet setup, combat checksums,
+simulated jitter, rematches, disconnect recovery and preservation of HD's own
+`/home/web_user/.uqm-hd/melee.cfg`. `UQM_PEER_DIST` selects an independent HD
+C build as the guest for Rust/C comparison; see [the build and verification
+commands](rust-port.md#verification). Both peers must be HD. The commands
+describe available checks; [the dated Rust validation record](rust-validation.md)
+records which builds and scenarios have actually passed.
 
 `npm run test:editions` runs both real engines from a combined package. It
 checks that the picker fetches no game data, records the native HD canvas,

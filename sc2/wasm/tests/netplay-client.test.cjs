@@ -157,11 +157,14 @@ test('control text and frame-count limits are bounded as well as bytes', () => {
 
 // The page's real inline script runs against a minimal DOM and the real client.
 // This tests launch gating without loading the game or requiring a browser.
-function pageHarness(hash = '') {
+function pageHarness(hash = '', edition = 'original') {
     const fs = require('node:fs');
     const path = require('node:path');
     const vm = require('node:vm');
-    const html = fs.readFileSync(path.join(__dirname, '..', 'shell.html'), 'utf8');
+    const shell = edition === 'hd'
+        ? path.join(__dirname, '..', '..', '..', 'hd', 'wasm', 'shell.html')
+        : path.join(__dirname, '..', 'shell.html');
+    const html = fs.readFileSync(shell, 'utf8');
     const elements = new Map();
     const document = { activeElement: null, fullscreenElement: null,
         getElementById(id) {
@@ -187,7 +190,7 @@ function pageHarness(hash = '') {
         ready(role) { this.readyState = 1; this.onopen(); this.onmessage({ data: JSON.stringify({ type: 'ready', role }) }); }
     }
     const context = { document, console, URL, URLSearchParams, SharedArrayBuffer,
-        location: { href: 'http://localhost:10000/index.html' + hash, hash },
+        location: { href: `http://localhost:10000/${edition}/index.html` + hash, hash },
         crypto: { getRandomValues(bytes) { bytes.fill(42); } },
         navigator: {}, WebSocket: PageSocket, crossOriginIsolated: true,
         setTimeout() { return 1; }, clearTimeout() {}, setInterval() { return 2; }, clearInterval() {},
@@ -204,55 +207,88 @@ function pageHarness(hash = '') {
         click(id) { elements.get(id).click(); } };
 }
 
-test('page never auto-connects an invite or auto-launches on peer readiness', () => {
-    const h = pageHarness('#room=' + token);
-    assert.equal(h.elements.get('join-invite').value, token);
-    assert.equal(h.sockets.length, 0, 'opening an invite requires a Join click');
-    h.click('join-room');
-    assert.equal(h.sockets.length, 1);
-    assert.match(h.sockets[0].url, /role=guest$/);
-    h.sockets[0].ready('guest');
-    assert.equal(h.calls.length, 0);
-    assert.equal(h.elements.get('launch-online').disabled, true, 'runtime must also finish loading');
-    h.runtimeReady();
-    assert.equal(h.elements.get('launch-online').disabled, false);
-    assert.equal(h.calls.length, 0, 'connection and runtime ready still need a click');
-    h.click('launch-online');
-    assert.equal(h.calls.length, 1);
-    assert.ok(h.calls[0].includes('--web-netplay=guest'));
-    assert.match(h.elements.get('online-role').textContent, /top/);
-    assert.equal(h.elements.get('online-entry').hidden, true);
-    assert.equal(h.elements.get('launch-online').hidden, true);
-    assert.equal(h.elements.get('leave-room').hidden, false);
-});
+for (const edition of ['original', 'hd']) {
+    test(`${edition} page never auto-connects an invite or auto-launches on peer readiness`, () => {
+        const h = pageHarness('#room=' + token, edition);
+        assert.equal(h.elements.get('join-invite').value, token);
+        assert.equal(h.sockets.length, 0, 'opening an invite requires a Join click');
+        h.click('join-room');
+        assert.equal(h.sockets.length, 1);
+        assert.equal(h.sockets[0].url, `ws://localhost:10000/netplay/${edition === 'hd' ? 'hd/' : ''}${token}?role=guest`);
+        h.sockets[0].ready('guest');
+        assert.equal(h.calls.length, 0);
+        assert.equal(h.elements.get('launch-online').disabled, true, 'runtime must also finish loading');
+        h.runtimeReady();
+        assert.equal(h.elements.get('launch-online').disabled, false);
+        assert.equal(h.calls.length, 0, 'connection and runtime ready still need a click');
+        h.click('launch-online');
+        assert.equal(h.calls.length, 1);
+        assert.ok(h.calls[0].includes('--web-netplay=guest'));
+        assert.match(h.elements.get('online-role').textContent, /top/);
+        assert.equal(h.elements.get('online-entry').hidden, true);
+        assert.equal(h.elements.get('launch-online').hidden, true);
+        assert.equal(h.elements.get('leave-room').hidden, false);
+    });
 
-test('page preserves local Launch game and closes any pending online room', () => {
-    const h = pageHarness();
-    h.runtimeReady();
-    assert.equal(h.elements.get('start').textContent, 'Launch game');
-    h.click('create-room');
-    assert.match(h.elements.get('room-invite').value, /#room=[a-f0-9]{32}$/);
-    h.click('start');
-    assert.equal(h.calls.length, 1);
-    assert.ok(!h.calls[0].some(arg => arg.startsWith('--web-netplay')));
-    assert.equal(h.context.Module.webNet.state, 'closed');
-    assert.equal(h.elements.get('overlay').hidden, true);
-});
+    test(`${edition} page preserves local launch and closes any pending online room`, () => {
+        const h = pageHarness('', edition);
+        h.runtimeReady();
+        assert.equal(h.elements.get('start').textContent, edition === 'hd' ? 'Launch HD game' : 'Launch game');
+        h.click('create-room');
+        assert.equal(h.elements.get('room-invite').value, `http://localhost:10000/${edition}/index.html#room=${'2a'.repeat(16)}`);
+        h.click('start');
+        assert.equal(h.calls.length, 1);
+        assert.ok(!h.calls[0].some(arg => arg.startsWith('--web-netplay')));
+        assert.equal(h.context.Module.webNet.state, 'closed');
+        assert.equal(h.elements.get('overlay').hidden, true);
+    });
 
-test('page shows assigned host fleet and engine verification diagnostics', () => {
-    const h = pageHarness();
+    test(`${edition} page shows assigned host fleet and engine verification diagnostics`, () => {
+        const h = pageHarness('', edition);
+        h.runtimeReady();
+        h.click('create-room');
+        assert.equal(h.sockets[0].url, `ws://localhost:10000/netplay/${edition === 'hd' ? 'hd/' : ''}${'2a'.repeat(16)}?role=host`);
+        h.sockets[0].ready('host');
+        h.click('launch-online');
+        assert.ok(h.calls[0].includes('--web-netplay=host'));
+        assert.match(h.elements.get('online-role').textContent, /bottom/);
+        Object.assign(h.context.Module.webNet.stats, { engineState: 'in-battle', remotePlayer: 1,
+            checksumsVerified: 22, lastVerifiedFrame: 120, checksumMismatches: 0 });
+        h.context.renderNetStats();
+        assert.match(h.elements.get('net-stats').textContent, /Checksums verified: 22/);
+        assert.match(h.elements.get('net-stats').textContent, /Last verified frame: 120/);
+        h.click('leave-room');
+        assert.equal(h.context.Module.webNet.state, 'closed');
+        assert.match(h.elements.get('online-status').textContent, /Reload this page/);
+    });
+
+    test(`${edition} page cannot launch online after the opponent leaves before launch`, () => {
+        const h = pageHarness('', edition);
+        h.runtimeReady();
+        h.click('create-room');
+        h.sockets[0].ready('host');
+        assert.equal(h.elements.get('launch-online').disabled, false);
+        h.sockets[0].onmessage({ data: JSON.stringify({ type: 'peer-left' }) });
+        assert.equal(h.elements.get('launch-online').disabled, true);
+        assert.equal(h.elements.get('launch-online').hidden, true);
+        assert.equal(h.elements.get('online-entry').hidden, false);
+        h.click('launch-online');
+        assert.equal(h.calls.length, 0);
+        h.click('start');
+        assert.equal(h.calls.length, 1, 'local game remains playable after an unlaunched room closes');
+    });
+}
+
+test('HD online launch retains HD content, graphics and separate configuration arguments', () => {
+    const h = pageHarness('', 'hd');
     h.runtimeReady();
     h.click('create-room');
     h.sockets[0].ready('host');
+    const baseArgs = Array.from(h.context.Module.arguments);
     h.click('launch-online');
-    assert.ok(h.calls[0].includes('--web-netplay=host'));
-    assert.match(h.elements.get('online-role').textContent, /bottom/);
-    Object.assign(h.context.Module.webNet.stats, { engineState: 'in-battle', remotePlayer: 1,
-        checksumsVerified: 22, lastVerifiedFrame: 120, checksumMismatches: 0 });
-    h.context.renderNetStats();
-    assert.match(h.elements.get('net-stats').textContent, /Checksums verified: 22/);
-    assert.match(h.elements.get('net-stats').textContent, /Last verified frame: 120/);
-    h.click('leave-room');
-    assert.equal(h.context.Module.webNet.state, 'closed');
-    assert.match(h.elements.get('online-status').textContent, /Reload this page/);
+    assert.ok(baseArgs.includes('--configdir=/home/web_user/.uqm-hd'));
+    assert.ok(baseArgs.includes('--contentdir=/content'));
+    assert.deepEqual(h.calls[0], [...baseArgs, '--web-netplay=host']);
+    assert.deepEqual(Array.from(h.context.Module.arguments), baseArgs, 'launch does not mutate future arguments');
+    assert.equal(h.context.document.activeElement, h.elements.get('canvas'));
 });

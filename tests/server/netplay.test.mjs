@@ -49,10 +49,11 @@ async function fixture(t, options = {}) {
       }
     };
   }
-  async function pair(id = roomId()) {
-    const host = client(id, 'host');
+  async function pair(id = roomId(), edition = 'original') {
+    const key = edition === 'hd' ? `hd/${id}` : id;
+    const host = client(key, 'host');
     assert.deepEqual(await host.next(), { type: 'waiting' });
-    const guest = client(id, 'guest');
+    const guest = client(key, 'guest');
     assert.deepEqual(await guest.next(), { type: 'waiting' });
     assert.deepEqual(await host.next(), { type: 'ready', role: 'host' });
     assert.deepEqual(await guest.next(), { type: 'ready', role: 'guest' });
@@ -91,7 +92,14 @@ test('strict URL validation rejects malformed room tokens, roles, query paramete
   const { client } = await fixture(t);
   for (const url of ['/netplay/short?role=host', `/netplay/${'A'.repeat(32)}?role=host`,
     `/netplay/${roomId()}?role=owner`, `/netplay/${roomId()}?role=host&role=guest`,
-    `/netplay/${roomId()}?role=host&target=localhost`, `/netplay/${roomId()}`, '/proxy/anything']) {
+    `/netplay/${roomId()}?role=host&target=localhost`, `/netplay/${roomId()}`, '/proxy/anything',
+    '/netplay/hd/short?role=host', `/netplay/hd/${'A'.repeat(32)}?role=host`,
+    `/netplay/hd/${roomId()}?role=owner`, `/netplay/hd/${roomId()}?role=host&role=guest`,
+    `/netplay/hd/${roomId()}?role=host&target=localhost`, `/netplay/hd/${roomId()}`,
+    `/netplay/hd/hd/${roomId()}?role=host`, `/netplay/3do/${roomId()}?role=host`,
+    `/netplay/original/${roomId()}?role=host`, `/netplay/HD/${roomId()}?role=host`,
+    `/netplay/%68d/${roomId()}?role=host`, `/netplay/hd%2f${roomId()}?role=host`,
+    `/netplay/hd//${roomId()}?role=host`, `/netplay/hd/${roomId()}/?role=host`]) {
     const invalid = client(null, null, {}, url);
     assert.equal((await invalid.next()).type, 'error', url);
     assert.equal((await invalid.closure).code, 1008, url);
@@ -118,6 +126,105 @@ test('HD rooms are separate from Original rooms with the same token', async t =>
     const invalid = client(null, null, {}, url);
     assert.equal((await invalid.next()).type, 'error', url);
   }
+});
+
+test('Original and HD rooms with the same token cannot pair, exchange data, or disconnect each other', async t => {
+  const { client } = await fixture(t);
+  for (const firstEdition of ['original', 'hd']) {
+    const id = roomId();
+    const keys = firstEdition === 'hd' ? [`hd/${id}`, id] : [id, `hd/${id}`];
+    const firstHost = client(keys[0], 'host');
+    assert.deepEqual(await firstHost.next(), { type: 'waiting' });
+    const wrongEdition = client(keys[1], 'guest');
+    assert.match((await wrongEdition.next()).message, /does not exist/);
+    assert.equal((await wrongEdition.closure).code, 1008);
+    assert.deepEqual(firstHost.messages, []);
+
+    const secondHost = client(keys[1], 'host');
+    assert.deepEqual(await secondHost.next(), { type: 'waiting' });
+    const hosts = [firstHost, secondHost];
+    const guests = [];
+    for (const [index, key] of keys.entries()) {
+      const guest = client(key, 'guest');
+      guests.push(guest);
+      assert.deepEqual(await guest.next(), { type: 'waiting' });
+      assert.deepEqual(await hosts[index].next(), { type: 'ready', role: 'host' });
+      assert.deepEqual(await guest.next(), { type: 'ready', role: 'guest' });
+      for (const role of ['host', 'guest']) {
+        const duplicate = client(key, role);
+        assert.equal((await duplicate.next()).type, 'error');
+        assert.equal((await duplicate.closure).code, 1008);
+      }
+    }
+    for (let n = 0; n < 32; n++) {
+      for (const index of [0, 1]) {
+        hosts[index].ws.send(Buffer.from([index, n, 255, 0]));
+        guests[index].ws.send(Buffer.from([index, n, 0, 255]));
+      }
+    }
+    for (let n = 0; n < 32; n++) {
+      for (const index of [0, 1]) {
+        assert.deepEqual(await guests[index].next(), Buffer.from([index, n, 255, 0]));
+        assert.deepEqual(await hosts[index].next(), Buffer.from([index, n, 0, 255]));
+      }
+    }
+    firstHost.ws.close();
+    assert.equal((await guests[0].next()).type, 'peer-left');
+    await Promise.all([firstHost.closure, guests[0].closure]);
+    for (const role of ['host', 'guest']) {
+      const retired = client(keys[0], role);
+      assert.equal((await retired.next()).type, 'error');
+      await retired.closure;
+    }
+    // Closing and rejecting reuse of one edition must leave the other live.
+    secondHost.ws.send(Buffer.from('still playing'));
+    guests[1].ws.send(Buffer.from('still replying'));
+    assert.deepEqual(await guests[1].next(), Buffer.from('still playing'));
+    assert.deepEqual(await secondHost.next(), Buffer.from('still replying'));
+    assert.deepEqual(secondHost.messages, []);
+    assert.deepEqual(guests[1].messages, []);
+    assert.equal(secondHost.closed, null);
+    assert.equal(guests[1].closed, null);
+    guests[1].ws.close();
+    assert.equal((await secondHost.next()).type, 'peer-left');
+    await Promise.all([secondHost.closure, guests[1].closure]);
+  }
+});
+
+test('retiring an Original or HD token does not retire the same token in the other edition', async t => {
+  const { client, pair } = await fixture(t);
+  for (const retiredEdition of ['original', 'hd']) {
+    const id = roomId();
+    const key = retiredEdition === 'hd' ? `hd/${id}` : id;
+    const expired = client(key, 'host');
+    assert.deepEqual(await expired.next(), { type: 'waiting' });
+    expired.ws.send(Buffer.from('before pairing'));
+    assert.match((await expired.next()).message, /Wait for the other player/);
+    assert.equal((await expired.closure).code, 1008);
+    const retry = client(key, 'host');
+    assert.match((await retry.next()).message, /expired/);
+    await retry.closure;
+    const other = await pair(id, retiredEdition === 'hd' ? 'original' : 'hd');
+    other.host.ws.send(Buffer.from('independent token lifetime'));
+    assert.deepEqual(await other.guest.next(), Buffer.from('independent token lifetime'));
+    other.host.ws.close();
+    await Promise.all([other.host.closure, other.guest.closure]);
+  }
+});
+
+test('room and retired-token capacity is shared across Original and HD editions', async t => {
+  const { client } = await fixture(t, { maxRooms: 1, maxRoomIds: 1 });
+  const id = roomId();
+  const host = client(id, 'host');
+  assert.deepEqual(await host.next(), { type: 'waiting' });
+  const hd = client(`hd/${id}`, 'host');
+  assert.match((await hd.next()).message, /Room limit reached/);
+  await hd.closure;
+  host.ws.close();
+  await host.closure;
+  const retiredCapacity = client(`hd/${id}`, 'host');
+  assert.match((await retiredCapacity.next()).message, /Room limit reached/);
+  await retiredCapacity.closure;
 });
 
 test('guests cannot create rooms; duplicate roles and third players cannot displace either player', async t => {
@@ -222,13 +329,29 @@ test('excessive message rates close the sending connection and its room', async 
 });
 
 test('ordinary ping responses and browser heartbeat pongs remain functional', async t => {
-  const { pair } = await fixture(t, { heartbeatMs: 50 });
+  const { pair } = await fixture(t, { heartbeatMs: 250 });
   const { host, guest } = await pair();
   const payload = Buffer.from('diagnostic ping');
   const reply = new Promise(resolve => host.ws.once('pong', resolve));
   host.ws.ping(payload);
   assert.deepEqual(await reply, payload);
-  await pause(180);
+  // Observe the server's actual heartbeat traffic instead of assuming that
+  // several timer ticks occurred during a fixed sleep on a busy build host.
+  const heartbeats = socket => new Promise((resolve, reject) => {
+    let observed = 0;
+    const finish = error => {
+      clearTimeout(timer);
+      socket.off('ping', onPing);
+      socket.off('close', onClose);
+      if (error) reject(error); else resolve();
+    };
+    const onPing = () => { if (++observed === 3) finish(); };
+    const onClose = () => finish(new Error('Peer closed before three heartbeat pings'));
+    const timer = setTimeout(() => finish(new Error(`Only ${observed} heartbeat pings observed`)), 5000);
+    socket.on('ping', onPing);
+    socket.once('close', onClose);
+  });
+  await Promise.all([heartbeats(host.ws), heartbeats(guest.ws)]);
   host.ws.send(Buffer.from('heartbeat survived'));
   assert.deepEqual(await guest.next(), Buffer.from('heartbeat survived'));
   assert.equal(host.closed, null);

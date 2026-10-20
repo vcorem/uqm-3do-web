@@ -1,0 +1,15 @@
+[workspace]
+members = ["uqm-core", "uqm-relay"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.85"
+license = "GPL-2.0-or-later"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+overflow-checks = true

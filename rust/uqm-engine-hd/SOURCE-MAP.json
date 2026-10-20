@@ -1,0 +1,1763 @@
+[
+  {
+    "rust": "src/libs/callback/alarm.rs",
+    "c": "src/libs/callback/alarm.c",
+    "source_sha256": "2e6231aeaf0688e1cef32e2692d780757addbcfd6172a2fd20dd2f0580fae577"
+  },
+  {
+    "rust": "src/libs/callback/async.rs",
+    "c": "src/libs/callback/async.c",
+    "source_sha256": "35efc5015a860ce8f75f64c45d1a8b9eb0578ded66f32a63e23d848612cbbbc0"
+  },
+  {
+    "rust": "src/libs/callback/callback.rs",
+    "c": "src/libs/callback/callback.c",
+    "source_sha256": "fb28dbd7d6cb9102e944dca531d2456ab048ab3d5e996ea2531f6854f5ae286c"
+  },
+  {
+    "rust": "src/libs/decomp/lzdecode.rs",
+    "c": "src/libs/decomp/lzdecode.c",
+    "source_sha256": "bdcdd1d60baca9b4d98ea64d2808d13e07e321bd68a44c532c23a89a2e332a8e"
+  },
+  {
+    "rust": "src/libs/decomp/lzencode.rs",
+    "c": "src/libs/decomp/lzencode.c",
+    "source_sha256": "4776b00f04306ca1541328f0f31f282f7797aa1c8687f8dcb59d3050c91c5d6f"
+  },
+  {
+    "rust": "src/libs/decomp/update.rs",
+    "c": "src/libs/decomp/update.c",
+    "source_sha256": "07ffa8402f9638634b6af6f539ffd672eef8a3bcfc4e77f9498b02ffa6ea0fe6"
+  },
+  {
+    "rust": "src/libs/file/dirs.rs",
+    "c": "src/libs/file/dirs.c",
+    "source_sha256": "9909c9650be9cdab247c38aa2d2ff0505424234691a3a47bd081ddece1e33169"
+  },
+  {
+    "rust": "src/libs/file/files.rs",
+    "c": "src/libs/file/files.c",
+    "source_sha256": "47b54b5431fdd576a6b29fdf0070345676cff2be23d4e698fedb1a5323141850"
+  },
+  {
+    "rust": "src/libs/graphics/bbox.rs",
+    "c": "src/libs/graphics/bbox.c",
+    "source_sha256": "2bbd8d5b18fa24b5a4a5314a9de39dfc46d9e812ee874e51bd8c9e8e36bbcead",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/libs/graphics/boxint.rs",
+    "c": "src/libs/graphics/boxint.c",
+    "source_sha256": "6ff9799f20de3b45bfef3f83fbbc8a0b92d795bbd1d57dbbac4fc8d47f024640",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/libs/graphics/clipline.rs",
+    "c": "src/libs/graphics/clipline.c",
+    "source_sha256": "1aa0df945aa220289f0ee16016b7acb0866b2603ce14f12a4f54cf44997a87d9",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/libs/graphics/cmap.rs",
+    "c": "src/libs/graphics/cmap.c",
+    "source_sha256": "3caccadc09e1dae10b40057e313901ef3bde998e89002f196a66be26c5acb691"
+  },
+  {
+    "rust": "src/libs/graphics/context.rs",
+    "c": "src/libs/graphics/context.c",
+    "source_sha256": "17a81cfe9c83edc427b5276b9cb8a95d5130bfac3265f5b9ffa39384404cc4dd"
+  },
+  {
+    "rust": "src/libs/graphics/dcqueue.rs",
+    "c": "src/libs/graphics/dcqueue.c",
+    "source_sha256": "887664eddd031b177d5a272887919c9b298de1132d22bc59c343af003e8b805e"
+  },
+  {
+    "rust": "src/libs/graphics/drawable.rs",
+    "c": "src/libs/graphics/drawable.c",
+    "source_sha256": "56924b213a274f2bbeaa99e07a97d67ea3932653ce64c4fdfcf727a7bc196ac2"
+  },
+  {
+    "rust": "src/libs/graphics/filegfx.rs",
+    "c": "src/libs/graphics/filegfx.c",
+    "source_sha256": "936ea54fd5dfd421f7dec94902a673288a1f22f347c414aadaae1e1fc85e5aaf"
+  },
+  {
+    "rust": "src/libs/graphics/font.rs",
+    "c": "src/libs/graphics/font.c",
+    "source_sha256": "20a2d091d8cbaa4474da333feac67587a1e2f4404c8233b1db95203deee0383f"
+  },
+  {
+    "rust": "src/libs/graphics/frame.rs",
+    "c": "src/libs/graphics/frame.c",
+    "source_sha256": "410d05b58f1fcb0221d0f28930a5f5854085dbfdd8b7bcb8159e896e35aadfc1"
+  },
+  {
+    "rust": "src/libs/graphics/gfx_common.rs",
+    "c": "src/libs/graphics/gfx_common.c",
+    "source_sha256": "862ce62b9588ff65b5eaa78051458e8a57a7f0cdb22ff5fef466e0bb660df2ca"
+  },
+  {
+    "rust": "src/libs/graphics/gfxload.rs",
+    "c": "src/libs/graphics/gfxload.c",
+    "source_sha256": "61bd7e0c7f8d0dcd90e91d6f38d6773cfcf3f3812ed04ef6ea4a44f77eb37b93"
+  },
+  {
+    "rust": "src/libs/graphics/intersec.rs",
+    "c": "src/libs/graphics/intersec.c",
+    "source_sha256": "5a660a0c4dbb8481fc1b29cf53022aed6c064e1e0960a84883f426ee7a1254a9"
+  },
+  {
+    "rust": "src/libs/graphics/loaddisp.rs",
+    "c": "src/libs/graphics/loaddisp.c",
+    "source_sha256": "d123710e2180fe85e955a507b497db1448296a301163bdc1a5d8c64fdf252ea6"
+  },
+  {
+    "rust": "src/libs/graphics/pixmap.rs",
+    "c": "src/libs/graphics/pixmap.c",
+    "source_sha256": "d48e61429a4152d930058c8cc70e59d8149e16de09d7a48ca5369dfaf03a0d8c"
+  },
+  {
+    "rust": "src/libs/graphics/resgfx.rs",
+    "c": "src/libs/graphics/resgfx.c",
+    "source_sha256": "fb6455f2145e04de98bbf5dc26970ab6bc33b321c5a9434152411108e89dce05"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/2xscalers.rs",
+    "c": "src/libs/graphics/sdl/2xscalers.c",
+    "source_sha256": "f5936a6e39ab42016a4f833ee1a9237091a752a4384e5455757e3b138b571a32"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/2xscalers_3dnow.rs",
+    "c": "src/libs/graphics/sdl/2xscalers_3dnow.c",
+    "source_sha256": "cbe92fea64fbd3c8d5d3193966ce32b8590c4c7ba3b68e244639cee5817b9718"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/2xscalers_mmx.rs",
+    "c": "src/libs/graphics/sdl/2xscalers_mmx.c",
+    "source_sha256": "54e2e328c136aeaff56bfde0bf7b0dd63cd8aed6b0c6081f4a90adc4c2035ed6"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/2xscalers_sse.rs",
+    "c": "src/libs/graphics/sdl/2xscalers_sse.c",
+    "source_sha256": "aa125f16b475b314baf595049e05e1a1d93a575f04a1aee653374cf7826016cf"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/biadv2x.rs",
+    "c": "src/libs/graphics/sdl/biadv2x.c",
+    "source_sha256": "f35f3f5051f189ee5afef4c153667be288ff6abe8b64b11bc39d97634902899d"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/bilinear2x.rs",
+    "c": "src/libs/graphics/sdl/bilinear2x.c",
+    "source_sha256": "1ed22472d166538ca3125a618a4613de94927854918a206a13cd3b4f4fce83d6"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/canvas.rs",
+    "c": "src/libs/graphics/sdl/canvas.c",
+    "source_sha256": "42fbc45229f6036961182e13e2a75ed05b0a60a3f5dc7f3f25ef649492f40e44"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/clipboard.rs",
+    "c": "src/libs/graphics/sdl/clipboard.c",
+    "source_sha256": "1b62a8b148e37179955299c79b04b42bb80822c66285376ca1ce5a866dfa62bb"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/hq2x.rs",
+    "c": "src/libs/graphics/sdl/hq2x.c",
+    "source_sha256": "95291f8229c7fccb450cee3825f76bcf637ce30e917cbcdd5727feceb3ee751f"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/nearest2x.rs",
+    "c": "src/libs/graphics/sdl/nearest2x.c",
+    "source_sha256": "dc3b677dfe99ac28e88e5fea2abc86e4664038c68001ba39814dfaf5f8ba3b4f"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/palette.rs",
+    "c": "src/libs/graphics/sdl/palette.c",
+    "source_sha256": "c4a4d05f6c0393e621ca78eda4973c3e6d83395c17f520f3db17f472a588c482"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/png2sdl.rs",
+    "c": "src/libs/graphics/sdl/png2sdl.c",
+    "source_sha256": "fe5aca8fd657ce651761000a88ab818b12913db2a783b6ae06324827754cc2b3",
+    "implementation": "../uqm-png/png.rs"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/primitives.rs",
+    "c": "src/libs/graphics/sdl/primitives.c",
+    "source_sha256": "7ef39f73aa7f9e58b5b28d329d8fda476a276be5eb8d649d290b851c98ac022e"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/rotozoom.rs",
+    "c": "src/libs/graphics/sdl/rotozoom.c",
+    "source_sha256": "486efca456c484da769049a20310f5ed83b4be288719b2d47615b707148da629"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/scalers.rs",
+    "c": "src/libs/graphics/sdl/scalers.c",
+    "source_sha256": "08fab97133c0d9056b66e42fdb187dce46a7683dabdf620c4097ce708f2e1f36"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/sdl2_common.rs",
+    "c": "src/libs/graphics/sdl/sdl2_common.c",
+    "source_sha256": "fad32893de01edfa795119be2b62432c03169fb925c2cc5b1224b07142126f9a"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/sdl2_pure.rs",
+    "c": "src/libs/graphics/sdl/sdl2_pure.c",
+    "source_sha256": "1f65109cec4ad65d0e86a8ee8c02528bcffb51a0234e9fc99533acea697ed92b"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/sdl_common.rs",
+    "c": "src/libs/graphics/sdl/sdl_common.c",
+    "source_sha256": "901d0f2366d89d8da883d3aa26bfc406192d99de536764eb6d85dc617dfb3cbf"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/sdluio.rs",
+    "c": "src/libs/graphics/sdl/sdluio.c",
+    "source_sha256": "82314510bae80e43d04fb405d5594fd2d544af00ae866dddff4f4643f426cc44"
+  },
+  {
+    "rust": "src/libs/graphics/sdl/triscan2x.rs",
+    "c": "src/libs/graphics/sdl/triscan2x.c",
+    "source_sha256": "3430ddb725744eee412770281c76f5a1dd335e4aa7d6fd6a53a07dcbae1d9710"
+  },
+  {
+    "rust": "src/libs/graphics/tfb_draw.rs",
+    "c": "src/libs/graphics/tfb_draw.c",
+    "source_sha256": "300e9c2c4c923b944b77c8fd1d851e6a5c1c6fa64d76b4ac55c503f73ff6c3e5"
+  },
+  {
+    "rust": "src/libs/graphics/tfb_prim.rs",
+    "c": "src/libs/graphics/tfb_prim.c",
+    "source_sha256": "7d35d6de359914b0cd435acb98c982c9eb0683f0528e764d15ba60e453afe18b"
+  },
+  {
+    "rust": "src/libs/graphics/widgets.rs",
+    "c": "src/libs/graphics/widgets.c",
+    "source_sha256": "8a881e03fee8cc28710d0c6cab603f4d281777e2f96569dbc06c769f9d3fb3a1"
+  },
+  {
+    "rust": "src/libs/heap/heap.rs",
+    "c": "src/libs/heap/heap.c",
+    "source_sha256": "e628f59827434194bfdd59e42419cfdd920a3d81d083ec7717b61c95bc329caf"
+  },
+  {
+    "rust": "src/libs/input/input_common.rs",
+    "c": "src/libs/input/input_common.c",
+    "source_sha256": "8f67781ee786f6863a83a1c2fdaf0c1360c517809040436aefafa12acfadecff"
+  },
+  {
+    "rust": "src/libs/input/sdl/input.rs",
+    "c": "src/libs/input/sdl/input.c",
+    "source_sha256": "3e3a09785d68d3e33500ed75e8f1b4014eb98db453b3fcfa10041f6806f499c2"
+  },
+  {
+    "rust": "src/libs/input/sdl/keynames.rs",
+    "c": "src/libs/input/sdl/keynames.c",
+    "source_sha256": "f7b5f71fc8b2d67b9ff8c10e4c251fad73251f1b69b4ded371f264885b350e7a"
+  },
+  {
+    "rust": "src/libs/input/sdl/vcontrol.rs",
+    "c": "src/libs/input/sdl/vcontrol.c",
+    "source_sha256": "1c8c42cbb9353137296ac38ec630c1bd2895b38d26e2dfe0f9d7eb13dee5a376"
+  },
+  {
+    "rust": "src/libs/list/list.rs",
+    "c": "src/libs/list/list.c",
+    "source_sha256": "281a1be67c840277a419b6f867fefc1797137e89c743f2312f06e9727af62247"
+  },
+  {
+    "rust": "src/libs/log/msgbox_stub.rs",
+    "c": "src/libs/log/msgbox_stub.c",
+    "source_sha256": "e9f750cbf8055d5a0fb4941f7f74aea58d3b5f5ff932ab9551d92c1929f17e6c"
+  },
+  {
+    "rust": "src/libs/log/uqmlog.rs",
+    "c": "src/libs/log/uqmlog.c",
+    "source_sha256": "3e30017c052e0d8dbb1c6ecd40aa99e3ccfa081bd5ffb841a129f3a8685da0d9"
+  },
+  {
+    "rust": "src/libs/luauqm/luauqm.rs",
+    "c": "src/libs/luauqm/luauqm.c",
+    "source_sha256": "2c2a7578b64c3640fc0176c2e1374e26635ae09c1118b47241be4272e92d4178"
+  },
+  {
+    "rust": "src/libs/luauqm/scriptres.rs",
+    "c": "src/libs/luauqm/scriptres.c",
+    "source_sha256": "3916373600b1db0f33f1853404e9ed0ec78ae853a3396f3bd181866329bf6d62"
+  },
+  {
+    "rust": "src/libs/math/random.rs",
+    "c": "src/libs/math/random.c",
+    "source_sha256": "69fa6b5227738f318dc35dbd855c3cf065e49aafa6839b2ebc36409b1745fc7d",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/libs/math/random2.rs",
+    "c": "src/libs/math/random2.c",
+    "source_sha256": "90776d5112ca7319c945dd1498c5a29560eab0bf7bcced0f6a0d7f9f45a76387",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/libs/math/sqrt.rs",
+    "c": "src/libs/math/sqrt.c",
+    "source_sha256": "9231283bdfd0e51c5dce3e95ea51ed24e704211f12c2cd75035fa4abad86ce7e",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/libs/memory/w_memlib.rs",
+    "c": "src/libs/memory/w_memlib.c",
+    "source_sha256": "c1e9d61ebe0f529a093680256eebb147afc541ed055282a161e13c84d54b39c6"
+  },
+  {
+    "rust": "src/libs/mikmod/drv_nos.rs",
+    "c": "src/libs/mikmod/drv_nos.c",
+    "source_sha256": "3886ffb2238619e115e99fe971d8549bca057f968785d73253d28c7eb999eabe"
+  },
+  {
+    "rust": "src/libs/mikmod/load_it.rs",
+    "c": "src/libs/mikmod/load_it.c",
+    "source_sha256": "d30292d3926a987e3b613f154a8c4583164f2f52f29adccabbabe45604fb0ea1"
+  },
+  {
+    "rust": "src/libs/mikmod/load_mod.rs",
+    "c": "src/libs/mikmod/load_mod.c",
+    "source_sha256": "6631d1606253a92c7b288fe1c38876d19fb35f6e09b4a927459d3d46870f9e3a"
+  },
+  {
+    "rust": "src/libs/mikmod/load_s3m.rs",
+    "c": "src/libs/mikmod/load_s3m.c",
+    "source_sha256": "8b5f5cfbc1f0cf6b97c11fa1196254c40ca4ee59470e7837c5c038e3a57c3470"
+  },
+  {
+    "rust": "src/libs/mikmod/load_stm.rs",
+    "c": "src/libs/mikmod/load_stm.c",
+    "source_sha256": "4b81c57cdc3af8d89a1a53d784fee241d2c3c8fa424bf9fcf6ff282304d3a757"
+  },
+  {
+    "rust": "src/libs/mikmod/load_xm.rs",
+    "c": "src/libs/mikmod/load_xm.c",
+    "source_sha256": "f6bdcfb51f83dc9249a8ad026ea09da8a65734e5cd0c4c48fe377bc402970373"
+  },
+  {
+    "rust": "src/libs/mikmod/mdreg.rs",
+    "c": "src/libs/mikmod/mdreg.c",
+    "source_sha256": "b5423e8069835c0bafd6d4547ff9bb238f64c30d9b98b776dfdc384e2110c685"
+  },
+  {
+    "rust": "src/libs/mikmod/mdriver.rs",
+    "c": "src/libs/mikmod/mdriver.c",
+    "source_sha256": "cd5d491a124a71f686b287f4e4d6c34f2cba56720269d00408d97f06e48d91f6"
+  },
+  {
+    "rust": "src/libs/mikmod/mdulaw.rs",
+    "c": "src/libs/mikmod/mdulaw.c",
+    "source_sha256": "0a555e45ed0e320b66ea34a100a29ed2772f178d6da4b8f27b18dbd3d674d4a3"
+  },
+  {
+    "rust": "src/libs/mikmod/mloader.rs",
+    "c": "src/libs/mikmod/mloader.c",
+    "source_sha256": "b840681ab22f23185bf3e770a78097572db9d815817075c46308babf476e2774"
+  },
+  {
+    "rust": "src/libs/mikmod/mlreg.rs",
+    "c": "src/libs/mikmod/mlreg.c",
+    "source_sha256": "195235201d36de32bc861098e6cdbe9a1676ca6360acde6264d3f1acf5cabed2"
+  },
+  {
+    "rust": "src/libs/mikmod/mlutil.rs",
+    "c": "src/libs/mikmod/mlutil.c",
+    "source_sha256": "eb6c43b91d94cbed8fddb8b5ec2ef21bcc230f625e23d2fc466271347ae9aa0d"
+  },
+  {
+    "rust": "src/libs/mikmod/mmalloc.rs",
+    "c": "src/libs/mikmod/mmalloc.c",
+    "source_sha256": "5804e98cb64cba1a2bf62443c24fec298da51957931359002519e8b1e8b2100c"
+  },
+  {
+    "rust": "src/libs/mikmod/mmerror.rs",
+    "c": "src/libs/mikmod/mmerror.c",
+    "source_sha256": "7e1e84d0340fd28f1243366a20e316e0ab4287c4843e90661cabe8b3d97fc8ec"
+  },
+  {
+    "rust": "src/libs/mikmod/mmio.rs",
+    "c": "src/libs/mikmod/mmio.c",
+    "source_sha256": "2309987a8943665f9150e83b165e83c7f21ec5d400fb20e42e92fba4d2dbb700"
+  },
+  {
+    "rust": "src/libs/mikmod/mplayer.rs",
+    "c": "src/libs/mikmod/mplayer.c",
+    "source_sha256": "2393772312766d591affc098769327676c5b9672a644acdfce2f56df7bf73a98"
+  },
+  {
+    "rust": "src/libs/mikmod/munitrk.rs",
+    "c": "src/libs/mikmod/munitrk.c",
+    "source_sha256": "6df66b3ba0361524ae39af516e1e87109ef4a51e13f30cb62e45ac726c0fb774"
+  },
+  {
+    "rust": "src/libs/mikmod/mwav.rs",
+    "c": "src/libs/mikmod/mwav.c",
+    "source_sha256": "b8ed545d9198e2750e435f81fd89dae422321c9a26641bc3a3b8d2d9ea6e3e10"
+  },
+  {
+    "rust": "src/libs/mikmod/npertab.rs",
+    "c": "src/libs/mikmod/npertab.c",
+    "source_sha256": "64c66e11f66d3c7432e3d59ba199ecab9b0028b8408606368491cf52fc02b73e"
+  },
+  {
+    "rust": "src/libs/mikmod/sloader.rs",
+    "c": "src/libs/mikmod/sloader.c",
+    "source_sha256": "65735d64127ae93b3812cf1db7636e4449424c9ad375f1dd60f2e1d896ec1df9"
+  },
+  {
+    "rust": "src/libs/mikmod/virtch.rs",
+    "c": "src/libs/mikmod/virtch.c",
+    "source_sha256": "c286e3e17a13a8e6c942e5ca93d4ff74bd606b450275e2203f6503fc200be05b"
+  },
+  {
+    "rust": "src/libs/mikmod/virtch2.rs",
+    "c": "src/libs/mikmod/virtch2.c",
+    "source_sha256": "ec5fe08ff73b1b15944265449092319f6d751293e6e7925cd02b2a6bbbb7dcbe"
+  },
+  {
+    "rust": "src/libs/mikmod/virtch_common.rs",
+    "c": "src/libs/mikmod/virtch_common.c",
+    "source_sha256": "85c392da62fb49619dc7be21e8cba15ef55bcb009916f56be39501466f01f8ac"
+  },
+  {
+    "rust": "src/libs/resource/direct.rs",
+    "c": "src/libs/resource/direct.c",
+    "source_sha256": "43018ff531330ffb33779fe3a980733b8b4dcf9779819c42ae2eccabe943a76f"
+  },
+  {
+    "rust": "src/libs/resource/filecntl.rs",
+    "c": "src/libs/resource/filecntl.c",
+    "source_sha256": "ca37c8a03a1a83245d2fa69d71c5193cc6a9f841571423a626fedd9b8ae901ed"
+  },
+  {
+    "rust": "src/libs/resource/getres.rs",
+    "c": "src/libs/resource/getres.c",
+    "source_sha256": "44b4a9fd4d7f7ac87c9195b568b7709993bfb95dda44a98a4c34f31f5b464bd9"
+  },
+  {
+    "rust": "src/libs/resource/loadres.rs",
+    "c": "src/libs/resource/loadres.c",
+    "source_sha256": "48eae32a936eb25bac3d160e5cda943d3123a9616108c332bffff5ec044cf4e2"
+  },
+  {
+    "rust": "src/libs/resource/propfile.rs",
+    "c": "src/libs/resource/propfile.c",
+    "source_sha256": "26a7e708a1a0cc91a250a02c66d31e758dc0ca6911db60b532672ef0f6f4eb49"
+  },
+  {
+    "rust": "src/libs/resource/resinit.rs",
+    "c": "src/libs/resource/resinit.c",
+    "source_sha256": "4b9a51b4ed04eb2417e114765c58b7aac9dd722e1e36ca06ee3f3a5452a23e79"
+  },
+  {
+    "rust": "src/libs/resource/stringbank.rs",
+    "c": "src/libs/resource/stringbank.c",
+    "source_sha256": "b4a9e8c4434c7a9b6c2bf55fbd45a6e6690a68c231a3170bf6597edc3d3b9e44"
+  },
+  {
+    "rust": "src/libs/sound/audiocore.rs",
+    "c": "src/libs/sound/audiocore.c",
+    "source_sha256": "38d2d1bbb3383f88b57af906d8ccbe8b3970a2e3e615f671e42431a9ce1649be"
+  },
+  {
+    "rust": "src/libs/sound/decoders/aiffaud.rs",
+    "c": "src/libs/sound/decoders/aiffaud.c",
+    "source_sha256": "cec4eda970517116c548cec84b23200c7c88ec6c88e10ee2d3ed48dfa2ef7402"
+  },
+  {
+    "rust": "src/libs/sound/decoders/decoder.rs",
+    "c": "src/libs/sound/decoders/decoder.c",
+    "source_sha256": "3989cd896d3ffe37f9ae69413835cb95556344276544739563493d9b3b47e285"
+  },
+  {
+    "rust": "src/libs/sound/decoders/dukaud.rs",
+    "c": "src/libs/sound/decoders/dukaud.c",
+    "source_sha256": "61d8257286196bfce598bf38b2fe4a03475685d3c9a18926addae40297f91b3b"
+  },
+  {
+    "rust": "src/libs/sound/decoders/modaud.rs",
+    "c": "src/libs/sound/decoders/modaud.c",
+    "source_sha256": "5daf6b3b4cf1c991af370723549cc52d4b196c308d6c977f806051ef5a767dd0"
+  },
+  {
+    "rust": "src/libs/sound/decoders/oggaud.rs",
+    "c": "src/libs/sound/decoders/oggaud.c",
+    "source_sha256": "eae304f452c4129f5f5c3625194598bf14b5657007e17f47d4825ce60379491f"
+  },
+  {
+    "rust": "src/libs/sound/decoders/wav.rs",
+    "c": "src/libs/sound/decoders/wav.c",
+    "source_sha256": "49110ba3c7ad53150edbe473336235496a71afcc9b397a0cabf7f25c659352d6"
+  },
+  {
+    "rust": "src/libs/sound/fileinst.rs",
+    "c": "src/libs/sound/fileinst.c",
+    "source_sha256": "8ed9283ed9e5c37f09877146ff8aaa649499f5dbc48f75e1bc6950a6176a0b08"
+  },
+  {
+    "rust": "src/libs/sound/mixer/mixer.rs",
+    "c": "src/libs/sound/mixer/mixer.c",
+    "source_sha256": "3c0d7dde84889e53775a752006f0eadd585be961515dee21b92c1ccfe0b2ada4"
+  },
+  {
+    "rust": "src/libs/sound/mixer/nosound/audiodrv_nosound.rs",
+    "c": "src/libs/sound/mixer/nosound/audiodrv_nosound.c",
+    "source_sha256": "5ceab06815a6045ae2e139fc332096abfccd0135a52e9ea7262790c405d81cfc"
+  },
+  {
+    "rust": "src/libs/sound/mixer/sdl/audiodrv_sdl.rs",
+    "c": "src/libs/sound/mixer/sdl/audiodrv_sdl.c",
+    "source_sha256": "1e0c5937459293bbca7a760ddf09e78756c0b362cab8e29542f6de9dcbd453af"
+  },
+  {
+    "rust": "src/libs/sound/music.rs",
+    "c": "src/libs/sound/music.c",
+    "source_sha256": "dcb9a1959550e561abd21e9c64e1f6d45e3b5641c257c25dd68e86255eb6d159"
+  },
+  {
+    "rust": "src/libs/sound/openal/audiodrv_openal.rs",
+    "c": "src/libs/sound/openal/audiodrv_openal.c",
+    "source_sha256": "f3838100888f7dac68bf030c54f26e2d5cb7d7e7519127b5adecb29efc8aa433"
+  },
+  {
+    "rust": "src/libs/sound/resinst.rs",
+    "c": "src/libs/sound/resinst.c",
+    "source_sha256": "d1bbd7c0e41830c7383710c75b96ebea5231b7055a4646dd13644afac77bb8c7"
+  },
+  {
+    "rust": "src/libs/sound/sfx.rs",
+    "c": "src/libs/sound/sfx.c",
+    "source_sha256": "dabd29d1677258ef88a8a7bd16520e997c85bd88610ed5c5d366ab546e7f4163"
+  },
+  {
+    "rust": "src/libs/sound/sound.rs",
+    "c": "src/libs/sound/sound.c",
+    "source_sha256": "65f5f9568ff65fa39987fcd14e475ac061c83b41ae5d60b94f67526da517ec08"
+  },
+  {
+    "rust": "src/libs/sound/stream.rs",
+    "c": "src/libs/sound/stream.c",
+    "source_sha256": "a3bacad45e6824875a8dfb26bc30e366abcca03879ba8e3542d9431fc1138f8b"
+  },
+  {
+    "rust": "src/libs/sound/trackplayer.rs",
+    "c": "src/libs/sound/trackplayer.c",
+    "source_sha256": "3c42150b8ea2b812dcc5792969072282ef615e03c905cbb20dde0128f8f88d69"
+  },
+  {
+    "rust": "src/libs/strings/getstr.rs",
+    "c": "src/libs/strings/getstr.c",
+    "source_sha256": "4fc90ff88d17da10366118b5921a07a98eecec5d50bfbed76b8185c17963c40f"
+  },
+  {
+    "rust": "src/libs/strings/sfileins.rs",
+    "c": "src/libs/strings/sfileins.c",
+    "source_sha256": "c6da0966594471ed5c8f87d0655f86a415573d97f5396d4a964cdac2e5b29aad"
+  },
+  {
+    "rust": "src/libs/strings/sresins.rs",
+    "c": "src/libs/strings/sresins.c",
+    "source_sha256": "b32a363bb417f949c1e6dff6dbba25372fcda3eb896200364ebf9e8b7ed450cf"
+  },
+  {
+    "rust": "src/libs/strings/stringhashtable.rs",
+    "c": "src/libs/strings/stringhashtable.c",
+    "source_sha256": "4738bae4bb9a4af845b9187a0d2ab3c051efc47f58f7991644afe0afd56eb535"
+  },
+  {
+    "rust": "src/libs/strings/strings.rs",
+    "c": "src/libs/strings/strings.c",
+    "source_sha256": "365e9becb6345c2702a85a41737485e41cd13a40e4ea9c98305dcf2b1a4ff019"
+  },
+  {
+    "rust": "src/libs/strings/unicode.rs",
+    "c": "src/libs/strings/unicode.c",
+    "source_sha256": "a0aaecebee1070ec0d0bfa70606872b00e238977ab288942d1f9597b5399959f"
+  },
+  {
+    "rust": "src/libs/task/tasklib.rs",
+    "c": "src/libs/task/tasklib.c",
+    "source_sha256": "4a24095b637be1be044ec223dc39f71551011ceb56e697f46563177fa3b8239e"
+  },
+  {
+    "rust": "src/libs/threads/pthread/posixthreads.rs",
+    "c": "src/libs/threads/pthread/posixthreads.c",
+    "source_sha256": "7aa9c5709da5943eb52071fa5a8667beff23ba8b82139cb836970b376e5f8bbc"
+  },
+  {
+    "rust": "src/libs/threads/thrcommon.rs",
+    "c": "src/libs/threads/thrcommon.c",
+    "source_sha256": "9eff9dcb3ad0b147fe2d455ed536f41cb10a559619d91bad516a14b8b1d4bd4a"
+  },
+  {
+    "rust": "src/libs/time/sdl/sdltime.rs",
+    "c": "src/libs/time/sdl/sdltime.c",
+    "source_sha256": "b37791d02cbf646d5f624a44a56ffdb6617a52021b8a1b17edf9ea6196d9e9fc"
+  },
+  {
+    "rust": "src/libs/time/timecommon.rs",
+    "c": "src/libs/time/timecommon.c",
+    "source_sha256": "51a3b9a5a412785e7dca8bf9b0c5360b8129b57784c296cdea8de1ead560aabf"
+  },
+  {
+    "rust": "src/libs/uio/charhashtable.rs",
+    "c": "src/libs/uio/charhashtable.c",
+    "source_sha256": "c9bab544389e17245e60560d35909e4ec4a96b6cfc5fb867c2167dcb53f726f3"
+  },
+  {
+    "rust": "src/libs/uio/debug.rs",
+    "c": "src/libs/uio/debug.c",
+    "source_sha256": "edb384e67966f844ba6d70620b339f7d579db02f781e2eadb8e4b4d339461da8"
+  },
+  {
+    "rust": "src/libs/uio/defaultfs.rs",
+    "c": "src/libs/uio/defaultfs.c",
+    "source_sha256": "b2b99c3dffc0052db1829109346ab09b629199a45f1ef8b540170763409f5464"
+  },
+  {
+    "rust": "src/libs/uio/fileblock.rs",
+    "c": "src/libs/uio/fileblock.c",
+    "source_sha256": "f1897dd4b4d288d5f64a0929c13a04ab12d5ded71dd9d82afddc6af27301e78b"
+  },
+  {
+    "rust": "src/libs/uio/fstypes.rs",
+    "c": "src/libs/uio/fstypes.c",
+    "source_sha256": "650f97a983d6355c5d98abb34158d08667f61ab2672c1638c7c1903c35cbca32"
+  },
+  {
+    "rust": "src/libs/uio/gphys.rs",
+    "c": "src/libs/uio/gphys.c",
+    "source_sha256": "7fbfdbd7361c84121892bd3eb99e12163e3291e656667e21e3f5cc2fbd23ed7f"
+  },
+  {
+    "rust": "src/libs/uio/io.rs",
+    "c": "src/libs/uio/io.c",
+    "source_sha256": "79bfe856e00360d8f38c9a71585abd636d736998355a77b6819c0572866f0e4e"
+  },
+  {
+    "rust": "src/libs/uio/ioaux.rs",
+    "c": "src/libs/uio/ioaux.c",
+    "source_sha256": "b740db4962e5a35a940fe584ee68a0beadb7f65a789ccea5213456b98cff2379"
+  },
+  {
+    "rust": "src/libs/uio/match.rs",
+    "c": "src/libs/uio/match.c",
+    "source_sha256": "3d5f3316c55dc806fbb5f9616d8fb012aa0b7c299cbb8b15f74fc30f75b933c0"
+  },
+  {
+    "rust": "src/libs/uio/mount.rs",
+    "c": "src/libs/uio/mount.c",
+    "source_sha256": "e6465f1de42aa688507c2c294cbacbeb2540ce5203207c0318c12679bc45b48d"
+  },
+  {
+    "rust": "src/libs/uio/mounttree.rs",
+    "c": "src/libs/uio/mounttree.c",
+    "source_sha256": "aa443555f7f68f449107b6071c9e63b545b20ac35ddc39b5fb71ecdbd52f436f"
+  },
+  {
+    "rust": "src/libs/uio/paths.rs",
+    "c": "src/libs/uio/paths.c",
+    "source_sha256": "9de55b665d8b505e1b8cf51a43224d39dd61cc2b9be45a20310f79367419f5a8"
+  },
+  {
+    "rust": "src/libs/uio/physical.rs",
+    "c": "src/libs/uio/physical.c",
+    "source_sha256": "b87e71971f8de0d0977106f86f6e3c4f1c00aa7e94789232dd604633477f0bfd"
+  },
+  {
+    "rust": "src/libs/uio/stdio/stdio.rs",
+    "c": "src/libs/uio/stdio/stdio.c",
+    "source_sha256": "52841049a5c1281c287c11e3a392bfa68129be7af56f5bdfd2eb361b1941fec8"
+  },
+  {
+    "rust": "src/libs/uio/uiostream.rs",
+    "c": "src/libs/uio/uiostream.c",
+    "source_sha256": "bd879656d8e6cfc7e461dabdf9a621eed775b48367b27372c07bd2b6c00eb85e"
+  },
+  {
+    "rust": "src/libs/uio/uioutils.rs",
+    "c": "src/libs/uio/uioutils.c",
+    "source_sha256": "1016a85c403979ef184e4be25dc2e1b354bc71da6d3120bb3e87185de0ac15ea"
+  },
+  {
+    "rust": "src/libs/uio/utils.rs",
+    "c": "src/libs/uio/utils.c",
+    "source_sha256": "b20afdc78353bbe0582114c3fd65f7745dd605da64abc7ebe7ee5286b0818385"
+  },
+  {
+    "rust": "src/libs/uio/zip/zip.rs",
+    "c": "src/libs/uio/zip/zip.c",
+    "source_sha256": "b3dd06d37fbee1337da419517baa96405c15a0b4238b18d145e8378fa87e9cbe"
+  },
+  {
+    "rust": "src/libs/video/dukvid.rs",
+    "c": "src/libs/video/dukvid.c",
+    "source_sha256": "8de5a3ee210ba4b109178b440ec4a4ccdb5ed5990e59f4c6dedec74bcaadbf28"
+  },
+  {
+    "rust": "src/libs/video/legacyplayer.rs",
+    "c": "src/libs/video/legacyplayer.c",
+    "source_sha256": "7b605454b9fe006da7d50093a3f60769bfbc2eddac1c4abb4e4f45c057489f42"
+  },
+  {
+    "rust": "src/libs/video/vfileins.rs",
+    "c": "src/libs/video/vfileins.c",
+    "source_sha256": "86a9a43327079d47d1d9a59e8afb74747ffe1e4e9b845d5c7084714263e2c7c5"
+  },
+  {
+    "rust": "src/libs/video/video.rs",
+    "c": "src/libs/video/video.c",
+    "source_sha256": "5a9af385b90b3c09067f7b517114a32212fc651f65f3aa233fbb7cf846f6971b"
+  },
+  {
+    "rust": "src/libs/video/videodec.rs",
+    "c": "src/libs/video/videodec.c",
+    "source_sha256": "4f16a1148338195346a04c7a04285d48634b155ac8e7730737e909f50873fdca"
+  },
+  {
+    "rust": "src/libs/video/vidplayer.rs",
+    "c": "src/libs/video/vidplayer.c",
+    "source_sha256": "ec19ff267430cd9c16d4c2f3017e936491e47a26887f9a8784d6c5a1715b481d"
+  },
+  {
+    "rust": "src/libs/video/vresins.rs",
+    "c": "src/libs/video/vresins.c",
+    "source_sha256": "ad6c79daf18b26bafb573211d091673d5bec12d46c9a5e46f22b50d3b2c22ce3"
+  },
+  {
+    "rust": "src/options.rs",
+    "c": "src/options.c",
+    "source_sha256": "b5415a127f0d0a1cb8a4893a32d98d68c12f6eb942de8ad418c56abc7a69b234"
+  },
+  {
+    "rust": "src/port.rs",
+    "c": "src/port.c",
+    "source_sha256": "3ffc2d76eebd835992c12ee226f3d866c8e9f27e86e51ed8495cc6588471ab6a"
+  },
+  {
+    "rust": "src/uqm/battle.rs",
+    "c": "src/uqm/battle.c",
+    "source_sha256": "ba2931b0cab216f9f5db1e5cbfb195ee2e348d81b0afed5aee67489ddfc4aef4"
+  },
+  {
+    "rust": "src/uqm/battlecontrols.rs",
+    "c": "src/uqm/battlecontrols.c",
+    "source_sha256": "92db0bf5a3a07f8628bab7554041de86e75dfe0bbafc94deebab49f288e02a19"
+  },
+  {
+    "rust": "src/uqm/border.rs",
+    "c": "src/uqm/border.c",
+    "source_sha256": "e912a61030067ee5e0631e1b10fcdcfd441f19a3f851c2f194d33b55cc2164fc"
+  },
+  {
+    "rust": "src/uqm/build.rs",
+    "c": "src/uqm/build.c",
+    "source_sha256": "c261d996d18da64827189fd5713f82231211f64af0455014bdd406f354b9e95f"
+  },
+  {
+    "rust": "src/uqm/cleanup.rs",
+    "c": "src/uqm/cleanup.c",
+    "source_sha256": "5797ca5a37a41c4fc8c89c6a55ad7547d858ea46769affb55b1ad957aacde689"
+  },
+  {
+    "rust": "src/uqm/clock.rs",
+    "c": "src/uqm/clock.c",
+    "source_sha256": "28b1dc0dea53a9306a3858da2f870c909856ec1a63e4b82881335f060625cb9d"
+  },
+  {
+    "rust": "src/uqm/cnctdlg.rs",
+    "c": "src/uqm/cnctdlg.c",
+    "source_sha256": "842beb1be767ebfc66a641db0e4e34a9129f41e3afc080fc6baa551ab4b2ba84"
+  },
+  {
+    "rust": "src/uqm/collide.rs",
+    "c": "src/uqm/collide.c",
+    "source_sha256": "446f9a2c3ec6eaba9387e1672f96a5eb8ebc0d89153a65e67b7500b698167ab4"
+  },
+  {
+    "rust": "src/uqm/comm/arilou/arilouc.rs",
+    "c": "src/uqm/comm/arilou/arilouc.c",
+    "source_sha256": "b14b7af52a368355754ab2ad28eecefae896b83ab4a54a3d3ce9222d1c85aa99"
+  },
+  {
+    "rust": "src/uqm/comm/blackur/blackurc.rs",
+    "c": "src/uqm/comm/blackur/blackurc.c",
+    "source_sha256": "efae46e83ba16e31832a5ddb33a408fdfdb5a0b1409ef5a1452e3621e3d8c029"
+  },
+  {
+    "rust": "src/uqm/comm/chmmr/chmmrc.rs",
+    "c": "src/uqm/comm/chmmr/chmmrc.c",
+    "source_sha256": "24e2a316fc56b53e4cc612ef85bf6982c665d9a7dcaaa445758b10308a24d652"
+  },
+  {
+    "rust": "src/uqm/comm/comandr/comandr.rs",
+    "c": "src/uqm/comm/comandr/comandr.c",
+    "source_sha256": "33c8abd1f8ddb53ffd31d56da7f23edd1a3aee020d033f860fa722616c9b562a"
+  },
+  {
+    "rust": "src/uqm/comm/druuge/druugec.rs",
+    "c": "src/uqm/comm/druuge/druugec.c",
+    "source_sha256": "a42decbbdac12e1eae83883985aeda6a2f639b426663a5d2bc4e56d0c771e329"
+  },
+  {
+    "rust": "src/uqm/comm/ilwrath/ilwrathc.rs",
+    "c": "src/uqm/comm/ilwrath/ilwrathc.c",
+    "source_sha256": "98820469b5752b7eea8afb8d03de94a179233241cb0df210bc7139bf333a6cb8"
+  },
+  {
+    "rust": "src/uqm/comm/melnorm/melnorm.rs",
+    "c": "src/uqm/comm/melnorm/melnorm.c",
+    "source_sha256": "4bebb0fbd58560d8f53a89da536406e5351db32ecf5d7efe145f9cefb861bb2a"
+  },
+  {
+    "rust": "src/uqm/comm/mycon/myconc.rs",
+    "c": "src/uqm/comm/mycon/myconc.c",
+    "source_sha256": "39850eaf8849cf3a6178a78299187a7388297f31df0cf30491e5d0d577932fd5"
+  },
+  {
+    "rust": "src/uqm/comm/orz/orzc.rs",
+    "c": "src/uqm/comm/orz/orzc.c",
+    "source_sha256": "e7cc44a5af38519bc8346773247a8e2b12fec098a9f7bedde9dd90be35e887cf"
+  },
+  {
+    "rust": "src/uqm/comm/pkunk/pkunkc.rs",
+    "c": "src/uqm/comm/pkunk/pkunkc.c",
+    "source_sha256": "2310da7d576625ef6d973289133c7b0acbd754eb2c6f09f1d9c875f58fe7913d"
+  },
+  {
+    "rust": "src/uqm/comm/rebel/rebel.rs",
+    "c": "src/uqm/comm/rebel/rebel.c",
+    "source_sha256": "a9ed39fee1be2e6a6b781c2fb2e64482921999132979dd55d2647ed876471f9e"
+  },
+  {
+    "rust": "src/uqm/comm/shofixt/shofixt.rs",
+    "c": "src/uqm/comm/shofixt/shofixt.c",
+    "source_sha256": "1199ab75f0ed89f128e4138a4f521ebb2eabfd104e117a0ed1aa84c804dca9e7"
+  },
+  {
+    "rust": "src/uqm/comm/slyhome/slyhome.rs",
+    "c": "src/uqm/comm/slyhome/slyhome.c",
+    "source_sha256": "56bf91e292ddbcff7335162ed2af6e9c611c782cbb9335f126510a253a4c8749"
+  },
+  {
+    "rust": "src/uqm/comm/slyland/slyland.rs",
+    "c": "src/uqm/comm/slyland/slyland.c",
+    "source_sha256": "75cd177992cc1d30352b045e11af37dc3b92dc6dbfa37758ee120b868be6f9d6"
+  },
+  {
+    "rust": "src/uqm/comm/spahome/spahome.rs",
+    "c": "src/uqm/comm/spahome/spahome.c",
+    "source_sha256": "9e3343657b228e26a6cb01754e6b2fdd5fae32fed643f7f43d34d48921a3eeba"
+  },
+  {
+    "rust": "src/uqm/comm/spathi/spathic.rs",
+    "c": "src/uqm/comm/spathi/spathic.c",
+    "source_sha256": "d79f9934653b8230e7b7c9ededaf3f24110b7b1385ffda74a0c68da372482f3b"
+  },
+  {
+    "rust": "src/uqm/comm/starbas/starbas.rs",
+    "c": "src/uqm/comm/starbas/starbas.c",
+    "source_sha256": "b7ba204e2c93352161b2151adeb4d9e6825877b02181db2009670dc4b4776bef"
+  },
+  {
+    "rust": "src/uqm/comm/supox/supoxc.rs",
+    "c": "src/uqm/comm/supox/supoxc.c",
+    "source_sha256": "ca0359396b5234180123304e06e1b455825108ca97ff4d7776d232caf1c1eecc"
+  },
+  {
+    "rust": "src/uqm/comm/syreen/syreenc.rs",
+    "c": "src/uqm/comm/syreen/syreenc.c",
+    "source_sha256": "cda0a4c65a6610495255606c39a611a0fcd020c39cb0a154d9fa96d02708997b"
+  },
+  {
+    "rust": "src/uqm/comm/talkpet/talkpet.rs",
+    "c": "src/uqm/comm/talkpet/talkpet.c",
+    "source_sha256": "1d25e628aefcda6f055f78909ffe1a604f09aadee9de6f9c37a0a0e303da9637"
+  },
+  {
+    "rust": "src/uqm/comm/thradd/thraddc.rs",
+    "c": "src/uqm/comm/thradd/thraddc.c",
+    "source_sha256": "399a439fd239c46f2896410aed099c0bdc3333603d7324bb573e11e84c56a5d3"
+  },
+  {
+    "rust": "src/uqm/comm/umgah/umgahc.rs",
+    "c": "src/uqm/comm/umgah/umgahc.c",
+    "source_sha256": "10875d07e35850f28780196e7fd7360d6e159fe821614f67ca6ac535fd15f82b"
+  },
+  {
+    "rust": "src/uqm/comm/urquan/urquanc.rs",
+    "c": "src/uqm/comm/urquan/urquanc.c",
+    "source_sha256": "a375d98e998e6502a7dc7cf8a1ecfaaa5d3cfa47b2532db993ac8aa58177bb04"
+  },
+  {
+    "rust": "src/uqm/comm/utwig/utwigc.rs",
+    "c": "src/uqm/comm/utwig/utwigc.c",
+    "source_sha256": "fea0a59fe83609996ff259be0ab4593eb44932bc7ff473a072db6cfe754d2ac5"
+  },
+  {
+    "rust": "src/uqm/comm/vux/vuxc.rs",
+    "c": "src/uqm/comm/vux/vuxc.c",
+    "source_sha256": "477d890e55aa31b97770f426a639cec16239d8d8b24669b6525732d2bc5fc09d"
+  },
+  {
+    "rust": "src/uqm/comm/yehat/yehatc.rs",
+    "c": "src/uqm/comm/yehat/yehatc.c",
+    "source_sha256": "8a7d0160154a97028cd54f534dddf1c8c44e9a119594751c90a8a55cb00cf913"
+  },
+  {
+    "rust": "src/uqm/comm/zoqfot/zoqfotc.rs",
+    "c": "src/uqm/comm/zoqfot/zoqfotc.c",
+    "source_sha256": "34efc0da001dbc436a511a4c25a8f768997f24e4083a70fe5d45b28ae8b0cef7"
+  },
+  {
+    "rust": "src/uqm/comm.rs",
+    "c": "src/uqm/comm.c",
+    "source_sha256": "7057c0338cc422fa59b6085134d3a8f8958f53058ec18aa6c30d0f5cdea47081"
+  },
+  {
+    "rust": "src/uqm/commanim.rs",
+    "c": "src/uqm/commanim.c",
+    "source_sha256": "de38db6f17d36bd3c743c0483a6ae07d3e3e7436c615b421c5c8ed662a59d31c"
+  },
+  {
+    "rust": "src/uqm/commglue.rs",
+    "c": "src/uqm/commglue.c",
+    "source_sha256": "d1254a757fd15c6ea556c9ac3e374bec23599caf8b577e924bed47a8203fdfad"
+  },
+  {
+    "rust": "src/uqm/confirm.rs",
+    "c": "src/uqm/confirm.c",
+    "source_sha256": "35fd823255ef627fa7a51085d67339b1f1e5d5f26327b0b6ebdb8aa2fb6536fa"
+  },
+  {
+    "rust": "src/uqm/cons_res.rs",
+    "c": "src/uqm/cons_res.c",
+    "source_sha256": "8f7b9f57ae0d66c6875d090dfbee1d35bde99325358470287dd88ab81aa9671f"
+  },
+  {
+    "rust": "src/uqm/credits.rs",
+    "c": "src/uqm/credits.c",
+    "source_sha256": "8f7c16ad479bd8629912d5e153f7d2e735a77eaf7ebbbbdeaf4593957efcf961"
+  },
+  {
+    "rust": "src/uqm/cyborg.rs",
+    "c": "src/uqm/cyborg.c",
+    "source_sha256": "77070596184020bfb21a2d9804067d6bc8edac67ccf981cdff08130d1de3e0b4"
+  },
+  {
+    "rust": "src/uqm/demo.rs",
+    "c": "src/uqm/demo.c",
+    "source_sha256": "089722a0d96e0c9a816518bae60b544d4f6b60b914b063e6d14ca9f14895ba89"
+  },
+  {
+    "rust": "src/uqm/displist.rs",
+    "c": "src/uqm/displist.c",
+    "source_sha256": "4b785eb7c81ad808cf2d962338546fee8095a8be14163509988201491cfada9c",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/uqm/dummy.rs",
+    "c": "src/uqm/dummy.c",
+    "source_sha256": "eb0fbb8c2fc01c6109d8bafb887b8ff8c0a4dca34a1e420d048c04eb4bdccb42"
+  },
+  {
+    "rust": "src/uqm/encount.rs",
+    "c": "src/uqm/encount.c",
+    "source_sha256": "8301456004bcaae45297b361b4f17d4cf324b114d6bb3f93f36b7ac8acfe023f"
+  },
+  {
+    "rust": "src/uqm/flash.rs",
+    "c": "src/uqm/flash.c",
+    "source_sha256": "305e559377e6e7decbe02961c96f013f54453f45a22e0d8809006d141caba408"
+  },
+  {
+    "rust": "src/uqm/fmv.rs",
+    "c": "src/uqm/fmv.c",
+    "source_sha256": "837b9893d845df0b6dbd4fc6bd6dd41068907ce4b9c521b5392d87c2315e23b7"
+  },
+  {
+    "rust": "src/uqm/galaxy.rs",
+    "c": "src/uqm/galaxy.c",
+    "source_sha256": "267e0300cc3c79328006f4a28f000d327b7fb012abbb6b8ecbf7b200fc802242"
+  },
+  {
+    "rust": "src/uqm/gameev.rs",
+    "c": "src/uqm/gameev.c",
+    "source_sha256": "77b4629e8d070301ed2460ec2f545899673c5ace153f1f2161b569d4d258f66a"
+  },
+  {
+    "rust": "src/uqm/gameinp.rs",
+    "c": "src/uqm/gameinp.c",
+    "source_sha256": "eeb5090b43d0f00359eb443eae926e4186b7d52da3a4ccebff856cc4c7ab9324"
+  },
+  {
+    "rust": "src/uqm/gameopt.rs",
+    "c": "src/uqm/gameopt.c",
+    "source_sha256": "6a0a6b368de59a897d27b4c386f390718e5ca340a529a917fa8cba3d675459ca"
+  },
+  {
+    "rust": "src/uqm/gendef.rs",
+    "c": "src/uqm/gendef.c",
+    "source_sha256": "48cc47cf60132f48892f65ea1ef990c6134f8b6e926923f9d6845c85a263bfd1"
+  },
+  {
+    "rust": "src/uqm/getchar.rs",
+    "c": "src/uqm/getchar.c",
+    "source_sha256": "d615212b3a085345b5e4f098982fbad29ce0a43d08f82a7e7bfaf79d3f500227"
+  },
+  {
+    "rust": "src/uqm/globdata.rs",
+    "c": "src/uqm/globdata.c",
+    "source_sha256": "9d6664f4c4090a292085ca6830b21e4ca9a36e7fcdc81192adf232caa705f786"
+  },
+  {
+    "rust": "src/uqm/gravity.rs",
+    "c": "src/uqm/gravity.c",
+    "source_sha256": "57812ba365808d4bb8e4d619c4bb9a061dd71639bad043848b8d0e7c0e3f1d6e"
+  },
+  {
+    "rust": "src/uqm/grpinfo.rs",
+    "c": "src/uqm/grpinfo.c",
+    "source_sha256": "c5cfaf715f503960112aca9b6794229bd19f7d4f717b0a9cf8702b7ae6e6d930"
+  },
+  {
+    "rust": "src/uqm/hyper.rs",
+    "c": "src/uqm/hyper.c",
+    "source_sha256": "d33310b0d505107997d7223a4619d60615bc728179b1b98b639691f35b039671"
+  },
+  {
+    "rust": "src/uqm/init.rs",
+    "c": "src/uqm/init.c",
+    "source_sha256": "7269404a800830a6a25fe9d290f12557e6eaa4210046e2f25054741c13047d0d"
+  },
+  {
+    "rust": "src/uqm/intel.rs",
+    "c": "src/uqm/intel.c",
+    "source_sha256": "390e3366620797a7d67f8d525bd1135f982af97753a861d4f20425dc7fd33547"
+  },
+  {
+    "rust": "src/uqm/intro.rs",
+    "c": "src/uqm/intro.c",
+    "source_sha256": "6bdfcde871adca1fe7141a4d0ea22b637f7eee7ed04bed21f3b85ab22b3e8f45"
+  },
+  {
+    "rust": "src/uqm/ipdisp.rs",
+    "c": "src/uqm/ipdisp.c",
+    "source_sha256": "1c937300fe7232169b2eb6e6e73bd24d3d327051bb35fa2b3c52b20a7ce522d2"
+  },
+  {
+    "rust": "src/uqm/load.rs",
+    "c": "src/uqm/load.c",
+    "source_sha256": "cc6fffd0beae403c9314154985d0eb6b20d842b1a2655a9bbb3ad77660dd0082"
+  },
+  {
+    "rust": "src/uqm/load_legacy.rs",
+    "c": "src/uqm/load_legacy.c",
+    "source_sha256": "d9dfdd6099950057e665e7bdd1ceac73c357ae4d86f1f3e1c5b370a1167fced6"
+  },
+  {
+    "rust": "src/uqm/loadship.rs",
+    "c": "src/uqm/loadship.c",
+    "source_sha256": "aa9e7b73cc8fcb2d43a4aee0c7e296259584ed92c1ead88b74cb044903f734c6"
+  },
+  {
+    "rust": "src/uqm/lua/luacomm.rs",
+    "c": "src/uqm/lua/luacomm.c",
+    "source_sha256": "daae7d0276b78a380cf4467c71b1cab8a47a3b1e86edd803c1fc490924dbfec1"
+  },
+  {
+    "rust": "src/uqm/lua/luadebug.rs",
+    "c": "src/uqm/lua/luadebug.c",
+    "source_sha256": "58d942c7242b96fdfef24957624ea7fb9913aa6d7c00f7741f071a4a157f6515"
+  },
+  {
+    "rust": "src/uqm/lua/luaevent.rs",
+    "c": "src/uqm/lua/luaevent.c",
+    "source_sha256": "b603b367c1727079137a43cceb1a8fca633819fd0c06e6c7416a97d3d56ac34d"
+  },
+  {
+    "rust": "src/uqm/lua/luafuncs/commfuncs.rs",
+    "c": "src/uqm/lua/luafuncs/commfuncs.c",
+    "source_sha256": "792dec6104fafd301b77f949df53f9377f1a09fb409a74ba277e107c2248af0b"
+  },
+  {
+    "rust": "src/uqm/lua/luafuncs/customfuncs.rs",
+    "c": "src/uqm/lua/luafuncs/customfuncs.c",
+    "source_sha256": "70dfc0219368cc843e973ee944c61a44c45fa4f8e522409d47b0bda8df3a796e"
+  },
+  {
+    "rust": "src/uqm/lua/luafuncs/eventfuncs.rs",
+    "c": "src/uqm/lua/luafuncs/eventfuncs.c",
+    "source_sha256": "fbe3d1d832639e62a9a72d0abec481ce907e95ea2a9b877b07baec0c54124e4e"
+  },
+  {
+    "rust": "src/uqm/lua/luafuncs/logfuncs.rs",
+    "c": "src/uqm/lua/luafuncs/logfuncs.c",
+    "source_sha256": "8d1121a792901b459295cfd0484f96645eee4575a3cda8d6fe9744881bd93a05"
+  },
+  {
+    "rust": "src/uqm/lua/luafuncs/statefuncs.rs",
+    "c": "src/uqm/lua/luafuncs/statefuncs.c",
+    "source_sha256": "bfb199b92180e1b38bf5e9aef65fdd48f02e61ed5909767d3715d3f2ffd03bdf"
+  },
+  {
+    "rust": "src/uqm/lua/luainit.rs",
+    "c": "src/uqm/lua/luainit.c",
+    "source_sha256": "6347f74e3811a5ec6aeb92948320263c8880939b189eeab9103d06d375cbcad6"
+  },
+  {
+    "rust": "src/uqm/lua/luastate.rs",
+    "c": "src/uqm/lua/luastate.c",
+    "source_sha256": "c3c70363c920fc4aea200c5fd6e2a3389bc5358da85a89197ca69f0e769cfd36"
+  },
+  {
+    "rust": "src/uqm/master.rs",
+    "c": "src/uqm/master.c",
+    "source_sha256": "aeec76d594befc3cb2856662f2e7c33330e331422f05759b31de1104cdf3956d"
+  },
+  {
+    "rust": "src/uqm/menu.rs",
+    "c": "src/uqm/menu.c",
+    "source_sha256": "e58f0ebd24c292caf06a0f3be5494ba39ee573c635910374705dffa6b279f9d0"
+  },
+  {
+    "rust": "src/uqm/misc.rs",
+    "c": "src/uqm/misc.c",
+    "source_sha256": "f460615d23932573e235845f0aca0fc3d40605a274eb88645a8f98644a98e8b5"
+  },
+  {
+    "rust": "src/uqm/oscill.rs",
+    "c": "src/uqm/oscill.c",
+    "source_sha256": "bd0522072c27e1690125949049b28bd618f8485bde020430865589f63910b2c9"
+  },
+  {
+    "rust": "src/uqm/outfit.rs",
+    "c": "src/uqm/outfit.c",
+    "source_sha256": "fdee9f0aa3f2d0c82222c379c951de36757cbc8dd9b43e2e7b10dde056819238"
+  },
+  {
+    "rust": "src/uqm/pickship.rs",
+    "c": "src/uqm/pickship.c",
+    "source_sha256": "0d575d011c4ed427e573ffbdb31c151c296b07696f3ef05fde69d27d326e7fe2"
+  },
+  {
+    "rust": "src/uqm/plandata.rs",
+    "c": "src/uqm/plandata.c",
+    "source_sha256": "2c42532eed868aa9bf190613fc90715a05fdf5f36493a63b21aaf5eff26f0acc"
+  },
+  {
+    "rust": "src/uqm/planets/calc.rs",
+    "c": "src/uqm/planets/calc.c",
+    "source_sha256": "edbef3a785684f5987e829acf37ebf43bb9e5d71e9e6de5cad319a639dad1dc5"
+  },
+  {
+    "rust": "src/uqm/planets/cargo.rs",
+    "c": "src/uqm/planets/cargo.c",
+    "source_sha256": "529388b7589ba7a7605832aaa9e793b1c23a9c391f2e0a8e909ef701949cae8f"
+  },
+  {
+    "rust": "src/uqm/planets/devices.rs",
+    "c": "src/uqm/planets/devices.c",
+    "source_sha256": "13f36b5e0f0ddf96da6fb011bca70a2a4d6d29b2bdc6e09f23b15f67bb6ce5ab"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genand.rs",
+    "c": "src/uqm/planets/generate/genand.c",
+    "source_sha256": "35a5b37ca51e3696b0bf760878eb46ac2ee432487be5b06c77bc4bce77388655"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genburv.rs",
+    "c": "src/uqm/planets/generate/genburv.c",
+    "source_sha256": "5ba7897e1234230ad8bba24ad586d0e6d6464b1ef23bdb8bd96b1cb9ead66d0e"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genchmmr.rs",
+    "c": "src/uqm/planets/generate/genchmmr.c",
+    "source_sha256": "66d3d63205197a4dc93bc8e026bf55b95eee1eb81c1316972b271d13382e8f2f"
+  },
+  {
+    "rust": "src/uqm/planets/generate/gencol.rs",
+    "c": "src/uqm/planets/generate/gencol.c",
+    "source_sha256": "0092cb8e1547de1bfe568e91c71e80f38af567941937a5833d1ffac728bf5202"
+  },
+  {
+    "rust": "src/uqm/planets/generate/gendefault.rs",
+    "c": "src/uqm/planets/generate/gendefault.c",
+    "source_sha256": "6e6b0cd3f0de9e7b6a71d32d0418c6398908e850d523e8348dd5a9c9d555699e"
+  },
+  {
+    "rust": "src/uqm/planets/generate/gendru.rs",
+    "c": "src/uqm/planets/generate/gendru.c",
+    "source_sha256": "d6fd7222283543b2670beb7828ea7c693f792365e731bf7dafbd815e7809814b"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genilw.rs",
+    "c": "src/uqm/planets/generate/genilw.c",
+    "source_sha256": "25e8adfdece835122c4aafd57d01ab4985dc1ed9928791d24241ba86877e94ca"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genmel.rs",
+    "c": "src/uqm/planets/generate/genmel.c",
+    "source_sha256": "732b72ec0b47e2077ef1c2bf3fb2e675475eda86bf6a6a3a280def7d164917ce"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genmyc.rs",
+    "c": "src/uqm/planets/generate/genmyc.c",
+    "source_sha256": "0251fee97338f6a15ba06e2941a76d09bab3e457aaa484f66bb6c53df1c6d4b6"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genorz.rs",
+    "c": "src/uqm/planets/generate/genorz.c",
+    "source_sha256": "87915855de5bf97030048bb959180d7785aea1c414203dc4747eb4ad76c444f6"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genpet.rs",
+    "c": "src/uqm/planets/generate/genpet.c",
+    "source_sha256": "e1852421d7980e15cf68018da5c6278e4088e3775fd96a7ceb870894fc1c9493"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genpku.rs",
+    "c": "src/uqm/planets/generate/genpku.c",
+    "source_sha256": "25c23faa8f2bd1e5105c849ac45e8451e2b28f1c284b083f210b8c6d4e85ca73"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genrain.rs",
+    "c": "src/uqm/planets/generate/genrain.c",
+    "source_sha256": "482f9a8c6469ba5d08f7ecbf75d38323c92db555a6aa7cd9e2a2ca0652f575a4"
+  },
+  {
+    "rust": "src/uqm/planets/generate/gensam.rs",
+    "c": "src/uqm/planets/generate/gensam.c",
+    "source_sha256": "28a920190b278b73d578e499b82a6a4a92b62c6576bfa9221407c5446a48b017"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genshof.rs",
+    "c": "src/uqm/planets/generate/genshof.c",
+    "source_sha256": "a9af4bd5f7932e91d7d50b06e26f92e29a45edf7522c7e6f330a8c737b0edbcb"
+  },
+  {
+    "rust": "src/uqm/planets/generate/gensly.rs",
+    "c": "src/uqm/planets/generate/gensly.c",
+    "source_sha256": "41e1f4d85ef2bdd6379de51b8087a2eabdd41f9d670bc4c03433363dc0447b2b"
+  },
+  {
+    "rust": "src/uqm/planets/generate/gensol.rs",
+    "c": "src/uqm/planets/generate/gensol.c",
+    "source_sha256": "ea3b881e118c0e95fcc65bcc34ca6a3d89234f1661add39256193866ddcf6e40"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genspa.rs",
+    "c": "src/uqm/planets/generate/genspa.c",
+    "source_sha256": "3415a75bdc69c6f48cd0090db210ac1e26a26629f5f326d13087c8c2222724cb"
+  },
+  {
+    "rust": "src/uqm/planets/generate/gensup.rs",
+    "c": "src/uqm/planets/generate/gensup.c",
+    "source_sha256": "8d08c1899d7c94d810348ca670ae4f4f7bb95898b24e62cdef7ea36076e9e646"
+  },
+  {
+    "rust": "src/uqm/planets/generate/gensyr.rs",
+    "c": "src/uqm/planets/generate/gensyr.c",
+    "source_sha256": "437b11deb43ec84c22affa8c6c38001ba258b5eb59284a596f0fc38ae5c30fa7"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genthrad.rs",
+    "c": "src/uqm/planets/generate/genthrad.c",
+    "source_sha256": "b1b9a8b347080e76852f26edbf06d1a788d0eb694330273dd2a1a5305527cdda"
+  },
+  {
+    "rust": "src/uqm/planets/generate/gentrap.rs",
+    "c": "src/uqm/planets/generate/gentrap.c",
+    "source_sha256": "858f0038b0c7b35e4853dd8d5b0d2b5c68396d58c79a64f27091319e5229363a"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genutw.rs",
+    "c": "src/uqm/planets/generate/genutw.c",
+    "source_sha256": "21f5ae7b8cc504d329298c0dca6c326c610756e4037ddb2dbd553a969b5ac2ef"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genvault.rs",
+    "c": "src/uqm/planets/generate/genvault.c",
+    "source_sha256": "e3dc8d3b0cb37ffe4af7c57c87f8b5b1e9e0cffa6d3556e079afb821672dabd8"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genvux.rs",
+    "c": "src/uqm/planets/generate/genvux.c",
+    "source_sha256": "a90acc2cceec12834e05fb5b55e92a183cace88e1219314b522a868be87e809c"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genwreck.rs",
+    "c": "src/uqm/planets/generate/genwreck.c",
+    "source_sha256": "8369bd422532aa576778f62d4278e35d740332d97d7b4e094c5641d83af01eb3"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genyeh.rs",
+    "c": "src/uqm/planets/generate/genyeh.c",
+    "source_sha256": "9b6398264c50f170e7f0c6871192cd25abc15b430309a80750974dbc46cdb758"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genzfpscout.rs",
+    "c": "src/uqm/planets/generate/genzfpscout.c",
+    "source_sha256": "72adb873616b1622b99879c3485b73a0f06469b9911c7b7e7f92d213e6c17b51"
+  },
+  {
+    "rust": "src/uqm/planets/generate/genzoq.rs",
+    "c": "src/uqm/planets/generate/genzoq.c",
+    "source_sha256": "93a680f4bf99db8729fa49fe14e5c32f9afa8965a85bd32e8257ffb888de6d13"
+  },
+  {
+    "rust": "src/uqm/planets/gentopo.rs",
+    "c": "src/uqm/planets/gentopo.c",
+    "source_sha256": "b77f14eb94e2da5d36daeaaf149f6a09cf00665c347626cdac553a3e55286536"
+  },
+  {
+    "rust": "src/uqm/planets/lander.rs",
+    "c": "src/uqm/planets/lander.c",
+    "source_sha256": "249f4800256634225c14f8f1ce1000a3f0d99b9f2c71f184e92b1dc1680add28"
+  },
+  {
+    "rust": "src/uqm/planets/orbits.rs",
+    "c": "src/uqm/planets/orbits.c",
+    "source_sha256": "2543c1e0029b31e0780d0da37223e38ed9a6e0e2181205210476a14adec17c7e"
+  },
+  {
+    "rust": "src/uqm/planets/oval.rs",
+    "c": "src/uqm/planets/oval.c",
+    "source_sha256": "97a318c1ae77db2c881baff380af22e110a28c30b4654f574bb8f4a291879719"
+  },
+  {
+    "rust": "src/uqm/planets/pl_stuff.rs",
+    "c": "src/uqm/planets/pl_stuff.c",
+    "source_sha256": "60c46dc65a1acfa4b63955825d8cfa0980dfa7cce536e7ff31dc3f4c3a5e7293"
+  },
+  {
+    "rust": "src/uqm/planets/planets.rs",
+    "c": "src/uqm/planets/planets.c",
+    "source_sha256": "956af3f0a5152a845ea92eef95cac148e2a2d837964f2cde7a51c3050ced6085"
+  },
+  {
+    "rust": "src/uqm/planets/plangen.rs",
+    "c": "src/uqm/planets/plangen.c",
+    "source_sha256": "ad87d7ce37cd01d19c50c7e21faa1483bbe99167e2e28d18f04cf44cdb936c21"
+  },
+  {
+    "rust": "src/uqm/planets/pstarmap.rs",
+    "c": "src/uqm/planets/pstarmap.c",
+    "source_sha256": "6fb7fde92fc7cfb9d9c56759a709dbba4abbf77f74ee1f88ec00dc2ed557e2ab"
+  },
+  {
+    "rust": "src/uqm/planets/report.rs",
+    "c": "src/uqm/planets/report.c",
+    "source_sha256": "da6a639eb35a2b37f17253d8573aba7296d78e26a5456ff07c9966c55c066ecb"
+  },
+  {
+    "rust": "src/uqm/planets/roster.rs",
+    "c": "src/uqm/planets/roster.c",
+    "source_sha256": "75690cacf4198efc63ec399e547760405785985a036250ab4392adb1808c1fea"
+  },
+  {
+    "rust": "src/uqm/planets/scan.rs",
+    "c": "src/uqm/planets/scan.c",
+    "source_sha256": "dfc14728ce4fbbf5313508417b3a7927d8f2dd3462cce13eef4b2538c71854c2"
+  },
+  {
+    "rust": "src/uqm/planets/solarsys.rs",
+    "c": "src/uqm/planets/solarsys.c",
+    "source_sha256": "2ed1d007ef9cf1d2dd5b4ba3ac53268cf9b3845be3e48e62e92b683b218aa279"
+  },
+  {
+    "rust": "src/uqm/planets/surface.rs",
+    "c": "src/uqm/planets/surface.c",
+    "source_sha256": "f064c2facde5f732b9d62e8346472d8bdee467fed098ff933690b9ca12b35902"
+  },
+  {
+    "rust": "src/uqm/process.rs",
+    "c": "src/uqm/process.c",
+    "source_sha256": "4d9cef3948f2f471fe81ec5cfb2a1a53e0ec1d22972210c95932d757164be84b"
+  },
+  {
+    "rust": "src/uqm/restart.rs",
+    "c": "src/uqm/restart.c",
+    "source_sha256": "c2d2b4c0af707754285fdc752a99e955aa53c23d52744cf6d6c6d979c37d49e7"
+  },
+  {
+    "rust": "src/uqm/save.rs",
+    "c": "src/uqm/save.c",
+    "source_sha256": "f1902be79b54f5ee340a480508793d959517736c73bef2681ffe1af4ea10f04a"
+  },
+  {
+    "rust": "src/uqm/settings.rs",
+    "c": "src/uqm/settings.c",
+    "source_sha256": "b2e591cbad3f4d40787df196f97a9dbb194b89633d8ca09e59452b81f9199d98"
+  },
+  {
+    "rust": "src/uqm/setup.rs",
+    "c": "src/uqm/setup.c",
+    "source_sha256": "c301cc3cc0e6997a70e09f757e20378b4a26c310541fb79d61c932d2c151cf39"
+  },
+  {
+    "rust": "src/uqm/setupmenu.rs",
+    "c": "src/uqm/setupmenu.c",
+    "source_sha256": "0dbaef4e32df3e66f8027bb2527b953c28553cc6d5fa301c029cda8603224e97"
+  },
+  {
+    "rust": "src/uqm/ship.rs",
+    "c": "src/uqm/ship.c",
+    "source_sha256": "5c81f6d59964ab54c99bf87f8728678c65c0cafe47abef8948f6200dd9d11f39"
+  },
+  {
+    "rust": "src/uqm/ships/androsyn/androsyn.rs",
+    "c": "src/uqm/ships/androsyn/androsyn.c",
+    "source_sha256": "d39108eb6f95d91ef0e55a05b474093c7c1e0d8ac0126bcfa83fdb6e4858acfe"
+  },
+  {
+    "rust": "src/uqm/ships/arilou/arilou.rs",
+    "c": "src/uqm/ships/arilou/arilou.c",
+    "source_sha256": "3c58d74b4a8df30884f36c0a0241ffdf76be814c96b04b2c336708de6e8e7fe7"
+  },
+  {
+    "rust": "src/uqm/ships/blackurq/blackurq.rs",
+    "c": "src/uqm/ships/blackurq/blackurq.c",
+    "source_sha256": "beab8dba3f531d92322027f1fd2cdab5e9f91e069ba33051665804d5463560eb"
+  },
+  {
+    "rust": "src/uqm/ships/chenjesu/chenjesu.rs",
+    "c": "src/uqm/ships/chenjesu/chenjesu.c",
+    "source_sha256": "83fd596f9107b2051a0819529588c3d76d648dcb6ac5c6dc789eb6fc5c51b21c"
+  },
+  {
+    "rust": "src/uqm/ships/chmmr/chmmr.rs",
+    "c": "src/uqm/ships/chmmr/chmmr.c",
+    "source_sha256": "f4823c9da7396f144ff1baf9bc9382209e9fd824348764a3995a8732a6e398a4"
+  },
+  {
+    "rust": "src/uqm/ships/druuge/druuge.rs",
+    "c": "src/uqm/ships/druuge/druuge.c",
+    "source_sha256": "02453ffd20e0220c4e5e900cb19856f6a5fd834d12c9db90833d28134b9e7077"
+  },
+  {
+    "rust": "src/uqm/ships/human/human.rs",
+    "c": "src/uqm/ships/human/human.c",
+    "source_sha256": "f2399b22ee45c8feb28ca82ad18c955817b83f0a514aa6a33f8612825282fbf2"
+  },
+  {
+    "rust": "src/uqm/ships/ilwrath/ilwrath.rs",
+    "c": "src/uqm/ships/ilwrath/ilwrath.c",
+    "source_sha256": "8a42c54433c436156c84ed3ac9f5e1db0cedfa46e20c1d19e977ea08a4fe4f36"
+  },
+  {
+    "rust": "src/uqm/ships/lastbat/lastbat.rs",
+    "c": "src/uqm/ships/lastbat/lastbat.c",
+    "source_sha256": "93329954825bb2254ba6ae40b5b2b0ae4a9908e8387029153aaafbf4a7fd5f60"
+  },
+  {
+    "rust": "src/uqm/ships/melnorme/melnorme.rs",
+    "c": "src/uqm/ships/melnorme/melnorme.c",
+    "source_sha256": "a8799376cd00d26872087e803eb2318190f91319177af8cfa207aebb5d085e01"
+  },
+  {
+    "rust": "src/uqm/ships/mmrnmhrm/mmrnmhrm.rs",
+    "c": "src/uqm/ships/mmrnmhrm/mmrnmhrm.c",
+    "source_sha256": "ec2dacdb6ec3efeeff2d76ba0a097e15e35a4a8ee6bf20c6d2e4ded35b78fb77"
+  },
+  {
+    "rust": "src/uqm/ships/mycon/mycon.rs",
+    "c": "src/uqm/ships/mycon/mycon.c",
+    "source_sha256": "6a0a5f7c0609ce063a777eedf347093e78dee61f64f15a16f2838c3ab69672ea"
+  },
+  {
+    "rust": "src/uqm/ships/orz/orz.rs",
+    "c": "src/uqm/ships/orz/orz.c",
+    "source_sha256": "204aa2863fd2a998cb4c9127ecc683e6d5bcbcba98f678ffbaf2efbb99f5e378"
+  },
+  {
+    "rust": "src/uqm/ships/pkunk/pkunk.rs",
+    "c": "src/uqm/ships/pkunk/pkunk.c",
+    "source_sha256": "87f2ce4da80a764221ebae3fd431681614f99ce50639f9de74a9878cf6daf5c5"
+  },
+  {
+    "rust": "src/uqm/ships/probe/probe.rs",
+    "c": "src/uqm/ships/probe/probe.c",
+    "source_sha256": "b7390fa7dabc52ad010be5fdce9cbbff3f99d4d53d258e68caf0ce63b35426f8"
+  },
+  {
+    "rust": "src/uqm/ships/shofixti/shofixti.rs",
+    "c": "src/uqm/ships/shofixti/shofixti.c",
+    "source_sha256": "167b0f37e5ed1547b397ad1680d3b036b95df192f204c96434bc6e613953b1df"
+  },
+  {
+    "rust": "src/uqm/ships/sis_ship/sis_ship.rs",
+    "c": "src/uqm/ships/sis_ship/sis_ship.c",
+    "source_sha256": "69b45e212898085f30450781022d1d1c4b2a7a53e5e9df1a6eaafdc98c46295d"
+  },
+  {
+    "rust": "src/uqm/ships/slylandr/slylandr.rs",
+    "c": "src/uqm/ships/slylandr/slylandr.c",
+    "source_sha256": "06f413f7416580f1d77fac7396705e4e17b372de78d029bf13921a0bc61a8b07"
+  },
+  {
+    "rust": "src/uqm/ships/spathi/spathi.rs",
+    "c": "src/uqm/ships/spathi/spathi.c",
+    "source_sha256": "3b3a9fb9b3a9455d92fcd6a81b398c190cf66702a402a134a5be0202e9ef061a"
+  },
+  {
+    "rust": "src/uqm/ships/supox/supox.rs",
+    "c": "src/uqm/ships/supox/supox.c",
+    "source_sha256": "9805fbb71c6d68917b5ad37185e5e16f939ba20dcd92baefacc4ff471bd57aed"
+  },
+  {
+    "rust": "src/uqm/ships/syreen/syreen.rs",
+    "c": "src/uqm/ships/syreen/syreen.c",
+    "source_sha256": "968cc30ffc4224ff80e0ba0d5ca860b8a85a5f3bf106d0b3cacabdbaa2ecccaa"
+  },
+  {
+    "rust": "src/uqm/ships/thradd/thradd.rs",
+    "c": "src/uqm/ships/thradd/thradd.c",
+    "source_sha256": "3f3d7353179cbe68c04a024556a34ef220f70aaba7424a3332d33bc514261f60"
+  },
+  {
+    "rust": "src/uqm/ships/umgah/umgah.rs",
+    "c": "src/uqm/ships/umgah/umgah.c",
+    "source_sha256": "b918dea521b890bfc5460a1a0f756223efea8a1bc07ee74fe5d617ffb91c97f3"
+  },
+  {
+    "rust": "src/uqm/ships/urquan/urquan.rs",
+    "c": "src/uqm/ships/urquan/urquan.c",
+    "source_sha256": "6857693d7b032dcbe8eabbf99e82b91859e09088d9756eed9507dc6b5e9e4cec"
+  },
+  {
+    "rust": "src/uqm/ships/utwig/utwig.rs",
+    "c": "src/uqm/ships/utwig/utwig.c",
+    "source_sha256": "9aa5c9008d1c32d98d4ecb86c51ea3bab0f41e3d312632ce34aaa1e363f3ae81"
+  },
+  {
+    "rust": "src/uqm/ships/vux/vux.rs",
+    "c": "src/uqm/ships/vux/vux.c",
+    "source_sha256": "e3f5cec0c2a3331a1a7610010648c3bd4c7bda8380cbf1bddfdf117aae66db53"
+  },
+  {
+    "rust": "src/uqm/ships/yehat/yehat.rs",
+    "c": "src/uqm/ships/yehat/yehat.c",
+    "source_sha256": "e6ba35384b495e0fb1fc0516a01c149b922317fd1a2f2f65d7bd1644e292dceb"
+  },
+  {
+    "rust": "src/uqm/ships/zoqfot/zoqfot.rs",
+    "c": "src/uqm/ships/zoqfot/zoqfot.c",
+    "source_sha256": "2e8b13f3fe7f6136305c72ffee350c1e4727b2775c3c6009e6d0ff7a50de687c"
+  },
+  {
+    "rust": "src/uqm/shipstat.rs",
+    "c": "src/uqm/shipstat.c",
+    "source_sha256": "1a38dfa2247f46290fadaa1fc2864bf227ba4d7f1d33fb19fb879f23376c8e8c"
+  },
+  {
+    "rust": "src/uqm/shipyard.rs",
+    "c": "src/uqm/shipyard.c",
+    "source_sha256": "3c9648468278cf5003850749cca7817ce10508c1195c3091e34e8ceb0e7b6560"
+  },
+  {
+    "rust": "src/uqm/sis.rs",
+    "c": "src/uqm/sis.c",
+    "source_sha256": "0840d36ae5a3e60b5442a18417ce51a7f90e3dacab54955c2490b7ffa81423d8"
+  },
+  {
+    "rust": "src/uqm/sounds.rs",
+    "c": "src/uqm/sounds.c",
+    "source_sha256": "15c0411c932f88a56804d33b3c12a34795143c5a31e1533c8acf0d180e9daec8"
+  },
+  {
+    "rust": "src/uqm/starbase.rs",
+    "c": "src/uqm/starbase.c",
+    "source_sha256": "643a13d4a9cb8b1faca17ca761fdbf4285b746e3d2ef71a9ce91f28bec13e63a"
+  },
+  {
+    "rust": "src/uqm/starcon.rs",
+    "c": "src/uqm/starcon.c",
+    "source_sha256": "8591ecf9808886f0e0b3705d7bcfa5d211a8911fbb7f05b9584a9ab89f4dde45"
+  },
+  {
+    "rust": "src/uqm/starmap.rs",
+    "c": "src/uqm/starmap.c",
+    "source_sha256": "49140cec5946d440f76f04412e180ffb62544adaaf91c055d182c149857801e8"
+  },
+  {
+    "rust": "src/uqm/state.rs",
+    "c": "src/uqm/state.c",
+    "source_sha256": "99af725c474d022b70a508a80568cac067c732b1ad9ef9d9025021e474f95a5a"
+  },
+  {
+    "rust": "src/uqm/status.rs",
+    "c": "src/uqm/status.c",
+    "source_sha256": "0cf9b4d02630b6641fb71bbfeb9b57cb77e6a66b135b569d21bdc7c6c98e3e87"
+  },
+  {
+    "rust": "src/uqm/supermelee/buildpick.rs",
+    "c": "src/uqm/supermelee/buildpick.c",
+    "source_sha256": "973ded8f1feede7e9c46277684741b727172d7a7494dc6bae024e686626e980c"
+  },
+  {
+    "rust": "src/uqm/supermelee/loadmele.rs",
+    "c": "src/uqm/supermelee/loadmele.c",
+    "source_sha256": "6430a5e3e0b58ef14d1e4948b9665bd7bab8c4b089586a46ba0b1802b3314858"
+  },
+  {
+    "rust": "src/uqm/supermelee/melee.rs",
+    "c": "src/uqm/supermelee/melee.c",
+    "source_sha256": "c3991d24a606ceb95b4ab12b6b4e8790192e82d4522af4eaa840b1176bb55637"
+  },
+  {
+    "rust": "src/uqm/supermelee/meleesetup.rs",
+    "c": "src/uqm/supermelee/meleesetup.c",
+    "source_sha256": "ebbdad8bf00922dfd5953da9e9fed432ed7d252bc3fec407a4d1a236d020c08c"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/checkbuf.rs",
+    "c": "src/uqm/supermelee/netplay/checkbuf.c",
+    "source_sha256": "97dfb8092e21a3a63dcff0bebd6b3abd0f479f6d4ac46a219fb3dc1e0b1d2d7d"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/checksum.rs",
+    "c": "src/uqm/supermelee/netplay/checksum.c",
+    "source_sha256": "bf6f78512cb00296e4490217340916cfeb50eaef50b948c5101b8e83241e1182"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/crc.rs",
+    "c": "src/uqm/supermelee/netplay/crc.c",
+    "source_sha256": "3cd636daaa2c1067b1e124b7772b60b66b59ec359f0ff8bffa8b782cd781547c",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netconnection.rs",
+    "c": "src/uqm/supermelee/netplay/netconnection.c",
+    "source_sha256": "8c6217c02b3d5b066bfdccaa655062ff00ddb6ef4fbdb1bfaee95e4af8988b3b"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netinput.rs",
+    "c": "src/uqm/supermelee/netplay/netinput.c",
+    "source_sha256": "a771a04f95acae53f877826d377f4067bde9497450d959af792111ea4b2703dc"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netmelee.rs",
+    "c": "src/uqm/supermelee/netplay/netmelee.c",
+    "source_sha256": "e48d222b197c4b1151114be54258b741371695f7967561020e32597d1d51872a"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netmisc.rs",
+    "c": "src/uqm/supermelee/netplay/netmisc.c",
+    "source_sha256": "aea05f3bafdc02db36f6bff65226d3c7433e53460b0fe4e59bf7fb03939796b8"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netoptions.rs",
+    "c": "src/uqm/supermelee/netplay/netoptions.c",
+    "source_sha256": "243e1d9d7c9693a788431a66e27fa59d36c4b75d7c6c36b63f98f56082b5013f"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netrcv.rs",
+    "c": "src/uqm/supermelee/netplay/netrcv.c",
+    "source_sha256": "a5a8eaa70e6175843eea0a423827833f3d62ce74d66736445d75d1aa68dbee1e"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netsend.rs",
+    "c": "src/uqm/supermelee/netplay/netsend.c",
+    "source_sha256": "c7acab90496c128c64334d9b2f86638c2b8a7cc103d19865de779230e9f2073f"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/netstate.rs",
+    "c": "src/uqm/supermelee/netplay/netstate.c",
+    "source_sha256": "fa87b39a15fd56262dc255efdec67f3fcc26b706a869e62e4d388a35e9d0379a"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/notify.rs",
+    "c": "src/uqm/supermelee/netplay/notify.c",
+    "source_sha256": "1c3993151c202839052e7f463805b67234c052639a5ff8ba5e7232198733cad9"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/notifyall.rs",
+    "c": "src/uqm/supermelee/netplay/notifyall.c",
+    "source_sha256": "21549e4b07ef17e6806e7f754dab5980f7d05f2d5ec2d895d83b4a1b2aa586e3"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/packet.rs",
+    "c": "src/uqm/supermelee/netplay/packet.c",
+    "source_sha256": "4b9f8a1054489d81fa716fdc1f1d164bfd0a43ffd832e54849d8cdb420bf1087"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/packethandlers.rs",
+    "c": "src/uqm/supermelee/netplay/packethandlers.c",
+    "source_sha256": "a5e3b75d89c82468e898b42fe63cef17a1ae70a4fbf195a6674590cf3d9fe13b"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/packetq.rs",
+    "c": "src/uqm/supermelee/netplay/packetq.c",
+    "source_sha256": "8906da7b9cf3c088fe3ccc38310e7c441c6a9d8426d856eed82cb8bf355da01b"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/packetsenders.rs",
+    "c": "src/uqm/supermelee/netplay/packetsenders.c",
+    "source_sha256": "19dbbb087aa95ae4f7dd9362990d19f25c3468901b4d6ec0e9b27f9650e943bc"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/proto/npconfirm.rs",
+    "c": "src/uqm/supermelee/netplay/proto/npconfirm.c",
+    "source_sha256": "8981364480e1f2e350df7214ff6c95abc515084849894fdfde34b34a0ca142c5"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/proto/ready.rs",
+    "c": "src/uqm/supermelee/netplay/proto/ready.c",
+    "source_sha256": "1f75f8374f5c84a0781ab32d02514a5b7c6ce554a6ebf872f77f6e82c6429571"
+  },
+  {
+    "rust": "src/uqm/supermelee/netplay/proto/reset.rs",
+    "c": "src/uqm/supermelee/netplay/proto/reset.c",
+    "source_sha256": "420568a9a2d7b4b324a3a3377f43c5393084f60f198a28af1b2b54035d3c7f90"
+  },
+  {
+    "rust": "src/uqm/supermelee/pickmele.rs",
+    "c": "src/uqm/supermelee/pickmele.c",
+    "source_sha256": "5ba5486ac0040469cbfb52fe943c8f660d8903df15e52ea406ac3decbf62bffe"
+  },
+  {
+    "rust": "src/uqm/tactrans.rs",
+    "c": "src/uqm/tactrans.c",
+    "source_sha256": "261a65082e09fa3dee79ccd126852d88b62e41993abce51d66dc2c200a3fc541"
+  },
+  {
+    "rust": "src/uqm/trans.rs",
+    "c": "src/uqm/trans.c",
+    "source_sha256": "ab68cb0187bb32edafb743d2efec74ba9c4d16031eb246307067f1b9284a8a92",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/uqm/uqmdebug.rs",
+    "c": "src/uqm/uqmdebug.c",
+    "source_sha256": "ffc7ec5ba0eef35d89cf8a4ea4cb91a21ce3c23fd0712816ecda579cc40471ea"
+  },
+  {
+    "rust": "src/uqm/util.rs",
+    "c": "src/uqm/util.c",
+    "source_sha256": "0613436717eb17379b8e5a26fcb3f4f487da1ae77d9be09b5e4663da8cb2ca62"
+  },
+  {
+    "rust": "src/uqm/velocity.rs",
+    "c": "src/uqm/velocity.c",
+    "source_sha256": "9662585170acec94af7f81d5083be5a8b8e575f34b42210042de37ad9d2aea78",
+    "implementation": "../uqm-core/Cargo.toml"
+  },
+  {
+    "rust": "src/uqm/weapon.rs",
+    "c": "src/uqm/weapon.c",
+    "source_sha256": "7d5996414d58721fb0917084ab6a3774d6af5effbb48cdf8c76a99d190041375"
+  },
+  {
+    "rust": "src/uqm.rs",
+    "c": "src/uqm.c",
+    "source_sha256": "04cc733b400dbec892ada8167a89fec40dd0ae84fbd67aedf6b60a8334586233"
+  }
+]

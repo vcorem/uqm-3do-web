@@ -7,7 +7,13 @@
     "node": ">=22"
   },
   "scripts": {
-    "start": "node server/netplay.mjs",
+    "start": "bash scripts/run-rust-relay.sh",
+    "start:rust": "bash scripts/run-rust-relay.sh",
+    "start:node": "node server/netplay.mjs",
+    "pretest": "bash scripts/build-rust-relay.sh",
+    "test:rust": "bash scripts/test-rust-core.sh --all",
+    "test:rust:png": "bash tests/rust/test-png.sh",
+    "test:rust:lua": "bash tests/rust/test-lua.sh",
     "test": "node --test sc2/wasm/tests/*.test.cjs tests/server/*.test.mjs tests/web/*.test.cjs",
     "test:worker": "node --test --test-concurrency=1 --test-reporter=spec tests/worker/*.test.mjs",
     "test:browser": "node tests/browser/netplay.mjs",

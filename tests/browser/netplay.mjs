@@ -1,11 +1,11 @@
 // End-to-end tests use the real packaged game, two independent browsers, real
 // keyboard input, and the engine's checksums. No battle state is patched.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { chromium, firefox, webkit } from 'playwright';
-import { createNetplayServer } from '../../server/netplay.mjs';
+import { createGameBackend } from '../helpers/game-backend.mjs';
 
 const browserEngines = { chromium, firefox, webkit };
 const selectedEngines = [
@@ -28,24 +28,35 @@ function browserLaunchOptions(engine) {
 }
 
 const distDir = path.resolve(process.env.UQM_DIST || 'dist');
-// UQM_ORIGIN plays on a deployed game page (for example
-// https://urquanmasters.org/original/) through that site's own relay.
-// No local relay starts, so server-side delay scenarios are skipped.
-const remoteOrigin = process.env.UQM_ORIGIN || null;
+const peerDist = process.env.UQM_PEER_DIST ? path.resolve(process.env.UQM_PEER_DIST) : null;
 const output = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/browser');
-// UQM_EDITION=hd plays the Redrawn HD engine (UQM_DIST=.tools/hd-dist). Its settings
-// live in their own folder; the melee.cfg format and ship numbers are the same.
+// The HD engine has independent settings, but uses the same saved-fleet format
+// and ship indexes. Every peer in a test plays the selected edition.
 const edition = process.env.UQM_EDITION || 'original';
-if (!['original', 'hd'].includes(edition)) throw new Error('UQM_EDITION must be original or hd');
-const meleeConfig = (edition === 'hd' ? '/home/web_user/.uqm-hd' : '/home/web_user/.uqm') + '/melee.cfg';
+assert.ok(['original', 'hd'].includes(edition), 'UQM_EDITION must be original or hd');
+const meleeConfig = `/home/web_user/${edition === 'hd' ? '.uqm-hd' : '.uqm'}/melee.cfg`;
 await mkdir(output, { recursive: true });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+async function boundedDiagnostic(operation, label) {
+  let timer;
+  try {
+    return await Promise.race([operation, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out`)), 2000);
+    })]);
+  } finally { clearTimeout(timer); }
+}
 const results = [];
-if (!remoteOrigin) {
-  const buildHashes = Object.fromEntries(await Promise.all(
-    ['index.html', 'uqm-debug.wasm', 'uqm-debug.js', 'uqm-debug.worker.js', 'uqm-debug.data', 'netplay-client.js'].map(async file =>
-      [file, createHash('sha256').update(await readFile(path.join(distDir, file))).digest('hex')])));
-  await writeFile(path.join(output, 'build-hashes.json'), JSON.stringify(buildHashes, null, 2) + '\n');
+const buildHashes = Object.fromEntries(await Promise.all(
+  ['index.html', 'uqm-debug.wasm', 'uqm-debug.js', 'uqm-debug.worker.js', 'uqm-debug.data', 'netplay-client.js'].map(async file =>
+    [file, createHash('sha256').update(await readFile(path.join(distDir, file))).digest('hex')])));
+await writeFile(path.join(output, 'build-hashes.json'), JSON.stringify(buildHashes, null, 2) + '\n');
+let peerBuildHashes;
+if (peerDist) {
+  peerBuildHashes = Object.fromEntries(await Promise.all(Object.keys(buildHashes).map(async file =>
+    [file, createHash('sha256').update(await readFile(path.join(peerDist, file))).digest('hex')])));
+  assert.notEqual(peerBuildHashes['uqm-debug.wasm'], buildHashes['uqm-debug.wasm'],
+    'Differential testing requires independent C and Rust engine builds');
+  await writeFile(path.join(output, 'peer-build-hashes.json'), JSON.stringify(peerBuildHashes, null, 2) + '\n');
 }
 
 async function readState(page) {
@@ -85,27 +96,31 @@ async function checkSynchronization(pages, minimum) {
 // A normal saved Melee configuration: two Earthlings at top, two Shofixti
 // at bottom. Shofixti's original special lets us finish a fleet deterministically
 // using keyboard input, without cheating or waiting for an AI combat outcome.
-function seedFleet(file) {
+function seedFleet({ file, guestShip }) {
   const bytes = new Uint8Array(140);
   for (let side = 0; side < 2; side++) {
     const offset = side * 70;
     bytes[offset] = 17; // HUMAN_CONTROL | STANDARD_RATING
     bytes.fill(255, offset + 1, offset + 15);
-    bytes[offset + 1] = bytes[offset + 2] = side === 1 ? 13 : 5;
+    bytes[offset + 1] = bytes[offset + 2] = side === 1 ? 13 : guestShip;
     bytes.set(new TextEncoder().encode(side ? 'Test host' : 'Test guest'), offset + 15);
   }
   FS.writeFile(file, bytes);
   return Array.from(bytes);
 }
 
-async function scenario(name, latencyPatternMs, disconnectAt) {
-  const app = remoteOrigin ? null : createNetplayServer({ distDir, latencyPatternMs });
-  const origin = remoteOrigin ?? `http://127.0.0.1:${(await app.listen(0)).port}`;
+async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) {
+  const app = createGameBackend({ distDir, latencyPatternMs }, peerDist);
+  const address = await app.listen(0);
+  const origin = `http://127.0.0.1:${address.port}`;
   const browsers = [];
   const pages = [];
+  const fetchedWasm = [[], []];
+  const roomSockets = [[], []];
   const failures = [];
   const entry = {
-    name, edition, latencyPatternMs, passed: false,
+    name, edition, latencyPatternMs, passed: false, relay: process.env.UQM_RELAY || 'node',
+    distDir, peerDist,
     browsers: selectedEngines.map((engine, index) => ({
       role: index === 0 ? 'host' : 'guest', engine, version: null,
     })),
@@ -120,17 +135,52 @@ async function scenario(name, latencyPatternMs, disconnectAt) {
       browsers.push(browser);
       entry.browsers[i].version = browser.version();
       const context = await browser.newContext({ viewport: { width: 1100, height: 1100 } });
+      // HD's large media response can evict Wasm from the browser inspector's
+      // response cache. Hash the exact server response before forwarding those
+      // unchanged bytes to the browser; this also works outside Chromium.
+      await context.route('**/uqm-debug.wasm', async route => {
+        const verified = (async () => {
+          const response = await route.fetch();
+          const bytes = await response.body();
+          const hash = createHash('sha256').update(bytes).digest('hex');
+          await route.fulfill({ response, body: bytes });
+          return hash;
+        })().catch(error => {
+          failures.push(`${i}: Wasm response could not be verified: ${error.message}`);
+          return null;
+        });
+        fetchedWasm[i].push(verified);
+        await verified;
+      });
+      if (i === 1 && peerDist) {
+        await context.addCookies([{ name: 'uqm_test_peer', value: '1', url: origin }]);
+      }
       const page = await context.newPage();
       page.setDefaultTimeout(30000);
-      page.on('pageerror', error => failures.push(`${i}: ${error.message}`));
+      page.on('websocket', socket => roomSockets[i].push(socket.url()));
+      page.on('pageerror', error => failures.push(`${i}: ${error.stack || error.message}`));
+      page.on('console', message => {
+        if (['error', 'warning'].includes(message.type())) {
+          entry.browserConsole ||= [];
+          if (entry.browserConsole.length < 100) entry.browserConsole.push({ player: i,
+            type: message.type(), text: message.text() });
+        }
+      });
       page.on('crash', () => failures.push(`${i}: page crashed`));
       pages.push(page);
     }
     await Promise.all(pages.map(page => page.goto(origin)));
     await Promise.all(pages.map(page => page.waitForFunction(() => runtimeReady,
       null, { polling: 100, timeout: 90000 })));
-    const expectedFleet = await pages[0].evaluate(seedFleet, meleeConfig);
-    await pages[1].evaluate(seedFleet, meleeConfig);
+    entry.fetchedWasmHashes = await Promise.all(fetchedWasm.map(responses => Promise.all(responses)));
+    for (let i = 0; i < 2; i++) {
+      assert.ok(entry.fetchedWasmHashes[i].length > 0, `Player ${i} did not fetch the expected engine`);
+      const expected = i === 1 && peerDist ? peerBuildHashes : buildHashes;
+      for (const hash of entry.fetchedWasmHashes[i]) assert.equal(hash, expected['uqm-debug.wasm']);
+    }
+    const fleet = { file: meleeConfig, guestShip: smokeShip ?? 5 };
+    const expectedFleet = await pages[0].evaluate(seedFleet, fleet);
+    await pages[1].evaluate(seedFleet, fleet);
     // Persist the baseline before launching so reload can detect accidental
     // replacement of local fleet/control settings by the online session.
     await Promise.all(pages.map(page => page.evaluate(() => new Promise((resolve, reject) =>
@@ -142,12 +192,39 @@ async function scenario(name, latencyPatternMs, disconnectAt) {
     await pages[1].locator('#join-room').click();
     await Promise.all(pages.map(page => page.locator('#launch-online').click()));
     await waitState(pages, 'inSetup');
+    entry.roomSocketURLs = roomSockets;
+    for (const [i, urls] of roomSockets.entries()) {
+      assert.equal(urls.length, 1, `Player ${i} must use one room WebSocket`);
+      const url = new URL(urls[0]);
+      const expectedPath = edition === 'hd' ? /^\/netplay\/hd\/[a-f0-9]{32}$/ : /^\/netplay\/[a-f0-9]{32}$/;
+      assert.match(url.pathname, expectedPath, `Player ${i} connected to the wrong edition's relay path`);
+      assert.equal(url.searchParams.get('role'), i === 0 ? 'host' : 'guest');
+    }
     console.log(`${name}: both players in fleet setup`);
     await Promise.all(pages.map(page => page.locator('#canvas').click()));
     if (disconnectAt !== 'setup') {
       await enterUntil(pages, 'selectShip');
       await enterUntil(pages, 'inBattle');
       await checkSynchronization(pages, 60);
+      if (smokeShip !== null) {
+        entry.shipIndex = smokeShip;
+        const before = await Promise.all(pages.map(readState));
+        await Promise.all([pages[0].keyboard.down('ArrowUp'), pages[1].keyboard.down('ArrowUp'),
+          pages[1].keyboard.down('ArrowLeft'), pages[1].keyboard.down('ControlRight')]);
+        await sleep(2500);
+        await pages[1].keyboard.up('ControlRight');
+        await pages[1].keyboard.down('ShiftRight');
+        await sleep(2500);
+        await Promise.all([pages[0].keyboard.up('ArrowUp'), pages[1].keyboard.up('ArrowUp'),
+          pages[1].keyboard.up('ArrowLeft'), pages[1].keyboard.up('ShiftRight')]);
+        entry.statsAfterAbilities = await checkSynchronization(pages,
+          Math.max(...before.map(state => state.checksumsVerified || 0)) + 90);
+        await pages[0].screenshot({ path: path.join(output, `${name}-abilities.png`) });
+        assert.deepEqual(failures, []);
+        entry.passed = true;
+        console.log(`${name}: movement, weapon and special input passed without checksum mismatch`);
+        return;
+      }
       await Promise.all([pages[0].keyboard.down('ArrowUp'), pages[1].keyboard.down('ArrowUp'),
         pages[1].keyboard.down('ControlRight'), pages[1].keyboard.down('ArrowLeft')]);
       await sleep(3000);
@@ -183,7 +260,7 @@ async function scenario(name, latencyPatternMs, disconnectAt) {
       }
     }
     // Closing a real browser, rather than merely updating a mocked connection,
-    // exercises relay departure and the C wait/cleanup paths together.
+    // exercises relay departure and the engine's wait/cleanup paths together.
     await browsers[1].close();
     await pages[0].waitForFunction(() => Module.webNet.state === 'closed', null, { polling: 100 });
     await sleep(1500);
@@ -209,23 +286,46 @@ async function scenario(name, latencyPatternMs, disconnectAt) {
     console.log(`${name}: ${disconnectAt} disconnect and persisted local settings passed`);
   } catch (error) {
     entry.error = error.stack || String(error);
-    for (let i = 0; i < pages.length; i++) {
-      if (!pages[i].isClosed()) {
-        await pages[i].screenshot({ path: path.join(output, `${name}-failure-${i}.png`) }).catch(() => {});
-        await writeFile(path.join(output, `${name}-failure-${i}.log`),
-          await pages[i].locator('#log').textContent().catch(() => 'page unavailable'));
-        entry[`state${i}`] = await readState(pages[i]).catch(() => null);
-      }
-    }
+    entry.browserErrors = failures;
+    // Preserve the real failure before optional screenshots or a stalled
+    // compositor can delay diagnostics and browser shutdown.
+    await writeFile(path.join(output, 'results.json'), JSON.stringify(results, null, 2) + '\n');
+    entry.diagnosticErrors = [];
+    await Promise.all(pages.map(async (page, i) => {
+      const screenshot = path.join(output, `${name}-failure-${i}.png`);
+      await rm(screenshot, { force: true });
+      if (page.isClosed()) return;
+      const record = diagnostic => {
+        entry.diagnosticErrors.push(`${i}: ${diagnostic.message}`);
+        return null;
+      };
+      const [state, log] = await Promise.all([
+        boundedDiagnostic(readState(page), 'Engine state collection').catch(record),
+        boundedDiagnostic(page.locator('#log').textContent(), 'Engine log collection').catch(record),
+      ]);
+      entry[`state${i}`] = state;
+      await writeFile(path.join(output, `${name}-failure-${i}.log`), log ?? 'page unavailable');
+      await page.screenshot({ path: screenshot, timeout: 5000 }).catch(record);
+    }));
     throw error;
   } finally {
-    await Promise.allSettled(browsers.map(browser => browser.close()));
-    await app?.close();
+    // A failed browser close must not hide the test result already collected.
     await writeFile(path.join(output, 'results.json'), JSON.stringify(results, null, 2) + '\n');
+    await Promise.allSettled(browsers.map(browser => browser.close()));
+    await app.close();
   }
 }
 
-await scenario('normal', [0], 'selection');
-if (!remoteOrigin) await scenario('jitter', [80, 120, 30, 60], 'battle');
-await scenario('setup', [0], 'setup');
+if (process.env.UQM_SHIP_SMOKE) {
+  const ships = process.env.UQM_SHIP_SMOKE === 'all'
+    ? Array.from({ length: 25 }, (_, index) => index)
+    : process.env.UQM_SHIP_SMOKE.split(',').map(Number);
+  assert.ok(ships.length && ships.every(ship => Number.isInteger(ship) && ship >= 0 && ship < 25),
+    'UQM_SHIP_SMOKE must be all or comma-separated Melee indexes 0..24');
+  for (const ship of [...new Set(ships)]) await scenario(`ship-${ship}`, [0], 'battle', ship);
+} else {
+  await scenario('normal', [0], 'selection');
+  await scenario('jitter', [80, 120, 30, 60], 'battle');
+  await scenario('setup', [0], 'setup');
+}
 console.log(`All real-browser multiplayer scenarios passed. See ${path.join(output, 'results.json')}.`);

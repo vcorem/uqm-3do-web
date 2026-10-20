@@ -1,0 +1,41 @@
+{
+  "translator_commit": "105afacc8d84e64df860bed470453edf6e0865fd",
+  "target": "wasm32-unknown-emscripten",
+  "rust_toolchain": "nightly-2025-02-01",
+  "rust_flags": [
+    "-Ctarget-feature=+atomics,+bulk-memory,+mutable-globals",
+    "-Cpanic=abort"
+  ],
+  "llvm_version": "18.1.8",
+  "translator_repository": "https://github.com/immunant/c2rust.git",
+  "hd_repository": "https://github.com/JHGuitarFreak/UQM-MegaMod.git",
+  "hd_commit": "1eece12ff9a89d029a5d1f65ead7c75f9ab78acb",
+  "emscripten_version": "3.1.50",
+  "runtime_status": "Generated Rust engine bodies plus verified uqm-core and Rust PNG orchestration; browser validation is recorded in main test reports. C is limited to platform entry/JS-string storage/libpng error and I/O guards; HD Lua remains an external third-party runtime.",
+  "translate_const_macros": "none",
+  "translate_fn_macros": "none",
+  "macro_policy": "Preserve every Clang-expanded expression; never merge macro invocations into reconstructed Rust constants/functions.",
+  "reproduction_sha256": {
+    "scripts/rust-engine/c2rust-wasm.patch": "8e1cf577f5f10c976ba3dbb622aeac5dca5079342792208d8d70afe97431f8e9",
+    "scripts/rust-engine/hd-starmap-prelude.h": "8b9e16fca0acd5b16a5461ae01abad5a41103b64569a7eae0352af6d3027a543",
+    "scripts/rust-engine/original-inputs.json": "f8aadbe1351c04287aa827ddc0f72bbdfccfa1551d79b1f676ab3c2b752ae31a",
+    "scripts/rust-engine/hd-inputs.json": "d0bff1df7a2b4e5797ddbe6444a51fd4a34b876ea9956b5f96df7f6f1a729fa1",
+    "scripts/rust-engine/setup-translator.sh": "d717e195f99b0b57a810452ab2bd88f35d29af1c6045333c4f2583564c04be3c",
+    "scripts/rust-engine/compile-db.py": "d2a4d7a5ae10a0214554c82eb19b38b6ffe291c0935f948467c29f7b34d8004e",
+    "scripts/rust-engine/regenerate.py": "081b562b3c0095dcb2ae0b2b2508873dc18df0e55a4758b533de0a13f30466e6",
+    "scripts/rust-engine/init-fix.py": "71cd62ce878e6f216f8f89052e347f058cb93563a770f5bf036c1b3f7f7be6f6",
+    "scripts/rust-engine/normalize.py": "2753e191b6a8cefe7bd9b587cf9b426589f43138969b80b9a92e78cfabd3f4b4",
+    "scripts/rust-engine/package.py": "bda18a6449c7caec0750a57a3feacf9abe073e8b99af37f593fcc4c62999a183",
+    "scripts/rust-engine/solar-sort-fix.py": "ed780845c889830a26b507f04d2062861bb25cdbd4bf27d61303ceb9f46a7004",
+    "scripts/rust-engine/asm-const-fix.py": "a939f4916675908c33df5162ab8a3b869c0786a998e5983818abba238c4fb2ea",
+    "scripts/rust-engine/lua-fix.py": "e67cde83954178b31369017205f8cdc7de7cc3af5e7b654a1efdebce6171e22c",
+    "scripts/rust-engine/lua-propagate/Cargo.toml": "0134c1c82142b0a03816df070462dfee81995f069b5d269d69c94dd7fa20f714",
+    "scripts/rust-engine/lua-propagate/Cargo.lock": "8538d4d8d48c697d29797bce81cd7ed866ac738f4bac9bbbe63ff04c950cbe0f",
+    "scripts/rust-engine/lua-propagate/src/main.rs": "e653e01ef39cf1df52d1d9218b515fdc21f1a4562fc2ddc666b3bdc24fd94da3",
+    "scripts/rust-engine/verify-provenance.py": "f1a49556098fd4dc30a3cd660ea9dd15234fb44606acf78f22e62708000a12ac",
+    "hd/patches/0006-web-netplay.patch": "54b392de0a110eb663ce6cace3b245d3a556ea434446dde7d9a17c82c7f6b15c",
+    "hd/patches/0007-rust-netplay-crc.patch": "fd55e6653cfb22f3821e91cbd9eab23f7e0fe3c95ec82aacc5ee556b5bede0e1"
+  },
+  "hd_web_netplay_source_commit": "5d7810ba5302803abe537f1b669d696a3af073ad",
+  "hd_web_netplay_repository": "https://github.com/vcorem/uqm-3do-web"
+}

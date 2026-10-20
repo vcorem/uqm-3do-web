@@ -1,2 +1,5 @@
 # Unified patches preserve upstream indentation and blank context lines verbatim.
 hd/patches/*.patch -whitespace
+# Copied upstream attribution and license documents retain their exact bytes.
+rust/uqm-engine-original/notices/** -whitespace
+rust/uqm-engine-hd/notices/** -whitespace

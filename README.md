@@ -5,15 +5,23 @@ A local WebAssembly port of UQM 0.8.0, based on
 `daadbb540a8c46f09dcdb0080b4212fb33e6cb94` (2023-12-10).
 The reference target is **Star Control II for the 3DO**.
 
+**Rust port branch (`codex/rust-port`).** Both Original and HD game engines
+build from Rust implementations, alongside a native Rust network relay.
+The engine translation retains substantial `unsafe` code and the original C ABI;
+SDL, codecs and the HD Lua interpreter remain external dependencies. JavaScript
+handles browser APIs and the launcher. This is not a memory-safe rewrite.
+See [Rust scope, build requirements and validation](docs/rust-port.md).
+
 **Status: private alpha.** The campaign, local Melee and private two-player
-Online Melee run in the browser. Online combat has been exercised in two
+Online Melee run in the browser. Original and HD online combat have been exercised in two
 independent browser processes on one computer, including full fleet matches,
 rematches, simulated delay and disconnect recovery, with matching simulation
 checksums and no observed mismatch. Two separate computers over the internet
 and the complete 3DO fidelity checklist are still unverified. No public
-release or deployment has been made.
+release or deployment of this Rust branch has been made.
 
-The original C engine, ships, physics and game artwork remain in place.
+The original ships, physics and artwork remain in place. On this branch,
+the game implementations compile from Rust to WebAssembly.
 The browser launcher selects 3DO menus, fonts, scan icons, shields, scrolling
 and melee zoom. The checkout includes 3DO music and speech. Original 3DO
 videos are included in the repository content: intro, ending and all 25 ship
@@ -26,8 +34,9 @@ See [compatibility scope and remaining checks](docs/3do-compatibility.md).
 
 An optional combined build opens with an edition picker: **Original 3DO** or
 **Redrawn HD**, using actual 1280×960 artwork from UQM MegaMod 0.8.5. Only the
-selected edition downloads. HD has its own campaign saves, local Melee and
-Online Melee against other HD players; HD and Original rooms are separate.
+selected edition downloads. Both editions support campaign, local Melee and
+Online Melee with another player using the same edition. HD has separate saves
+and rooms; HD and Original cannot play one another.
 See [HD build, storage and attribution](docs/hd-edition.md).
 
 Build the selection screen and both editions with `./scripts/build-editions.sh`.
@@ -46,7 +55,7 @@ In a ship selection menu, press **Alt / Option** for the ship video.
 
 ## Play Online Melee locally
 
-Use Node.js 22 or newer. After building the game, start the combined game and
+Use Node.js 22 or newer and the pinned Rust toolchain described below. After building the game, start the Rust game and
 room server on a separate port so an existing campaign preview can stay open:
 
 ```sh
@@ -54,12 +63,22 @@ npm ci
 npm start -- --port 10000
 ```
 
-Open **http://127.0.0.1:10000/**. Create a room, copy its invite, then open the
+The first start compiles the Rust relay. `npm run start:node` runs the retained
+Node reference server for comparison.
+
+Open **http://127.0.0.1:10000/** and choose an edition if using the combined
+package. Create a room on that edition's page, copy its invite, then open the
 invite in a second browser page and click **Join room**. When both players are
 connected and the game has loaded, each clicks **Launch online Melee**. In the
-original Melee screen, configure the fleets, confirm Start Melee on both sides
+Melee screen, configure the fleets, confirm Start Melee on both sides
 and choose ships. The host controls the bottom fleet; the guest controls the
-top fleet. Both use the player-one keyboard template.
+top fleet. Both use the player-one keyboard template; HD uses the arrow-key
+controls. An HD invitation preserves the HD page address, so its recipient
+launches the matching engine.
+
+Original rooms connect to `/netplay/<room>` and HD rooms connect to
+`/netplay/hd/<room>`. One relay serves both, with separate room identities and
+shared capacity limits. A matching room code cannot connect different editions.
 
 Rooms use the original UQM netplay protocol and simulation over an ordered
 WebSocket relay, with a three-frame default input delay. Browser callbacks
@@ -79,7 +98,7 @@ they do not run the room relay.
 ## Build locally
 
 Requirements: Git, Python 3.10 or newer for the current SDK installer, a POSIX
-shell and Make. macOS needs the Xcode command-line tools. The compiler and
+shell, Make and Rustup. macOS needs the Xcode command-line tools. The compiler and
 its caches live inside `.tools/emsdk`; no shell startup changes are needed.
 
 ```sh
@@ -87,17 +106,19 @@ mkdir -p .tools
 git clone https://github.com/emscripten-core/emsdk.git .tools/emsdk
 .tools/emsdk/emsdk install 3.1.50
 .tools/emsdk/emsdk activate 3.1.50
+rustup toolchain install 1.85.1 --profile minimal --component rustfmt --component clippy
+rustup toolchain install "$(cat .rust-wasm-toolchain)" --profile minimal --component rust-src --target wasm32-unknown-emscripten
 ./scripts/build-web.sh
 python3 scripts/serve.py
 ```
 
 If the default Python is older, set `EMSDK_PYTHON` to a Python 3.10+ executable
 when running the SDK installer. The SDK supplies its own runtime afterward.
-Use `JOBS=8 ./scripts/build-web.sh` to change build concurrency.
-The script selects the browser network configuration, refreshes the original
-build system's source list, and relinks the page on every package build so
-changes to the launcher or storage script cannot leave stale output. Compiled
-objects and downloaded compiler ports are reused when their dependencies allow.
+The script configures browser dependencies, compiles the Rust engine and
+relinks the page on every package build so launcher or storage edits cannot
+leave stale output. Compiler outputs and downloaded ports are cached.
+Use `UQM_CORE=c` for the C reference, or `UQM_CORE=hybrid` for the intermediate
+core migration; default `UQM_CORE=rust` uses the whole Rust game engine.
 To keep a separate preview package, use an absolute output path, for example
 `BUILD_OUTPUT="$PWD/.tools/netplay-dist" ./scripts/build-web.sh`.
 Emscripten **3.1.50** is pinned in `.emscripten-version`; the build script
@@ -122,14 +143,18 @@ Serve `.wasm` as `application/wasm`. Use HTTPS outside localhost. Opening the
 HTML as a file, or using a server without the isolation headers, will not
 support the shared memory used by the game. The initial content bundle is
 large because it includes the complete campaign voice recordings and installed
-3DO videos. Online Melee additionally needs the same-origin Node relay at
-`/netplay/`; a static host alone is insufficient.
+3DO videos. Online Melee additionally needs the same-origin Rust or Node relay at
+`/netplay/`, including its `/netplay/hd/` subtree; a static host alone is
+insufficient.
 
 ## Saving and controls
 
 Saves and preferences use IndexedDB on the current browser origin. Keep the
 same hostname and port to access the same saves. Clearing site data removes
-them. Browser persistence is requested on the first write; storage is still
+them. Original mounts `/home/web_user/.uqm`; HD mounts
+`/home/web_user/.uqm-hd`. Switching editions or starting an online session does
+not convert campaign saves between engines. Browser persistence is requested
+on the first write; storage is still
 subject to the browser's policy. A storage failure is shown in the launcher;
 if initial loading fails, the game can run in memory without overwriting
 existing database saves. Writes are serialized to avoid overlapping flushes.
@@ -153,8 +178,10 @@ npm run test:browser
 npm run test:subtitles
 bash -n scripts/build-web.sh
 python3 -m py_compile scripts/serve.py
-# Optional redrawn HD engine, campaign and edition-switch checks:
+# Optional redrawn HD engine, online, campaign and edition-switch checks:
 ./scripts/build-hd-web.sh
+UQM_EDITION=hd UQM_RELAY=rust UQM_DIST=.tools/hd-dist \
+  UQM_TEST_OUTPUT=test-results/hd-netplay npm run test:browser
 UQM_DIST=.tools/hd-dist npm run test:hd-campaign
 UQM_DIST=.tools/hd-dist npm run test:hd-stability
 python3 scripts/package-editions.py --original dist --hd .tools/hd-dist --output .tools/editions-dist
@@ -162,7 +189,9 @@ UQM_DIST=.tools/editions-dist npm run test:editions
 ```
 
 Browser smoke checks and their limitations are recorded separately in
-[the validation record](docs/validation.md). A passing build or one playable
+[the original validation record](docs/validation.md) and
+[the Rust validation record](docs/rust-validation.md). The latter records
+which Rust Original and HD checks have completed. A passing build or one playable
 battle does not establish exact 3DO fidelity or complete campaign coverage.
 The upstream fork lists missing Firefox audio samples and unsupported SDL
 mixing/threading paths; this build retains OpenAL and pthreads.
@@ -181,6 +210,9 @@ fleet settings. It writes diagnostics and screenshots to the ignored
 `test-results/browser/` directory. Use `UQM_DIST=/absolute/path/to/package` to
 test a separate build. These are automated regression scenarios; the
 validation record distinguishes completed runs from remaining checks.
+Set `UQM_EDITION=hd` for an HD package; the default is `original`. Both peers
+must use the same edition. `UQM_PEER_DIST` can supply an independent C build of
+that edition for comparison with Rust; see [Rust verification](docs/rust-port.md#verification).
 
 To exercise other engines or a mixed pair, install the matching Playwright
 browsers and choose the host and guest separately:
@@ -201,7 +233,7 @@ in fresh Chromium sessions. It checks actual voiced dialogue and changing
 subtitle pixels with the launcher override, then removes the override to verify
 that the saved disabled preference hides text while speech keeps playing.
 Use `UQM_DIST`, `UQM_TEST_OUTPUT` and `CHROME_BIN` as above. This local desktop
-regression uses timed navigation and is not part of CI.
+regression uses timed navigation and runs in CI alongside the Rust engine checks.
 
 GitHub Actions runs the unit and network checks, including the real-browser
 Melee scenarios, both pinned-toolchain engine builds, HD campaign travel,

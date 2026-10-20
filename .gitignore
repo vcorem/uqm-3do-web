@@ -19,7 +19,7 @@ dist/
 __pycache__/
 
 # Node relay dependencies and browser test artifacts
-node_modules/
+node_modules
 test-results/
 playwright-report/
 
@@ -29,3 +29,5 @@ playwright-report/
 # Cloudflare deployment output
 deploy/data-parts.json
 deploy/.wrangler/
+# Rust build outputs (toolchains remain under .tools/)
+target/

@@ -1,0 +1,1778 @@
+//Copyright Paul Reiche, Fred Ford. 1992-2002
+
+/*
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ */
+
+// Rust translation of src/uqm/planets/generate/gensam.c.
+extern "C" {
+    pub type string_table_entry;
+    pub type string_table;
+    pub type frame_desc;
+    pub type font_desc;
+    pub type drawable_desc;
+    pub type RandomContext;
+    fn __assert_fail(
+        _: *const ::core::ffi::c_char,
+        _: *const ::core::ffi::c_char,
+        _: ::core::ffi::c_int,
+        _: *const ::core::ffi::c_char,
+    ) -> !;
+    fn ReinitQueue(pq: *mut QUEUE);
+    fn CountLinks(pq: *mut QUEUE) -> COUNT;
+    fn LoadGraphicInstance(res: RESOURCE) -> *mut ::core::ffi::c_void;
+    fn CaptureDrawable(Drawable: DRAWABLE) -> FRAME;
+    fn LoadStringTableInstance(res: RESOURCE) -> STRING_TABLE;
+    fn DestroyStringTable(StringTable: STRING_TABLE) -> BOOLEAN;
+    fn CaptureStringTable(StringTable: STRING_TABLE) -> STRING;
+    fn ReleaseStringTable(String: STRING) -> STRING_TABLE;
+    fn SetRelStringTableIndex(String: STRING, StringTableOffs: SIZE) -> STRING;
+    static mut resolutionFactor: ::core::ffi::c_uint;
+    static mut optSeedType: ::core::ffi::c_int;
+    static mut sinetab: [SDWORD; 0];
+    fn ARCTAN(delta_x: SDWORD, delta_y: SDWORD) -> COUNT;
+    fn setGameStateUint(name: *const ::core::ffi::c_char, val: DWORD);
+    fn getGameStateUint(name: *const ::core::ffi::c_char) -> DWORD;
+    static mut GlobData: GLOBDATA;
+    fn RandomContext_Random(context: *mut RandomContext) -> DWORD;
+    fn RandomContext_GetSeed(context: *mut RandomContext) -> DWORD;
+    fn RangeMinMax(
+        min: ::core::ffi::c_int,
+        max: ::core::ffi::c_int,
+        rand: DWORD,
+    ) -> ::core::ffi::c_int;
+    static mut SysGenRNG: *mut RandomContext;
+    fn matchWorld(
+        solarSys: *const SOLARSYS_STATE,
+        world: *const PLANET_DESC,
+        planetI: BYTE,
+        moonI: BYTE,
+    ) -> bool;
+    fn planetOuterLocation(planetI: COUNT) -> POINT;
+    fn LoadStdLanderFont(info: *mut PLANET_INFO);
+    fn FreeLanderFont(info: *mut PLANET_INFO);
+    fn XFormIPLoc(pIn: *mut POINT, pOut: *mut POINT, ToDisplay: BOOLEAN);
+    fn ComputeSpeed(planet: *mut PLANET_DESC, GeneratingMoons: BOOLEAN, rand_val: UWORD);
+    fn PickClosestHabitable(solarSys: *mut SOLARSYS_STATE) -> BYTE;
+    fn GenerateDefault_uninitNpcs(solarSys: *mut SOLARSYS_STATE) -> bool;
+    fn GenerateDefault_generatePlanets(solarSys: *mut SOLARSYS_STATE) -> bool;
+    fn GenerateDefault_generateMoons(
+        solarSys: *mut SOLARSYS_STATE,
+        planet: *mut PLANET_DESC,
+    ) -> bool;
+    fn GenerateDefault_generateName(
+        _: *const SOLARSYS_STATE,
+        world: *const PLANET_DESC,
+    ) -> bool;
+    fn GenerateDefault_generateOrbital(
+        solarSys: *mut SOLARSYS_STATE,
+        world: *mut PLANET_DESC,
+    ) -> bool;
+    fn GenerateDefault_generateMinerals(
+        _: *const SOLARSYS_STATE,
+        world: *const PLANET_DESC,
+        whichNode: COUNT,
+        _: *mut NODE_INFO,
+    ) -> COUNT;
+    fn GenerateDefault_generateLife(
+        _: *const SOLARSYS_STATE,
+        world: *const PLANET_DESC,
+        whichNode: COUNT,
+        _: *mut NODE_INFO,
+    ) -> COUNT;
+    fn GenerateDefault_pickupMinerals(
+        _: *mut SOLARSYS_STATE,
+        world: *mut PLANET_DESC,
+        whichNode: COUNT,
+    ) -> bool;
+    fn GenerateDefault_pickupLife(
+        _: *mut SOLARSYS_STATE,
+        world: *mut PLANET_DESC,
+        whichNode: COUNT,
+    ) -> bool;
+    fn GenerateDefault_generateRuins(
+        _: *const SOLARSYS_STATE,
+        whichNode: COUNT,
+        info: *mut NODE_INFO,
+    ) -> COUNT;
+    fn GenerateDefault_landerReportCycle(_: *mut SOLARSYS_STATE) -> bool;
+    fn GenerateWorlds(whichType: BYTE) -> BYTE;
+    fn GenerateHabitableWorld() -> BYTE;
+    fn PlanetByteGen(pPDesc: *mut PLANET_DESC) -> BYTE;
+    fn CloneShipFragment(
+        shipIndex: RACE_ID,
+        pDstQueue: *mut QUEUE,
+        crew_level: COUNT,
+    ) -> HSHIPFRAG;
+    fn StartSphereTracking(race: RACE_ID) -> COUNT;
+    fn EscortFeasibilityStudy(race: RACE_ID) -> COUNT;
+    fn RaceDead(race: RACE_ID) -> BOOLEAN;
+    static mut CurStarDescPtr: *mut STAR_DESC;
+    fn DoDiscoveryReport(ReadOutSounds: SOUND);
+    fn InitCommunication(which_comm: CONVERSATION) -> COUNT;
+    static mut EncounterRace: SIZE;
+    static mut EncounterGroup: BYTE;
+    static mut SpaceMusicOK: BOOLEAN;
+    static mut MenuSounds: SOUND;
+    fn GetGroupInfo(offset: DWORD, which_group: BYTE) -> BOOLEAN;
+    fn PutGroupInfo(offset: DWORD, which_group: BYTE) -> DWORD;
+    fn findRaceSOI();
+}
+pub type uint8 = ::core::ffi::c_uchar;
+pub type sint8 = ::core::ffi::c_schar;
+pub type uint16 = ::core::ffi::c_ushort;
+pub type sint16 = ::core::ffi::c_short;
+pub type uint32 = ::core::ffi::c_uint;
+pub type sint32 = ::core::ffi::c_int;
+pub type BYTE = uint8;
+pub type SBYTE = sint8;
+pub type UWORD = uint16;
+pub type SWORD = sint16;
+pub type DWORD = uint32;
+pub type SDWORD = sint32;
+pub type COUNT = UWORD;
+pub type SIZE = SWORD;
+pub type UNICODE = ::core::ffi::c_char;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct BOOLEAN(pub ::core::ffi::c_uint);
+impl BOOLEAN {
+    pub const FALSE: Self = Self(0);
+    pub const TRUE: Self = Self(1);
+}
+pub type QUEUE_HANDLE = *mut ::core::ffi::c_void;
+pub type HLINK = QUEUE_HANDLE;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct link {
+    pub pred: HLINK,
+    pub succ: HLINK,
+}
+pub type LINK = link;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct QUEUE {
+    pub head: HLINK,
+    pub tail: HLINK,
+    pub pq_tab: *mut BYTE,
+    pub free_list: HLINK,
+    pub object_size: COUNT,
+    pub num_objects: BYTE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct CLOCK_STATE {
+    pub day_index: BYTE,
+    pub month_index: BYTE,
+    pub year_index: COUNT,
+    pub tick_count: SIZE,
+    pub day_in_ticks: SIZE,
+    pub event_q: QUEUE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct Color {
+    pub r: BYTE,
+    pub g: BYTE,
+    pub b: BYTE,
+    pub a: BYTE,
+}
+pub type RESOURCE = *const ::core::ffi::c_char;
+pub type STRING_TABLE_ENTRY_DESC = string_table_entry;
+pub type STRING_TABLE_DESC = string_table;
+pub type STRING_TABLE = *mut STRING_TABLE_DESC;
+pub type STRING = *mut STRING_TABLE_ENTRY_DESC;
+pub type FRAME_DESC = frame_desc;
+pub type FONT_DESC = font_desc;
+pub type DRAWABLE_DESC = drawable_desc;
+pub type FRAME = *mut FRAME_DESC;
+pub type FONT = *mut FONT_DESC;
+pub type DRAWABLE = *mut DRAWABLE_DESC;
+pub type COORD = SWORD;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct extent {
+    pub width: COORD,
+    pub height: COORD,
+}
+pub type EXTENT = extent;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct point {
+    pub x: COORD,
+    pub y: COORD,
+}
+pub type POINT = point;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct stamp {
+    pub origin: POINT,
+    pub frame: FRAME,
+}
+pub type STAMP = stamp;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct rect {
+    pub corner: POINT,
+    pub extent: EXTENT,
+}
+pub type RECT = rect;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct line {
+    pub first: POINT,
+    pub second: POINT,
+}
+pub type LINE = line;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct TEXT_ALIGN(pub ::core::ffi::c_uint);
+impl TEXT_ALIGN {
+    pub const ALIGN_LEFT: Self = Self(0);
+    pub const ALIGN_CENTER: Self = Self(1);
+    pub const ALIGN_RIGHT: Self = Self(2);
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct text {
+    pub baseline: POINT,
+    pub pStr: *const UNICODE,
+    pub align: TEXT_ALIGN,
+    pub CharCount: COUNT,
+}
+pub type TEXT = text;
+pub type COLORMAP = STRING;
+pub type GRAPHICS_PRIM = BYTE;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union PRIM_DESC {
+    pub Point: POINT,
+    pub Stamp: STAMP,
+    pub Line: LINE,
+    pub Text: TEXT,
+    pub Rect: RECT,
+}
+pub type PRIM_LINKS = DWORD;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct PRIMITIVE {
+    pub Links: PRIM_LINKS,
+    pub Type: GRAPHICS_PRIM,
+    pub color: Color,
+    pub Object: PRIM_DESC,
+    pub flags: BYTE,
+}
+pub type SOUND = STRING;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed {
+    pub const OPTVAL_PRIME: Self = Self(0);
+    pub const OPTVAL_PLANET: Self = Self(1);
+    pub const OPTVAL_MRQ: Self = Self(2);
+    pub const OPTVAL_STAR: Self = Self(3);
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct SIS_STATE {
+    pub log_x: SDWORD,
+    pub log_y: SDWORD,
+    pub ResUnits: DWORD,
+    pub FuelOnBoard: DWORD,
+    pub CrewEnlisted: COUNT,
+    pub TotalElementMass: COUNT,
+    pub TotalBioMass: COUNT,
+    pub ModuleSlots: [BYTE; 16],
+    pub DriveSlots: [BYTE; 11],
+    pub JetSlots: [BYTE; 8],
+    pub NumLanders: BYTE,
+    pub ElementAmounts: [COUNT; 8],
+    pub ShipName: [UNICODE; 32],
+    pub CommanderName: [UNICODE; 32],
+    pub PlanetName: [UNICODE; 32],
+    pub Difficulty: BYTE,
+    pub Extended: BYTE,
+    pub Nomad: BYTE,
+    pub ShipSeed: BYTE,
+    pub Seed: SDWORD,
+    pub SaveVersion: BYTE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct velocity_desc {
+    pub TravelAngle: COUNT,
+    pub vector: EXTENT,
+    pub fract: EXTENT,
+    pub error: EXTENT,
+    pub incr: EXTENT,
+}
+pub type VELOCITY_DESC = velocity_desc;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct CONVERSATION(pub ::core::ffi::c_uint);
+impl CONVERSATION {
+    pub const ARILOU_CONVERSATION: Self = Self(0);
+    pub const CHMMR_CONVERSATION: Self = Self(1);
+    pub const COMMANDER_CONVERSATION: Self = Self(2);
+    pub const ORZ_CONVERSATION: Self = Self(3);
+    pub const PKUNK_CONVERSATION: Self = Self(4);
+    pub const SHOFIXTI_CONVERSATION: Self = Self(5);
+    pub const SPATHI_CONVERSATION: Self = Self(6);
+    pub const SUPOX_CONVERSATION: Self = Self(7);
+    pub const THRADD_CONVERSATION: Self = Self(8);
+    pub const UTWIG_CONVERSATION: Self = Self(9);
+    pub const VUX_CONVERSATION: Self = Self(10);
+    pub const YEHAT_CONVERSATION: Self = Self(11);
+    pub const MELNORME_CONVERSATION: Self = Self(12);
+    pub const DRUUGE_CONVERSATION: Self = Self(13);
+    pub const ILWRATH_CONVERSATION: Self = Self(14);
+    pub const MYCON_CONVERSATION: Self = Self(15);
+    pub const SLYLANDRO_CONVERSATION: Self = Self(16);
+    pub const UMGAH_CONVERSATION: Self = Self(17);
+    pub const URQUAN_CONVERSATION: Self = Self(18);
+    pub const ZOQFOTPIK_CONVERSATION: Self = Self(19);
+    pub const SYREEN_CONVERSATION: Self = Self(20);
+    pub const BLACKURQ_CONVERSATION: Self = Self(21);
+    pub const TALKING_PET_CONVERSATION: Self = Self(22);
+    pub const SLYLANDRO_HOME_CONVERSATION: Self = Self(23);
+    pub const URQUAN_DRONE_CONVERSATION: Self = Self(24);
+    pub const YEHAT_REBEL_CONVERSATION: Self = Self(25);
+    pub const INVALID_CONVERSATION: Self = Self(26);
+    pub const NUM_CONVERSATIONS: Self = Self(27);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_0(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_0 {
+    pub const SUPER_MELEE: Self = Self(0);
+    pub const IN_LAST_BATTLE: Self = Self(1);
+    pub const IN_ENCOUNTER: Self = Self(2);
+    pub const IN_HYPERSPACE: Self = Self(3);
+    pub const IN_INTERPLANETARY: Self = Self(4);
+    pub const WON_LAST_BATTLE: Self = Self(5);
+    pub const IN_QUASISPACE: Self = Self(6);
+    pub const IN_PLANET_ORBIT: Self = Self(7);
+    pub const IN_STARBASE: Self = Self(8);
+    pub const CHECK_PAUSE: Self = Self(256);
+    pub const IN_BATTLE: Self = Self(512);
+    pub const START_ENCOUNTER: Self = Self(1024);
+    pub const START_INTERPLANETARY: Self = Self(2048);
+    pub const CHECK_LOAD: Self = Self(4096);
+    pub const CHECK_RESTART: Self = Self(8192);
+    pub const CHECK_ABORT: Self = Self(16384);
+}
+pub type ACTIVITY = UWORD;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct GAME_STATE {
+    pub glob_flags: BYTE,
+    pub CrewCost: BYTE,
+    pub FuelCost: BYTE,
+    pub ModuleCost: [BYTE; 20],
+    pub ElementWorth: [BYTE; 8],
+    pub DisplayArray: *mut PRIMITIVE,
+    pub CurrentActivity: ACTIVITY,
+    pub GameClock: CLOCK_STATE,
+    pub autopilot: POINT,
+    pub ip_location: POINT,
+    pub ShipStamp: STAMP,
+    pub ShipFacing: UWORD,
+    pub ip_planet: BYTE,
+    pub in_orbit: BYTE,
+    pub velocity: VELOCITY_DESC,
+    pub BattleGroupRef: DWORD,
+    pub avail_race_q: QUEUE,
+    pub npc_built_ship_q: QUEUE,
+    pub ip_group_q: QUEUE,
+    pub encounter_q: QUEUE,
+    pub built_ship_q: QUEUE,
+    pub stowed_ship_q: QUEUE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct GLOBDATA {
+    pub SIS_state: SIS_STATE,
+    pub Game_state: GAME_STATE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct planet_desc {
+    pub rand_seed: DWORD,
+    pub data_index: BYTE,
+    pub NumPlanets: BYTE,
+    pub radius: SIZE,
+    pub location: POINT,
+    pub temp_color: Color,
+    pub NextIndex: COUNT,
+    pub image: STAMP,
+    pub pPrevDesc: *mut PLANET_DESC,
+    pub orbit: PLANET_ORBIT,
+    pub size: COUNT,
+    pub angle: COUNT,
+    pub rotFrameIndex: ::core::ffi::c_int,
+    pub rotPointIndex: ::core::ffi::c_int,
+    pub rotwidth: ::core::ffi::c_int,
+    pub rotheight: ::core::ffi::c_int,
+    pub orb_speed: ::core::ffi::c_double,
+    pub rot_speed: ::core::ffi::c_double,
+    pub PlanetByte: BYTE,
+    pub MoonByte: BYTE,
+    pub frame_offset: BYTE,
+}
+pub type PLANET_ORBIT = planet_orbit;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct planet_orbit {
+    pub TopoZoomFrame: FRAME,
+    pub lpTopoData: *mut SBYTE,
+    pub SphereFrame: FRAME,
+    pub ObjectFrame: FRAME,
+    pub TintFrame: FRAME,
+    pub TintColor: Color,
+    pub TopoColors: *mut Color,
+    pub ScanColors: *mut *mut Color,
+    pub ScratchArray: *mut Color,
+    pub WorkFrame: FRAME,
+    pub BackFrame: FRAME,
+    pub light_diff: *mut *mut DWORD,
+    pub map_rotate: *mut *mut MAP3D_POINT,
+    pub TopoMask: FRAME,
+    pub sphereBytes: *mut BYTE,
+    pub sphereMap: COLORMAP,
+    pub scanType: COUNT,
+    pub Shade: FRAME,
+    pub ShadeColors: *mut Color,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct MAP3D_POINT {
+    pub p: [POINT; 4],
+    pub m: [DWORD; 4],
+}
+pub type PLANET_DESC = planet_desc;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct star_desc {
+    pub star_pt: POINT,
+    pub Type: BYTE,
+    pub Index: BYTE,
+    pub Prefix: BYTE,
+    pub Postfix: BYTE,
+}
+pub type STAR_DESC = star_desc;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct node_info {
+    pub loc_pt: POINT,
+    pub density: COUNT,
+    pub r#type: COUNT,
+}
+pub type NODE_INFO = node_info;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct solarsys_state {
+    pub InputFunc: Option<unsafe extern "C" fn(*mut solarsys_state) -> BOOLEAN>,
+    pub InIpFlight: BOOLEAN,
+    pub WaitIntersect: COUNT,
+    pub SunDesc: [PLANET_DESC; 1],
+    pub PlanetDesc: [PLANET_DESC; 16],
+    pub MoonDesc: [PLANET_DESC; 4],
+    pub pBaseDesc: *mut PLANET_DESC,
+    pub pOrbitalDesc: *mut PLANET_DESC,
+    pub FirstPlanetIndex: SIZE,
+    pub LastPlanetIndex: SIZE,
+    pub turn_counter: BYTE,
+    pub turn_wait: BYTE,
+    pub thrust_counter: BYTE,
+    pub max_ship_speed: BYTE,
+    pub XlatRef: STRING,
+    pub XlatPtr: *const ::core::ffi::c_void,
+    pub OrbitalCMap: COLORMAP,
+    pub SysInfo: SYSTEM_INFO,
+    pub genFuncs: *const GenerateFunctions,
+    pub PlanetSideFrame: [FRAME; 6],
+    pub TopoFrame: FRAME,
+    pub Orbit: PLANET_ORBIT,
+    pub InOrbit: BOOLEAN,
+    pub ScanFrame: [FRAME; 3],
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct GenerateFunctions {
+    pub initNpcs: InitNpcsFunction,
+    pub reinitNpcs: ReinitNpcsFunction,
+    pub uninitNpcs: UninitNpcsFunction,
+    pub generatePlanets: GeneratePlanetsFunction,
+    pub generateMoons: GenerateMoonsFunction,
+    pub generateName: GenerateNameFunction,
+    pub generateOrbital: GenerateOrbitalFunction,
+    pub generateMinerals: GenerateMineralsFunction,
+    pub generateEnergy: GenerateEnergyFunction,
+    pub generateLife: GenerateLifeFunction,
+    pub pickupMinerals: PickupMineralsFunction,
+    pub pickupEnergy: PickupEnergyFunction,
+    pub pickupLife: PickupLifeFunction,
+}
+pub type PickupLifeFunction = Option<
+    unsafe extern "C" fn(*mut SOLARSYS_STATE, *mut PLANET_DESC, COUNT) -> bool,
+>;
+pub type SOLARSYS_STATE = solarsys_state;
+pub type PickupEnergyFunction = Option<
+    unsafe extern "C" fn(*mut SOLARSYS_STATE, *mut PLANET_DESC, COUNT) -> bool,
+>;
+pub type PickupMineralsFunction = Option<
+    unsafe extern "C" fn(*mut SOLARSYS_STATE, *mut PLANET_DESC, COUNT) -> bool,
+>;
+pub type GenerateLifeFunction = Option<
+    unsafe extern "C" fn(
+        *const SOLARSYS_STATE,
+        *const PLANET_DESC,
+        COUNT,
+        *mut NODE_INFO,
+    ) -> COUNT,
+>;
+pub type GenerateEnergyFunction = Option<
+    unsafe extern "C" fn(
+        *const SOLARSYS_STATE,
+        *const PLANET_DESC,
+        COUNT,
+        *mut NODE_INFO,
+    ) -> COUNT,
+>;
+pub type GenerateMineralsFunction = Option<
+    unsafe extern "C" fn(
+        *const SOLARSYS_STATE,
+        *const PLANET_DESC,
+        COUNT,
+        *mut NODE_INFO,
+    ) -> COUNT,
+>;
+pub type GenerateOrbitalFunction = Option<
+    unsafe extern "C" fn(*mut SOLARSYS_STATE, *mut PLANET_DESC) -> bool,
+>;
+pub type GenerateNameFunction = Option<
+    unsafe extern "C" fn(*const SOLARSYS_STATE, *const PLANET_DESC) -> bool,
+>;
+pub type GenerateMoonsFunction = Option<
+    unsafe extern "C" fn(*mut SOLARSYS_STATE, *mut PLANET_DESC) -> bool,
+>;
+pub type GeneratePlanetsFunction = Option<
+    unsafe extern "C" fn(*mut SOLARSYS_STATE) -> bool,
+>;
+pub type UninitNpcsFunction = Option<unsafe extern "C" fn(*mut SOLARSYS_STATE) -> bool>;
+pub type ReinitNpcsFunction = Option<unsafe extern "C" fn(*mut SOLARSYS_STATE) -> bool>;
+pub type InitNpcsFunction = Option<unsafe extern "C" fn(*mut SOLARSYS_STATE) -> bool>;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct SYSTEM_INFO {
+    pub StarSize: BYTE,
+    pub StarIntensity: BYTE,
+    pub StarEnergy: UWORD,
+    pub PlanetInfo: PLANET_INFO,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct PLANET_INFO {
+    pub AxialTilt: SIZE,
+    pub Tectonics: UWORD,
+    pub Weather: UWORD,
+    pub PlanetDensity: UWORD,
+    pub PlanetRadius: UWORD,
+    pub SurfaceGravity: UWORD,
+    pub SurfaceTemperature: SIZE,
+    pub RotationPeriod: UWORD,
+    pub AtmoDensity: UWORD,
+    pub LifeChance: SIZE,
+    pub PlanetToSunDist: DWORD,
+    pub PlanDataPtr: *const PlanetFrame,
+    pub ScanSeed: [DWORD; 3],
+    pub ScanRetrieveMask: [DWORD; 3],
+    pub PartiallyScavengedList: [[BYTE; 32]; 3],
+    pub DiscoveryString: STRING,
+    pub LanderFont: FONT,
+    pub LanderFontEff: FRAME,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct PlanetFrame {
+    pub Type: BYTE,
+    pub BaseTectonics: BYTE,
+    pub AtmoAndDensity: BYTE,
+    pub UsefulElements: [ELEMENT_ENTRY; 8],
+    pub CMapInstance: RESOURCE,
+    pub XlatTabInstance: RESOURCE,
+    pub num_faults: COUNT,
+    pub fault_depth: SIZE,
+    pub num_blemishes: COUNT,
+    pub base_elevation: SIZE,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct ELEMENT_ENTRY {
+    pub ElementType: BYTE,
+    pub Density: BYTE,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_1(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_1 {
+    pub const FIRST_ROCKY_WORLD: Self = Self(0);
+    pub const FIRST_SMALL_ROCKY_WORLD: Self = Self(0);
+    pub const OOLITE_WORLD: Self = Self(0);
+    pub const YTTRIC_WORLD: Self = Self(1);
+    pub const QUASI_DEGENERATE_WORLD: Self = Self(2);
+    pub const LANTHANIDE_WORLD: Self = Self(3);
+    pub const TREASURE_WORLD: Self = Self(4);
+    pub const UREA_WORLD: Self = Self(5);
+    pub const METAL_WORLD: Self = Self(6);
+    pub const RADIOACTIVE_WORLD: Self = Self(7);
+    pub const OPALESCENT_WORLD: Self = Self(8);
+    pub const CYANIC_WORLD: Self = Self(9);
+    pub const ACID_WORLD: Self = Self(10);
+    pub const ALKALI_WORLD: Self = Self(11);
+    pub const HALIDE_WORLD: Self = Self(12);
+    pub const GREEN_WORLD: Self = Self(13);
+    pub const COPPER_WORLD: Self = Self(14);
+    pub const CARBIDE_WORLD: Self = Self(15);
+    pub const ULTRAMARINE_WORLD: Self = Self(16);
+    pub const NOBLE_WORLD: Self = Self(17);
+    pub const AZURE_WORLD: Self = Self(18);
+    pub const CHONDRITE_WORLD: Self = Self(19);
+    pub const PURPLE_WORLD: Self = Self(20);
+    pub const SUPER_DENSE_WORLD: Self = Self(21);
+    pub const PELLUCID_WORLD: Self = Self(22);
+    pub const DUST_WORLD: Self = Self(23);
+    pub const CRIMSON_WORLD: Self = Self(24);
+    pub const CIMMERIAN_WORLD: Self = Self(25);
+    pub const INFRARED_WORLD: Self = Self(26);
+    pub const SELENIC_WORLD: Self = Self(27);
+    pub const AURIC_WORLD: Self = Self(28);
+    pub const LAST_SMALL_ROCKY_WORLD: Self = Self(28);
+    pub const FIRST_LARGE_ROCKY_WORLD: Self = Self(29);
+    pub const FLUORESCENT_WORLD: Self = Self(29);
+    pub const ULTRAVIOLET_WORLD: Self = Self(30);
+    pub const PLUTONIC_WORLD: Self = Self(31);
+    pub const RAINBOW_WORLD: Self = Self(32);
+    pub const SHATTERED_WORLD: Self = Self(33);
+    pub const SAPPHIRE_WORLD: Self = Self(34);
+    pub const ORGANIC_WORLD: Self = Self(35);
+    pub const XENOLITHIC_WORLD: Self = Self(36);
+    pub const REDUX_WORLD: Self = Self(37);
+    pub const PRIMORDIAL_WORLD: Self = Self(38);
+    pub const EMERALD_WORLD: Self = Self(39);
+    pub const CHLORINE_WORLD: Self = Self(40);
+    pub const MAGNETIC_WORLD: Self = Self(41);
+    pub const WATER_WORLD: Self = Self(42);
+    pub const TELLURIC_WORLD: Self = Self(43);
+    pub const HYDROCARBON_WORLD: Self = Self(44);
+    pub const IODINE_WORLD: Self = Self(45);
+    pub const VINYLOGOUS_WORLD: Self = Self(46);
+    pub const RUBY_WORLD: Self = Self(47);
+    pub const MAGMA_WORLD: Self = Self(48);
+    pub const MAROON_WORLD: Self = Self(49);
+    pub const LAST_LARGE_ROCKY_WORLD: Self = Self(49);
+    pub const LAST_ROCKY_WORLD: Self = Self(49);
+    pub const FIRST_GAS_GIANT: Self = Self(50);
+    pub const BLU_GAS_GIANT: Self = Self(50);
+    pub const CYA_GAS_GIANT: Self = Self(51);
+    pub const GRN_GAS_GIANT: Self = Self(52);
+    pub const GRY_GAS_GIANT: Self = Self(53);
+    pub const ORA_GAS_GIANT: Self = Self(54);
+    pub const PUR_GAS_GIANT: Self = Self(55);
+    pub const RED_GAS_GIANT: Self = Self(56);
+    pub const VIO_GAS_GIANT: Self = Self(57);
+    pub const YEL_GAS_GIANT: Self = Self(58);
+    pub const LAST_GAS_GIANT: Self = Self(58);
+    pub const NUMBER_OF_PLANET_TYPES: Self = Self(59);
+    pub const WORLD_TYPE_SPECIAL: Self = Self(128);
+    pub const PLANET_SHIELDED: Self = Self(128);
+    pub const HIERARCHY_STARBASE: Self = Self(255);
+    pub const SA_MATRA: Self = Self(254);
+    pub const DESTROYED_STARBASE: Self = Self(253);
+    pub const PRECURSOR_STARBASE: Self = Self(252);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_2(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_2 {
+    pub const ARILOU_DEFINED: Self = Self(0);
+    pub const SOL_DEFINED: Self = Self(1);
+    pub const SHOFIXTI_DEFINED: Self = Self(2);
+    pub const MAIDENS_DEFINED: Self = Self(3);
+    pub const START_COLONY_DEFINED: Self = Self(4);
+    pub const SPATHI_DEFINED: Self = Self(5);
+    pub const ZOQFOT_DEFINED: Self = Self(6);
+    pub const MELNORME0_DEFINED: Self = Self(7);
+    pub const MELNORME1_DEFINED: Self = Self(8);
+    pub const MELNORME2_DEFINED: Self = Self(9);
+    pub const MELNORME3_DEFINED: Self = Self(10);
+    pub const MELNORME4_DEFINED: Self = Self(11);
+    pub const MELNORME5_DEFINED: Self = Self(12);
+    pub const MELNORME6_DEFINED: Self = Self(13);
+    pub const MELNORME7_DEFINED: Self = Self(14);
+    pub const MELNORME8_DEFINED: Self = Self(15);
+    pub const TALKING_PET_DEFINED: Self = Self(16);
+    pub const CHMMR_DEFINED: Self = Self(17);
+    pub const SYREEN_DEFINED: Self = Self(18);
+    pub const BURVIXESE_DEFINED: Self = Self(19);
+    pub const SLYLANDRO_DEFINED: Self = Self(20);
+    pub const DRUUGE_DEFINED: Self = Self(21);
+    pub const BOMB_DEFINED: Self = Self(22);
+    pub const AQUA_HELIX_DEFINED: Self = Self(23);
+    pub const SUN_DEVICE_DEFINED: Self = Self(24);
+    pub const TAALO_PROTECTOR_DEFINED: Self = Self(25);
+    pub const SHIP_VAULT_DEFINED: Self = Self(26);
+    pub const URQUAN_WRECK_DEFINED: Self = Self(27);
+    pub const VUX_BEAST_DEFINED: Self = Self(28);
+    pub const SAMATRA_DEFINED: Self = Self(29);
+    pub const ZOQ_SCOUT_DEFINED: Self = Self(30);
+    pub const MYCON_DEFINED: Self = Self(31);
+    pub const EGG_CASE0_DEFINED: Self = Self(32);
+    pub const EGG_CASE1_DEFINED: Self = Self(33);
+    pub const EGG_CASE2_DEFINED: Self = Self(34);
+    pub const PKUNK_DEFINED: Self = Self(35);
+    pub const UTWIG_DEFINED: Self = Self(36);
+    pub const SUPOX_DEFINED: Self = Self(37);
+    pub const YEHAT_DEFINED: Self = Self(38);
+    pub const VUX_DEFINED: Self = Self(39);
+    pub const ORZ_DEFINED: Self = Self(40);
+    pub const THRADD_DEFINED: Self = Self(41);
+    pub const RAINBOW0_DEFINED: Self = Self(42);
+    pub const RAINBOW1_DEFINED: Self = Self(43);
+    pub const RAINBOW2_DEFINED: Self = Self(44);
+    pub const RAINBOW3_DEFINED: Self = Self(45);
+    pub const RAINBOW4_DEFINED: Self = Self(46);
+    pub const RAINBOW5_DEFINED: Self = Self(47);
+    pub const RAINBOW6_DEFINED: Self = Self(48);
+    pub const RAINBOW7_DEFINED: Self = Self(49);
+    pub const RAINBOW8_DEFINED: Self = Self(50);
+    pub const RAINBOW9_DEFINED: Self = Self(51);
+    pub const ILWRATH_DEFINED: Self = Self(52);
+    pub const ANDROSYNTH_DEFINED: Self = Self(53);
+    pub const MYCON_TRAP_DEFINED: Self = Self(54);
+    pub const URQUAN0_DEFINED: Self = Self(55);
+    pub const URQUAN1_DEFINED: Self = Self(56);
+    pub const URQUAN2_DEFINED: Self = Self(57);
+    pub const KOHRAH0_DEFINED: Self = Self(58);
+    pub const KOHRAH1_DEFINED: Self = Self(59);
+    pub const KOHRAH2_DEFINED: Self = Self(60);
+    pub const DESTROYED_STARBASE_DEFINED: Self = Self(61);
+    pub const MOTHER_ARK_DEFINED: Self = Self(62);
+    pub const ZOQ_COLONY0_DEFINED: Self = Self(63);
+    pub const ZOQ_COLONY1_DEFINED: Self = Self(64);
+    pub const ZOQ_COLONY2_DEFINED: Self = Self(65);
+    pub const ZOQ_COLONY3_DEFINED: Self = Self(66);
+    pub const ALGOLITES_DEFINED: Self = Self(67);
+    pub const SPATHI_MONUMENT_DEFINED: Self = Self(68);
+    pub const EXCAVATION_SITE_DEFINED: Self = Self(69);
+    pub const NUM_PLOTS: Self = Self(70);
+    pub const WAR_ERA: Self = Self(70);
+    pub const SUCCESS: Self = Self(70);
+    pub const HOME: Self = Self(71);
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_3(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_3 {
+    pub const ILWRATH_ENCOUNTER: Self = Self(0);
+    pub const PROBE_ENCOUNTER: Self = Self(1);
+    pub const URQUAN_ENCOUNTER: Self = Self(2);
+    pub const EGGCASE00_ENCOUNTER: Self = Self(3);
+    pub const EGGCASE01_ENCOUNTER: Self = Self(4);
+    pub const EGGCASE02_ENCOUNTER: Self = Self(5);
+    pub const THRADDASH_ENCOUNTER: Self = Self(6);
+    pub const NO_HELP_FROM_PKUNK: Self = Self(7);
+    pub const READY_TO_BARGAIN: Self = Self(8);
+}
+pub type HSHIPFRAG = HLINK;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct RACE_ID(pub ::core::ffi::c_uint);
+impl RACE_ID {
+    pub const ARILOU_SHIP: Self = Self(0);
+    pub const CHMMR_SHIP: Self = Self(1);
+    pub const HUMAN_SHIP: Self = Self(2);
+    pub const ORZ_SHIP: Self = Self(3);
+    pub const PKUNK_SHIP: Self = Self(4);
+    pub const SHOFIXTI_SHIP: Self = Self(5);
+    pub const SPATHI_SHIP: Self = Self(6);
+    pub const SUPOX_SHIP: Self = Self(7);
+    pub const THRADDASH_SHIP: Self = Self(8);
+    pub const UTWIG_SHIP: Self = Self(9);
+    pub const VUX_SHIP: Self = Self(10);
+    pub const YEHAT_SHIP: Self = Self(11);
+    pub const MELNORME_SHIP: Self = Self(12);
+    pub const DRUUGE_SHIP: Self = Self(13);
+    pub const ILWRATH_SHIP: Self = Self(14);
+    pub const MYCON_SHIP: Self = Self(15);
+    pub const SLYLANDRO_SHIP: Self = Self(16);
+    pub const UMGAH_SHIP: Self = Self(17);
+    pub const URQUAN_SHIP: Self = Self(18);
+    pub const ZOQFOTPIK_SHIP: Self = Self(19);
+    pub const SYREEN_SHIP: Self = Self(20);
+    pub const BLACK_URQUAN_SHIP: Self = Self(21);
+    pub const ANDROSYNTH_SHIP: Self = Self(22);
+    pub const CHENJESU_SHIP: Self = Self(23);
+    pub const MMRNMHRM_SHIP: Self = Self(24);
+    pub const NUM_BUILDABLE_SHIPS: Self = Self(25);
+    pub const YEHAT_REBEL_SHIP: Self = Self(25);
+    pub const URQUAN_DRONE_SHIP: Self = Self(26);
+    pub const SAMATRA_SHIP: Self = Self(26);
+    pub const NUM_AVAILABLE_RACES: Self = Self(27);
+}
+pub type HIPGROUP = HLINK;
+pub type IP_FLAGS = BYTE;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct IP_GROUP {
+    pub pred: HIPGROUP,
+    pub succ: HIPGROUP,
+    pub group_counter: UWORD,
+    pub race_id: BYTE,
+    pub sys_loc: BYTE,
+    pub task: BYTE,
+    pub in_system: BYTE,
+    pub dest_loc: BYTE,
+    pub orbit_pos: BYTE,
+    pub group_id: BYTE,
+    pub loc: POINT,
+    pub melee_icon: FRAME,
+    pub flags: IP_FLAGS,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct C2Rust_Unnamed_4(pub ::core::ffi::c_uint);
+impl C2Rust_Unnamed_4 {
+    pub const IN_ORBIT: Self = Self(0);
+    pub const EXPLORE: Self = Self(1);
+    pub const FLEE: Self = Self(2);
+    pub const ON_STATION: Self = Self(3);
+    pub const IGNORE_FLAGSHIP: Self = Self(4);
+    pub const REFORM_GROUP: Self = Self(8);
+}
+#[inline]
+unsafe extern "C" fn LockLink(mut pq: *const QUEUE, mut h: HLINK) -> *mut LINK {
+    if !h.is_null() {
+        (!(*pq).pq_tab.is_null() && h as *mut BYTE >= (*pq).pq_tab
+            && (h as *mut BYTE)
+                < (*pq)
+                    .pq_tab
+                    .offset(
+                        ((*pq).object_size as ::core::ffi::c_int
+                            * (*pq).num_objects as ::core::ffi::c_int) as isize,
+                    )
+            || {
+                __assert_fail(
+                    b"pq->pq_tab && (BYTE*)h >= pq->pq_tab && (BYTE*)h < pq->pq_tab + pq->object_size * pq->num_objects\0"
+                        .as_ptr() as *const ::core::ffi::c_char,
+                    b"src/libs/math/../../uqm/displist.h\0".as_ptr()
+                        as *const ::core::ffi::c_char,
+                    77 as ::core::ffi::c_int,
+                    b"LockLink\0".as_ptr() as *const ::core::ffi::c_char,
+                );
+                0 as ::core::ffi::c_int != 0
+            }) as ::core::ffi::c_int;
+    }
+    return h as *mut LINK;
+}
+#[inline]
+unsafe extern "C" fn UnlockLink(mut pq: *const QUEUE, mut h: HLINK) {
+    if !h.is_null() {
+        (!(*pq).pq_tab.is_null() && h as *mut BYTE >= (*pq).pq_tab
+            && (h as *mut BYTE)
+                < (*pq)
+                    .pq_tab
+                    .offset(
+                        ((*pq).object_size as ::core::ffi::c_int
+                            * (*pq).num_objects as ::core::ffi::c_int) as isize,
+                    )
+            || {
+                __assert_fail(
+                    b"pq->pq_tab && (BYTE*)h >= pq->pq_tab && (BYTE*)h < pq->pq_tab + pq->object_size * pq->num_objects\0"
+                        .as_ptr() as *const ::core::ffi::c_char,
+                    b"src/libs/math/../../uqm/displist.h\0".as_ptr()
+                        as *const ::core::ffi::c_char,
+                    88 as ::core::ffi::c_int,
+                    b"UnlockLink\0".as_ptr() as *const ::core::ffi::c_char,
+                );
+                0 as ::core::ffi::c_int != 0
+            }) as ::core::ffi::c_int;
+    }
+}
+#[inline]
+unsafe extern "C" fn LockIpGroup(
+    mut pq: *const QUEUE,
+    mut h: HIPGROUP,
+) -> *mut IP_GROUP {
+    ((*pq).object_size as usize == ::core::mem::size_of::<IP_GROUP>()
+        || {
+            __assert_fail(
+                b"GetLinkSize (pq) == sizeof (IP_GROUP)\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+                b"src/uqm/planets/generate/../../grpinfo.h\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                89 as ::core::ffi::c_int,
+                b"LockIpGroup\0".as_ptr() as *const ::core::ffi::c_char,
+            );
+            0 as ::core::ffi::c_int != 0
+        }) as ::core::ffi::c_int;
+    return LockLink(pq, h) as *mut IP_GROUP;
+}
+#[no_mangle]
+pub static mut generateSaMatraFunctions: GenerateFunctions = GenerateFunctions {
+    initNpcs: Some(
+        GenerateSaMatra_initNpcs as unsafe extern "C" fn(*mut SOLARSYS_STATE) -> bool,
+    ),
+    reinitNpcs: Some(
+        GenerateSaMatra_reinitNpcs as unsafe extern "C" fn(*mut SOLARSYS_STATE) -> bool,
+    ),
+    uninitNpcs: Some(
+        GenerateDefault_uninitNpcs as unsafe extern "C" fn(*mut SOLARSYS_STATE) -> bool,
+    ),
+    generatePlanets: Some(
+        GenerateSaMatra_generatePlanets
+            as unsafe extern "C" fn(*mut SOLARSYS_STATE) -> bool,
+    ),
+    generateMoons: Some(
+        GenerateSaMatra_generateMoons
+            as unsafe extern "C" fn(*mut SOLARSYS_STATE, *mut PLANET_DESC) -> bool,
+    ),
+    generateName: Some(
+        GenerateDefault_generateName
+            as unsafe extern "C" fn(*const SOLARSYS_STATE, *const PLANET_DESC) -> bool,
+    ),
+    generateOrbital: Some(
+        GenerateSaMatra_generateOrbital
+            as unsafe extern "C" fn(*mut SOLARSYS_STATE, *mut PLANET_DESC) -> bool,
+    ),
+    generateMinerals: Some(
+        GenerateDefault_generateMinerals
+            as unsafe extern "C" fn(
+                *const SOLARSYS_STATE,
+                *const PLANET_DESC,
+                COUNT,
+                *mut NODE_INFO,
+            ) -> COUNT,
+    ),
+    generateEnergy: Some(
+        GenerateSaMatra_generateEnergy
+            as unsafe extern "C" fn(
+                *const SOLARSYS_STATE,
+                *const PLANET_DESC,
+                COUNT,
+                *mut NODE_INFO,
+            ) -> COUNT,
+    ),
+    generateLife: Some(
+        GenerateDefault_generateLife
+            as unsafe extern "C" fn(
+                *const SOLARSYS_STATE,
+                *const PLANET_DESC,
+                COUNT,
+                *mut NODE_INFO,
+            ) -> COUNT,
+    ),
+    pickupMinerals: Some(
+        GenerateDefault_pickupMinerals
+            as unsafe extern "C" fn(*mut SOLARSYS_STATE, *mut PLANET_DESC, COUNT) -> bool,
+    ),
+    pickupEnergy: Some(
+        GenerateSaMatra_pickupEnergy
+            as unsafe extern "C" fn(*mut SOLARSYS_STATE, *mut PLANET_DESC, COUNT) -> bool,
+    ),
+    pickupLife: Some(
+        GenerateDefault_pickupLife
+            as unsafe extern "C" fn(*mut SOLARSYS_STATE, *mut PLANET_DESC, COUNT) -> bool,
+    ),
+};
+unsafe extern "C" fn GenerateSaMatra_initNpcs(
+    mut solarSys: *mut SOLARSYS_STATE,
+) -> bool {
+    if (*CurStarDescPtr).Index as ::core::ffi::c_int
+        == C2Rust_Unnamed_2::SAMATRA_DEFINED.0 as ::core::ffi::c_int
+    {
+        if uqm_lua_checked!(getGameStateUint(b"URQUAN_MESSED_UP\0".as_ptr() as *const ::core::ffi::c_char), false)
+            == 0
+        {
+            uqm_lua_checked!(BuildUrquanGuard(solarSys), false);
+        } else {
+            PutGroupInfo(
+                0 as ::core::ffi::c_long as DWORD,
+                !(0 as ::core::ffi::c_int) as BYTE,
+            );
+        }
+    }
+    if SpaceMusicOK.0 != 0 {
+        uqm_lua_checked!(findRaceSOI(), false);
+    }
+    return true;
+}
+unsafe extern "C" fn GenerateSaMatra_reinitNpcs(
+    mut solarSys: *mut SOLARSYS_STATE,
+) -> bool {
+    let mut GuardEngaged: BOOLEAN = BOOLEAN::FALSE;
+    let mut hGroup: HIPGROUP = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut hNextGroup: HIPGROUP = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    if (*CurStarDescPtr).Index as ::core::ffi::c_int
+        == C2Rust_Unnamed_2::SAMATRA_DEFINED.0 as ::core::ffi::c_int
+    {
+        GetGroupInfo(0 as ::core::ffi::c_long as DWORD, 0 as ::core::ffi::c_int as BYTE);
+        EncounterGroup = 0 as BYTE;
+        EncounterRace = -1 as SIZE;
+        GuardEngaged = BOOLEAN::FALSE;
+        hGroup = GlobData.Game_state.ip_group_q.head as HIPGROUP;
+        while !hGroup.is_null() {
+            let mut GroupPtr: *mut IP_GROUP = ::core::ptr::null_mut::<IP_GROUP>();
+            GroupPtr = LockIpGroup(&raw mut GlobData.Game_state.ip_group_q, hGroup);
+            hNextGroup = (*GroupPtr).succ;
+            if uqm_lua_checked!(getGameStateUint(
+                b"URQUAN_MESSED_UP\0".as_ptr() as *const ::core::ffi::c_char,
+            ), false) != 0
+            {
+                (*GroupPtr).task = ((*GroupPtr).task as ::core::ffi::c_int
+                    & C2Rust_Unnamed_4::REFORM_GROUP.0 as ::core::ffi::c_int) as BYTE;
+                (*GroupPtr).task = ((*GroupPtr).task as ::core::ffi::c_int
+                    | (C2Rust_Unnamed_4::FLEE.0 as ::core::ffi::c_int
+                        | C2Rust_Unnamed_4::IGNORE_FLAGSHIP.0 as ::core::ffi::c_int))
+                    as BYTE;
+                (*GroupPtr).dest_loc = 0 as BYTE;
+            } else if (*GroupPtr).task as ::core::ffi::c_int
+                & C2Rust_Unnamed_4::REFORM_GROUP.0 as ::core::ffi::c_int != 0
+            {
+                (*GroupPtr).task = ((*GroupPtr).task as ::core::ffi::c_int
+                    & !(C2Rust_Unnamed_4::REFORM_GROUP.0 as ::core::ffi::c_int)) as BYTE;
+                (*GroupPtr).group_counter = 0 as UWORD;
+                GuardEngaged = BOOLEAN::TRUE;
+            }
+            UnlockLink(&raw mut GlobData.Game_state.ip_group_q, hGroup);
+            hGroup = hNextGroup;
+        }
+        if GuardEngaged.0 != 0 {
+            let mut angle: COUNT = 0;
+            let mut org: POINT = POINT { x: 0, y: 0 };
+            org = planetOuterLocation((*solarSys).SunDesc[0usize].PlanetByte as COUNT);
+            angle = ARCTAN(
+                GlobData.Game_state.ip_location.x as SDWORD - org.x as SDWORD,
+                GlobData.Game_state.ip_location.y as SDWORD - org.y as SDWORD,
+            );
+            GlobData.Game_state.ip_location.x = (org.x as SDWORD
+                + (*(&raw mut sinetab as *mut SDWORD)
+                    .offset(
+                        (angle as ::core::ffi::c_int
+                            + ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int
+                                >> 2 as ::core::ffi::c_int)
+                            & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                                - 1 as ::core::ffi::c_int) as DWORD as isize,
+                    ) as ::core::ffi::c_long
+                    * 3000 as ::core::ffi::c_int as ::core::ffi::c_long
+                    >> 14 as ::core::ffi::c_int) as SDWORD) as COORD;
+            GlobData.Game_state.ip_location.y = (org.y as SDWORD
+                + (*(&raw mut sinetab as *mut SDWORD)
+                    .offset(
+                        (angle as ::core::ffi::c_int
+                            & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                                - 1 as ::core::ffi::c_int) as DWORD as isize,
+                    ) as ::core::ffi::c_long
+                    * 3000 as ::core::ffi::c_int as ::core::ffi::c_long
+                    >> 14 as ::core::ffi::c_int) as SDWORD) as COORD;
+            XFormIPLoc(
+                &raw mut GlobData.Game_state.ip_location,
+                &raw mut GlobData.Game_state.ShipStamp.origin,
+                BOOLEAN::TRUE,
+            );
+        }
+    }
+    return true;
+}
+unsafe extern "C" fn GenerateSaMatra_generatePlanets(
+    mut solarSys: *mut SOLARSYS_STATE,
+) -> bool {
+    let mut pSunDesc: *mut PLANET_DESC = (&raw mut (*solarSys).SunDesc
+        as *mut PLANET_DESC)
+        .offset(0isize);
+    let mut pPlanet: *mut PLANET_DESC = ::core::ptr::null_mut::<PLANET_DESC>();
+    GenerateDefault_generatePlanets(solarSys);
+    if (*CurStarDescPtr).Index as ::core::ffi::c_int
+        == C2Rust_Unnamed_2::SAMATRA_DEFINED.0 as ::core::ffi::c_int
+    {
+        (*pSunDesc).PlanetByte = 4 as BYTE;
+        (*pSunDesc).MoonByte = 0 as BYTE;
+        pPlanet = (&raw mut (*solarSys).PlanetDesc as *mut PLANET_DESC)
+            .offset((*pSunDesc).PlanetByte as isize);
+        if optSeedType == C2Rust_Unnamed::OPTVAL_PRIME.0 as ::core::ffi::c_int {
+            (*pPlanet).NumPlanets = 1 as BYTE;
+        } else {
+            (*pSunDesc).PlanetByte = PlanetByteGen(pSunDesc);
+            pPlanet = (&raw mut (*solarSys).PlanetDesc as *mut PLANET_DESC)
+                .offset((*pSunDesc).PlanetByte as isize);
+            if (*pPlanet).NumPlanets == 0 {
+                (*pPlanet).NumPlanets = (*pPlanet).NumPlanets.wrapping_add(1);
+            }
+            (*pSunDesc).MoonByte = PlanetByteGen(pPlanet);
+            (*pPlanet).data_index = GenerateWorlds(
+                ((1 as ::core::ffi::c_int) << 1 as ::core::ffi::c_int) as BYTE,
+            );
+        }
+    }
+    if (*CurStarDescPtr).Index as ::core::ffi::c_int
+        == C2Rust_Unnamed_2::DESTROYED_STARBASE_DEFINED.0 as ::core::ffi::c_int
+        && if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0 {
+            BOOLEAN::TRUE.0 as ::core::ffi::c_int
+        } else {
+            BOOLEAN::FALSE.0 as ::core::ffi::c_int
+        } != 0
+    {
+        (*pSunDesc).PlanetByte = PickClosestHabitable(solarSys);
+        pPlanet = (&raw mut (*solarSys).PlanetDesc as *mut PLANET_DESC)
+            .offset((*pSunDesc).PlanetByte as isize);
+        (*pPlanet).data_index = GenerateHabitableWorld();
+        if uqm_lua_checked!(getGameStateUint(b"KOHR_AH_FRENZY\0".as_ptr() as *const ::core::ffi::c_char), false)
+            == 0
+            && (RaceDead(RACE_ID::ARILOU_SHIP).0 != 0
+                || optSeedType > C2Rust_Unnamed::OPTVAL_PLANET.0 as ::core::ffi::c_int)
+        {
+            (*pPlanet).data_index = ((*pPlanet).data_index as ::core::ffi::c_int
+                | C2Rust_Unnamed_1::PLANET_SHIELDED.0 as ::core::ffi::c_int) as BYTE;
+        }
+        if (*pPlanet).NumPlanets == 0 {
+            (*pPlanet).NumPlanets = (*pPlanet).NumPlanets.wrapping_add(1);
+        }
+        (*pSunDesc).MoonByte = PlanetByteGen(pPlanet);
+    }
+    if (*CurStarDescPtr).Index as ::core::ffi::c_int
+        >= C2Rust_Unnamed_2::URQUAN0_DEFINED.0 as ::core::ffi::c_int
+        && (*CurStarDescPtr).Index as ::core::ffi::c_int
+            <= C2Rust_Unnamed_2::KOHRAH2_DEFINED.0 as ::core::ffi::c_int
+        && if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0 {
+            BOOLEAN::TRUE.0 as ::core::ffi::c_int
+        } else {
+            BOOLEAN::FALSE.0 as ::core::ffi::c_int
+        } != 0
+    {
+        let mut i: BYTE = 0;
+        i = 0 as BYTE;
+        while (i as ::core::ffi::c_int) < (*pSunDesc).NumPlanets as ::core::ffi::c_int {
+            if (*solarSys).PlanetDesc[i as usize].NumPlanets as ::core::ffi::c_int
+                <= 1 as ::core::ffi::c_int
+            {
+                break;
+            }
+            i = i.wrapping_add(1);
+        }
+        (*pSunDesc).PlanetByte = i;
+        pPlanet = (&raw mut (*solarSys).PlanetDesc as *mut PLANET_DESC)
+            .offset((*pSunDesc).PlanetByte as isize);
+        if (*pPlanet).NumPlanets == 0 {
+            let mut rand: DWORD = RandomContext_GetSeed(SysGenRNG);
+            (*pPlanet).NumPlanets = RangeMinMax(
+                1 as ::core::ffi::c_int,
+                4 as ::core::ffi::c_int,
+                rand,
+            ) as BYTE;
+        }
+        if (*pPlanet).NumPlanets as ::core::ffi::c_int > 1 as ::core::ffi::c_int {
+            (*pPlanet).data_index = GenerateWorlds(
+                ((1 as ::core::ffi::c_int) << 3 as ::core::ffi::c_int) as BYTE,
+            );
+            (*pSunDesc).MoonByte = PlanetByteGen(pPlanet);
+        } else {
+            (*pSunDesc).MoonByte = 0 as BYTE;
+        }
+    }
+    return true;
+}
+unsafe extern "C" fn GenerateSaMatra_generateMoons(
+    mut solarSys: *mut SOLARSYS_STATE,
+    mut planet: *mut PLANET_DESC,
+) -> bool {
+    GenerateDefault_generateMoons(solarSys, planet);
+    if matchWorld(
+        solarSys,
+        planet,
+        -2 as ::core::ffi::c_int as BYTE,
+        -1 as ::core::ffi::c_int as BYTE,
+    ) {
+        let mut angle: COUNT = 0;
+        let mut rand_val: DWORD = 0;
+        let mut MoonByte: BYTE = (*solarSys).SunDesc[0usize].MoonByte;
+        let mut pMoonDesc: *mut PLANET_DESC = (&raw mut (*solarSys).MoonDesc
+            as *mut PLANET_DESC)
+            .offset(MoonByte as isize);
+        if (*CurStarDescPtr).Index as ::core::ffi::c_int
+            == C2Rust_Unnamed_2::SAMATRA_DEFINED.0 as ::core::ffi::c_int
+        {
+            (*pMoonDesc).data_index = C2Rust_Unnamed_1::SA_MATRA.0 as ::core::ffi::c_int
+                as BYTE;
+            if optSeedType == C2Rust_Unnamed::OPTVAL_PRIME.0 as ::core::ffi::c_int {
+                (*pMoonDesc).radius = (((35 as ::core::ffi::c_int) << resolutionFactor)
+                    + 2 as ::core::ffi::c_int
+                        * ((20 as ::core::ffi::c_int) << resolutionFactor)) as SIZE;
+                rand_val = RandomContext_Random(SysGenRNG);
+                angle = (rand_val as UWORD as ::core::ffi::c_int
+                    & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                        - 1 as ::core::ffi::c_int) as DWORD as COUNT;
+                (*pMoonDesc).location.x = (*(&raw mut sinetab as *mut SDWORD)
+                    .offset(
+                        (angle as ::core::ffi::c_int
+                            + ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int
+                                >> 2 as ::core::ffi::c_int)
+                            & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                                - 1 as ::core::ffi::c_int) as DWORD as isize,
+                    ) as ::core::ffi::c_long * (*pMoonDesc).radius as ::core::ffi::c_long
+                    >> 14 as ::core::ffi::c_int) as SDWORD as COORD;
+                (*pMoonDesc).location.y = (*(&raw mut sinetab as *mut SDWORD)
+                    .offset(
+                        (angle as ::core::ffi::c_int
+                            & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                                - 1 as ::core::ffi::c_int) as DWORD as isize,
+                    ) as ::core::ffi::c_long * (*pMoonDesc).radius as ::core::ffi::c_long
+                    >> 14 as ::core::ffi::c_int) as SDWORD as COORD;
+                ComputeSpeed(pMoonDesc, BOOLEAN::TRUE, 1 as UWORD);
+            }
+        }
+        if ((*CurStarDescPtr).Index as ::core::ffi::c_int
+            == C2Rust_Unnamed_2::DESTROYED_STARBASE_DEFINED.0 as ::core::ffi::c_int
+            || (*CurStarDescPtr).Index as ::core::ffi::c_int
+                >= C2Rust_Unnamed_2::URQUAN0_DEFINED.0 as ::core::ffi::c_int
+                && (*CurStarDescPtr).Index as ::core::ffi::c_int
+                    <= C2Rust_Unnamed_2::KOHRAH2_DEFINED.0 as ::core::ffi::c_int)
+            && if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0 {
+                BOOLEAN::TRUE.0 as ::core::ffi::c_int
+            } else {
+                BOOLEAN::FALSE.0 as ::core::ffi::c_int
+            } != 0
+        {
+            (*pMoonDesc).data_index = C2Rust_Unnamed_1::DESTROYED_STARBASE.0
+                as ::core::ffi::c_int as BYTE;
+        }
+    }
+    return true;
+}
+unsafe extern "C" fn GenerateSaMatra_generateOrbital(
+    mut solarSys: *mut SOLARSYS_STATE,
+    mut world: *mut PLANET_DESC,
+) -> bool {
+    if matchWorld(
+        solarSys,
+        world,
+        -2 as ::core::ffi::c_int as BYTE,
+        -3 as ::core::ffi::c_int as BYTE,
+    ) {
+        if (*CurStarDescPtr).Index as ::core::ffi::c_int
+            == C2Rust_Unnamed_2::SAMATRA_DEFINED.0 as ::core::ffi::c_int
+        {
+            PutGroupInfo(
+                0 as ::core::ffi::c_long as DWORD,
+                !(0 as ::core::ffi::c_int) as BYTE,
+            );
+            ReinitQueue(&raw mut GlobData.Game_state.ip_group_q);
+            (CountLinks(&raw mut GlobData.Game_state.npc_built_ship_q)
+                as ::core::ffi::c_int == 0 as ::core::ffi::c_int
+                || {
+                    __assert_fail(
+                        b"CountLinks (&GLOBAL (npc_built_ship_q)) == 0\0".as_ptr()
+                            as *const ::core::ffi::c_char,
+                        b"src/uqm/planets/generate/gensam.c\0"
+                            .as_ptr() as *const ::core::ffi::c_char,
+                        293 as ::core::ffi::c_int,
+                        b"GenerateSaMatra_generateOrbital\0".as_ptr()
+                            as *const ::core::ffi::c_char,
+                    );
+                    0 as ::core::ffi::c_int != 0
+                }) as ::core::ffi::c_int;
+            if uqm_lua_checked!(getGameStateUint(
+                b"URQUAN_MESSED_UP\0".as_ptr() as *const ::core::ffi::c_char,
+            ), false) == 0
+            {
+                CloneShipFragment(
+                    RACE_ID(
+                        (if if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0 {
+                            BOOLEAN::TRUE.0 as ::core::ffi::c_int
+                        } else {
+                            BOOLEAN::FALSE.0 as ::core::ffi::c_int
+                        } != 0
+                            && uqm_lua_checked!(getGameStateUint(
+                                b"KOHR_AH_FRENZY\0".as_ptr() as *const ::core::ffi::c_char,
+                            ), false) != 0
+                        {
+                            RACE_ID::BLACK_URQUAN_SHIP.0 as ::core::ffi::c_int
+                        } else {
+                            RACE_ID::URQUAN_SHIP.0 as ::core::ffi::c_int
+                        }) as ::core::ffi::c_uint,
+                    ),
+                    &raw mut GlobData.Game_state.npc_built_ship_q,
+                    !(0 as ::core::ffi::c_int) as COUNT,
+                );
+            } else {
+                let mut i: BYTE = 0;
+                i = 0 as BYTE;
+                while (i as ::core::ffi::c_int)
+                    < if if GlobData.SIS_state.Difficulty as ::core::ffi::c_int != 0 {
+                        GlobData.SIS_state.Difficulty as ::core::ffi::c_int
+                    } else {
+                        0 as ::core::ffi::c_int
+                    } == 0 as ::core::ffi::c_int
+                    {
+                        3 as ::core::ffi::c_int
+                    } else if if GlobData.SIS_state.Difficulty as ::core::ffi::c_int != 0
+                    {
+                        GlobData.SIS_state.Difficulty as ::core::ffi::c_int
+                    } else {
+                        0 as ::core::ffi::c_int
+                    } == 1 as ::core::ffi::c_int
+                    {
+                        2 as ::core::ffi::c_int
+                    } else {
+                        5 as ::core::ffi::c_int
+                    }
+                {
+                    CloneShipFragment(
+                        RACE_ID(
+                            (if if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0
+                            {
+                                BOOLEAN::TRUE.0 as ::core::ffi::c_int
+                            } else {
+                                BOOLEAN::FALSE.0 as ::core::ffi::c_int
+                            } != 0
+                                && uqm_lua_checked!(getGameStateUint(
+                                    b"KOHR_AH_FRENZY\0".as_ptr() as *const ::core::ffi::c_char,
+                                ), false) != 0
+                            {
+                                RACE_ID::BLACK_URQUAN_SHIP.0 as ::core::ffi::c_int
+                            } else {
+                                RACE_ID::URQUAN_SHIP.0 as ::core::ffi::c_int
+                            }) as ::core::ffi::c_uint,
+                        ),
+                        &raw mut GlobData.Game_state.npc_built_ship_q,
+                        0 as COUNT,
+                    );
+                    CloneShipFragment(
+                        RACE_ID::BLACK_URQUAN_SHIP,
+                        &raw mut GlobData.Game_state.npc_built_ship_q,
+                        0 as COUNT,
+                    );
+                    i = i.wrapping_add(1);
+                }
+            }
+            GlobData.Game_state.CurrentActivity = (GlobData.Game_state.CurrentActivity
+                as ::core::ffi::c_int
+                | C2Rust_Unnamed_0::START_INTERPLANETARY.0 as ::core::ffi::c_int)
+                as ACTIVITY;
+            uqm_lua_checked!(setGameStateUint(
+                b"GLOBAL_FLAGS_AND_DATA\0".as_ptr() as *const ::core::ffi::c_char,
+                ((1 as ::core::ffi::c_int) << 7 as ::core::ffi::c_int) as DWORD,
+            ), false);
+            uqm_lua_checked!(setGameStateUint(
+                b"URQUAN_PROTECTING_SAMATRA\0".as_ptr() as *const ::core::ffi::c_char,
+                1 as DWORD,
+            ), false);
+            if if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0 {
+                BOOLEAN::TRUE.0 as ::core::ffi::c_int
+            } else {
+                BOOLEAN::FALSE.0 as ::core::ffi::c_int
+            } != 0
+                && uqm_lua_checked!(getGameStateUint(
+                    b"KOHR_AH_FRENZY\0".as_ptr() as *const ::core::ffi::c_char,
+                ), false) != 0
+            {
+                uqm_lua_checked!(InitCommunication(CONVERSATION::BLACKURQ_CONVERSATION), false);
+            } else {
+                uqm_lua_checked!(InitCommunication(CONVERSATION::URQUAN_CONVERSATION), false);
+            }
+            if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+                & (C2Rust_Unnamed_0::CHECK_ABORT.0 as ::core::ffi::c_int
+                    | C2Rust_Unnamed_0::CHECK_LOAD.0 as ::core::ffi::c_int) == 0
+            {
+                let mut UrquanSurvivors: BOOLEAN = BOOLEAN::FALSE;
+                UrquanSurvivors = BOOLEAN(
+                    !GlobData.Game_state.npc_built_ship_q.head.is_null()
+                        as ::core::ffi::c_int as ::core::ffi::c_uint,
+                );
+                GlobData.Game_state.CurrentActivity = (GlobData
+                    .Game_state
+                    .CurrentActivity as ::core::ffi::c_int
+                    & !(C2Rust_Unnamed_0::START_INTERPLANETARY.0 as ::core::ffi::c_int))
+                    as ACTIVITY;
+                ReinitQueue(&raw mut GlobData.Game_state.npc_built_ship_q);
+                GetGroupInfo(
+                    0 as ::core::ffi::c_long as DWORD,
+                    0 as ::core::ffi::c_int as BYTE,
+                );
+                if UrquanSurvivors.0 != 0 {
+                    uqm_lua_checked!(setGameStateUint(
+                        b"URQUAN_PROTECTING_SAMATRA\0".as_ptr()
+                            as *const ::core::ffi::c_char,
+                        0 as DWORD,
+                    ), false);
+                } else {
+                    if if if GlobData.SIS_state.Difficulty as ::core::ffi::c_int != 0 {
+                        GlobData.SIS_state.Difficulty as ::core::ffi::c_int
+                    } else {
+                        0 as ::core::ffi::c_int
+                    } == 2 as ::core::ffi::c_int
+                    {
+                        1 as ::core::ffi::c_int
+                    } else {
+                        0 as ::core::ffi::c_int
+                    } != 0
+                        && uqm_lua_checked!(getGameStateUint(
+                            b"HM_ENCOUNTERS\0".as_ptr() as *const ::core::ffi::c_char,
+                        ), false)
+                            & ((1 as ::core::ffi::c_int)
+                                << C2Rust_Unnamed_3::NO_HELP_FROM_PKUNK.0
+                                    as ::core::ffi::c_int) as DWORD != 0
+                    {
+                        return true;
+                    }
+                    EncounterGroup = 0 as BYTE;
+                    EncounterRace = -1 as SIZE;
+                    GlobData.Game_state.CurrentActivity = (C2Rust_Unnamed_0::IN_LAST_BATTLE
+                        .0 as ::core::ffi::c_int
+                        | C2Rust_Unnamed_0::START_ENCOUNTER.0 as ::core::ffi::c_int)
+                        as ACTIVITY;
+                    if uqm_lua_checked!(getGameStateUint(
+                        b"YEHAT_CIVIL_WAR\0".as_ptr() as *const ::core::ffi::c_char,
+                    ), false) != 0
+                        && StartSphereTracking(RACE_ID::YEHAT_SHIP) as ::core::ffi::c_int
+                            != 0
+                        && EscortFeasibilityStudy(RACE_ID::YEHAT_REBEL_SHIP)
+                            as ::core::ffi::c_int != 0
+                    {
+                        uqm_lua_checked!(InitCommunication(CONVERSATION::YEHAT_REBEL_CONVERSATION), false);
+                    }
+                }
+            }
+            return true;
+        }
+        if if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0 {
+            BOOLEAN::TRUE.0 as ::core::ffi::c_int
+        } else {
+            BOOLEAN::FALSE.0 as ::core::ffi::c_int
+        } != 0
+        {
+            let mut Index: UWORD = (*CurStarDescPtr).Index as UWORD;
+            if Index as ::core::ffi::c_int
+                >= C2Rust_Unnamed_2::URQUAN0_DEFINED.0 as ::core::ffi::c_int
+                && Index as ::core::ffi::c_int
+                    <= C2Rust_Unnamed_2::KOHRAH2_DEFINED.0 as ::core::ffi::c_int
+                || Index as ::core::ffi::c_int
+                    == C2Rust_Unnamed_2::DESTROYED_STARBASE_DEFINED.0
+                        as ::core::ffi::c_int
+            {
+                uqm_lua_checked!(LoadStdLanderFont(&raw mut (*solarSys).SysInfo.PlanetInfo), false);
+                if Index as ::core::ffi::c_int
+                    == C2Rust_Unnamed_2::DESTROYED_STARBASE_DEFINED.0
+                        as ::core::ffi::c_int
+                {
+                    (*solarSys).SysInfo.PlanetInfo.DiscoveryString = CaptureStringTable(
+                        uqm_lua_checked!(LoadStringTableInstance(
+                            b"text.destroyedbase\0".as_ptr() as RESOURCE,
+                        ), false),
+                    );
+                    if uqm_lua_checked!(getGameStateUint(
+                        b"STARBASE_AVAILABLE\0".as_ptr() as *const ::core::ffi::c_char,
+                    ), false) == 0
+                    {
+                        (*solarSys).SysInfo.PlanetInfo.DiscoveryString = SetRelStringTableIndex(
+                            (*solarSys).SysInfo.PlanetInfo.DiscoveryString,
+                            1 as SIZE,
+                        );
+                    }
+                } else {
+                    (*solarSys).SysInfo.PlanetInfo.DiscoveryString = SetRelStringTableIndex(
+                        CaptureStringTable(
+                            uqm_lua_checked!(LoadStringTableInstance(
+                                b"text.urquanbase\0".as_ptr() as RESOURCE,
+                            ), false),
+                        ),
+                        (Index as ::core::ffi::c_int
+                            >= C2Rust_Unnamed_2::KOHRAH0_DEFINED.0 as ::core::ffi::c_int
+                            && Index as ::core::ffi::c_int
+                                <= C2Rust_Unnamed_2::KOHRAH2_DEFINED.0
+                                    as ::core::ffi::c_int) as ::core::ffi::c_int as SIZE,
+                    );
+                }
+                uqm_lua_checked!(DoDiscoveryReport(MenuSounds), false);
+                DestroyStringTable(
+                    ReleaseStringTable((*solarSys).SysInfo.PlanetInfo.DiscoveryString),
+                );
+                (*solarSys).SysInfo.PlanetInfo.DiscoveryString = ::core::ptr::null_mut::<
+                    STRING_TABLE_ENTRY_DESC,
+                >();
+                FreeLanderFont(&raw mut (*solarSys).SysInfo.PlanetInfo);
+                return true;
+            }
+        }
+    } else if (*CurStarDescPtr).Index as ::core::ffi::c_int
+        == C2Rust_Unnamed_2::DESTROYED_STARBASE_DEFINED.0 as ::core::ffi::c_int
+        && matchWorld(
+            solarSys,
+            world,
+            -2 as ::core::ffi::c_int as BYTE,
+            -1 as ::core::ffi::c_int as BYTE,
+        ) as ::core::ffi::c_int != 0
+        && if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0 {
+            BOOLEAN::TRUE.0 as ::core::ffi::c_int
+        } else {
+            BOOLEAN::FALSE.0 as ::core::ffi::c_int
+        } != 0
+    {
+        uqm_lua_checked!(LoadStdLanderFont(&raw mut (*solarSys).SysInfo.PlanetInfo), false);
+        (*solarSys).PlanetSideFrame[1usize] = CaptureDrawable(
+            uqm_lua_checked!(LoadGraphicInstance(b"graphics.ruins\0".as_ptr() as RESOURCE), false) as DRAWABLE,
+        );
+        (*solarSys).SysInfo.PlanetInfo.DiscoveryString = CaptureStringTable(
+            uqm_lua_checked!(LoadStringTableInstance(b"text.ruins\0".as_ptr() as RESOURCE), false),
+        );
+    }
+    uqm_lua_checked!(GenerateDefault_generateOrbital(solarSys, world), false);
+    return true;
+}
+unsafe extern "C" fn BuildUrquanGuard(mut solarSys: *mut SOLARSYS_STATE) {
+    let mut ship1: BYTE = 0;
+    let mut ship2: BYTE = 0;
+    let mut b0: BYTE = 0;
+    let mut b1: BYTE = 0;
+    let mut org: POINT = POINT { x: 0, y: 0 };
+    let mut hGroup: HIPGROUP = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    let mut hNextGroup: HIPGROUP = ::core::ptr::null_mut::<::core::ffi::c_void>();
+    GlobData.Game_state.BattleGroupRef = uqm_lua_checked!(getGameStateUint(
+        b"SAMATRA_GRPOFFS\0".as_ptr() as *const ::core::ffi::c_char,
+    ), ());
+    if uqm_lua_checked!(getGameStateUint(b"KOHR_AH_FRENZY\0".as_ptr() as *const ::core::ffi::c_char), ()) == 0
+    {
+        ship1 = RACE_ID::URQUAN_SHIP.0 as ::core::ffi::c_int as BYTE;
+        ship2 = RACE_ID::BLACK_URQUAN_SHIP.0 as ::core::ffi::c_int as BYTE;
+    } else {
+        ship1 = RACE_ID::BLACK_URQUAN_SHIP.0 as ::core::ffi::c_int as BYTE;
+        ship2 = (if if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0 {
+            BOOLEAN::TRUE.0 as ::core::ffi::c_int
+        } else {
+            BOOLEAN::FALSE.0 as ::core::ffi::c_int
+        } == 0
+        {
+            RACE_ID::URQUAN_SHIP.0 as ::core::ffi::c_int
+        } else {
+            RACE_ID::BLACK_URQUAN_SHIP.0 as ::core::ffi::c_int
+        }) as BYTE;
+    }
+    (CountLinks(&raw mut GlobData.Game_state.npc_built_ship_q) as ::core::ffi::c_int
+        == 0 as ::core::ffi::c_int
+        || {
+            __assert_fail(
+                b"CountLinks (&GLOBAL (npc_built_ship_q)) == 0\0".as_ptr()
+                    as *const ::core::ffi::c_char,
+                b"src/uqm/planets/generate/gensam.c\0"
+                    .as_ptr() as *const ::core::ffi::c_char,
+                440 as ::core::ffi::c_int,
+                b"BuildUrquanGuard\0".as_ptr() as *const ::core::ffi::c_char,
+            );
+            0 as ::core::ffi::c_int != 0
+        }) as ::core::ffi::c_int;
+    b0 = 0 as BYTE;
+    while (b0 as ::core::ffi::c_int) < 14 as ::core::ffi::c_int {
+        CloneShipFragment(
+            RACE_ID(ship1 as ::core::ffi::c_uint),
+            &raw mut GlobData.Game_state.npc_built_ship_q,
+            0 as COUNT,
+        );
+        b0 = b0.wrapping_add(1);
+    }
+    if GlobData.Game_state.BattleGroupRef == 0 as DWORD {
+        GlobData.Game_state.BattleGroupRef = PutGroupInfo(
+            !(0 as ::core::ffi::c_long) as DWORD,
+            1 as BYTE,
+        );
+        uqm_lua_checked!(setGameStateUint(
+            b"SAMATRA_GRPOFFS\0".as_ptr() as *const ::core::ffi::c_char,
+            GlobData.Game_state.BattleGroupRef,
+        ), ());
+    }
+    b0 = 1 as BYTE;
+    while b0 as ::core::ffi::c_int <= 12 as ::core::ffi::c_int {
+        PutGroupInfo(GlobData.Game_state.BattleGroupRef, b0);
+        b0 = b0.wrapping_add(1);
+    }
+    ReinitQueue(&raw mut GlobData.Game_state.npc_built_ship_q);
+    b0 = 0 as BYTE;
+    while (b0 as ::core::ffi::c_int) < 14 as ::core::ffi::c_int {
+        CloneShipFragment(
+            RACE_ID(ship2 as ::core::ffi::c_uint),
+            &raw mut GlobData.Game_state.npc_built_ship_q,
+            0 as COUNT,
+        );
+        b0 = b0.wrapping_add(1);
+    }
+    b0 = 1 as BYTE;
+    while b0 as ::core::ffi::c_int <= 4 as ::core::ffi::c_int {
+        PutGroupInfo(
+            GlobData.Game_state.BattleGroupRef,
+            (12 as ::core::ffi::c_int + b0 as ::core::ffi::c_int) as BYTE,
+        );
+        b0 = b0.wrapping_add(1);
+    }
+    ReinitQueue(&raw mut GlobData.Game_state.npc_built_ship_q);
+    GetGroupInfo(GlobData.Game_state.BattleGroupRef, !(0 as ::core::ffi::c_int) as BYTE);
+    org = planetOuterLocation((*solarSys).SunDesc[0usize].PlanetByte as COUNT);
+    hGroup = GlobData.Game_state.ip_group_q.head as HIPGROUP;
+    b0 = 0 as BYTE;
+    b1 = 0 as BYTE;
+    while (b0 as ::core::ffi::c_int) < 12 as ::core::ffi::c_int {
+        let mut GroupPtr: *mut IP_GROUP = ::core::ptr::null_mut::<IP_GROUP>();
+        if b1 as ::core::ffi::c_int
+            % (((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                / 4 as ::core::ffi::c_int) == 0 as ::core::ffi::c_int
+        {
+            b1 = (b1 as ::core::ffi::c_int
+                + ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                    / (12 as ::core::ffi::c_int + 4 as ::core::ffi::c_int)) as BYTE;
+        }
+        GroupPtr = LockIpGroup(&raw mut GlobData.Game_state.ip_group_q, hGroup);
+        hNextGroup = (*GroupPtr).succ;
+        (*GroupPtr).task = (C2Rust_Unnamed_4::ON_STATION.0 as ::core::ffi::c_int
+            | C2Rust_Unnamed_4::IGNORE_FLAGSHIP.0 as ::core::ffi::c_int) as BYTE;
+        (*GroupPtr).sys_loc = 0 as BYTE;
+        (*GroupPtr).dest_loc = ((*solarSys).SunDesc[0usize].PlanetByte
+            as ::core::ffi::c_int + 1 as ::core::ffi::c_int) as BYTE;
+        (*GroupPtr).orbit_pos = (b1 as ::core::ffi::c_int
+            + ((1 as ::core::ffi::c_int)
+                << 6 as ::core::ffi::c_int - 4 as ::core::ffi::c_int
+                    - 1 as ::core::ffi::c_int)
+            >> 6 as ::core::ffi::c_int - 4 as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int)
+                - 1 as ::core::ffi::c_int) as DWORD as BYTE;
+        (*GroupPtr).group_counter = 0 as UWORD;
+        (*GroupPtr).loc.x = (org.x as SDWORD
+            + (*(&raw mut sinetab as *mut SDWORD)
+                .offset(
+                    (b1 as ::core::ffi::c_int
+                        + ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int
+                            >> 2 as ::core::ffi::c_int)
+                        & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                            - 1 as ::core::ffi::c_int) as DWORD as isize,
+                ) as ::core::ffi::c_long
+                * 1600 as ::core::ffi::c_int as ::core::ffi::c_long
+                >> 14 as ::core::ffi::c_int) as SDWORD) as COORD;
+        (*GroupPtr).loc.y = (org.y as SDWORD
+            + (*(&raw mut sinetab as *mut SDWORD)
+                .offset(
+                    (b1 as ::core::ffi::c_int
+                        & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                            - 1 as ::core::ffi::c_int) as DWORD as isize,
+                ) as ::core::ffi::c_long
+                * 1600 as ::core::ffi::c_int as ::core::ffi::c_long
+                >> 14 as ::core::ffi::c_int) as SDWORD) as COORD;
+        UnlockLink(&raw mut GlobData.Game_state.ip_group_q, hGroup);
+        hGroup = hNextGroup;
+        b0 = b0.wrapping_add(1);
+        b1 = (b1 as ::core::ffi::c_int
+            + ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                / (12 as ::core::ffi::c_int + 4 as ::core::ffi::c_int)) as BYTE;
+    }
+    b0 = 0 as BYTE;
+    b1 = 0 as BYTE;
+    while (b0 as ::core::ffi::c_int) < 4 as ::core::ffi::c_int {
+        let mut GroupPtr_0: *mut IP_GROUP = ::core::ptr::null_mut::<IP_GROUP>();
+        GroupPtr_0 = LockIpGroup(&raw mut GlobData.Game_state.ip_group_q, hGroup);
+        hNextGroup = (*GroupPtr_0).succ;
+        (*GroupPtr_0).task = (C2Rust_Unnamed_4::ON_STATION.0 as ::core::ffi::c_int
+            | C2Rust_Unnamed_4::IGNORE_FLAGSHIP.0 as ::core::ffi::c_int) as BYTE;
+        (*GroupPtr_0).sys_loc = 0 as BYTE;
+        (*GroupPtr_0).dest_loc = ((*solarSys).SunDesc[0usize].PlanetByte
+            as ::core::ffi::c_int + 1 as ::core::ffi::c_int) as BYTE;
+        (*GroupPtr_0).orbit_pos = (b1 as ::core::ffi::c_int
+            + ((1 as ::core::ffi::c_int)
+                << 6 as ::core::ffi::c_int - 4 as ::core::ffi::c_int
+                    - 1 as ::core::ffi::c_int)
+            >> 6 as ::core::ffi::c_int - 4 as ::core::ffi::c_int
+            & ((1 as ::core::ffi::c_int) << 4 as ::core::ffi::c_int)
+                - 1 as ::core::ffi::c_int) as DWORD as BYTE;
+        (*GroupPtr_0).group_counter = 0 as UWORD;
+        (*GroupPtr_0).loc.x = (org.x as SDWORD
+            + (*(&raw mut sinetab as *mut SDWORD)
+                .offset(
+                    (b1 as ::core::ffi::c_int
+                        + ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int
+                            >> 2 as ::core::ffi::c_int)
+                        & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                            - 1 as ::core::ffi::c_int) as DWORD as isize,
+                ) as ::core::ffi::c_long
+                * 1600 as ::core::ffi::c_int as ::core::ffi::c_long
+                >> 14 as ::core::ffi::c_int) as SDWORD) as COORD;
+        (*GroupPtr_0).loc.y = (org.y as SDWORD
+            + (*(&raw mut sinetab as *mut SDWORD)
+                .offset(
+                    (b1 as ::core::ffi::c_int
+                        & ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                            - 1 as ::core::ffi::c_int) as DWORD as isize,
+                ) as ::core::ffi::c_long
+                * 1600 as ::core::ffi::c_int as ::core::ffi::c_long
+                >> 14 as ::core::ffi::c_int) as SDWORD) as COORD;
+        UnlockLink(&raw mut GlobData.Game_state.ip_group_q, hGroup);
+        hGroup = hNextGroup;
+        b0 = b0.wrapping_add(1);
+        b1 = (b1 as ::core::ffi::c_int
+            + ((1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int)
+                / 4 as ::core::ffi::c_int) as BYTE;
+    }
+}
+unsafe extern "C" fn GenerateSaMatra_generateEnergy(
+    mut solarSys: *const SOLARSYS_STATE,
+    mut world: *const PLANET_DESC,
+    mut whichNode: COUNT,
+    mut info: *mut NODE_INFO,
+) -> COUNT {
+    if if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0 {
+        BOOLEAN::TRUE.0 as ::core::ffi::c_int
+    } else {
+        BOOLEAN::FALSE.0 as ::core::ffi::c_int
+    } != 0
+        && (*CurStarDescPtr).Index as ::core::ffi::c_int
+            == C2Rust_Unnamed_2::DESTROYED_STARBASE_DEFINED.0 as ::core::ffi::c_int
+        && matchWorld(
+            solarSys,
+            world,
+            -2 as ::core::ffi::c_int as BYTE,
+            -1 as ::core::ffi::c_int as BYTE,
+        ) as ::core::ffi::c_int != 0
+    {
+        return GenerateDefault_generateRuins(solarSys, whichNode, info);
+    }
+    return 0 as COUNT;
+}
+unsafe extern "C" fn GenerateSaMatra_pickupEnergy(
+    mut solarSys: *mut SOLARSYS_STATE,
+    mut world: *mut PLANET_DESC,
+    mut whichNode: COUNT,
+) -> bool {
+    if if GlobData.SIS_state.Extended as ::core::ffi::c_int != 0 {
+        BOOLEAN::TRUE.0 as ::core::ffi::c_int
+    } else {
+        BOOLEAN::FALSE.0 as ::core::ffi::c_int
+    } != 0
+        && (*CurStarDescPtr).Index as ::core::ffi::c_int
+            == C2Rust_Unnamed_2::DESTROYED_STARBASE_DEFINED.0 as ::core::ffi::c_int
+        && matchWorld(
+            solarSys,
+            world,
+            -2 as ::core::ffi::c_int as BYTE,
+            -1 as ::core::ffi::c_int as BYTE,
+        ) as ::core::ffi::c_int != 0
+    {
+        uqm_lua_checked!(GenerateDefault_landerReportCycle(solarSys), false);
+        return false;
+    }
+    return false;
+}

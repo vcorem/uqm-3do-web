@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { createNetplayServer } from '../../server/netplay.mjs';
+import { measureSceneImage, hasAmbientStars } from './scene-pixels.mjs';
 
 const dist = path.resolve(process.env.UQM_DIST || '.tools/hd-dist');
 const output = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/hd-campaign');
@@ -48,27 +49,7 @@ async function waitFor(target, timeout) {
 async function capture(name) {
   await checkHealthy();
   const png = await guarded(page.locator('#canvas').screenshot({ path: path.join(output, name + '.png') }));
-  // Read the screenshot, not a potentially cleared WebGL backing buffer. Keep
-  // the static right HUD out of the moving-scene comparison.
-  return guarded(page.evaluate(async encoded => {
-    const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
-    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
-    const surface = document.createElement('canvas');
-    surface.width = bitmap.width; surface.height = bitmap.height;
-    const ctx = surface.getContext('2d'); ctx.drawImage(bitmap, 0, 0); bitmap.close();
-    const pixels = ctx.getImageData(0, 0, Math.floor(surface.width * 0.75), surface.height).data;
-    let lit = 0, hash = 2166136261;
-    const colors = new Set();
-    for (let i = 0; i < pixels.length; i += 4) {
-      if (Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) > 32) lit++;
-      colors.add((pixels[i] >> 4) * 256 + (pixels[i + 1] >> 4) * 16 + (pixels[i + 2] >> 4));
-      hash = Math.imul(hash ^ pixels[i], 16777619) >>> 0;
-      hash = Math.imul(hash ^ pixels[i + 1], 16777619) >>> 0;
-      hash = Math.imul(hash ^ pixels[i + 2], 16777619) >>> 0;
-    }
-    return { width: surface.width, height: surface.height, litFraction: lit / (pixels.length / 4),
-      colors: colors.size, sceneHash: hash };
-  }, png.toString('base64')));
+  return guarded(page.evaluate(measureSceneImage, png.toString('base64')));
 }
 async function hold(key, ms) {
   await guarded(page.keyboard.down(key)); held.add(key);
@@ -143,10 +124,14 @@ try {
   report.hyperspace = await capture('hyperspace');
   assert.ok(report.hyperspace.litFraction > 0.01 && report.hyperspace.colors > 24, 'Hyperspace scene is blank');
   assert.notEqual(report.hyperspace.sceneHash, report.sol.sceneHash, 'Scene never changed from Sol');
+  assert.ok(hasAmbientStars(report.hyperspace),
+    `Hyperspace ambient stars are missing outside the ship/HUD: ${JSON.stringify(report.hyperspace.ambientStars)}`);
   mark('Hyperspace transition rendered without a Wasm trap');
   await hold('ArrowUp', 5000);
   report.hyperspaceMoving = await capture('hyperspace-moving');
   assert.notEqual(report.hyperspaceMoving.sceneHash, report.hyperspace.sceneHash, 'Hyperspace scene did not advance while flying');
+  assert.ok(hasAmbientStars(report.hyperspaceMoving),
+    `Flying Hyperspace lost its ambient stars: ${JSON.stringify(report.hyperspaceMoving.ambientStars)}`);
   await checkHealthy();
   report.passed = true;
   mark('HD campaign load, Sol exit and continued Hyperspace flight passed');

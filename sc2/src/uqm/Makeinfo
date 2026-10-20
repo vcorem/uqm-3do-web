@@ -10,6 +10,16 @@ uqm_CFILES="battle.c battlecontrols.c border.c build.c cleanup.c clock.c
 		ship.c shipstat.c shipyard.c sis.c sounds.c starbase.c starcon.c
 		starmap.c state.c status.c tactrans.c trans.c uqmdebug.c util.c
 		velocity.c weapon.c"
+if [ "${UQM_RUST_CORE:-0}" = 1 ]; then
+	uqm_rust_cfiles=""
+	for uqm_rust_source in $uqm_CFILES; do
+		case "$uqm_rust_source" in
+			displist.c|trans.c|velocity.c) ;;
+			*) uqm_rust_cfiles="$uqm_rust_cfiles $uqm_rust_source" ;;
+		esac
+	done
+	uqm_CFILES="$uqm_rust_cfiles"
+fi
 uqm_HFILES="battlecontrols.h battle.h build.h clock.h cnctdlg.h coderes.h
 		collide.h colors.h commanim.h commglue.h comm.h cons_res.h controls.h
 		corecode.h credits.h demo.h displist.h dummy.h element.h encount.h

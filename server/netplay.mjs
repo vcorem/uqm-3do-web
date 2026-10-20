@@ -200,7 +200,8 @@ export function createNetplayServer(options = {}) {
         endRoom(ws.room, ws);
       });
       ws.on('message', (data, isBinary) => receive(ws, data, isBinary));
-      // /netplay/hd/<token> rooms are separate from Original rooms with the same token.
+      // HD and Original engines cannot stay in sync. Namespace active and
+      // retired rooms by edition, even when their random token is identical.
       const match = /^\/netplay\/(?:(hd)\/)?([0-9a-f]{32})\?role=(host|guest)$/.exec(req.url);
       if (!match) return reject(ws, 'Invalid room URL or role.');
       const [, edition, token, role] = match;

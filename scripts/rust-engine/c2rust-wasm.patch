@@ -1,0 +1,31 @@
+diff --git a/c2rust-transpile/src/lib.rs b/c2rust-transpile/src/lib.rs
+index 28d34bd..8c3ad56 100644
+--- a/c2rust-transpile/src/lib.rs
++++ b/c2rust-transpile/src/lib.rs
+@@ -486,6 +486,10 @@ pub fn transpile(tcfg: TranspilerConfig, cc_db: &Path, extra_clang_args: &[&str]
+ /// the system headers we need by running `xcrun --show-sdk-path`.
+ fn get_extra_args_macos() -> Vec<String> {
+     let mut args = vec![];
++    // Cross-target experiment: never inject host Darwin headers into Wasm C.
++    if std::env::var_os("C2RUST_NO_HOST_HEADERS").is_some() {
++        return args;
++    }
+     if cfg!(target_os = "macos") {
+         let usr_incl = Path::new("/usr/include");
+         if !usr_incl.exists() {
+diff --git a/c2rust-transpile/src/translator/simd.rs b/c2rust-transpile/src/translator/simd.rs
+index d634975..cb0139b 100644
+--- a/c2rust-transpile/src/translator/simd.rs
++++ b/c2rust-transpile/src/translator/simd.rs
+@@ -150,6 +150,11 @@ pub fn import_arch_function(&self, arch_name: &str, name: &str) {
+     /// Determine if a particular function name is an SIMD primitive. If so an appropriate
+     /// use statement is generated, `true` is returned, and no further processing will need to be done.
+     pub fn import_simd_function(&self, name: &str) -> TranslationResult<bool> {
++        // UQM's MikMod functions use _mm_ names but are not x86 intrinsics.
++        // No x86 SIMD intrinsics are active in the Wasm compilation database.
++        if std::env::var_os("C2RUST_TARGET_WASM").is_some() {
++            return Ok(false);
++        }
+         if name.starts_with("_mm") {
+             // REVIEW: This will do a linear lookup against all SIMD fns. Could use a lazy static hashset
+             if MISSING_SIMD_FUNCTIONS.contains(&name) {

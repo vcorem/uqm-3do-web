@@ -57,7 +57,7 @@
         function render() {
             radios.forEach(radio => { radio.checked = radio.value === selected; });
             label.textContent = selected === 'hd' ? 'Play Redrawn HD' : 'Play Original 3DO';
-            note.textContent = selected === 'hd' ? 'Redrawn artwork at 1280 × 960. Local play with separate saves.'
+            note.textContent = selected === 'hd' ? 'Redrawn artwork at 1280 × 960. Online Melee with HD players and separate saves.'
                 : 'Original artwork. Campaign, local and online Melee.';
         }
         function restoreControls() {

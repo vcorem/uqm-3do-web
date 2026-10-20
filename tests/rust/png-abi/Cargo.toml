@@ -1,0 +1,17 @@
+[workspace]
+
+[package]
+name = "uqm-png-abi-oracle"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "png_adapter_oracle"
+path = "../png-abi.rs"
+crate-type = ["staticlib"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

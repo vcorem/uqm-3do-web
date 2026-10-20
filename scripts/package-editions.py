@@ -24,6 +24,12 @@ def package(original, hd, output):
         destination.mkdir(exist_ok=True)
         for name in ENGINE + extra:
             shutil.copy2(source / name, destination / name)
+        for name in ('engine-language.json', 'link-inputs.json'):
+            metadata = source / name
+            if metadata.is_file():
+                shutil.copy2(metadata, destination / name)
+            else:
+                (destination / name).unlink(missing_ok=True)
         if edition == 'original':
             page = destination / 'index.html'
             html = page.read_text()
