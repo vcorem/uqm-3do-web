@@ -41,12 +41,19 @@ Enter chooses in the menus). Both online players use the first player's keys on
 their own computer. Esc pauses a local battle and asks before it leaves an online
 match or a game against the computer.
 
+Every game is a fleet match: the first ship of a fleet opens the match, and
+after each battle the loser chooses the next ship from the ships left (the
+winner's ship stays). The last ship comes by itself, and a fleet without ships
+loses the match. Against the computer both sides have all three ships; in **Two
+Players** Player 2 and then Player 1 choose a fleet of one to three ships.
+
 **Online Melee** shows the open rooms. Pick one to play, or **Create room**, give it
 a name and wait: the match starts when someone joins (**Copy invite link** is there
-too). Each player then picks one to three ships in the 3D ship choice; the numbers
-are the order of battle. **Ready** when the fleet is complete (**Change fleet**
-takes it back while the opponent still chooses). A destroyed ship
-brings the next ship of that fleet; a destroyed fleet ends the match. **Rematch**
+too). Each player then picks one to three ships in the 3D ship choice; the first
+pick opens the match. **Ready** when the fleet is complete (**Change fleet**
+takes it back while the opponent still chooses). After a loss with two ships
+left the loser has 20 seconds to choose the next ship (then the first ship left
+comes) while the opponent waits; a destroyed fleet ends the match. **Rematch**
 needs both players. All screens are in the game; see [docs/online.md](docs/online.md).
 
 For development, run `npm start --prefix cosmoclash` (the relay and the room
@@ -74,12 +81,14 @@ through the real Node and Rust relays.
 Wasm tests compare independent Wasm instances and native Rust, and reject invalid
 ABI requests. Browser tests use independent browser processes and real relays,
 with real keyboard and mouse input, state checksums and asset loading:
-`tests/browser/solo.mjs` (local play), `tests/browser/game.mjs` (full fleet match,
-rematch, jitter and disconnect through the Rust relay with an invite link) and
+`tests/browser/solo.mjs` (local play and the local fleet matches), `tests/browser/game.mjs`
+(full fleet match with chosen next ships, rematch, jitter and a disconnect during
+a choice through the Rust relay with an invite link) and
 `tests/browser/online-ui.mjs` (`npm run test:online-ui`: the in-game lobby with
 the room list, saving every screen at 1280x720, 1024x768 and 1920x1080 in
 `test-results/online-ui/`; `solo.mjs` saves the local screens in
-`test-results/local-ui/`).
+`test-results/local-ui/`; the screens of the fleet matches and the choice of
+the next ship are also in `test-results/next-ship/`).
 On macOS the browser runner defaults to installed Google Chrome; set `CHROME_BIN`
 to select another executable. Linux uses Playwright Chromium.
 

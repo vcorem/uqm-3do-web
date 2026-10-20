@@ -36,9 +36,14 @@ references; the playable battle loop calls the Rust engine.
   Clash room list (`/netplay/lobby?edition=cosmoclash`) for rooms with a name;
   a room without a name is private and needs its invite link
   (`/cosmoclash/?cosmoRoom=<token>`). Each side chooses one to three unique
-  ships and their order. Both must be ready before starting.
-- The defeated side advances its fleet. Both ships reset for the next battle,
-  as in the original local game. A fleet defeat ends the match. Rematch requires
+  ships; the first one opens the match. Both must be ready before starting.
+- After a lost battle with two or more ships left, the defeated side chooses
+  its next ship within 20 s (room protocol 3: both peers stop the lockstep at
+  the same tick, only the loser's choice decides, and the next battle starts
+  at the same tick on both); the last ship comes by itself. The winner's ship
+  stays; both ships reset for the next battle, as in the original local game.
+  A fleet defeat ends the match. Play vs Computer and Two Players are fleet
+  matches with the same rules. Rematch requires
   mutual acceptance and a fresh ready check; leaving retires the room.
 - The simulation advances at a fixed 60 Hz, with seeded game randomness and a
   three-tick input delay. The peers exchange inputs in lockstep and compare
