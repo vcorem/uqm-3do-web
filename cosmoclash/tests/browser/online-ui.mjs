@@ -89,23 +89,28 @@ async function nextShip(pages, ci, how) {
   assert.deepEqual(states.map(s => s.net.phase), ['choosing', 'choosing']);
   let ship;
   if (how === 'keyboard') {
-    await capture(chooser, 'next-ship-choose', who, SIZES, { next: true, check: () => shipSpace(chooser) });
-    assert.match(await chooser.locator('#cosmo-online h1').textContent(), /^Choose Your Next Ship$/);
-    assert.match(await chooser.locator('.cc-timer-n').textContent(), /^(1\d|20)$/);
-    await capture(waiter, 'next-ship-wait', other, SIZES, { next: true });
-    assert.match(await waiter.locator('#cosmo-online').textContent(), /Your opponent is choosing the next ship/);
-    // The waiting player never chooses: Enter does nothing there.
-    await waiter.keyboard.press('Enter');
-    await waiter.waitForTimeout(200);
-    assert.deepEqual([(await read(waiter)).online.confirm, (await read(waiter)).online.screen], [false, 'next']);
-    // Esc asks first; Stay (the default) keeps the match, the time goes on.
-    await chooser.waitForTimeout(700);
-    await chooser.keyboard.press('Escape');
-    await chooser.waitForFunction(() => window.__cosmo.online.confirm);
-    assert.equal(await activeText(chooser), 'Stay');
-    await capture(chooser, 'next-ship-leave-question', who, SIZES, { next: true });
-    await chooser.keyboard.press('Enter');
-    assert.equal((await read(chooser)).online.confirm, false);
+    // The screenshots at three sizes and the Esc question take longer than the 20 s of the
+    // choice on a slow machine (the GitHub runner): both page clocks stop meanwhile.
+    await Promise.all(pages.map(stopClock));
+    try {
+      await capture(chooser, 'next-ship-choose', who, SIZES, { next: true, check: () => shipSpace(chooser) });
+      assert.match(await chooser.locator('#cosmo-online h1').textContent(), /^Choose Your Next Ship$/);
+      assert.match(await chooser.locator('.cc-timer-n').textContent(), /^(1\d|20)$/);
+      await capture(waiter, 'next-ship-wait', other, SIZES, { next: true });
+      assert.match(await waiter.locator('#cosmo-online').textContent(), /Your opponent is choosing the next ship/);
+      // The waiting player never chooses: Enter does nothing there.
+      await waiter.keyboard.press('Enter');
+      await waiter.waitForTimeout(200);
+      assert.deepEqual([(await read(waiter)).online.confirm, (await read(waiter)).online.screen], [false, 'next']);
+      // Esc asks first; Stay (the default) keeps the match, the time goes on.
+      await chooser.waitForTimeout(700);
+      await chooser.keyboard.press('Escape');
+      await chooser.waitForFunction(() => window.__cosmo.online.confirm);
+      assert.equal(await activeText(chooser), 'Stay');
+      await capture(chooser, 'next-ship-leave-question', who, SIZES, { next: true });
+      await chooser.keyboard.press('Enter');
+      assert.equal((await read(chooser)).online.confirm, false);
+    } finally { await Promise.all(pages.map(startClock)); }
     // The other ship (not the first ship left), with the keyboard.
     await chooser.keyboard.press('ArrowRight');
     ship = (await read(chooser)).online.next.carousel;
