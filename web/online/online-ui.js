@@ -95,6 +95,8 @@
     };
     const ESCAPE = { lobby: 'back', name: 'cancel', waiting: 'cancel', joining: 'cancel', found: 'cancel',
         invite: 'dismiss', restart: 'back' };
+    // The screens that can cover the game's main menu.
+    const OVER_MENU = ['lobby', 'name', 'waiting', 'joining', 'found', 'restart'];
 
     /* env: { edition, engine, now(), setTimeout(fn, ms), clearTimeout(id), random(),
          storage: { get(key), set(key, value) }, netplay (UQMNetplay),
@@ -515,11 +517,18 @@
             // Called with Module.gameScreen whenever it changes.
             gameScreen(name) {
                 if (name === state.engineScreen) return;
+                const was = state.engineScreen;
                 state.engineScreen = name;
                 const session = state.session;
                 if (session) {
                     if (name === 'melee') session.sawMelee = true;
                     else if (name === 'mainMenu' && session.sawMelee) { endSession(); return; }
+                } else if (was === 'mainMenu' && env.game.started() && OVER_MENU.includes(state.screen)) {
+                    // The game left its main menu under the menu (a key pressed while the
+                    // main menu faded in): no lobby over another game screen.
+                    closeRoom();
+                    show('hidden');
+                    return;
                 }
                 changed();
             },
@@ -1399,6 +1408,11 @@
                 waiting: 'Room open. Waiting for an opponent.', joining: 'Joining the room.', found: 'Opponent found. The battle begins soon.',
                 invite: 'You are invited to an online Super-Melee.', restart: 'Online Melee needs a reload.' };
             let textValue = titles[state.screen] || '';
+            // A room chosen during the download (no percentages: they would be read out all the time).
+            if (state.room && state.room.status === 'loading') {
+                if (state.screen === 'waiting') textValue = 'Your room opens when the game has loaded.';
+                else if (state.screen === 'joining') textValue = 'You join the room when the game has loaded.';
+            }
             if (state.screen === 'start' && !state.ready && state.loading.label) textValue += ' ' + state.loading.label;
             if (state.message && (state.screen === 'message' || state.screen === 'restart')) textValue = state.message.say || state.message.text;
             if (state.notice) textValue += ' ' + state.notice.text;

@@ -261,7 +261,7 @@ test('a guest joins from the list; the hook gives the guest role 1', () => {
     assert.equal(h.state.screen, 'hidden', 'Esc in the lobby returns to the game');
 });
 
-test('with the hook, a match found while the engine is away from its main menu waits for it there', () => {
+test('with the hook, the engine takes the role at its main menu; its screens during the session end nothing early', () => {
     const h = harness({ ready: true, hook: true });
     h.ui.activate('play');
     h.game.current = 'mainMenu';
@@ -269,14 +269,17 @@ test('with the hook, a match found while the engine is away from its main menu w
     h.ui.fromMenu();
     h.ui.activate('create');
     h.ui.activate('open');
-    h.game.current = 'transition';
-    h.ui.gameScreen('transition');
     h.clients[0].status('ready', 'Opponent connected.');
     h.advance(3000);
-    assert.deepEqual(h.game.queued, [[0, h.clients[0]]], 'the role is queued; the engine takes it at its main menu');
+    assert.deepEqual(h.game.queued, [[0, h.clients[0]]]);
     assert.equal(h.state.screen, 'hidden');
+    h.ui.roleTaken();
+    // The engine leaves its main menu to play the role: the session goes on.
+    h.ui.gameScreen('transition');
+    assert.ok(h.state.session);
+    assert.equal(h.clients[0].closed, false);
     h.ui.gameScreen('mainMenu');
-    assert.equal(h.state.screen, 'hidden', 'reaching the main menu before the match is not the end of the session');
+    assert.equal(h.state.screen, 'hidden', 'the main menu before the match is not the end of the session');
     h.ui.gameScreen('melee');
     h.ui.gameScreen('mainMenu');
     assert.equal(h.state.screen, 'lobby');
@@ -545,6 +548,23 @@ test('main-menu hook: a role the engine does not take ends the session after a w
     h.ui.gameScreen('mainMenu');
     assert.equal(h.state.screen, 'lobby');
     assert.equal(h.state.notice.kind, 'info');
+});
+
+test('the lobby goes away when the game leaves its main menu under it', () => {
+    const h = harness({ ready: true, hook: true });
+    h.ui.activate('play');
+    h.ui.gameScreen('mainMenu');
+    h.ui.fromMenu();
+    h.ui.activate('create');
+    h.ui.activate('open');
+    assert.equal(h.state.screen, 'waiting');
+    h.ui.gameScreen('transition');
+    assert.equal(h.state.screen, 'hidden', 'no lobby over another game screen');
+    assert.equal(h.clients[0].closed, true, 'the open room closes');
+    h.ui.gameScreen('mainMenu');
+    assert.equal(h.state.screen, 'hidden');
+    h.ui.fromMenu();
+    assert.equal(h.state.screen, 'lobby', 'the corner button or O opens it again');
 });
 
 test('both page shells use the in-frame UI, not the old Online Melee section', () => {
