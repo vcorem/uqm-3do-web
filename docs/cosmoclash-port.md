@@ -2,7 +2,7 @@
 
 Branch: `codex/cosmoclash-rust-netplay`
 
-Implementation and local validation: 20 October 2026
+Implementation, local validation and Linux CI: 20 October 2026
 
 ## Source and scope
 
@@ -134,9 +134,13 @@ latency/jitter. Browser checks also inspect loading failures and script errors.
 
 Raw reports and screenshots are generated under `cosmoclash/test-results/`
 (ignored by Git). The dedicated GitHub workflow is
-`.github/workflows/cosmoclash.yml`. Local results on macOS/Apple Silicon with Chrome are recorded below. GitHub's
-Linux workflow results are reported separately; local success is not a claim
-that a hosted CI run or public internet play has passed.
+`.github/workflows/cosmoclash.yml`. Local results on macOS/Apple Silicon with
+Chrome are recorded below. The complete dedicated Linux workflow also
+[passed on GitHub](https://github.com/vcorem/uqm-3do-web/actions/runs/39367088430)
+at commit `8d1148923aa1221b8322567c38a3b0c0302c09d9`, including the patched
+dependencies, source comparisons, production Wasm, shared-relay regressions,
+and actual two-browser fleet combat, rematch, latency/jitter and disconnect.
+This does not establish behavior across separate public internet connections.
 
 | Check | Local result |
 | --- | --- |
@@ -171,9 +175,14 @@ size advisory for the Three.js bundle (approximately 675 kB before gzip).
 
 The existing general UQM workflow previously ran its C/Rust comparison tests
 before the original build generated `config_unix.h`. The original build step is
-now ordered before those comparisons. This corrects an inherited clean-checkout
-prerequisite; the separate full UQM workflow is not included in the Cosmo-specific
-validation totals above.
+now ordered before those comparisons. The four native oracle scripts also search
+the source checkout root, where that header is generated, and their shared
+fixture respects generated capability macros before supplying fallbacks. These
+changes correct inherited clean-checkout prerequisites. The separate full UQM
+workflow is not included in the Cosmo-specific validation totals above. The four
+Original native oracle suites passed locally in both debug and release after
+these fixes (1,576,637,346 comparisons across core, velocity/trigonometry,
+queue/geometry and bounding boxes).
 
 ## Remaining release validation
 

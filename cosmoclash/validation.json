@@ -6,6 +6,14 @@
     "browser": "Installed Google Chrome, two independent headless processes, SwiftShader"
   },
   "upstreamCommit": "966ad7b7ac90c44d3751dc014fbdc1ae03359e07",
+  "linuxCI": {
+    "passed": true,
+    "workflow": ".github/workflows/cosmoclash.yml",
+    "commit": "8d1148923aa1221b8322567c38a3b0c0302c09d9",
+    "url": "https://github.com/vcorem/uqm-3do-web/actions/runs/39367088430",
+    "completedAt": "2026-10-20T04:08:45Z",
+    "includesFullTwoBrowserMatchRematchJitterDisconnect": true
+  },
   "unitAndIntegration": {
     "passed": true,
     "files": 41,
