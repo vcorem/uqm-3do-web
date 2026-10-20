@@ -34,4 +34,30 @@ describe('the fleet choice of Two Players', () => {
     view.destroy();
     expect(document.querySelector('[data-screen="local-fleet"]')).toBeNull();
   });
+  it('Tab moves the focus: one item shows it, and Enter acts on that item', () => {
+    attachLiveRegion(document.body);
+    const picker = new FleetPicker(['Enter']);
+    const results: PickResult[] = [];
+    const view = new FleetPickView(document.body, 0, picker, { changed: () => view.render(), result: result => results.push(result) });
+    view.render();
+    picker.key('Enter');
+    view.render();
+    expect(picker.picks).toEqual([0]);
+    const root = view.root;
+    // The browser's Tab moves the DOM focus from the ship card to Done.
+    const done = root.querySelector<HTMLElement>('[data-item="done"]')!;
+    done.focus();
+    expect(picker.focus).toBe('done');
+    expect([...root.querySelectorAll('.is-focus')]).toEqual([done]);
+    expect(document.activeElement).toBe(done);
+    expect(picker.key('Enter')).toEqual({ handled: true, result: 'done' });
+    expect(picker.picks).toEqual([0]);
+    // Shift+Tab back to the card: Enter adds the ship there.
+    root.querySelector<HTMLElement>('[data-item="ship"]')!.focus();
+    expect(picker.focus).toBe('ship');
+    expect(root.querySelector('.is-focus')?.getAttribute('data-item')).toBe('ship');
+    picker.key('Enter');
+    expect(picker.picks).toEqual([0, 1]);
+    expect(results).toEqual([]);
+  });
 });

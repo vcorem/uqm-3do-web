@@ -39,6 +39,11 @@ export class FleetPickView {
       const item = (event.target as HTMLElement).closest<HTMLElement>('[data-item]')?.dataset.item as PickItem | undefined;
       if (item && item !== this.picker.focus) { this.picker.focus = item; this.render(); }
     });
+    // Tab moves the DOM focus: the picker's focus follows it, so Enter acts on the item that shows the focus.
+    this.root.addEventListener('focusin', event => {
+      const item = (event.target as HTMLElement).closest<HTMLElement>('[data-item]')?.dataset.item as PickItem | undefined;
+      if (item && item !== this.picker.focus) { this.picker.focus = item; this.handlers.changed(); }
+    });
     // The mouse arrows never take the focus from the keyboard.
     this.root.addEventListener('mousedown', event => { if ((event.target as HTMLElement).closest('[data-browse]')) event.preventDefault(); });
   }
