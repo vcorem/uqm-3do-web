@@ -15,8 +15,11 @@ import { buildHarness, shimPath } from './online-harness.mjs';
 const output = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/online-ui');
 const pages = path.join(output, 'pages');
 await mkdir(output, { recursive: true });
-const editions = await buildHarness(pages, (process.env.UQM_EDITIONS || 'original,hd').split(','));
-assert.ok(editions.includes('original'), 'The Original harness must build');
+// HD needs the HD content (.tools/hd-source); without UQM_EDITIONS it is skipped when missing.
+const requested = (process.env.UQM_EDITIONS || 'original,hd').split(',');
+const editions = await buildHarness(pages, requested);
+if (process.env.UQM_EDITIONS) assert.deepEqual(editions, requested, 'Every requested edition must build');
+else assert.ok(editions.includes('original'), 'The Original harness must build');
 const viewports = (process.env.UQM_VIEWPORTS || '1280x960,1024x768').split(',').map(text => {
   const [width, height] = text.split('x').map(Number);
   return { width, height };

@@ -19,6 +19,7 @@
     "test:browser": "node tests/browser/netplay.mjs",
     "test:subtitles": "node tests/browser/subtitles.mjs",
     "test:editions": "node tests/browser/editions.mjs",
+    "test:online-ui": "node tests/browser/online-ui.mjs",
     "test:hd-campaign": "node tests/browser/hd-campaign.mjs",
     "test:hd-stability": "node tests/browser/hd-stability.mjs"
   },
