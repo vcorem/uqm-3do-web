@@ -6,6 +6,8 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { chromium, firefox, webkit } from 'playwright';
 import { createGameBackend } from '../helpers/game-backend.mjs';
+import { createLobbyStub } from '../helpers/online-lobby.mjs';
+import { shimPath } from './online-harness.mjs';
 
 const browserEngines = { chromium, firefox, webkit };
 const selectedEngines = [
@@ -60,11 +62,13 @@ if (peerDist) {
 }
 
 async function readState(page) {
-  return page.evaluate(() => ({ ...Module.webNet.stats, connection: Module.webNet.state }));
+  // Module.webNet is the room connection from the match start on.
+  return page.evaluate(() => Module.webNet ? { ...Module.webNet.stats, connection: Module.webNet.state }
+    : { connection: online.state.room ? online.state.room.status : 'none', screen: online.state.screen });
 }
 async function waitState(pages, state, timeout = 45000) {
   await Promise.all(pages.map(page => page.waitForFunction(
-    state => Module.webNet.stats.engineState === state, state, { polling: 100, timeout })));
+    state => Module.webNet && Module.webNet.stats.engineState === state, state, { polling: 100, timeout })));
 }
 async function key(pages, name, delay = 150) {
   await Promise.all(pages.map(page => page.keyboard.press(name, { delay })));
@@ -110,7 +114,8 @@ function seedFleet({ file, guestShip }) {
 }
 
 async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) {
-  const app = createGameBackend({ distDir, latencyPatternMs }, peerDist);
+  // Players meet in the lobby (a test lobby in front of the relay), as on the site.
+  const app = createLobbyStub(createGameBackend({ distDir, latencyPatternMs }, peerDist));
   const address = await app.listen(0);
   const origin = `http://127.0.0.1:${address.port}`;
   const browsers = [];
@@ -135,6 +140,7 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       browsers.push(browser);
       entry.browsers[i].version = browser.version();
       const context = await browser.newContext({ viewport: { width: 1100, height: 1100 } });
+      await context.addInitScript({ path: shimPath });
       // HD's large media response can evict Wasm from the browser inspector's
       // response cache. Hash the exact server response before forwarding those
       // unchanged bytes to the browser; this also works outside Chromium.
@@ -157,7 +163,7 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       }
       const page = await context.newPage();
       page.setDefaultTimeout(30000);
-      page.on('websocket', socket => roomSockets[i].push(socket.url()));
+      page.on('websocket', socket => { if (!/\/netplay\/lobby/.test(socket.url())) roomSockets[i].push(socket.url()); });
       page.on('pageerror', error => failures.push(`${i}: ${error.stack || error.message}`));
       page.on('console', message => {
         if (['error', 'warning'].includes(message.type())) {
@@ -185,12 +191,29 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
     // replacement of local fleet/control settings by the online session.
     await Promise.all(pages.map(page => page.evaluate(() => new Promise((resolve, reject) =>
       FS.syncfs(false, error => error ? reject(error) : resolve())))));
-    await pages[0].locator('#create-room').click();
-    await pages[0].waitForFunction(() => document.getElementById('online-status').textContent === 'Waiting for your opponent to join…', null, { polling: 100 });
-    const invite = await pages[0].locator('#room-invite').inputValue();
-    await pages[1].locator('#join-invite').fill(invite);
-    await pages[1].locator('#join-room').click();
-    await Promise.all(pages.map(page => page.locator('#launch-online').click()));
+    // Keyboard only, in the game frame: the host opens a named room from the lobby,
+    // the guest picks it from the live list, and the match starts by itself.
+    const press = async (page, ...keys) => { for (const name of keys) { await page.keyboard.press(name); await sleep(80); } };
+    const screen = (page, name, timeout = 30000) => page.waitForFunction(name => online.state.screen === name, name, { polling: 100, timeout });
+    await press(pages[0], 'ArrowDown', 'Enter');
+    await screen(pages[0], 'lobby');
+    await pages[0].waitForFunction(() => online.state.focus === 'create', null, { polling: 100 });
+    await press(pages[0], 'Enter');
+    await screen(pages[0], 'name');
+    await pages[0].keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+    await pages[0].keyboard.type(`Test ${name}`);
+    await press(pages[0], 'Enter');
+    // The room is open once its client has connected; the guest then waits for it in the live list.
+    await pages[0].waitForFunction(() => online.state.screen === 'waiting' && online.state.room &&
+      online.state.room.status === 'waiting' && online.state.room.client, null, { polling: 100 });
+    await press(pages[1], 'ArrowDown', 'Enter');
+    await pages[1].waitForFunction(name => online.state.screen === 'lobby' && online.state.lobby.rooms.some(room => room.name === name) &&
+      online.state.focus === 'room:' + online.state.lobby.rooms.find(room => room.name === name).id, `Test ${name}`, { polling: 100 });
+    entry.lobbyRoom = await pages[1].evaluate(() => online.state.lobby.rooms[0]);
+    // The page knows its engine from the packager's UQM_VARIANT; an unpackaged build says C.
+    assert.ok(['c', 'rust'].includes(entry.lobbyRoom.engine), JSON.stringify(entry.lobbyRoom));
+    await press(pages[1], 'Enter');
+    await Promise.all(pages.map(page => page.waitForFunction(() => online.state.session, null, { polling: 100, timeout: 90000 })));
     await waitState(pages, 'inSetup');
     entry.roomSocketURLs = roomSockets;
     for (const [i, urls] of roomSockets.entries()) {

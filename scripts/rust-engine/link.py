@@ -11,6 +11,7 @@ import runpy
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
@@ -65,6 +66,10 @@ shutil.copy2(source / 'wasm/compat/toolchain-fixes.json', output / 'toolchain-fi
 shutil.copy2(root / 'web/game-help/game-help.js', output / 'game-help.js')
 # The page starts the engine through this loader, which keeps the game data in the browser.
 shutil.copy2(root / 'web/engine-loader/engine-loader.js', output / 'engine-loader.js')
+# In-frame start screen and online lobby, with art made from this edition's content.
+shutil.copy2(root / 'web/online/online-ui.js', output / 'online-ui.js')
+subprocess.run([sys.executable, str(root / 'web/online/build-art.py'), '--edition', args.edition,
+                '--content', str(source / 'content'), '--output', str(output)], check=True)
 if args.edition == 'original':
     shutil.copy2(source / 'COPYING', output / 'COPYING.txt')
     shutil.copy2(source / 'wasm/netplay-client.js', output / 'netplay-client.js')

@@ -77,6 +77,11 @@ jobs:
         run: UQM_RELAY=rust npm run test:browser
       - name: Test voiced dialogue and subtitle pixels in the Rust engine
         run: npm run test:subtitles
+      - name: Test the start screen and online lobby in the game frame
+        run: |
+          for artifact in online-ui.js online-art.json online-art.png online-stars.png online-title.png; do test -s "dist/$artifact"; done
+          python3 -m py_compile web/online/build-art.py
+          UQM_EDITIONS=original npm run test:online-ui
       - name: Compare C and Rust clients in real battles through the Rust relay
         run: |
           UQM_CORE=c BUILD_OUTPUT="$PWD/.tools/c-reference" ./scripts/build-web.sh
@@ -137,6 +142,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Test HD Rust multiplayer matches and disconnects
         run: UQM_RELAY=rust UQM_EDITION=hd UQM_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/hd-rust-rust npm run test:browser
+      - name: Test the HD start screen and online lobby in the game frame
+        run: UQM_EDITIONS=hd npm run test:online-ui
       - name: Compare HD C and Rust clients through the Rust relay
         run: |
           UQM_CORE=c HD_OFFLINE=1 HD_BUILD_OUTPUT="$PWD/.tools/hd-c-reference" ./scripts/build-hd-web.sh

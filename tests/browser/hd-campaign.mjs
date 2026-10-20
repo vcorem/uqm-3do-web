@@ -28,7 +28,7 @@ function mark(step) {
 }
 async function checkHealthy() {
   const state = await guarded(page.evaluate(() => ({
-    failed: document.getElementById('start')?.textContent === 'Unable to start',
+    failed: /^Unable to start/.test(document.getElementById('status')?.textContent || ''),
     exitStatus: Module.exitStatus, status: document.getElementById('status')?.textContent,
     log: document.getElementById('log')?.textContent || '',
   })));
@@ -40,7 +40,7 @@ async function checkHealthy() {
 async function waitFor(target, timeout) {
   await guarded(page.waitForFunction(target => {
     const module = typeof Module === 'object' ? Module : {};
-    return document.getElementById('start')?.textContent === 'Unable to start' ||
+    return /^Unable to start/.test(document.getElementById('status')?.textContent || '') ||
       module.exitStatus !== undefined || (target === 'runtime'
         ? typeof runtimeReady !== 'undefined' && runtimeReady : module.gameScreen === target);
   }, target, { timeout }));
@@ -92,7 +92,7 @@ try {
   assert.match(report.config.uqm, /^resolutionfactor = INT32:2$/m);
   assert.match(report.config.megamod, /^difficulty = INT32:0$/m);
   assert.match(report.config.megamod, /^extended = BOOLEAN:false$/m);
-  await guarded(page.getByRole('button', { name: 'Launch HD game', exact: true }).click());
+  await guarded(page.getByRole('button', { name: 'Play', exact: true }).click());
   await waitFor('mainMenu', 90000);
   report.canvas = await guarded(page.evaluate(() => ({ width: canvas.width, height: canvas.height })));
   assert.deepEqual(report.canvas, { width: 1280, height: 960 });

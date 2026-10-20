@@ -99,7 +99,7 @@ async function scenario(origin, name, enableOverride) {
       Module.logReadFiles = true;
       if (!enableOverride) Module.arguments = Module.arguments.filter(arg => arg !== '--subtitles');
     }, { save: Array.from(fixture), config, enableOverride });
-    await page.getByRole('button', { name: 'Launch game', exact: true }).click();
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
     await page.waitForFunction(() => Module.gameScreen === 'mainMenu', null, { timeout: 60000 });
     entry.startup = await page.evaluate(() => ({
       arguments: Module.arguments,

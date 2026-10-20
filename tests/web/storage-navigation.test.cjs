@@ -19,6 +19,7 @@ function harness(edition, withLink = true, persistGranted = true) {
         console: { log() {}, warn() {} }, URLSearchParams, SharedArrayBuffer,
         location: { hash: '' }, navigator: { storage: { persist: () => Promise.resolve(persistGranted) } },
         crossOriginIsolated: true, addEventListener() {}, addRunDependency() {}, removeRunDependency() {},
+        setInterval() {}, setTimeout() {},
         ENV: {}, IDBFS: {}, FS: {
             mkdirTree() {}, mount() {}, unmount() {},
             syncfs(populate, callback) { if (populate) callback(null); else pending.push(callback); },

@@ -49,7 +49,7 @@ page.on('crash', () => failures.push('page crashed'));
 const result = { edition, page: pageFolder, role, engine, browserVersion: browser.version(), origin, passed: false, started: new Date().toISOString() };
 const readState = () => page.evaluate(() => ({ ...Module.webNet.stats, connection: Module.webNet.state }));
 const waitState = (state, timeout = 120000) => page.waitForFunction(
-  state => Module.webNet.stats.engineState === state, state, { polling: 100, timeout });
+  state => Module.webNet && Module.webNet.stats.engineState === state, state, { polling: 100, timeout });
 async function enterUntil(state) {
   const deadline = Date.now() + 120000;
   while (Date.now() < deadline) {
@@ -82,27 +82,27 @@ try {
   result.wasm = await page.evaluate(async () => { const r = performance.getEntriesByType('resource').find(e => e.name.endsWith('uqm-debug.wasm')); return r ? r.name : null; });
   await page.evaluate(seedFleet, meleeConfig);
   await page.evaluate(() => new Promise((resolve, reject) => FS.syncfs(false, error => error ? reject(error) : resolve())));
-  // openRoom is the page's own room function behind Create room / Join room.
+  // The lobby's own room calls (online-ui.js): a private host room (not in the public
+  // list, so no other player can take it), or a guest join by token.
   const deadline = Date.now() + joinTimeout;
   for (let attempt = 1; ; attempt++) {
-    await page.evaluate(([role, token]) => openRoom(role, token), [role, token]);
-    // The client shows 'waiting' when its socket opens, before the relay answers. A host is
-    // in its room after the relay's 'waiting'; a guest is in only when the room is 'ready'.
+    await page.evaluate(([role, token]) => role === 'host' ? online.controller.host(null, token) : online.controller.join(token), [role, token]);
+    // A host is in its room when the room stays open (the relay refuses a bad room at
+    // once); a guest only when the room is 'ready'.
     const goal = role === 'host' ? 'waiting' : 'ready';
     const state = await page.waitForFunction(goal => {
-      const net = Module.webNet;
-      const state = net && net.state;
-      if (state === 'error' || state === 'closed' || state === 'ready') return state;
-      return goal === 'waiting' && state === 'waiting' &&
-        document.getElementById('online-status').textContent === 'Waiting for your opponent to join…' ? state : false;
+      const room = online.state.room;
+      if (online.state.session || online.state.screen === 'found') return 'ready';
+      if (!room) return online.state.notice && online.state.notice.kind === 'error' ? 'error' : false;
+      return goal === 'waiting' && room.status === 'waiting' && room.client && Date.now() - room.opened > 2000 ? 'waiting' : false;
     }, goal, { polling: 100, timeout: 30000 }).then(handle => handle.jsonValue()).catch(() => 'timeout');
     if (state === goal || state === 'ready') { log(`in room (${state}) after ${attempt} attempt(s)`); break; }
     if (role === 'host' || Date.now() > deadline) throw new Error(`Could not enter the room: ${state}`);
     await sleep(2000);
   }
-  await page.waitForFunction(() => Module.webNet.state === 'ready', null, { polling: 100, timeout: 300000 });
+  // The lobby starts the match by itself a moment after the opponent joins.
+  await page.waitForFunction(() => online.state.screen === 'found' || online.state.session, null, { polling: 100, timeout: 300000 });
   log('opponent connected');
-  await page.locator('#launch-online').click();
   await waitState('inSetup');
   log('fleet setup');
   await page.locator('#canvas').click();

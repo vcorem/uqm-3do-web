@@ -1,5 +1,6 @@
 /* Page help shared by both editions: download progress, the keys panel, the
-   Keys button with the ? key, and a first-visit "How to start" card. */
+   Keys button with the ? key, and the "How to start" steps that the start
+   screen in the game frame shows (web/online/online-ui.js). */
 (function (root, factory) {
     'use strict';
     const api = factory();
@@ -7,7 +8,6 @@
     else root.UQMHelp = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
-    const STORAGE_KEY = 'uqm-help-start-closed';
     const k = text => '<kbd>' + text + '</kbd>';
     // Keys come from sc2/content/menu.key and uqm.key; the flight and pause
     // behaviour was checked in the Original edition.
@@ -20,11 +20,12 @@
         ['Combat · player 2 (WASD)', [k('W') + ' thrust · ' + k('A D') + ' turn', k('V') + ' fire · ' + k('B') + ' special', 'Select WASD in the in-game controls']],
         ['Game', [k('F1') + ' pause · ' + k('?') + ' show these keys', k('Shift + Tab') + ', then release Shift, for page controls']],
     ];
-    const START_STEPS = [
-        'Choose <b>New Game</b> with ' + k('↑ ↓') + ' and ' + k('Enter') + '. ' + k('Esc') + ' skips the intro.',
-        'The ship menu opens. Choose <b>Navigate</b> and press ' + k('Enter') + ' to fly.',
-        'Hold ' + k('↑') + ' to fly and ' + k('← →') + ' to turn. ' + k('Esc') + ' opens the ship menu again.',
-        'First stop: the starbase at Earth, the third planet from the Sun.',
+    // Plain lines for the start screen inside the game frame (game fonts, no markup).
+    const START_TEXT = [
+        'HOW TO START: choose New Game with the arrows and Enter.',
+        'Esc skips the intro. In the ship menu, choose Navigate.',
+        'Hold Up to fly, Left and Right to turn. Esc: ship menu.',
+        'First stop: the starbase at Earth, the third planet.',
     ];
     const STYLE = [
         '.stage { display: grid; gap: 20px; align-items: start; }',
@@ -38,19 +39,7 @@
         '  background: #080b12f2; border: 1px solid #42516a; border-radius: 5px; padding: 12px 16px 14px; font-size: 13px; color: #a4adbc; text-align: left; }',
         '.keys-pop header { display: flex; justify-content: space-between; align-items: center; margin: 0; }',
         '.keys-pop header strong { color: #e1e6ee; font-size: 14px; }',
-        '.keys-pop button, .start-card button.link { background: none; color: #dfbd75; padding: 4px 6px; font-size: 13px; font-weight: 600; }',
-        '.overlay { overflow: auto; }',
         '#keys-button { margin-left: auto; }',
-        '.start-card { text-align: left; border: 1px solid #42516a; border-radius: 5px; padding: 12px 16px; margin: 0 auto 18px; width: min(520px, 100%); font-size: 13px; color: #a4adbc; }',
-        '.start-card summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; cursor: pointer; list-style: none; }',
-        '.start-card summary::-webkit-details-marker { display: none; }',
-        '.start-card summary::after { content: "Show"; color: #dfbd75; font-weight: 600; }',
-        '.start-card[open] summary::after { content: ""; }',
-        '.start-card strong { color: #e1e6ee; font-size: 14px; }',
-        '.start-card footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }',
-        '.start-card ol { margin: 8px 0; padding-left: 20px; line-height: 1.55; }',
-        '.start-card p { margin: 0; line-height: 1.5; }',
-        '@media (max-width: 640px) { .start-card { padding: 10px 12px; font-size: 12px; } }',
     ].join('\n');
 
     function formatProgress(text) {
@@ -66,11 +55,7 @@
         return heading + KEYS.map(([title, lines]) => '<div><h3>' + title + '</h3><p>' + lines.join('<br>') + '</p></div>').join('');
     }
 
-    function readClosed(getStorage) {
-        try { return getStorage().getItem(STORAGE_KEY) === '1'; } catch (_) { return false; }
-    }
-
-    function init({ document, getStorage, isStarted, eventTarget, isWide = () => true }) {
+    function init({ document, isStarted, eventTarget }) {
         const byId = id => document.getElementById(id);
         const style = document.createElement('style');
         style.textContent = STYLE;
@@ -120,24 +105,8 @@
             }
         }, true);
 
-        if (!readClosed(getStorage)) {
-            // A small game area keeps the card folded, so the Launch button stays visible.
-            const card = document.createElement('details');
-            card.className = 'start-card';
-            card.id = 'start-card';
-            card.open = isWide();
-            card.innerHTML = '<summary><strong>How to start</strong></summary>' +
-                '<ol>' + START_STEPS.map(step => '<li>' + step + '</li>').join('') + '</ol>' +
-                '<footer><p>Press ' + k('?') + ' at any time to see all keys.</p><button type="button" class="link" id="start-card-close">Got it</button></footer>';
-            const start = byId('start');
-            start.parentNode.insertBefore(card, start);
-            byId('start-card-close').addEventListener('click', () => {
-                card.hidden = true;
-                try { getStorage().setItem(STORAGE_KEY, '1'); } catch (_) { /* Private mode: close for this visit only. */ }
-            });
-        }
         return { toggle };
     }
 
-    return { STORAGE_KEY, KEYS, START_STEPS, formatProgress, init };
+    return { KEYS, START_TEXT, formatProgress, init };
 });

@@ -12,7 +12,7 @@ test('download progress is shown in MB and percent from the Emscripten byte coun
     }
 });
 
-function page({ closed = false, storageFailure = false, wide = true } = {}) {
+function page() {
     const elements = new Map();
     const make = (tag, id) => {
         const handlers = {};
@@ -27,9 +27,8 @@ function page({ closed = false, storageFailure = false, wide = true } = {}) {
         if (id) elements.set(id, element);
         return element;
     };
-    const head = make('head'), overlay = make('div', 'overlay'), bar = make('div', 'bar');
+    const head = make('head'), bar = make('div', 'bar');
     const screen = make('div', 'screen'), canvas = make('canvas', 'canvas'), panel = make('aside', 'keys-panel');
-    overlay.appendChild(make('button', 'start'));
     bar.appendChild(make('button', 'fullscreen'));
     const created = [];
     const document = {
@@ -44,12 +43,9 @@ function page({ closed = false, storageFailure = false, wide = true } = {}) {
             return elements.get(id) || null;
         },
     };
-    const store = new Map(closed ? [[help.STORAGE_KEY, '1']] : []);
-    const storage = { getItem: key => { if (storageFailure) throw new Error('blocked'); return store.get(key) ?? null; },
-        setItem: (key, value) => { if (storageFailure) throw new Error('blocked'); store.set(key, value); } };
     const listeners = {};
     let started = false;
-    const api = help.init({ document, getStorage: () => storage, isStarted: () => started, isWide: () => wide,
+    const api = help.init({ document, isStarted: () => started,
         eventTarget: { addEventListener(type, fn, capture) { assert.equal(capture, true); listeners[type] = fn; } } });
     const key = (key, extra = {}) => {
         const event = { key, target: canvas, prevented: false, stopped: false,
@@ -57,7 +53,7 @@ function page({ closed = false, storageFailure = false, wide = true } = {}) {
         listeners.keydown(event);
         return event;
     };
-    return { api, elements, store, panel, canvas, key, start() { started = true; } };
+    return { api, elements, panel, canvas, key, start() { started = true; } };
 }
 
 test('the keys panel, Keys button and ? key show every key group', () => {
@@ -87,21 +83,14 @@ test('F1 pauses the game without the browser help page, only after launch', () =
     assert.equal(event.stopped, false, 'the game still receives F1');
 });
 
-test('the How to start card shows before the Launch button until the player closes it', () => {
-    const first = page();
-    assert.equal(first.elements.get('start-card').open, true, 'open on a wide screen');
-    const card = first.elements.get('start-card');
-    const overlay = first.elements.get('overlay');
-    assert.equal(overlay.children.indexOf(card) + 1, overlay.children.indexOf(first.elements.get('start')));
-    for (const step of help.START_STEPS) assert.ok(card.innerHTML.includes(step));
-    first.elements.get('start-card-close').click();
-    assert.equal(card.hidden, true);
-    assert.equal(first.store.get(help.STORAGE_KEY), '1');
-    assert.equal(page({ wide: false }).elements.get('start-card').open, false, 'folded on a phone so Launch stays visible');
-    assert.equal(page({ closed: true }).elements.get('start-card'), undefined);
-    const privateMode = page({ storageFailure: true });
-    privateMode.elements.get('start-card-close').click();
-    assert.equal(privateMode.elements.get('start-card').hidden, true);
+test('the How to start lines for the start screen are plain text that fits the game fonts', () => {
+    assert.equal(help.START_TEXT.length, 4);
+    for (const line of help.START_TEXT) {
+        assert.ok(!/[<>&]/.test(line), line);
+        assert.ok(/^[\x20-\x7e]+$/.test(line), 'only characters the game fonts have: ' + line);
+        assert.ok(line.length <= 60, line);
+    }
+    assert.match(help.START_TEXT.join(' '), /New Game.*Navigate.*starbase at Earth/);
 });
 
 test('both edition pages load the help script and have the panel the script fills', () => {

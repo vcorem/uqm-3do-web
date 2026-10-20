@@ -49,8 +49,9 @@ Both editions support Online Melee with another player using the same edition.
 Original connects to `/netplay/<room>` and HD connects to `/netplay/hd/<room>`,
 with the `role=host` or `role=guest` query. Both relays keep active and retired
 rooms separate by edition and token while sharing resource limits. The engines
-are incompatible across editions. The HD invitation retains the HD page path;
-both players join and then click **Launch online Melee**. Campaign persistence
+are incompatible across editions. The HD invitation retains the HD page path.
+Players meet in the in-frame Online Melee lobby (see [online-ui.md](online-ui.md));
+the match starts by itself after a short countdown. Campaign persistence
 also stays separate: Original mounts `/home/web_user/.uqm`, while HD mounts
 `/home/web_user/.uqm-hd`. No save conversion is performed.
 
