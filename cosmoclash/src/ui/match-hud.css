@@ -21,13 +21,18 @@
 .match-side.left .match-ship.current { border-color: var(--p1); box-shadow: 0 0 calc(8px * var(--u)) var(--p1); }
 .match-side.right .match-ship.current { border-color: var(--p2); box-shadow: 0 0 calc(8px * var(--u)) var(--p2); }
 .match-ship.lost { color: #66708a; text-decoration: line-through; border-style: dashed; }
+.match-centre {
+  position: absolute; left: 4%; right: 4%; top: 30%;
+  display: flex; flex-direction: column; align-items: center; gap: calc(12px * var(--u)); text-align: center;
+}
+/* "Your MichiGichi was destroyed" is too long for one line: two balanced lines, then the second message. */
 .match-message {
-  position: absolute; left: 0; right: 0; top: 30%; text-align: center;
-  font-size: max(22px, calc(52px * var(--u))); font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase;
+  max-width: 100%; line-height: 1.12; text-wrap: balance; overflow-wrap: anywhere;
+  font-size: max(22px, calc(48px * var(--u))); font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase;
   color: #00ffff; text-shadow: 0 0 20px #00ffff, 0 0 40px #0088ff, 0 0 80px #0044ff;
 }
 .match-message-sub {
-  position: absolute; left: 0; right: 0; top: calc(30% + 76px * var(--u)); text-align: center;
+  max-width: 100%;
   font-size: max(13px, calc(20px * var(--u))); color: #e6f0ff; text-shadow: 0 0 calc(8px * var(--u)) #000, 0 0 calc(4px * var(--u)) #000;
 }
 .match-info {
@@ -35,7 +40,7 @@
   color: #cfdcf5; font-size: max(10px, calc(13px * var(--u))); letter-spacing: 0.04em; white-space: nowrap;
   background: rgba(7, 19, 39, 0.7); padding: calc(4px * var(--u)) calc(12px * var(--u)); border-radius: calc(6px * var(--u));
 }
-.match-info[hidden], .match-message[hidden], .match-message-sub[hidden] { display: none; }
+.match-info[hidden], .match-centre[hidden], .match-message[hidden], .match-message-sub[hidden] { display: none; }
 .match-exit {
   position: absolute; top: calc(12px * var(--u)); left: 50%; transform: translateX(-50%);
   pointer-events: auto; cursor: pointer;

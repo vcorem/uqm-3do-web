@@ -19,6 +19,7 @@ export interface SideInfo {
 export class MatchHud {
   private root: HTMLDivElement;
   private sides: HTMLDivElement[];
+  private centre: HTMLDivElement;
   private messageEl: HTMLDivElement;
   private subEl: HTMLDivElement;
   private infoEl: HTMLDivElement;
@@ -30,11 +31,13 @@ export class MatchHud {
     this.sides = [el('div', { class: 'match-side left cc-p1' }), el('div', { class: 'match-side right cc-p2' })];
     this.messageEl = el('div', { class: 'match-message', aria: { hidden: 'true' } });
     this.subEl = el('div', { class: 'match-message-sub', aria: { hidden: 'true' } });
+    // One column: a message on two lines (a long ship name) pushes the second line down.
+    this.centre = el('div', { class: 'match-centre', hidden: true }, this.messageEl, this.subEl);
     this.infoEl = el('div', { class: 'match-info', text: options.info ?? '', hidden: !options.info });
     this.exit = el('button', { type: 'button', class: 'match-exit', text: options.exitLabel });
     this.exit.addEventListener('click', () => options.onExit());
     this.exit.addEventListener('mousedown', event => event.preventDefault());
-    this.root.append(...this.sides, this.messageEl, this.subEl, this.infoEl, this.exit);
+    this.root.append(...this.sides, this.centre, this.infoEl, this.exit);
     parent.appendChild(this.root);
   }
 
@@ -60,6 +63,7 @@ export class MatchHud {
     this.subEl.textContent = sub;
     this.messageEl.hidden = !text;
     this.subEl.hidden = !sub;
+    this.centre.hidden = !text && !sub;
   }
 
   setInfo(text: string): void { this.infoEl.textContent = text; this.infoEl.hidden = !text; }
