@@ -1,5 +1,5 @@
 // The Cosmo Clash room list in front of a room relay, for local play and tests.
-// It follows the lobby contract of the site (docs/cosmoclash-online.md):
+// It follows the lobby contract of the site (cosmoclash/docs/online.md):
 //
 //   /netplay/lobby?edition=cosmoclash
 //     server -> {"type":"rooms","rooms":[{id,name,engine,created}]} at connect and on every change
@@ -43,10 +43,11 @@ export function createCosmoLobby(options) {
   const watchers = new Set();
   const sockets = new Set();
   const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false, maxPayload: 65536 });
-  let timer = null, lastSent = 0;
+  let timer = null, lastSent = 0, available = true;
 
   function snapshot() {
-    const rooms = [...listed.values()].reverse().slice(0, MAX_LISTED)
+    // Newest first (the relays list in the order of creation).
+    const rooms = [...listed.values()].reverse().sort((a, b) => b.created - a.created).slice(0, MAX_LISTED)
       .map(({ id, name, engine, created }) => ({ id, name, engine, created }));
     return JSON.stringify({ type: 'rooms', rooms });
   }
@@ -171,7 +172,15 @@ export function createCosmoLobby(options) {
     upgrade(req, socket, head, ip = '127.0.0.1') {
       const query = req.url.indexOf('?');
       const pathname = query < 0 ? req.url : req.url.slice(0, query);
-      if (req.url === COSMO_LOBBY) { acceptLobby(req, socket, head); return true; }
+      if (req.url === COSMO_LOBBY) {
+        if (!available) {
+          const body = JSON.stringify({ type: 'error', message: 'Lobby unavailable.' });
+          socket.end(`HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`);
+          return true;
+        }
+        acceptLobby(req, socket, head);
+        return true;
+      }
       if (pathname === LOBBY_PATH && /[?&]edition=cosmoclash(&|$)/.test(req.url)) { refuse(req, socket, head, 'Invalid lobby URL.'); return true; }
       if (!COSMO_ROOM.test(req.url)) { forward(req, socket, head); return true; }
       const parsed = parseRoomURL(req.url);
@@ -185,6 +194,11 @@ export function createCosmoLobby(options) {
       changed();
     },
     removeRoom(id) { unlist(id); },
+    /** false: room list connections are refused and the open ones end (tests of a lost list). */
+    setAvailable(value) {
+      available = value;
+      if (!value) for (const ws of watchers) ws.terminate();
+    },
     clear() { listed.clear(); changed(); },
     close() {
       clearInterval(check);

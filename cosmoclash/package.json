@@ -13,12 +13,13 @@
     "test:watch": "vitest",
     "build:rust": "bash scripts/build-rust.sh",
     "start": "node scripts/serve.mjs",
-    "test:browser": "node tests/browser/solo.mjs && node tests/browser/game.mjs",
+    "test:browser": "node tests/browser/solo.mjs && node tests/browser/game.mjs && node tests/browser/online-ui.mjs",
     "pretest": "bash scripts/build-native.sh && bash ../scripts/build-rust-relay.sh",
     "test:wasm": "node tests/wasm.mjs",
     "test:provenance": "node tests/provenance.mjs",
     "test:rust": "bash scripts/test-rust.sh",
-    "pretest:browser": "bash ../scripts/build-rust-relay.sh"
+    "pretest:browser": "bash ../scripts/build-rust-relay.sh",
+    "test:online-ui": "node tests/browser/online-ui.mjs"
   },
   "repository": {
     "type": "git",
