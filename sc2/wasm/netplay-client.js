@@ -301,6 +301,8 @@
         let attempts = 0;
         let closed = false;
         let answered = false;
+        // A room list came on this connection (a refusal before one means: no lists here).
+        let listed = false;
         const watcher = {
             state: 'connecting',
             rooms: [],
@@ -344,6 +346,18 @@
             status('error', message);
             if (!closed) timer = schedule(() => { timer = undefined; open(); }, delay);
         }
+        // A relay without room lists refuses the lobby URL before it sends any list:
+        // the Rust relay says 'Invalid room URL or role.' (rust/uqm-relay reject), and
+        // Node and the Worker say 'Invalid lobby URL.' for a lobby they cannot serve.
+        // No retry: the page offers private rooms with invite links. Other errors retry.
+        function unsupported(current, message) {
+            if (closed || current !== socket) return;
+            socket = null;
+            closed = true;
+            stopTimers();
+            closeSocket(current);
+            status('unsupported', message);
+        }
         function keepalive(current) {
             keepTimer = schedule(() => {
                 keepTimer = undefined;
@@ -364,6 +378,7 @@
             }
             if (message && message.type === 'error') {
                 const detail = typeof message.message === 'string' ? message.message.slice(0, 240) : 'The room list is unavailable.';
+                if (!listed && /^Invalid (room|lobby) URL/.test(detail)) { unsupported(current, detail); return; }
                 drop(current, detail + ' Trying again…');
                 return;
             }
@@ -371,6 +386,7 @@
                 drop(current, 'The room list sent an unexpected message. Reconnecting…');
                 return;
             }
+            listed = true;
             if (watcher.state !== 'open') {
                 if (timer !== undefined) cancel(timer);
                 timer = undefined;
@@ -395,6 +411,7 @@
             catch (_) { closed = true; status('closed', 'Online play is unavailable in this browser.'); return; }
             socket = current;
             answered = false;
+            listed = false;
             current.binaryType = 'arraybuffer';
             timer = schedule(() => { timer = undefined; drop(current, 'Could not reach the room list. Trying again…'); }, CONNECT_MS);
             current.onmessage = event => { if (!closed && current === socket) receive(current, event.data); };

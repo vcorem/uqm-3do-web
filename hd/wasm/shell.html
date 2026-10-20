@@ -221,6 +221,8 @@ document.addEventListener('keyup', function (event) {
   }).catch(log);
 });
 window.addEventListener('error',function(event) {
+  // Without engine-loader.js the engine starts as before (it downloads the data itself).
+  if(event.target && event.target.id==='engine-loader') { log('Could not download engine-loader.js; the game data is not kept in this browser.'); return; }
   var message=event.message || (event.target && event.target.tagName==='SCRIPT' ? 'Could not download the game script.' : '');
   if(!message) return;
   log(message); if(!started) fail('Loading failed. Reload to try again. '+message);
@@ -231,19 +233,23 @@ if(!window.crossOriginIsolated||typeof SharedArrayBuffer==='undefined') fail('Us
 <!-- emcc writes the engine script here. It waits in this inert template until
      engine-loader.js has the game data: stored in this browser, or downloaded once and stored. -->
 <template id="engine-script">{{{ SCRIPT }}}</template>
-<script src="engine-loader.js"></script>
+<script id="engine-loader" src="engine-loader.js"></script>
 <script>
 (function (template) {
   // The loader's progress goes to the page's own loading display: the game menu's
   // progress bar when the page has one (online.controller), else the status line and bar.
+  // After a download the loader reads the stored copy back: the bar stays full then.
+  var downloaded=false;
   function showProgress(event) {
+    if(event.phase==='download') downloaded=true;
+    var fraction=event.phase==='stored' && downloaded ? 1 : event.fraction;
     var menu=window.online && online.controller;
     if(menu && typeof menu.progress==='function') {
-      menu.progress(event.total ? { label: event.label, fraction: event.fraction } : { label: event.label });
+      menu.progress(event.total ? { label: event.label, fraction: fraction } : { label: event.label });
       return;
     }
     var status=document.getElementById('status'), bar=document.getElementById('progress');
-    if(bar && event.total) { bar.max=event.total; bar.value=event.done; }
+    if(bar && event.total) { bar.max=event.total; bar.value=fraction===1 ? event.total : event.done; }
     if(status) status.textContent=event.label;
     else if(typeof Module.setStatus==='function') Module.setStatus(event.label);
   }

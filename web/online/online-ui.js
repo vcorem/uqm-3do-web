@@ -150,7 +150,8 @@
 
         // -------------------------------------------------- lobby list
         function watchLobby() {
-            if (watch || retryTimer) return;
+            // A server without room lists does not get them later.
+            if (watch || retryTimer || state.lobby.status === 'unsupported') return;
             const netplay = env.netplay;
             if (!netplay || typeof netplay.watchLobby !== 'function') {
                 state.lobby.status = 'unsupported';
@@ -170,6 +171,8 @@
                     if (watch !== handle && handle) return;
                     if (status === 'open') { state.lobby.status = 'open'; retries = 0; changed(); return; }
                     if (status === 'connecting') return;
+                    // This server has no room lists (the Rust relay): rooms are private, with invite links.
+                    if (status === 'unsupported') { state.lobby.status = 'unsupported'; watch = null; changed(); return; }
                     if (status === 'closed' || status === 'error') {
                         state.lobby.status = 'error';
                         state.lobby.error = cleanMessage(message) || 'The room list is not available right now.';
@@ -345,6 +348,9 @@
             // after a first session that may be a moment after the screen changes.
             const deadline = now() + 2000;
             const decide = () => {
+                // A key pressed while the menu faded in may have left the main menu
+                // already (the intro, a new game): no lobby or reload screen over it.
+                if (state.session || state.screen !== 'hidden' || state.engineScreen !== 'mainMenu') return;
                 if (env.game.hook()) { notice(message, 'info'); show('lobby', 'create'); }
                 else if (now() < deadline) env.setTimeout(decide, 100);
                 else restart(message, true);
@@ -374,6 +380,8 @@
                 if (room) { notice(null); connect('guest', room.id, room.name); }
             } else if (id === 'create') {
                 notice(null);
+                // No room list on this server: a private room at once (a name would show nowhere).
+                if (state.lobby.status === 'unsupported') { connect('host', env.netplay.createToken(), ''); return; }
                 state.name = (env.storage && env.storage.get(NAME_KEY)) || defaultName(env.random);
                 state.nameError = '';
                 show('name', 'name');

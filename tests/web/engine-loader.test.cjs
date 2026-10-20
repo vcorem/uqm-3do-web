@@ -585,7 +585,7 @@ for (const [base, edition] of [['sc2/wasm', 'original'], ['hd/wasm', 'hd']]) {
         assert.equal(html.split('{{{ SCRIPT }}}').length, 2, 'one placeholder');
         assert.ok(html.includes('<template id="engine-script">{{{ SCRIPT }}}</template>'));
         const tail = html.slice(html.indexOf('<template id="engine-script">'));
-        assert.ok(tail.includes('<script src="engine-loader.js"></script>'));
+        assert.ok(tail.includes('<script id="engine-loader" src="engine-loader.js"></script>'));
         assert.ok(html.lastIndexOf('</script>', html.indexOf('<template id="engine-script">')) > html.indexOf('var Module'),
             'the template comes after the page script that defines Module');
         const call = tail.match(/<script>\s*([\s\S]*?)<\/script>/)[1];

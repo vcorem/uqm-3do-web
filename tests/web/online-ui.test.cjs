@@ -567,6 +567,49 @@ test('the lobby goes away when the game leaves its main menu under it', () => {
     assert.equal(h.state.screen, 'lobby', 'the corner button or O opens it again');
 });
 
+test('a server without room lists (the Rust relay): no retries, Create room opens a private room', () => {
+    const h = harness({ ready: true });
+    h.ui.activate('online');
+    assert.equal(h.watches.length, 1);
+    h.watches[0].options.onStatus('unsupported', 'Invalid room URL or role.');
+    assert.equal(h.state.lobby.status, 'unsupported');
+    h.advance(60000);
+    assert.equal(h.watches.length, 1, 'no retry');
+    h.ui.activate('create');
+    assert.equal(h.state.screen, 'waiting', 'no name dialog');
+    assert.deepEqual([h.clients[0].options.role, 'name' in h.clients[0].options, 'engine' in h.clients[0].options], ['host', false, false]);
+    assert.equal(h.state.room.listed, false);
+    h.ui.activate('cancel');
+    assert.equal(h.state.screen, 'lobby');
+    h.ui.key('Escape');
+    h.ui.activate('online');
+    assert.equal(h.watches.length, 1, 'the page does not ask that server again');
+    assert.equal(h.state.lobby.status, 'unsupported');
+});
+
+test('after the first match, a key in the menu fade-in that leaves the main menu gets no lobby over it', () => {
+    const h = harness({ ready: true });
+    h.ui.activate('online');
+    h.ui.activate('create');
+    h.ui.activate('open');
+    h.clients[0].status('ready', 'Opponent connected.');
+    h.advance(3000);
+    assert.deepEqual(h.game.starts, [['host', h.clients[0]]]);
+    h.ui.gameScreen('melee');
+    h.clients[0].status('closed', 'Your opponent left the room.');
+    // The engine reports its main menu before it marks the hook, then a fade-in key starts a game.
+    h.ui.gameScreen('mainMenu');
+    assert.equal(h.state.screen, 'hidden');
+    h.game.hasHook = true;
+    h.ui.gameScreen('transition');
+    h.advance(2500);
+    assert.equal(h.state.screen, 'hidden', 'no lobby or reload screen over another game screen');
+    // Back at the main menu, the corner button or O opens the lobby.
+    h.ui.gameScreen('mainMenu');
+    h.ui.fromMenu();
+    assert.equal(h.state.screen, 'lobby');
+});
+
 test('both page shells use the in-frame UI, not the old Online Melee section', () => {
     for (const base of ['sc2/wasm', 'hd/wasm']) {
         const html = fs.readFileSync(base + '/shell.html', 'utf8');

@@ -263,6 +263,27 @@ test('connection timeouts, relay errors and unexpected data reconnect instead of
     assert.match(denied.statuses.at(-1).message, /^Connection limit reached\. Trying again/);
 });
 
+test('a relay without room lists refuses the lobby URL: unsupported, no retry', () => {
+    for (const message of ['Invalid room URL or role.', 'Invalid lobby URL.']) {
+        const h = watch();
+        h.socket.open();
+        h.socket.text({ type: 'error', message });
+        assert.equal(h.watcher.state, 'unsupported', message);
+        assert.equal(h.statuses.at(-1).message, message);
+        assert.equal(h.socket.closed.length, 1);
+        assert.equal(h.f.timers.size, 0, 'no retry');
+        h.watcher.close();
+        assert.equal(h.watcher.state, 'unsupported', 'close() after it says nothing more');
+    }
+    // After a room list the same refusal is a lost list, which retries.
+    const h = watch();
+    h.socket.open();
+    h.socket.rooms([]);
+    h.socket.text({ type: 'error', message: 'Invalid lobby URL.' });
+    assert.equal(h.watcher.state, 'error');
+    assert.deepEqual(h.f.delays(), [1000]);
+});
+
 test('close() stops the list for good, and a page outside a server never connects', () => {
     const h = watch();
     h.socket.open();

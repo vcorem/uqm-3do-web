@@ -167,9 +167,11 @@ jobs:
             echo "$folder data: $actual"
             test "$actual" = "$expected"
           done
-          curl -fsS https://urquanmasters.org/original-rust/index.html | grep -q 'UQM_VARIANT'
-          curl -fsS https://urquanmasters.org/hd-rust/index.html | grep -q 'UQM_VARIANT'
-          ! curl -fsS https://urquanmasters.org/original/index.html | grep -q 'UQM_VARIANT'
+          # Every shell reads UQM_VARIANT; only the Rust pages get the assignment (package-editions.py).
+          curl -fsS https://urquanmasters.org/original-rust/index.html | grep -q 'window.UQM_VARIANT = '
+          curl -fsS https://urquanmasters.org/hd-rust/index.html | grep -q 'window.UQM_VARIANT = '
+          ! curl -fsS https://urquanmasters.org/original/index.html | grep -q 'window.UQM_VARIANT = '
+          ! curl -fsS https://urquanmasters.org/hd/index.html | grep -q 'window.UQM_VARIANT = '
       - name: Check the live Online Melee relay
         run: |
           node --input-type=module -e "
