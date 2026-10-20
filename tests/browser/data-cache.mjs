@@ -120,10 +120,20 @@ try {
     // Every status text the page shows while it loads.
     await page.addInitScript(() => {
       window.__statusTexts = [];
-      new MutationObserver(() => {
+      const record = () => {
         const text = document.getElementById('status')?.textContent;
         if (text && window.__statusTexts.at(-1) !== text) window.__statusTexts.push(text);
-      }).observe(document, { subtree: true, childList: true, characterData: true });
+      };
+      // Watch only the status line, not the busy engine log.
+      const watch = () => {
+        const status = document.getElementById('status');
+        if (!status) return false;
+        new MutationObserver(record).observe(status, { subtree: true, childList: true, characterData: true });
+        record();
+        return true;
+      };
+      const parsing = new MutationObserver(() => { if (watch()) parsing.disconnect(); });
+      parsing.observe(document, { subtree: true, childList: true });
     });
     // A browser without Cache Storage (as in some private windows): today's download path.
     if (noCacheAPI) await page.addInitScript(() => Object.defineProperty(window, 'caches', { get: () => undefined, configurable: true }));
