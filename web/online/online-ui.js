@@ -398,7 +398,7 @@
                 try { url = env.netplay.inviteURL(room.token); } catch (_) { return; }
                 Promise.resolve(env.copy ? env.copy(url) : Promise.reject(new Error('no clipboard'))).then(
                     () => { if (state.room === room) { notice('Invite link copied. Send it to your opponent.'); changed(); } },
-                    () => { if (state.room === room) { notice('Copy this link: ' + url); changed(); } });
+                    () => { if (state.room === room) { notice('Copy this link: ' + url, 'link'); changed(); } });
             } else if (id === 'join') {
                 const token = state.invite;
                 state.invite = null;
@@ -856,8 +856,11 @@
             image('stars', 0, 0, W, H);
             title(4);
         }
+        // An info notice (why a session ended, "link copied") gives way to the screen's
+        // own line after a while; errors and a link to copy stay.
+        const NOTICE_MS = 10000;
         function statusLine(state, fallback, kind) {
-            const n = state.notice;
+            const n = state.notice && (state.notice.kind !== 'info' || options.now() - state.notice.at < NOTICE_MS) ? state.notice : null;
             const value = n ? n.text : fallback;
             const color = (n ? n.kind : kind) === 'error' ? RGB.error : n ? RGB.notice : RGB.status;
             // Long messages (a link to copy) use the small font so they keep clear of the keys line.
