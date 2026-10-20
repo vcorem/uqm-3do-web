@@ -2,10 +2,13 @@
 // and the cosmoclash room list (the relay's own, or scripts/cosmo-lobby.mjs).
 // The host creates a named room with the keyboard; the guest sees it in the
 // list and joins with the keyboard; both choose fleets in the 3D ship choice;
-// Change fleet (host and guest); a real fleet match with verified checksums,
-// in which the loser chooses the next ship with the keyboard while the
-// opponent waits (protocol 3); rematch, in which the time to choose runs out
-// and the first ship left comes; the opponent leaves -> lobby; Open room
+// Change fleet (host and guest); a real fleet match with verified checksums
+// (protocol 3), in which one player flies and the other does not, so that the
+// guest loses first and chooses the next ship with the keyboard while the
+// host waits, then the host loses and its time runs out (the first ship left
+// comes; the last seconds at three sizes), then the guest's last ship comes by
+// itself (the battle message on both pages, no choice); rematch; the opponent
+// leaves -> lobby; Open room
 // before the room list answers; full screen again after the browser left it,
 // and F. Then a relay without room lists (the Rust relay): a private room, its
 // invite link and the Join screen, with the mouse. Every screen is saved at
@@ -46,6 +49,25 @@ async function capture(page, name, who, sizes = SIZES, options = {}) {
   await page.setViewportSize({ width: 1280, height: 720 });
 }
 const SHIP_IDS = ['michiGichi', 'gondi', 'sholev'];
+const NAMES = ['MichiGichi', 'Gondi', 'Sholev'];
+/**
+ * The last seconds of a choice: the screenshots at three sizes take longer than
+ * that, so the page clock stops meanwhile (Date.now and the CSS animations, such
+ * as the bar of the time) and then goes on. The game and its 3D scene still draw.
+ */
+const stopClock = page => page.evaluate(() => {
+  const now = Date.now(), real = Date.now;
+  const paused = document.getAnimations().filter(animation => animation.playState === 'running');
+  paused.forEach(animation => animation.pause());
+  Date.now = () => now;
+  window.__startClock = () => { Date.now = real; paused.forEach(animation => animation.play()); delete window.__startClock; };
+});
+const startClock = page => page.evaluate(() => window.__startClock?.());
+/** The time of the choice is red, with 1 to 4 seconds left. */
+async function lowTimer(page) {
+  assert.equal(await page.locator('.cc-timer.low').count(), 1, 'the timer is red');
+  assert.match(await page.locator('.cc-timer-n').textContent(), /^[1-4]$/);
+}
 /**
  * Protocol 3: both pages show the choice of the next ship (pages[ci] chooses).
  * how: 'keyboard' (screens of both sides, Esc asks, the other ship with the
@@ -92,10 +114,15 @@ async function nextShip(pages, ci, how) {
     await chooser.keyboard.press('Enter');
   } else if (how === 'timeout') {
     ship = choice.ships[0];
-    // The last seconds: the timer is red on both sides.
+    // The last seconds: the timer is red on both sides (both clocks stop for the screenshots).
     await Promise.all(pages.map(p => p.waitForFunction(() => window.__cosmo.online.next?.left <= 4, {}, { timeout: 30000 })));
-    await capture(chooser, 'next-ship-last-seconds', who, [[1280, 720]], { next: true });
-    await capture(waiter, 'next-ship-wait-last-seconds', other, [[1280, 720]], { next: true });
+    await Promise.all(pages.map(stopClock));
+    try {
+      await Promise.all([
+        capture(chooser, 'next-ship-last-seconds', who, SIZES, { next: true, check: () => lowTimer(chooser) }),
+        capture(waiter, 'next-ship-wait-last-seconds', other, SIZES, { next: true, check: () => lowTimer(waiter) })]);
+      assert.equal((await read(chooser)).online.next.chosen, null, 'the screenshots show the last seconds');
+    } finally { await Promise.all(pages.map(startClock)); }
     await chooser.waitForFunction(() => window.__cosmo.online.screen !== 'next' || window.__cosmo.online.next?.chosen !== null, {}, { timeout: 15000 });
   } else {
     await chooser.waitForTimeout(700);
@@ -149,7 +176,52 @@ try {
   let lobbyGate = new Promise(resolve => { openLobby = resolve; });
   const roomGate = new Promise(resolve => { openRoom = resolve; });
   await B.routeWebSocket(/\/netplay\/lobby/, async ws => { await lobbyGate; ws.connectToServer(); });
-  await B.routeWebSocket(/\/netplay\/cosmoclash\//, async ws => { await roomGate; ws.connectToServer(); });
+  // The guest's room sockets go through the test: first behind the gate; later whileHeld() keeps the packets
+  // of both directions (as a slow network does), so that both lockstep peers stop within a few ticks
+  // and a short screen (the message after a battle shows 1.5 s) stays for the screenshots.
+  const relay = { holding: false, queue: [] };
+  const forward = send => { if (relay.holding) relay.queue.push(send); else send(); };
+  await B.routeWebSocket(/\/netplay\/cosmoclash\//, async ws => {
+    await roomGate;
+    const server = ws.connectToServer();
+    ws.onMessage(message => forward(() => server.send(message)));
+    server.onMessage(message => forward(() => ws.send(message)));
+  });
+  /** Runs fn while the guest's room packets wait (both peers stopped), then sends them in order. */
+  async function whileHeld(fn) {
+    relay.holding = true;
+    try {
+      await poll(async () => {
+        const before = await Promise.all([A, B].map(read));
+        await new Promise(r => setTimeout(r, 300));
+        const after = await Promise.all([A, B].map(read));
+        return after.every((s, i) => s.net.tick === before[i].net.tick);
+      }, 10000, 'both peers stop');
+      return await fn();
+    } finally {
+      relay.holding = false;
+      for (const send of relay.queue.splice(0)) { try { send(); } catch { /* The socket closed. */ } }
+    }
+  }
+  /**
+   * The message after a battle on both pages (stopped by whileHeld()): what comes next
+   * (a choice or the last ship) on the loser's page and on the winner's, at three sizes.
+   */
+  async function battleMessage(kind, battle) {
+    return whileHeld(async () => {
+      const states = await Promise.all([A, B].map(read));
+      assert.deepEqual(states.map(s => s.state), ['roundOver', 'roundOver'], 'both pages show the message after the battle');
+      const texts = await Promise.all([A, B].map(p => p.evaluate(() => ['.match-message', '.match-message-sub'].map(selector => document.querySelector(selector)?.textContent ?? ''))));
+      const loser = texts[0][0].startsWith('Your ') ? 0 : 1;
+      const lost = NAMES[states[0].fleet.sides[loser].ships[states[0].fleet.sides[loser].lost - 1]];
+      const last = NAMES[states[0].fleet.current[loser]];
+      assert.deepEqual(texts[loser], [`Your ${lost} was destroyed`, kind === 'choice' ? 'Choose your next ship.' : `Your last ship: ${last}`]);
+      assert.deepEqual(texts[1 - loser], [`Enemy ${lost} destroyed!`, kind === 'choice' ? 'Your opponent chooses the next ship.' : `Their last ship: ${last}`]);
+      const name = kind === 'choice' ? 'battle-over-choice' : 'battle-over-last-ship';
+      await Promise.all([capture(A, name, loser ? 'host-won' : 'host-lost', SIZES, { next: true }), capture(B, name, loser ? 'guest-lost' : 'guest-won', SIZES, { next: true })]);
+      return { kind, battle, loser, lost, last: kind === 'last' ? last : null, texts };
+    });
+  }
   await Promise.all([boot(A, url), boot(B, url)]);
   await A.waitForTimeout(1200);
   await capture(A, 'logo', 'host', [[1280, 720]]);
@@ -304,13 +376,16 @@ try {
   await B.keyboard.press('Enter');
   assert.equal((await read(B)).online.confirm, false);
 
-  // A real fleet match with real keys, until it ends. After a loss with two ships left the loser
-  // chooses the next ship: the first time with the keyboard, the second time the time runs out.
+  // A real fleet match with real keys, until it ends. One player flies and the other does not, so the
+  // losers come in this order: the guest (two ships left: it chooses with the keyboard), the host (its
+  // time runs out), the guest (its last ship comes by itself, no choice) and the guest (the end).
+  const LOSERS = [1, 0, 1, 1];
+  const idle = battle => LOSERS[battle] ?? 1;
   const held = [new Set(), new Set()];
   const started = Date.now();
-  let roundShot = false, maxChecks = 0, maxShots = 0;
-  const choices = [];
-  const how = () => !choices.some(c => c.how === 'keyboard') ? 'keyboard' : !choices.some(c => c.how === 'timeout') ? 'timeout' : 'quick';
+  let maxChecks = 0, maxShots = 0;
+  const choices = [], messages = [];
+  const how = ci => ci === 1 && !choices.some(c => c.how === 'keyboard') ? 'keyboard' : !choices.some(c => c.how === 'timeout') ? 'timeout' : 'quick';
   for (;;) {
     const states = await Promise.all([A, B].map(read));
     for (const s of states) {
@@ -322,15 +397,38 @@ try {
     const ci = states.findIndex(s => s.online.screen === 'next' && s.online.next?.mine);
     if (ci >= 0 && states[1 - ci].online.screen === 'next') {
       await Promise.all([A, B].map((p, i) => setKeys(p, new Set(), held[i])));
-      choices.push(await nextShip([A, B], ci, how()));
+      choices.push(await nextShip([A, B], ci, how(ci)));
       continue;
     }
-    if (!roundShot && states[0].state === 'roundOver' && states[0].fleet.battle === 0) {
-      roundShot = true;
-      await capture(A, 'battle-round-over', 'host', [[1280, 720]], { next: true });
+    // The message after a battle: the first one (a choice comes) and the first last ship.
+    const over = states.find(s => s.state === 'roundOver');
+    if (over && !messages.some(m => m.battle === over.fleet.battle)) {
+      const sides = over.fleet.sides;
+      const kind = sides.some(side => side.ships.length === side.lost) ? 'end' : over.fleet.chooser !== null ? 'choice' : 'last';
+      if ((kind === 'choice' && !messages.length) || (kind === 'last' && !messages.some(m => m.kind === 'last'))) {
+        await Promise.all([A, B].map((p, i) => setKeys(p, new Set(), held[i])));
+        const message = await battleMessage(kind, over.fleet.battle);
+        messages.push(message);
+        if (kind === 'last') {
+          // No choice with one ship left: the next battle starts by itself with that ship on both pages.
+          const next = await poll(async () => {
+            const now = await Promise.all([A, B].map(read));
+            assert.ok(now.every(s => s.online.screen !== 'next'), 'no choice of the next ship with one ship left');
+            return now.every(s => s.fleet.battle === message.battle + 1 && s.state === 'playing') ? now : null;
+          }, 30000, 'the battle with the last ship');
+          for (const s of next) {
+            assert.equal(NAMES[s.fleet.current[message.loser]], message.last);
+            assert.equal(s.snapshot.players[message.loser].shipId, SHIP_IDS[NAMES.indexOf(message.last)]);
+            assert.equal(s.online.screen, 'battle');
+          }
+          message.nextBattle = true;
+        }
+        continue;
+      }
+      messages.push({ kind, battle: over.fleet.battle });
     }
-    if (Date.now() - started > (process.env.CI ? 480000 : 300000)) throw new Error('The fleet match did not finish: ' + JSON.stringify(states.map(s => s.net)));
-    await Promise.all([A, B].map((p, i) => setKeys(p, states[i].net.phase === 'playing' && states[i].snapshot ? botKeys(states[i].snapshot, i) : new Set(), held[i])));
+    if (Date.now() - started > (process.env.CI ? 600000 : 480000)) throw new Error('The fleet match did not finish: ' + JSON.stringify(states.map(s => s.net)));
+    await Promise.all([A, B].map((p, i) => setKeys(p, states[i].net.phase === 'playing' && states[i].snapshot && i !== idle(states[i].fleet.battle) ? botKeys(states[i].snapshot, i) : new Set(), held[i])));
     await new Promise(r => setTimeout(r, 120));
   }
   await Promise.all([A, B].map((p, i) => setKeys(p, new Set(), held[i])));
@@ -338,7 +436,10 @@ try {
   assert.ok(ended.every(s => s.net.phase === 'ended' && s.net.verifiedChecksums >= 5), 'both peers verify the state many times');
   assert.ok(maxShots > 0, 'weapons fire');
   assert.ok(choices.length >= 1, 'the first loss of a fleet of three always has a choice');
-  result.checks.match = { ticks: ended.map(s => s.net.tick), verifiedChecksums: ended.map(s => s.net.verifiedChecksums), battles: ended.map(s => s.fleet.battle), choices: [...choices], elapsedMs: Date.now() - started };
+  assert.ok(choices.some(c => c.how === 'keyboard' && c.player === 1), 'the guest chose the next ship with the keyboard: ' + JSON.stringify(choices));
+  assert.ok(messages.some(m => m.kind === 'choice' && m.texts), 'the message before a choice on both pages: ' + JSON.stringify(messages));
+  assert.ok(messages.some(m => m.kind === 'last' && m.nextBattle), 'the last ship came by itself on both pages: ' + JSON.stringify(messages));
+  result.checks.match = { ticks: ended.map(s => s.net.tick), verifiedChecksums: ended.map(s => s.net.verifiedChecksums), battles: ended.map(s => s.fleet.battle), choices: [...choices], messages, elapsedMs: Date.now() - started };
   assert.deepEqual(ended[0].fleet.sides, ended[1].fleet.sides, 'both pages end with the same fleets');
   const titles = await Promise.all([A, B].map(p => p.locator('#cosmo-online h1').textContent()));
   assert.deepEqual([...titles].sort(), ['Defeat', 'Victory']);

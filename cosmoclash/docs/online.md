@@ -208,9 +208,15 @@ the list, the adapter is not used.
   without it), `base.test.ts`.
 - `npm run test:browser --prefix cosmoclash`: `solo.mjs`, `game.mjs`,
   `online-ui.mjs`. `online-ui.mjs` saves every online screen in
-  `test-results/online-ui/` (1280x720, 1024x768, 1920x1080) and `results.json`;
-  the loser chooses the next ship with the keyboard while the opponent waits,
-  and a later choice runs out of time. `game.mjs` plays a full fleet match with
+  `test-results/online-ui/` (1280x720, 1024x768, 1920x1080) and `results.json`.
+  In its fleet match one player flies and the other does not, so the losers
+  come in a known order: the guest chooses the next ship with the keyboard
+  while the host waits, the host's time runs out (the last seconds at all three
+  sizes: the page clocks stop for those screenshots), and the guest's last ship
+  comes by itself (no choice screen). The test holds the guest's room packets
+  for a moment (as a slow network does), so that the 1.5 s battle message of
+  both pages ("Choose your next ship." and "Your last ship: Gondi" / "Their
+  last ship: Gondi") stays for the screenshots. `game.mjs` plays a full fleet match with
   chosen next ships (the same tick and state hash on both peers during each
   choice, checksums after each one) and leaves during a choice in the jitter
   run. `solo.mjs` saves the local screens (difficulty, the fleet choice of Two
@@ -220,4 +226,6 @@ the list, the adapter is not used.
   frame and that the battle message does not cover its second line; its waits
   for the computer count only the time in which the game runs. The new and
   changed screens of the fleet matches are also in `test-results/next-ship/`
-  (`online-*`, `solo-*`).
+  (`online-*`, `solo-*`). After each new viewport size the tests wait for two
+  animation frames, and they take a screenshot again when its last rows repeat
+  its first rows (an old frame of a busy computer).
