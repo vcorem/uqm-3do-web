@@ -11,10 +11,13 @@
 //   UQM_BROWSER=firefox|webkit, UQM_DATA_EDITIONS=original,hd, UQM_RETURN_VISITS=3,
 //   UQM_SITE=<split site> UQM_SITE_MANIFEST=<its data-parts.json> to reuse a split,
 //   UQM_DATA_CACHE_LEAN=1 for the deploy gate: first visit, return visit and Rust page
-//   only, without launching the engine and without the no-Cache-API and private visits.
+//   only, without launching the engine and without the no-Cache-API and private visits,
+//   UQM_DATA_CACHE_SERVER=serve-py to serve dist with scripts/serve.py instead of the Worker.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { access, copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { access, copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,6 +31,9 @@ const browserType = process.env.UQM_BROWSER || 'chromium';
 const editions = (process.env.UQM_DATA_EDITIONS || 'original,hd').split(',');
 const WRANGLER = process.env.WRANGLER ?? 'wrangler@4.143.1';
 const lean = process.env.UQM_DATA_CACHE_LEAN === '1';
+// worker: the Cloudflare Worker under wrangler dev; serve-py: scripts/serve.py (local play).
+const serverKind = process.env.UQM_DATA_CACHE_SERVER || 'worker';
+assert.ok(['worker', 'serve-py'].includes(serverKind), 'Unsupported UQM_DATA_CACHE_SERVER');
 const headless = process.env.HEADED !== '1';
 const types = { chromium, firefox, webkit };
 assert.ok(types[browserType], 'Unsupported UQM_BROWSER');
@@ -74,49 +80,65 @@ const report = { browserType, editions: {}, errors: [], passed: false };
 let worker, context;
 let workerLog = '';
 try {
-  // The Worker reads the part manifest beside itself; copy it with its relay module.
-  const workerDir = path.join(temp, 'worker');
-  await mkdir(workerDir);
-  for (const file of (await readdir(path.join(root, 'deploy'))).filter(name => /\.m?js$/.test(name))) {
-    await copyFile(path.join(root, 'deploy', file), path.join(workerDir, file));
-  }
-  // UQM_SITE and UQM_SITE_MANIFEST name a split site to reuse (the deploy job's .tools/site and
-  // deploy/data-parts.json); when they do not exist yet, the split is written there and kept.
-  const site = process.env.UQM_SITE ? path.resolve(process.env.UQM_SITE) : path.join(temp, 'site');
-  const siteManifest = process.env.UQM_SITE_MANIFEST ? path.resolve(process.env.UQM_SITE_MANIFEST) : path.join(temp, 'data-parts.json');
-  const manifest = path.join(workerDir, 'data-parts.json');
-  if (!await access(siteManifest).then(() => access(site)).then(() => true, () => false)) {
-    await mkdir(path.dirname(site), { recursive: true });
-    await mkdir(path.dirname(siteManifest), { recursive: true });
-    const split = spawnSync('python3', [path.join(root, 'deploy/split-data.py'), '--site', dist, '--output', site, '--manifest', siteManifest],
-      { stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' });
-    assert.equal(split.status, 0, 'split-data.py failed');
-    process.stdout.write(split.stdout);
-  }
-  await copyFile(siteManifest, manifest);
-  const parts = JSON.parse(await readFile(manifest, 'utf8'));
-  report.manifest = parts;
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
-  // The deploy config with its bindings and migrations; only the site, the origin and the name differ.
-  const config = parseJSONC(await readFile(path.join(root, 'deploy/wrangler.jsonc'), 'utf8'));
-  for (const deployOnly of ['routes', 'workers_dev', 'preview_urls', 'observability']) delete config[deployOnly];
-  Object.assign(config, { name: 'uqm-web-data-cache-test', main: path.join(workerDir, path.basename(config.main)),
-    assets: { ...config.assets, directory: site }, vars: { ...config.vars, NETPLAY_ORIGINS: origin } });
-  assert.ok(config.durable_objects?.bindings?.length && config.migrations?.length, 'the deploy config declares the relay objects');
-  const configPath = path.join(temp, 'wrangler.json');
-  await writeFile(configPath, JSON.stringify(config));
-  worker = spawn('npx', ['--yes', WRANGLER, 'dev', '--config', configPath, '--ip', '127.0.0.1', '--port', String(port),
-    '--inspector-port', String(await freePort()), '--persist-to', path.join(temp, 'state'),
-    '--show-interactive-dev-session=false', '--log-level', 'warn'],
-  { cwd: temp, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
-  worker.stdout.on('data', chunk => { workerLog += chunk; });
-  worker.stderr.on('data', chunk => { workerLog += chunk; });
+  let parts;
+  if (serverKind === 'worker') {
+    // The Worker reads the part manifest beside itself; copy it with its relay module.
+    const workerDir = path.join(temp, 'worker');
+    await mkdir(workerDir);
+    for (const file of (await readdir(path.join(root, 'deploy'))).filter(name => /\.m?js$/.test(name))) {
+      await copyFile(path.join(root, 'deploy', file), path.join(workerDir, file));
+    }
+    // UQM_SITE and UQM_SITE_MANIFEST name a split site to reuse (the deploy job's .tools/site and
+    // deploy/data-parts.json); when they do not exist yet, the split is written there and kept.
+    const site = process.env.UQM_SITE ? path.resolve(process.env.UQM_SITE) : path.join(temp, 'site');
+    const siteManifest = process.env.UQM_SITE_MANIFEST ? path.resolve(process.env.UQM_SITE_MANIFEST) : path.join(temp, 'data-parts.json');
+    const manifest = path.join(workerDir, 'data-parts.json');
+    if (!await access(siteManifest).then(() => access(site)).then(() => true, () => false)) {
+      await mkdir(path.dirname(site), { recursive: true });
+      await mkdir(path.dirname(siteManifest), { recursive: true });
+      const split = spawnSync('python3', [path.join(root, 'deploy/split-data.py'), '--site', dist, '--output', site, '--manifest', siteManifest],
+        { stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' });
+      assert.equal(split.status, 0, 'split-data.py failed');
+      process.stdout.write(split.stdout);
+    }
+    await copyFile(siteManifest, manifest);
+    parts = JSON.parse(await readFile(manifest, 'utf8'));
+    report.manifest = parts;
+    // The deploy config with its bindings and migrations; only the site, the origin and the name differ.
+    const config = parseJSONC(await readFile(path.join(root, 'deploy/wrangler.jsonc'), 'utf8'));
+    for (const deployOnly of ['routes', 'workers_dev', 'preview_urls', 'observability']) delete config[deployOnly];
+    Object.assign(config, { name: 'uqm-web-data-cache-test', main: path.join(workerDir, path.basename(config.main)),
+      assets: { ...config.assets, directory: site }, vars: { ...config.vars, NETPLAY_ORIGINS: origin } });
+    assert.ok(config.durable_objects?.bindings?.length && config.migrations?.length, 'the deploy config declares the relay objects');
+    const configPath = path.join(temp, 'wrangler.json');
+    await writeFile(configPath, JSON.stringify(config));
+    worker = spawn('npx', ['--yes', WRANGLER, 'dev', '--config', configPath, '--ip', '127.0.0.1', '--port', String(port),
+      '--inspector-port', String(await freePort()), '--persist-to', path.join(temp, 'state'),
+      '--show-interactive-dev-session=false', '--log-level', 'warn'],
+    { cwd: temp, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+    worker.stdout.on('data', chunk => { workerLog += chunk; });
+    worker.stderr.on('data', chunk => { workerLog += chunk; });
+  } else {
+    // The local preview server (Play UQM.command): SHA-256 ETags of the packaged files.
+    parts = {};
+    for (const edition of editions) {
+      const file = path.join(dist, edition, 'uqm-debug.data');
+      const hash = createHash('sha256');
+      for await (const chunk of createReadStream(file)) hash.update(chunk);
+      parts[`/${edition}/uqm-debug.data`] = { size: (await stat(file)).size, sha256: hash.digest('hex') };
+    }
+    worker = spawn('python3', [path.join(root, 'scripts/serve.py'), '--port', String(port), '--directory', dist],
+      { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+    worker.stdout.on('data', chunk => { workerLog += chunk; });
+    worker.stderr.on('data', chunk => { workerLog += chunk; });
+  }
   const deadline = Date.now() + 180000;
   for (;;) {
-    if (worker.exitCode !== null) throw new Error('wrangler dev exited:\n' + workerLog);
+    if (worker.exitCode !== null) throw new Error('the server exited:\n' + workerLog);
     try { if ((await fetch(origin + '/', { signal: AbortSignal.timeout(2000) })).ok) break; } catch { /* Not listening yet. */ }
-    if (Date.now() > deadline) throw new Error('wrangler dev did not start:\n' + workerLog);
+    if (Date.now() > deadline) throw new Error('the server did not start:\n' + workerLog);
     await sleep(200);
   }
   for (const edition of editions) {
@@ -306,7 +328,8 @@ try {
     // engine fetched no Wasm of its own.
     const scripts = first.entries.filter(entry => entry.file === 'js');
     assert.ok(scripts.length >= 2, JSON.stringify(first.entries));
-    if (scripts.every(entry => entry.transfer > 0)) {
+    // Firefox reports the whole size as transferSize for a 304 revalidation, so only the others can tell.
+    if (browserType !== 'firefox' && scripts.every(entry => entry.transfer > 0)) {
       assert.equal(scripts.filter(entry => entry.transfer > 64 * 1024).length, 1, 'the script crossed the network once: ' + JSON.stringify(scripts));
     }
     assert.equal(first.entries.filter(entry => entry.file === 'wasm').length, 1, JSON.stringify(first.entries));
