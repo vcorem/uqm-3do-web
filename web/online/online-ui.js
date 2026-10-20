@@ -803,8 +803,10 @@
         let startBackground = null;
         function drawStartBackground() {
             image('title', 0, 0, W, H);
-            gradientShade(edition === 'hd' ? 118 : 100, 172, 0.85);
-            rect(0, 172, W, H - 172, [0, 0, 0], 0.85);
+            // HD: the panel starts lower, clear of the second menu item (it ends near 172).
+            const panel = edition === 'hd' ? 176 : 172;
+            gradientShade(edition === 'hd' ? 118 : 100, panel, 0.85);
+            rect(0, panel, W, H - panel, [0, 0, 0], 0.85);
         }
         function drawStart(state, t) {
             if (!startBackground && root.document && images.title) {
