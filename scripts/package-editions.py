@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 import shutil
 
-ENGINE = ('index.html', 'uqm-debug.js', 'uqm-debug.wasm', 'uqm-debug.data', 'uqm-debug.worker.js', 'COPYING.txt', 'toolchain-fixes.json', 'game-help.js')
+ENGINE = ('index.html', 'uqm-debug.js', 'uqm-debug.wasm', 'uqm-debug.data', 'uqm-debug.worker.js', 'COPYING.txt', 'toolchain-fixes.json', 'game-help.js', 'engine-loader.js')
 EXTRA = {'original': ('netplay-client.js',), 'hd': ('content-licenses.txt', 'netplay-client.js')}
 # Rust pages get these settings before any page script runs (see the shells' UQM_VARIANT).
 RUST_VARIANT = {

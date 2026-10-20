@@ -63,6 +63,8 @@ shutil.copy2(output / 'uqm-debug.html', output / 'index.html')
 shutil.copy2(source / 'wasm/compat/toolchain-fixes.json', output / 'toolchain-fixes.json')
 # Page help (download progress, keys panel, How to start) is shared by every engine build.
 shutil.copy2(root / 'web/game-help/game-help.js', output / 'game-help.js')
+# The page starts the engine through this loader, which keeps the game data in the browser.
+shutil.copy2(root / 'web/engine-loader/engine-loader.js', output / 'engine-loader.js')
 if args.edition == 'original':
     shutil.copy2(source / 'COPYING', output / 'COPYING.txt')
     shutil.copy2(source / 'wasm/netplay-client.js', output / 'netplay-client.js')

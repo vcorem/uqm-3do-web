@@ -43,6 +43,13 @@ Build the selection screen and both editions with `./scripts/build-editions.sh`.
 The first HD download is about 640 MB; the original artwork and HD artwork
 use separate engines and save databases.
 
+The browser keeps each edition's game data after the first visit
+([`web/engine-loader`](web/engine-loader/engine-loader.js)). A later visit asks
+the server only for the data file's version (its ETag) and starts from the
+stored copy; the C and Rust engines of an edition share it. A new version
+replaces the old copy. Without Cache Storage or an ETag (private windows, the
+local preview servers), the game downloads the data as before.
+
 ## Play the installed local game
 
 On macOS, double-click **Play UQM.command**. Keep the terminal window open,

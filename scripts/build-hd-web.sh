@@ -116,6 +116,7 @@ cp content/notices/upstream/licenses/COPYING-UQM "$output/COPYING.txt"
 cp content/content-licenses.txt "$output/content-licenses.txt"
 cp "$root/hd/content-lock.json" "$output/content-lock.json"
 cp "$root/web/game-help/game-help.js" "$output/game-help.js"
+cp "$root/web/engine-loader/engine-loader.js" "$output/engine-loader.js"
 cp "$root/sc2/wasm/netplay-client.js" "$output/netplay-client.js"
 python3 - "$output/engine-language.json" "${UQM_CORE:-rust}" <<'PY'
 import json, sys

@@ -313,6 +313,24 @@ window.addEventListener('error',function(event) {
 if(window.UQMHelp) UQMHelp.init({ document: document, eventTarget: document, getStorage: function () { return localStorage; }, isStarted: function () { return started; }, isWide: function () { return matchMedia('(min-width: 641px)').matches; } });
 if(!window.crossOriginIsolated||typeof SharedArrayBuffer==='undefined') fail('Use the included preview server to run the game.');
 </script>
-{{{ SCRIPT }}}
+<!-- emcc writes the engine script here. It waits in this inert template until
+     engine-loader.js has the game data: stored in this browser, or downloaded once and stored. -->
+<template id="engine-script">{{{ SCRIPT }}}</template>
+<script src="engine-loader.js"></script>
+<script>
+(function (template) {
+  if (window.UQMEngineLoader) {
+    UQMEngineLoader.start({ module: Module, edition: 'hd', template: template,
+      status: document.getElementById('status'), progress: document.getElementById('progress') });
+    return;
+  }
+  // Without the loader the engine starts as before and downloads the data itself.
+  template.content.querySelectorAll('script').forEach(function (inert) {
+    var script = document.createElement('script');
+    script.src = inert.getAttribute('src');
+    document.body.appendChild(script);
+  });
+})(document.getElementById('engine-script'));
+</script>
 </body>
 </html>
