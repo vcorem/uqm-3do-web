@@ -377,6 +377,10 @@ function menuKey(e:KeyboardEvent):boolean {
 }
 window.addEventListener('keydown',e=>{
   if(shouldIgnoreGameKeyDown(e))return;
+  // The game's handlers make every Enter and Space choice. The browser's own
+  // action would click the button that has the focus by then (the key that
+  // skips the logo would also start a game), so it never runs.
+  if(e.key==='Enter'||e.key===' ')e.preventDefault();
   if(e.key.toLowerCase()==='m'&&!e.repeat&&state!=='loading')sound.toggleMute();
   if(menuKey(e)){e.preventDefault();e.stopPropagation();}
 },true);
