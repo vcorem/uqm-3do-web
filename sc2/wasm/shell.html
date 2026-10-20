@@ -142,6 +142,7 @@
     takePendingNetplayRole: function () {
       var role = pendingNetplayRole;
       pendingNetplayRole = -1;
+      if ((role === 0 || role === 1) && online) online.controller.roleTaken();
       return role;
     },
     onAbort: function (reason) { fail('The game could not start: ' + reason); },
@@ -178,7 +179,23 @@
       screen: function () { return Module.gameScreen; },
       hook: function () { return Module.supportsNetplayHook === true; },
       start: launchGame,
-      queue: function (role, room) { Module.webNet = room; pendingNetplayRole = role; }
+      // The room is set before the engine can take the role; -1 withdraws a role not yet taken.
+      queue: function (role, room) {
+        if (role === 0 || role === 1) Module.webNet = room;
+        pendingNetplayRole = role;
+      },
+      // The lobby covers the main menu: the engine's menu does not time out into the intro.
+      hold: function (on) { Module.holdMainMenu = on; },
+      // Every Module.gameScreen change, as the engine makes it.
+      watchScreen: function (callback) {
+        var current = Module.gameScreen;
+        Object.defineProperty(Module, 'gameScreen', { configurable: true, enumerable: true,
+          get: function () { return current; },
+          set: function (value) {
+            current = value;
+            try { callback(value); } catch (error) { log(String(error)); }
+          } });
+      }
     }
   });
   setInterval(renderNetStats, 1000);

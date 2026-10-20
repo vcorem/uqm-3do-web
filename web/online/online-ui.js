@@ -15,19 +15,45 @@
     const NAME_MAX = 24;
     const COUNTDOWN_MS = 3000;
     const LOBBY_RETRY_MS = [2000, 5000, 10000, 20000];
-    const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
+    // A role queued for the engine's main menu that is not taken by then ends the session.
+    const ROLE_TIMEOUT_MS = 15000;
+    // Room names follow the relay's rule (UQMNetplay.roomName): NFC, inner spaces
+    // collapsed, no control or format characters, line separators, surrogates,
+    // private-use or unassigned code points, blank fillers or more than 3
+    // stacked marks, and at least one letter, digit, punctuation or symbol.
+    const NAME_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\p{Zl}\p{Zp}\u115f\u1160\u2800\u3164\uffa0]/u;
+    const NAME_STACKED = /[\p{Mn}\p{Me}]{4}/u;
+    const NAME_VISIBLE = /[\p{L}\p{N}\p{P}\p{S}]/u;
     const TOKEN = /^[a-f0-9]{32}$/;
+    // Text drawn right to left when its first letter is from a right-to-left script.
+    const RTL_FIRST = /^[^\p{L}]*[\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}]/u;
 
     // ------------------------------------------------------------ helpers
 
+    // The name as the room list shows it, or the reason it cannot be used.
     function cleanName(value) {
-        const name = String(value == null ? '' : value).trim();
+        const text = String(value == null ? '' : value).normalize('NFC');
+        if (NAME_FORBIDDEN.test(text) || NAME_STACKED.test(text.normalize('NFD'))) {
+            return { ok: false, name: text.trim(), error: 'Use only visible letters, numbers and symbols.' };
+        }
+        const name = text.replace(/\s+/g, ' ').trim();
         const length = Array.from(name).length;
         if (!length) return { ok: false, name, error: 'Type a name for your room.' };
         if (length > NAME_MAX) return { ok: false, name, error: 'Use at most ' + NAME_MAX + ' characters.' };
-        if (CONTROL.test(name)) return { ok: false, name, error: 'Use letters, numbers and spaces.' };
+        if (!NAME_VISIBLE.test(name)) return { ok: false, name, error: 'Use at least one letter or number.' };
         return { ok: true, name };
     }
+    // The room client's own check (when it has one) is the final word.
+    function checkName(value, netplay) {
+        const checked = cleanName(value);
+        if (!checked.ok || !netplay || typeof netplay.roomName !== 'function') return checked;
+        try {
+            return { ok: true, name: netplay.roomName(checked.name) };
+        } catch (error) {
+            return { ok: false, name: checked.name, error: String(error && error.message || 'This name cannot be used.') };
+        }
+    }
+    function isRtl(text) { return RTL_FIRST.test(String(text)); }
     function defaultName(random) {
         return 'Captain ' + (10 + Math.floor((random || Math.random)() * 90));
     }
@@ -72,8 +98,8 @@
 
     /* env: { edition, engine, now(), setTimeout(fn, ms), clearTimeout(id), random(),
          storage: { get(key), set(key, value) }, netplay (UQMNetplay),
-         game: { started(), ready(), screen(), hook(), start(role, client), queue(role, client) },
-         fullscreen(), reload(online), copy(text) -> Promise, focusGame(), changed(state) } */
+         game: { started(), ready(), screen(), hook(), start(role, client), queue(role, client) (role -1 withdraws) },
+         fullscreen() -> Promise<boolean>, reload(online), copy(text) -> Promise, focusGame(), changed(state) } */
     function createController(env) {
         const now = () => env.now();
         const state = {
@@ -110,11 +136,15 @@
         // The game's menu sounds (menu.snd): move, success, failure, invoked.
         function sound(name) { if (env.sound) env.sound(name); }
         // The first choice is a user gesture: the frame goes full screen then.
+        // A refused request (no user activation, as for Esc) does not count.
         function gesture() {
-            if (state.asked) return;
+            if (state.asked || !env.fullscreen) return;
             state.asked = true;
-            if (env.fullscreen) env.fullscreen();
+            let request;
+            try { request = env.fullscreen(); } catch (_) { request = false; }
+            Promise.resolve(request).then(done => { if (done === false) state.asked = false; }, () => { state.asked = false; });
         }
+        const isReady = () => state.ready || env.game.ready();
 
         // -------------------------------------------------- lobby list
         function watchLobby() {
@@ -199,26 +229,42 @@
                 try { room.client.close(); } catch (_) { /* Already closed. */ }
             }
         }
+        // name: the listed room's name for a host. A host without a name opens a
+        // private room, which only its invite link joins (scripted tests).
         function connect(role, token, name) {
             closeRoom();
-            const room = { token, role, name: name || '', status: 'waiting', message: '', client: null, opened: now() };
+            const room = { token, role, name: name || '', listed: role === 'host' && !!name,
+                status: 'loading', message: '', client: null, opened: now() };
             state.room = room;
-            const options = { token, role, edition: state.edition,
+            // Enter must not close a room just opened: the host's waiting screen
+            // offers Copy link first, and Enter does nothing on the joining screen.
+            show(role === 'host' ? 'waiting' : 'joining', role === 'host' ? 'copy' : 'cancel');
+            // A room opens (and a guest joins) only when this page's game is ready,
+            // so that no opponent waits for a download.
+            if (isReady()) openRoom(room);
+        }
+        function openRoom(room) {
+            room.status = 'waiting';
+            room.opened = now();
+            const options = { token: room.token, role: room.role, edition: state.edition,
                 onStatus: event => roomStatus(room, event) };
-            if (role === 'host') { options.name = name; options.engine = state.engine; }
+            if (room.listed) { options.name = room.name; options.engine = state.engine; }
+            let client;
             try {
-                room.client = env.netplay.connect(options);
+                client = env.netplay.connect(options);
             } catch (error) {
+                if (state.room !== room) return;
                 state.room = null;
                 notice(cleanMessage(error && error.message) || 'Could not open the room.', 'error');
                 show('lobby');
                 return;
             }
-            if (room.client && ['closed', 'error'].includes(room.client.state)) {
-                // connect() reported an error synchronously; roomStatus has shown it.
-                return;
-            }
-            show(role === 'host' ? 'waiting' : 'joining', 'cancel');
+            // connect() may have reported an error at once; roomStatus has shown it.
+            if (state.room !== room) return;
+            room.client = client;
+            // The name as the room list shows it.
+            if (room.listed && client && typeof client.name === 'string' && client.name) room.name = client.name;
+            changed();
         }
         function roomStatus(room, event) {
             if (!event) return;
@@ -269,9 +315,20 @@
             }
             if (game.hook()) {
                 // The engine takes the role at its main menu (at once, or when it is back there).
-                state.session = { room, role: room.role, hook: true, sawMelee: false };
+                const session = { room, role: room.role, hook: true, sawMelee: false, taken: false };
+                state.session = session;
                 show('hidden');
                 game.queue(room.role === 'host' ? 0 : 1, room.client);
+                // An engine that does not take the role (it left its main menu) must not
+                // leave the player with neither a match nor the lobby.
+                env.setTimeout(() => {
+                    if (state.session !== session || session.taken || session.sawMelee) return;
+                    game.queue(-1, null);
+                    state.session = null;
+                    if (state.room === room) closeRoom();
+                    notice('The game did not start the match. Try again.', 'error');
+                    show('lobby', 'create');
+                }, ROLE_TIMEOUT_MS);
                 return;
             }
             closeRoom();
@@ -299,9 +356,10 @@
         }
 
         // -------------------------------------------------- choices
-        function activate(id) {
+        // how.escape: chosen with Esc, which gives no user activation for full screen.
+        function activate(id, how) {
             if (!id || !state.items.includes(id)) return;
-            gesture();
+            if (!(how && how.escape)) gesture();
             if (id !== 'open' && id !== 'name') sound('success');
             if (id === 'play') {
                 if (state.ready || env.game.ready()) { state.pendingPlay = false; show('hidden'); env.game.start(null); }
@@ -318,9 +376,10 @@
                 state.nameError = '';
                 show('name', 'name');
             } else if (id === 'open' || id === 'name') {
-                const checked = cleanName(state.name);
+                const checked = checkName(state.name, env.netplay);
                 if (!checked.ok) { sound('failure'); state.nameError = checked.error; state.focus = 'name'; changed(); return; }
                 sound('success');
+                // The name as the list shows it; remembered only once it is accepted.
                 state.name = checked.name;
                 if (env.storage) env.storage.set(NAME_KEY, checked.name);
                 connect('host', env.netplay.createToken(), checked.name);
@@ -398,10 +457,15 @@
             case 'End': if (state.items.length) { state.focus = state.items[state.items.length - 1]; changed(); } return true;
             case 'PageUp': move(-6); return true;
             case 'PageDown': move(6); return true;
-            case 'Enter': case ' ': activate(state.focus); return true;
+            case 'Enter': case ' ':
+                // Joining and Opponent found have only Cancel: a reflex Enter must not
+                // undo the join or the match (Esc or a click cancels).
+                if (state.screen === 'joining' || state.screen === 'found') return true;
+                activate(state.focus);
+                return true;
             case 'Escape':
-                if (ESCAPE[state.screen]) { gesture(); activate(ESCAPE[state.screen]); return true; }
-                if (state.items.includes('back')) { activate('back'); return true; }
+                if (ESCAPE[state.screen]) { activate(ESCAPE[state.screen], { escape: true }); return true; }
+                if (state.items.includes('back')) { activate('back', { escape: true }); return true; }
                 if (state.screen === 'start' && state.pendingPlay) { state.pendingPlay = false; changed(); return true; }
                 return false;
             default: return false;
@@ -413,7 +477,7 @@
             state,
             activate, key, move, openLobby,
             focus(id) { if (state.items.includes(id) && state.focus !== id) { state.focus = id; changed(); } },
-            setName(value) { state.name = String(value).slice(0, 80); state.nameError = ''; changed(); },
+            setName(value) { state.name = Array.from(String(value)).slice(0, 64).join(''); state.nameError = ''; changed(); },
             progress(loading) {
                 const before = state.loading;
                 state.loading = Object.assign({}, before, loading);
@@ -425,6 +489,8 @@
                 state.ready = true;
                 state.loading = { label: 'Ready.', fraction: 1 };
                 if (state.pendingPlay && state.screen === 'start') { state.pendingPlay = false; show('hidden'); env.game.start(null); return; }
+                // A room chosen during the download opens now.
+                if (state.room && state.room.status === 'loading') openRoom(state.room);
                 if (state.screen === 'found' && state.waitingForEngine) { begin(); return; }
                 changed();
             },
@@ -433,7 +499,10 @@
                 stopLobby();
                 state.pendingPlay = false;
                 const value = String(text || 'The game could not start.');
-                state.message = { title: 'UNABLE TO START', text: value, say: 'Unable to start. ' + value, failed: true };
+                // After the game has started, a failure stops it.
+                state.message = env.game.started()
+                    ? { title: 'GAME STOPPED', text: value, say: 'Game stopped. ' + value, failed: true }
+                    : { title: 'UNABLE TO START', text: value, say: 'Unable to start. ' + value, failed: true };
                 show('message', 'reload');
             },
             exited(text) {
@@ -445,6 +514,7 @@
             },
             // Called with Module.gameScreen whenever it changes.
             gameScreen(name) {
+                if (name === state.engineScreen) return;
                 state.engineScreen = name;
                 const session = state.session;
                 if (session) {
@@ -467,8 +537,16 @@
             },
             close() { closeRoom(); stopLobby(); },
             tick() { changed(); },
-            // Scripted play (remote tests): a room with a known token.
-            host(name, token) { const checked = cleanName(name); if (checked.ok) connect('host', token || env.netplay.createToken(), checked.name); },
+            // The engine took the role queued for its main menu.
+            roleTaken() { if (state.session) state.session.taken = true; },
+            // Scripted play (remote tests): a room with a known token. A host without
+            // a name opens a private room (not in the list; its invite link joins it).
+            host(name, token) {
+                token = token || env.netplay.createToken();
+                if (name == null) { connect('host', token, ''); return; }
+                const checked = checkName(name, env.netplay);
+                if (checked.ok) connect('host', token, checked.name);
+            },
             join(token, name) { if (TOKEN.test(String(token))) connect('guest', String(token), name || ''); },
         };
         changed();
@@ -599,7 +677,9 @@
                 ctx.font = fallbackFont(role);
                 ctx.fillStyle = css(rgb);
                 ctx.textBaseline = 'middle';
-                ctx.direction = 'ltr';
+                // Bidi base direction from the first letter; 'left' keeps x the left edge.
+                ctx.direction = isRtl(value) ? 'rtl' : 'ltr';
+                ctx.textAlign = 'left';
                 ctx.fillText(value, Math.round(left * k), Math.round((y + lineHeight(role) * 0.55) * k));
                 ctx.restore();
                 return width;
@@ -798,6 +878,8 @@
                 const hi = room && state.focus === 'room:' + room.id;
                 if (!room) { starconBox(listX, y, listW, rowH, 1, RGB.boxTL, RGB.boxBR, null); continue; }
                 shipBox(listX, y, listW, rowH, hi);
+                // Under the name dialog only the boxes show.
+                if (under) continue;
                 const time = waitingTime(room.created, now);
                 const timeW = measure('body', time);
                 text('body', time, listX + listW - 5, y + (rowH - lineHeight('body')) / 2 + 1, hi ? RGB.teamNameHi : RGB.teamName, 'right');
@@ -812,17 +894,21 @@
                 text('body', room.name, listX + 6, y + (rowH - lineHeight('body')) / 2 + 1, hi ? RGB.teamNameHi : RGB.teamName, 'left', tagX - listX - 12);
                 region('room:' + room.id, listX, y, listW, rowH, 'Join ' + room.name + ', ' + (room.engine ? room.engine.toUpperCase() + ' engine, ' : '') + 'waiting ' + time);
             }
-            if (rooms.length > rows) {
+            if (rooms.length > rows && !under) {
                 text('small', (scroll + 1) + '-' + (scroll + rows) + ' OF ' + rooms.length, listX + listW, listY + 1, RGB.hint, 'right');
             }
+            const lobbyError = lobby.error || 'The room list is not available right now.';
             if (!rooms.length) {
+                const panelH = rows * (rowH + 2) - 2;
+                shipBox(listX, top, listW, panelH, false);
+            }
+            if (!rooms.length && !under) {
                 let main, sub;
                 if (lobby.status === 'connecting' || lobby.status === 'idle') { main = 'Looking for open rooms' + '...'.slice(0, 1 + Math.floor(t / 400) % 3); sub = ''; }
                 else if (lobby.status === 'unsupported') { main = 'The room list is not available on this server.'; sub = 'Create a room and send its invite link.'; }
-                else if (lobby.status === 'error') { main = lobby.error || 'The room list is not available right now.'; sub = 'Trying again...'; }
+                // The room client may already say that it tries again.
+                else if (lobby.status === 'error') { main = lobbyError; sub = /trying again|reconnect/i.test(main) ? '' : 'Trying again...'; }
                 else { main = 'No open rooms right now.'; sub = 'Create a room, or wait here: new rooms show up by themselves.'; }
-                const panelH = rows * (rowH + 2) - 2;
-                shipBox(listX, top, listW, panelH, false);
                 const art = art_battle();
                 let cy = top + 22;
                 if (art) { battle(listX + listW / 2 - art.w / 2, cy, false, 0.35); cy += art.h + 8; }
@@ -831,7 +917,7 @@
             }
             // Right column, like the Super-Melee control boxes.
             const colX = 256, colW = 58;
-            const createHi = state.focus === 'create';
+            const createHi = state.focus === 'create' || (under && state.screen === 'name');
             controlBox(colX, top, colW, 44, createHi);
             const lh = lineHeight('label');
             text('label', 'CREATE', colX + colW / 2, top + 22 - lh - 1, createHi ? RGB.ctrlTextHi : RGB.ctrlText, 'center');
@@ -841,10 +927,14 @@
             button(colX + 4, backY, colW - 8, 13, 'Back', state.focus === 'back');
             region('back', colX + 4, backY, colW - 8, 13, options.started() ? 'Back to the game' : 'Back');
             const count = rooms.length;
-            const fallback = lobby.status === 'open' && count
-                ? count + (count === 1 ? ' room is' : ' rooms are') + ' open. Pick one to fight.' : '';
             if (under) return;
-            statusLine(state, fallback);
+            // With rooms on screen, a lost list is reported below it (the rooms may be out of date).
+            if (lobby.status === 'error' && count) {
+                statusLine(state, lobbyError + (/trying again|reconnect/i.test(lobbyError) ? '' : ' Trying again...'), 'error');
+            } else {
+                statusLine(state, lobby.status === 'open' && count
+                    ? count + (count === 1 ? ' room is' : ' rooms are') + ' open. Pick one to fight.' : '');
+            }
             hint(rooms.length ? 'ARROWS CHOOSE · ENTER JOIN · ESC BACK' : 'ENTER CREATE ROOM · ESC BACK');
         }
         function dim() { rect(0, 0, W, H, [0, 0, 0], 0.55); }
@@ -852,10 +942,16 @@
             drawLobby(state, t, options.now(), true);
             regions.length = 0;
             dim();
-            const x = 50, y = 64, w = 220, h = 100;
+            // Over the room list, beside CREATE ROOM (the choice that opened it).
+            const x = 8, w = 240, lh = lineHeight('label'), bh = lineHeight('body');
+            const message = state.nameError || 'Players see this name in the room list.';
+            const lines = wrap('body', message, w - 24);
+            const h = 9 + lh + 5 + (bh + 6) + 4 + Math.max(2, lines.length) * bh + 6 + 13 + 7;
+            const listTop = 26 + lh + 3, listH = 7 * 23 - 2;
+            const y = Math.round(listTop + (listH - h) / 2);
             controlBox(x, y, w, h, false);
             text('label', 'NAME YOUR ROOM', x + w / 2, y + 9, RGB.ctrlTextHi, 'center');
-            const fx = x + 12, fy = y + 22, fw = w - 24, fh = lineHeight('body') + 6;
+            const fx = x + 12, fy = y + 9 + lh + 5, fw = w - 24, fh = bh + 6;
             const editing = state.focus === 'name';
             starconBox(fx, fy, fw, fh, 1, RGB.boxTL, RGB.boxBR, editing ? RGB.editRect : RGB.boxFill);
             const value = state.name;
@@ -869,13 +965,12 @@
                 rect(Math.min(cx, fx + fw - 3), ty, a > 1 ? 0.75 : 1, lineHeight('body') - 1, RGB.cursor);
             }
             region('name', fx, fy, fw, fh, 'Room name', { input: true });
-            const message = state.nameError || 'Players see this name in the room list.';
-            paragraph('body', message, x + 12, fy + fh + 4, w - 24, state.nameError ? RGB.error : RGB.teamName, 'left');
+            lines.forEach((line, i) => text('body', line, x + 12, fy + fh + 4 + i * bh, state.nameError ? RGB.error : RGB.teamName, 'left'));
             const by = y + h - 20, bw = 86;
-            button(x + 18, by, bw, 13, 'Open room', state.focus === 'open');
-            region('open', x + 18, by, bw, 13, 'Open room');
-            button(x + w - 18 - bw, by, bw, 13, 'Cancel', state.focus === 'cancel');
-            region('cancel', x + w - 18 - bw, by, bw, 13, 'Cancel');
+            button(x + 24, by, bw, 13, 'Open room', state.focus === 'open');
+            region('open', x + 24, by, bw, 13, 'Open room');
+            button(x + w - 24 - bw, by, bw, 13, 'Cancel', state.focus === 'cancel');
+            region('cancel', x + w - 24 - bw, by, bw, 13, 'Cancel');
             hint('ENTER OPEN ROOM · ESC CANCEL');
         }
         function centerBox(y, h) {
@@ -893,30 +988,46 @@
             }
             return size;
         }
+        // This page's own download, while a chosen room waits for it.
+        function loadingLine(state, y) {
+            const fraction = Math.max(0, Math.min(1, state.loading.fraction || 0));
+            text('body', 'Loading the game: ' + Math.floor(fraction * 100) + '%', W / 2, y, RGB.status, 'center');
+            y += lineHeight('body') + 2;
+            starconBox(W / 2 - 80, y, 160, 6, 1, RGB.btnTL, RGB.btnBR, [0, 0, 0]);
+            if (fraction > 0) rect(W / 2 - 79, y + 1, 158 * fraction, 4, RGB.status);
+            return lineHeight('body') + 2 + 6 + 4;
+        }
         function drawWaiting(state, t, now) {
             lobbyFrame(state);
-            const room = state.room || { name: '', opened: now };
+            const room = state.room || { name: '', opened: now, listed: true, status: 'waiting' };
+            const loading = room.status === 'loading';
             const box = centerBox(34, 158);
             const art = art_battle();
             let y = box.y + 9;
-            text('label', 'ROOM OPEN', W / 2, y, RGB.ctrlTextHi, 'center');
+            text('label', loading ? 'ALMOST READY' : room.listed ? 'ROOM OPEN' : 'PRIVATE ROOM OPEN', W / 2, y, RGB.ctrlTextHi, 'center');
             y += lineHeight('label') + 4;
-            text('body', '"' + room.name + '"', W / 2, y, RGB.teamNameHi, 'center', box.w - 20);
+            if (room.name) text('body', '"' + room.name + '"', W / 2, y, RGB.teamNameHi, 'center', box.w - 20);
             y += lineHeight('body') + 6;
             if (art) {
-                battle(W / 2 - art.w / 2, y, Math.floor(t / 700) % 2 === 1, 0.85);
+                battle(W / 2 - art.w / 2, y, !loading && Math.floor(t / 700) % 2 === 1, loading ? 0.45 : 0.85);
                 y += art.h + 6;
             }
-            const dots = '...'.slice(0, 1 + Math.floor(t / 400) % 3);
-            text('body', 'Waiting for an opponent' + dots, W / 2 - measure('body', 'Waiting for an opponent...') / 2, y, RGB.status, 'left');
-            y += lineHeight('body') + 2;
-            text('small', 'OPEN FOR ' + clock(now - room.opened) + ' · CLOSES AFTER 10 MIN', W / 2, y, RGB.hint, 'center');
+            if (loading) {
+                loadingLine(state, y);
+            } else {
+                const dots = '...'.slice(0, 1 + Math.floor(t / 400) % 3);
+                text('body', 'Waiting for an opponent' + dots, W / 2 - measure('body', 'Waiting for an opponent...') / 2, y, RGB.status, 'left');
+                y += lineHeight('body') + 2;
+                text('small', 'OPEN FOR ' + clock(now - room.opened) + ' · CLOSES AFTER ' + (room.listed ? '10' : '2') + ' MIN', W / 2, y, RGB.hint, 'center');
+            }
             const by = box.y + box.h - 19, bw = 96;
             button(W / 2 - bw - 6, by, bw, 13, 'Cancel', state.focus === 'cancel');
             region('cancel', W / 2 - bw - 6, by, bw, 13, 'Cancel and close the room');
             button(W / 2 + 6, by, bw, 13, 'Copy link', state.focus === 'copy');
             region('copy', W / 2 + 6, by, bw, 13, 'Copy invite link');
-            statusLine(state, 'Your room is in the list. The match starts when someone joins.');
+            statusLine(state, loading ? 'Your room opens when the game has loaded. Then other players see it.'
+                : room.listed ? 'Your room is in the list. The match starts when someone joins.'
+                    : 'Send the invite link to your opponent. The match starts when they join.');
             hint('ESC CLOSES THE ROOM');
         }
         function art_battle() {
@@ -925,14 +1036,20 @@
         }
         function drawJoining(state, t) {
             lobbyFrame(state);
-            const room = state.room || { name: '' };
-            const box = centerBox(70, 90);
+            const room = state.room || { name: '', status: 'waiting' };
+            const loading = room.status === 'loading';
+            const box = loading ? centerBox(60, 112) : centerBox(70, 90);
             let y = box.y + 12;
             text('label', 'JOINING', W / 2, y, RGB.ctrlTextHi, 'center');
             y += lineHeight('label') + 6;
             if (room.name) { text('body', '"' + room.name + '"', W / 2, y, RGB.teamNameHi, 'center', box.w - 20); y += lineHeight('body') + 6; }
-            const dots = '...'.slice(0, 1 + Math.floor(t / 400) % 3);
-            text('body', 'Connecting to the room' + dots, W / 2 - measure('body', 'Connecting to the room...') / 2, y, RGB.status, 'left');
+            if (loading) {
+                y += loadingLine(state, y);
+                text('small', 'YOU JOIN WHEN THE GAME HAS LOADED', W / 2, y, RGB.hint, 'center', box.w - 12);
+            } else {
+                const dots = '...'.slice(0, 1 + Math.floor(t / 400) % 3);
+                text('body', 'Connecting to the room' + dots, W / 2 - measure('body', 'Connecting to the room...') / 2, y, RGB.status, 'left');
+            }
             const by = box.y + box.h - 19, bw = 96;
             button(W / 2 - bw / 2, by, bw, 13, 'Cancel', state.focus === 'cancel');
             region('cancel', W / 2 - bw / 2, by, bw, 13, 'Cancel');
@@ -1060,6 +1177,9 @@
         '  border: 0; border-radius: 0; background: transparent; cursor: pointer; opacity: .92; }',
         '.uqm-online-corner:hover, .uqm-online-corner:focus-visible { opacity: 1; outline: none; }',
         '.uqm-online-corner canvas { display: block; width: 100%; height: 100%; }',
+        // Both looks of the corner button are drawn once; the pointer or focus picks one.
+        '.uqm-online-corner canvas.hi, .uqm-online-corner:hover canvas.normal, .uqm-online-corner:focus-visible canvas.normal { display: none; }',
+        '.uqm-online-corner:hover canvas.hi, .uqm-online-corner:focus-visible canvas.hi { display: block; }',
         '.uqm-online-corner.pixel canvas { image-rendering: pixelated; }',
         '.uqm-online-corner[hidden] { display: none !important; }',
         // Full screen: the frame letterboxes the canvas; the overlay covers only the canvas.
@@ -1148,7 +1268,8 @@
     }
 
     /* options: { document, window, screen (element), canvas (game canvas), edition, engine,
-         netplay, game: { started(), ready(), screen(), hook(), start(role, client), queue(role, client) },
+         netplay, game: { started(), ready(), screen(), hook(), start(role, client), queue(role, client),
+           hold(on) (Module.holdMainMenu), watchScreen(callback) (each Module.gameScreen change) },
          startSteps: [lines], storage, onLog } */
     function init(options) {
         const document = options.document;
@@ -1187,8 +1308,12 @@
         corner.hidden = true;
         corner.setAttribute('aria-label', 'Online Melee (O)');
         corner.title = 'Online Melee (O)';
-        const cornerCanvas = document.createElement('canvas');
-        corner.appendChild(cornerCanvas);
+        const cornerCanvases = [false, true].map(hi => {
+            const surface = document.createElement('canvas');
+            surface.className = hi ? 'hi' : 'normal';
+            corner.appendChild(surface);
+            return surface;
+        });
         screen.appendChild(corner);
 
         const storage = {
@@ -1199,16 +1324,17 @@
         const sounds = createSounds(win);
         const startedAt = win.performance ? win.performance.now() : Date.now();
 
+        // Resolves false when the browser refused (no user activation) or cannot.
         function fullscreen() {
             try {
-                if (document.fullscreenElement || !screen.requestFullscreen) return;
-                const request = screen.requestFullscreen({ navigationUI: 'hide' });
-                Promise.resolve(request).then(() => {
+                if (document.fullscreenElement) return Promise.resolve(true);
+                if (!screen.requestFullscreen) return Promise.resolve(false);
+                return Promise.resolve(screen.requestFullscreen({ navigationUI: 'hide' })).then(() => {
                     const keyboard = win.navigator && win.navigator.keyboard;
-                    if (keyboard && keyboard.lock) return keyboard.lock(['Escape']).catch(() => {});
-                    return undefined;
-                }).catch(() => {});
-            } catch (_) { /* Not allowed here. */ }
+                    if (keyboard && keyboard.lock) keyboard.lock(['Escape']).catch(() => {});
+                    return true;
+                }, () => false);
+            } catch (_) { return Promise.resolve(false); }
         }
         const controller = createController({
             edition, engine: options.engine === 'rust' ? 'rust' : 'c',
@@ -1247,7 +1373,18 @@
             },
             focusGame() { win.setTimeout(() => { if (overlay.hidden) gameCanvas.focus(); }, 0); },
             sound: name => sounds.play(name),
-            changed: current => { dirty = true; if (current.screen === 'hidden') showOverlay(false); schedule(); },
+            changed: current => {
+                dirty = true;
+                if (current.screen === 'hidden') showOverlay(false);
+                else if (overlay.hidden) {
+                    // Shown at once, drawn at once: a key pressed right after O (or a
+                    // session end) belongs to the menu, not to the game under it.
+                    if (frame) { win.cancelAnimationFrame(frame); frame = 0; }
+                    render(win.performance ? win.performance.now() : Date.now(), true);
+                    return;
+                }
+                schedule();
+            },
         });
         const state = controller.state;
 
@@ -1285,11 +1422,19 @@
                         element.dataset.id = r.id;
                         if (r.input) {
                             element.type = 'text';
-                            element.maxLength = NAME_MAX;
                             element.autocomplete = 'off';
                             element.spellcheck = false;
                             element.setAttribute('enterkeyhint', 'go');
-                            element.addEventListener('input', () => controller.setName(element.value));
+                            // At most NAME_MAX characters (code points, as the relay counts them).
+                            element.addEventListener('input', () => {
+                                const chars = Array.from(element.value);
+                                if (chars.length > NAME_MAX) {
+                                    const caret = element.selectionStart;
+                                    element.value = chars.slice(0, NAME_MAX).join('');
+                                    if (caret != null) element.setSelectionRange(Math.min(caret, element.value.length), Math.min(caret, element.value.length));
+                                }
+                                controller.setName(element.value);
+                            });
                             ['select', 'keyup', 'click'].forEach(type => element.addEventListener(type, schedule));
                             input = element;
                         } else {
@@ -1327,18 +1472,25 @@
             const ours = !active || active === document.body || active === gameCanvas || active === corner || overlay.contains(active);
             if (focused && !overlay.hidden && active !== focused && ours) focused.focus({ preventScroll: true });
         }
+        // While the menu covers the game's main menu, that menu must not time out
+        // into the intro (Module.holdMainMenu, read by the engine's main menu).
+        function holdMenu() {
+            const hold = !overlay.hidden && options.game.started();
+            if (options.game.hold) options.game.hold(hold);
+        }
         // The overlay goes away at once when a match or the game starts.
         function showOverlay(visible) {
             if (overlay.hidden !== visible) return;
             overlay.hidden = !visible;
-            if (visible) { keepAwake(); return; }
+            holdMenu();
+            if (visible) return;
             // Give the keyboard back to the game.
             if (document.activeElement && overlay.contains(document.activeElement)) gameCanvas.focus();
             // No page text over a running match.
             const keys = document.getElementById('keys-pop');
             if (keys && state.session) keys.hidden = true;
         }
-        function render(time) {
+        function render(time, force) {
             frame = 0;
             const visible = state.screen !== 'hidden';
             showOverlay(visible);
@@ -1352,7 +1504,7 @@
             // Changes are drawn within a frame or two; the small animations (pulse,
             // cursor, dots) at about 20 frames a second. The game may be loading meanwhile.
             const now = time || 0;
-            if ((dirty && now - lastDraw >= 30) || now - lastDraw >= 50) {
+            if (force || (dirty && now - lastDraw >= 30) || now - lastDraw >= 50) {
                 dirty = false;
                 lastDraw = now;
                 syncRegions(renderer.draw(state, now - startedAt));
@@ -1364,18 +1516,26 @@
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
-        let artData = null;
-        // The corner button: a Super-Melee grey button, drawn once at the game's scale.
-        function drawCorner(hi) {
+        // The corner button: a Super-Melee control box at the game's scale, drawn once
+        // in each look.
+        function drawCorner(data) {
             const k = canvas.width / 320;
-            cornerCanvas.width = Math.round(54 * k);
-            cornerCanvas.height = Math.round(36 * k);
-            const ctx = cornerCanvas.getContext('2d');
-            const surface = { width: canvas.width, height: canvas.height, getContext: () => ctx };
-            createRenderer(surface, artData.art, artData.images, { edition, now: () => Date.now(), started: options.game.started }).corner(hi);
+            const w = Math.round(54 * k), h = Math.round(36 * k);
+            // Both looks side by side with one renderer (one set of tinted fonts), then cut apart.
+            const sheet = document.createElement('canvas');
+            sheet.width = 2 * w; sheet.height = h;
+            const ctx = sheet.getContext('2d');
+            const painter = createRenderer({ width: canvas.width, height: canvas.height, getContext: () => ctx },
+                data.art, data.images, { edition, now: () => Date.now(), started: options.game.started });
+            painter.corner(false);
+            ctx.translate(w, 0);
+            painter.corner(true);
+            cornerCanvases.forEach((target, hi) => {
+                target.width = w; target.height = h;
+                target.getContext('2d').drawImage(sheet, hi * w, 0, w, h, 0, 0, w, h);
+            });
         }
         loadArt(options.artBase || win.location.href).then(data => {
-            artData = data;
             sounds.load(data.art.sounds);
             renderer = createRenderer(canvas, data.art, data.images, {
                 edition, now: () => Date.now(), started: options.game.started,
@@ -1386,7 +1546,7 @@
                     return { start: Array.from(value.slice(0, input.selectionStart == null ? value.length : input.selectionStart)).length };
                 },
             });
-            drawCorner(false);
+            drawCorner(data);
             dirty = true;
             schedule();
         }).catch(error => {
@@ -1419,32 +1579,22 @@
             schedule();
         }
 
-        // The game's main menu goes back to its intro after 20 s (2 min with its
-        // music) without input. While the lobby covers it, a Left key (which the
-        // main menu ignores) keeps it there, so the match can start from it.
-        function keepAwake() {
-            if (overlay.hidden || state.engineScreen !== 'mainMenu' || !options.game.started()) return;
-            const send = type => {
-                const event = new win.KeyboardEvent(type, { key: 'ArrowLeft', code: 'ArrowLeft', bubbles: true, cancelable: true });
-                Object.defineProperty(event, 'keyCode', { get: () => 37 });
-                Object.defineProperty(event, 'which', { get: () => 37 });
-                event.uqmKeepAwake = true;
-                gameCanvas.dispatchEvent(event);
-            };
-            send('keydown');
-            win.setTimeout(() => send('keyup'), 150);
-        }
-        win.setInterval(keepAwake, options.keepAwakeMs || 8000);
-
         // Keyboard: the menu takes arrows, Enter and Esc while it is shown.
         document.addEventListener('keydown', event => {
-            if (event.uqmKeepAwake || event.ctrlKey || event.altKey || event.metaKey) return;
+            if (event.ctrlKey || event.altKey || event.metaKey) return;
             if (!overlay.hidden) {
                 const target = event.target;
                 // Page controls outside the frame keep their keys.
                 const active = document.activeElement;
                 if (active && active !== document.body && active !== gameCanvas && active !== corner && !overlay.contains(active)) return;
                 const typing = target === input;
+                // A held key repeats: one press makes one choice (a held Enter must not
+                // open a room and then close it).
+                if (event.repeat && (event.key === 'Enter' || (event.key === ' ' && !typing))) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                }
                 if (typing) {
                     if (event.key === 'Enter') { event.preventDefault(); controller.activate('open'); return; }
                     if (event.key === 'Escape') { event.preventDefault(); controller.key('Escape'); return; }
@@ -1467,8 +1617,25 @@
                 controller.fromMenu();
             }
         }, true);
+        // A key that the game saw go down must also reach it going up. The menu can
+        // open while a game key is held (the Enter that closed the engine's message
+        // returns it to the main menu, and the lobby opens there); the release then
+        // goes to the menu's focused item, and the game would see the key held
+        // (and repeat it: Enter in the main menu starts a game).
+        const gameKeys = new Map();
+        gameCanvas.addEventListener('keydown', event => {
+            gameKeys.set(event.code || event.key, { key: event.key, code: event.code, keyCode: event.keyCode, location: event.location });
+        });
         document.addEventListener('keyup', event => {
-            if (!event.uqmKeepAwake && !overlay.hidden && (event.key === 'o' || event.key === 'O' || event.key === 'Enter')) event.stopPropagation();
+            const id = event.code || event.key;
+            const held = gameKeys.get(id);
+            if (!held) return;
+            gameKeys.delete(id);
+            if (event.target === gameCanvas) return;
+            const release = new win.KeyboardEvent('keyup', { key: held.key, code: held.code, location: held.location, bubbles: true, cancelable: true });
+            Object.defineProperty(release, 'keyCode', { get: () => held.keyCode });
+            Object.defineProperty(release, 'which', { get: () => held.keyCode });
+            gameCanvas.dispatchEvent(release);
         }, true);
         overlay.addEventListener('wheel', event => {
             if (state.screen !== 'lobby') return;
@@ -1476,16 +1643,15 @@
             controller.move(event.deltaY > 0 ? 1 : -1);
         }, { passive: false });
         corner.addEventListener('mousedown', event => event.preventDefault());
-        corner.addEventListener('pointerenter', () => { if (artData) drawCorner(true); });
-        corner.addEventListener('pointerleave', () => { if (artData) drawCorner(false); });
         corner.addEventListener('click', () => controller.fromMenu());
 
-        // Engine: follow Module.gameScreen (the engine sets it; there is no event).
+        // Engine: follow Module.gameScreen. The shell reports every change as the engine
+        // sets it (a short Super-Melee between two looks must not be missed); the
+        // poll is for pages without that report.
         let screenName;
-        win.setInterval(() => {
-            const name = options.game.screen();
-            if (name !== screenName) { screenName = name; controller.gameScreen(name); }
-        }, 200);
+        const engineScreen = name => { if (name !== screenName) { screenName = name; controller.gameScreen(name); } };
+        if (options.game.watchScreen) options.game.watchScreen(engineScreen);
+        win.setInterval(() => engineScreen(options.game.screen()), 200);
         if (state.screen === 'start') schedule();
 
         const invite = readInvite(win.location.hash);

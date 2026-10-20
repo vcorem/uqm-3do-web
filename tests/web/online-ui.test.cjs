@@ -5,7 +5,7 @@ const online = require('../../web/online/online-ui.js');
 
 const TOKEN_A = 'a'.repeat(32), TOKEN_B = 'b'.repeat(32), TOKEN_C = 'c'.repeat(32);
 
-function harness({ started = false, ready = false, screen, hook = false, lobby = true, netplay = true } = {}) {
+function harness({ started = false, ready = false, screen, hook = false, lobby = true, netplay = true, roomName = false, fullscreen = true } = {}) {
     let clock = 1000, nextId = 1;
     const timers = [];
     const calls = [];
@@ -18,17 +18,24 @@ function harness({ started = false, ready = false, screen, hook = false, lobby =
         start(role, client) { this.starts.push([role, client]); this.isStarted = true; },
         queue(role, client) { this.queued.push([role, client]); },
     };
+    // The relay stream's rule: NFC, inner spaces collapsed, refused characters throw.
+    const relayName = value => {
+        const name = String(value).normalize('NFC').replace(/\s+/g, ' ').trim();
+        if (/\p{Cf}/u.test(name) || !name || Array.from(name).length > 24) throw new Error('Room names need 1 to 24 visible characters.');
+        return name;
+    };
     const fakeNetplay = {
         createToken: () => TOKEN_C,
         inviteURL: token => 'https://game.example/original/index.html#room=' + token,
         connect(options) {
-            const client = { state: 'waiting', options, closed: false,
+            const client = { state: 'waiting', options, closed: false, name: options.name == null ? null : relayName(options.name),
                 close() { this.closed = true; this.state = 'closed'; options.onStatus({ state: 'closed', message: 'You left the room.' }); },
                 status(state, message) { this.state = state; options.onStatus({ state, message, role: options.role }); } };
             clients.push(client);
             return client;
         },
     };
+    if (roomName) fakeNetplay.roomName = relayName;
     if (lobby) fakeNetplay.watchLobby = options => {
         const watch = { options, closed: false, close() { this.closed = true; } };
         watches.push(watch);
@@ -42,7 +49,7 @@ function harness({ started = false, ready = false, screen, hook = false, lobby =
         clearTimeout(id) { const timer = timers.find(t => t.id === id); if (timer) timer.cancelled = true; },
         storage: { get: key => store.get(key) ?? null, set: (key, value) => store.set(key, value) },
         netplay: netplay ? fakeNetplay : undefined, game,
-        fullscreen: () => calls.push('fullscreen'), reload: online => calls.push('reload:' + online),
+        fullscreen: () => { calls.push('fullscreen'); return Promise.resolve(fullscreen); }, reload: online => calls.push('reload:' + online),
         copy: text => { calls.push('copy:' + text); return Promise.resolve(); },
         clearInvite: () => calls.push('clear-invite'), focusGame: () => calls.push('focus-game'),
         sound: name => sounds.push(name),
@@ -75,6 +82,13 @@ test('helpers: room names, waiting times, invites and room-client messages', () 
     assert.equal(online.cleanName('a\u0007b').ok, false);
     assert.equal(online.cleanName('חדר של גיא').ok, true, 'any script is allowed');
     assert.equal(online.cleanName('🚀'.repeat(24)).ok, true, 'characters, not UTF-16 units, are counted');
+    assert.deepEqual(online.cleanName('  Relay    test '), { ok: true, name: 'Relay test' }, 'inner spaces collapse as in the list');
+    assert.equal(online.cleanName('Café').name, 'Café', 'NFC, as the relay stores it');
+    for (const refused of ['Ship‍Captain', 'a‮b', 'x', 'a b', 'ㅤㅤ', 'á̂̃̄']) {
+        assert.equal(online.cleanName(refused).ok, false, JSON.stringify(refused));
+    }
+    assert.match(online.cleanName('Ship‍Captain').error, /visible/);
+    assert.equal(online.cleanName('!!').ok, true, 'punctuation is visible');
     assert.equal(online.defaultName(() => 0.5), 'Captain 55');
     assert.equal(online.waitingTime(1000, 30000), 'new');
     assert.equal(online.waitingTime(0, 125000), 'new', 'no time from the server');
@@ -153,7 +167,7 @@ test('lobby: live rooms, own room hidden, focus follows the list', () => {
 });
 
 test('create a room: remembered name, checks, host connection with name and engine', () => {
-    const h = harness();
+    const h = harness({ ready: true });
     h.ui.activate('online');
     h.ui.activate('create');
     assert.equal(h.state.screen, 'name');
@@ -169,6 +183,7 @@ test('create a room: remembered name, checks, host connection with name and engi
     h.ui.setName("  Zelnick's room ");
     h.ui.activate('open');
     assert.equal(h.state.screen, 'waiting');
+    assert.equal(h.state.focus, 'copy', 'Enter right after opening copies the link; it does not close the room');
     assert.equal(h.watches[0].closed, true);
     const options = h.clients[0].options;
     assert.deepEqual([options.token, options.role, options.name, options.engine, options.edition],
@@ -267,23 +282,46 @@ test('with the hook, a match found while the engine is away from its main menu w
     assert.equal(h.state.screen, 'lobby');
 });
 
-test('found while the game still downloads: the match starts when it is ready', () => {
+test('during the download a room is chosen, but it opens (or is joined) only when the game is ready', () => {
     const h = harness();
     h.ui.activate('online');
     h.rooms([room(TOKEN_A, 'Alpha')]);
     h.ui.activate('room:' + TOKEN_A);
-    h.clients[0].status('ready', 'Opponent connected.');
-    h.advance(3000);
-    assert.equal(h.state.screen, 'found');
-    assert.equal(h.state.waitingForEngine, true);
+    assert.equal(h.state.screen, 'joining');
+    assert.equal(h.state.room.status, 'loading');
+    assert.equal(h.clients.length, 0, 'no opponent waits for this download');
+    h.ui.key('Enter');
+    assert.equal(h.state.screen, 'joining', 'Enter does not cancel the join');
+    h.ui.progress({ label: 'Downloading game data: 150 / 299 MB (50%)', fraction: 0.5 });
     h.game.isReady = true;
     h.ui.ready();
+    assert.deepEqual([h.clients[0].options.role, h.clients[0].options.token], ['guest', TOKEN_A], 'joins when ready');
+    assert.equal(h.state.room.status, 'waiting');
+    h.clients[0].status('ready', 'Opponent connected.');
+    h.advance(3000);
     assert.deepEqual(h.game.starts, [['guest', h.clients[0]]]);
     assert.equal(h.state.screen, 'hidden');
+
+    // A host: the room is named now, listed when the game is ready.
+    const host = harness();
+    host.ui.activate('online');
+    host.ui.activate('create');
+    host.ui.setName('Early bird');
+    host.ui.activate('open');
+    assert.equal(host.state.screen, 'waiting');
+    assert.equal(host.state.room.status, 'loading');
+    assert.equal(host.clients.length, 0);
+    host.ui.activate('copy');
+    host.ui.key('Escape');
+    assert.equal(host.state.screen, 'lobby', 'Esc cancels a room that is not open yet');
+    host.ui.activate('create');
+    host.ui.activate('open');
+    host.ui.ready();
+    assert.deepEqual([host.clients[0].options.role, host.clients[0].options.name], ['host', 'Early bird']);
 });
 
 test('join errors and the room list going away are shown in the lobby', () => {
-    const h = harness();
+    const h = harness({ ready: true });
     h.ui.activate('online');
     h.rooms([room(TOKEN_A, 'Alpha')]);
     h.ui.activate('room:' + TOKEN_A);
@@ -330,7 +368,7 @@ test('without the engine hook, a second online match needs a reload', () => {
 });
 
 test('invite links ask once, then join; copy link; no lobby support; failure and exit', async () => {
-    const h = harness();
+    const h = harness({ ready: true });
     h.ui.invite(TOKEN_B);
     assert.equal(h.state.screen, 'invite');
     assert.equal(h.state.focus, 'join');
@@ -344,7 +382,7 @@ test('invite links ask once, then join; copy link; no lobby support; failure and
     d.ui.key('Escape');
     assert.equal(d.state.screen, 'start');
 
-    const c = harness();
+    const c = harness({ ready: true });
     c.ui.activate('online');
     c.ui.activate('create');
     c.ui.activate('open');
@@ -374,10 +412,13 @@ test('invite links ask once, then join; copy link; no lobby support; failure and
     const e = harness({ started: true });
     e.ui.exited('Reload this page to play again.');
     assert.equal(e.state.message.say, 'Game closed. Reload this page to play again.');
+    const stopped = harness({ started: true });
+    stopped.ui.fail('The game closed with an error. See Diagnostics below.');
+    assert.equal(stopped.state.message.title, 'GAME STOPPED', 'an error after the start is not "Unable to start"');
 });
 
 test('the menu plays the game sounds: move, success, failure, invoked', () => {
-    const h = harness();
+    const h = harness({ ready: true });
     h.ui.key('ArrowDown');
     h.ui.key('Enter');
     assert.deepEqual(h.sounds, ['move', 'success']);
@@ -391,6 +432,119 @@ test('the menu plays the game sounds: move, success, failure, invoked', () => {
     h.ui.activate('open');
     h.clients[0].status('ready', 'Opponent connected.');
     assert.deepEqual(h.sounds.slice(-2), ['success', 'invoked']);
+});
+
+test('a reflex or held Enter does not undo a room: Copy link first, Enter ignored on Joining and Found', () => {
+    const h = harness({ ready: true });
+    h.ui.activate('online');
+    h.ui.activate('create');
+    h.ui.key('Enter');
+    assert.equal(h.state.screen, 'waiting');
+    assert.equal(h.state.focus, 'copy');
+    h.ui.key('Enter');
+    assert.equal(h.state.screen, 'waiting', 'the second Enter copies the link');
+    assert.equal(h.clients[0].closed, false);
+    h.clients[0].status('ready', 'Opponent connected.');
+    assert.equal(h.state.screen, 'found');
+    h.ui.key('Enter');
+    h.ui.key(' ');
+    assert.equal(h.state.screen, 'found', 'Enter does not cancel the match');
+    assert.equal(h.clients[0].closed, false);
+    h.ui.key('Escape');
+    assert.equal(h.state.screen, 'lobby', 'Esc still cancels');
+    assert.equal(h.clients[0].closed, true);
+    // Joining: the same.
+    h.rooms([room(TOKEN_A, 'Alpha')]);
+    h.ui.activate('room:' + TOKEN_A);
+    h.ui.key('Enter');
+    assert.equal(h.state.screen, 'joining');
+    assert.equal(h.clients[1].closed, false);
+    h.ui.activate('cancel');
+    assert.equal(h.state.screen, 'lobby', 'a click on Cancel still cancels');
+});
+
+test('Esc gives no full-screen gesture; a refused request is asked again on the next choice', async () => {
+    const h = harness();
+    h.ui.invite(TOKEN_B);
+    h.ui.key('Escape');
+    assert.equal(h.state.screen, 'start');
+    assert.deepEqual(h.calls.filter(call => call === 'fullscreen'), [], 'Esc does not use up the request');
+    h.ui.key('Enter');
+    assert.deepEqual(h.calls.filter(call => call === 'fullscreen'), ['fullscreen']);
+
+    const refused = harness({ fullscreen: false });
+    refused.ui.activate('online');
+    await Promise.resolve(); await Promise.resolve();
+    assert.equal(refused.state.asked, false, 'a refused request does not count');
+    refused.ui.activate('create');
+    assert.deepEqual(refused.calls.filter(call => call === 'fullscreen'), ['fullscreen', 'fullscreen']);
+});
+
+test("room names: the room client's check decides, errors stay in the dialog, only accepted names are kept", () => {
+    const h = harness({ ready: true, roomName: true });
+    h.ui.activate('online');
+    h.ui.activate('create');
+    h.ui.setName('Ship‍Captain');
+    h.ui.activate('open');
+    assert.equal(h.state.screen, 'name', 'a refused name keeps the dialog open');
+    assert.match(h.state.nameError, /visible/);
+    assert.equal(h.clients.length, 0);
+    assert.equal(h.store.get(online.NAME_KEY), undefined, 'a refused name is not remembered');
+    h.ui.setName('  Relay   test ');
+    h.ui.activate('open');
+    assert.equal(h.state.screen, 'waiting');
+    assert.equal(h.state.room.name, 'Relay test', 'the waiting screen shows the name as the list does');
+    assert.equal(h.clients[0].options.name, 'Relay test');
+    assert.equal(h.store.get(online.NAME_KEY), 'Relay test');
+    assert.equal(h.ui.state.name, 'Relay test');
+    h.ui.setName('x'.repeat(100));
+    assert.equal(Array.from(h.state.name).length, 64, 'the field keeps a bounded text');
+});
+
+test('scripted host: a name lists the room; no name opens a private room', () => {
+    const h = harness({ ready: true });
+    h.ui.host('Remote test', TOKEN_A);
+    assert.deepEqual([h.clients[0].options.token, h.clients[0].options.name, h.clients[0].options.engine], [TOKEN_A, 'Remote test', 'rust']);
+    assert.equal(h.state.room.listed, true);
+    h.ui.host(null, TOKEN_B);
+    assert.equal(h.clients[0].closed, true, 'one room at a time');
+    assert.deepEqual([h.clients[1].options.token, h.clients[1].options.role, 'name' in h.clients[1].options], [TOKEN_B, 'host', false]);
+    assert.equal(h.state.room.listed, false);
+    assert.equal(h.state.screen, 'waiting');
+});
+
+test('main-menu hook: a role the engine does not take ends the session after a while', () => {
+    const h = harness({ ready: true, hook: true });
+    h.ui.activate('play');
+    h.ui.gameScreen('mainMenu');
+    h.ui.fromMenu();
+    assert.equal(h.state.screen, 'lobby');
+    h.ui.activate('create');
+    h.ui.activate('open');
+    h.clients[0].status('ready', 'Opponent connected.');
+    h.advance(3000);
+    assert.deepEqual(h.game.queued, [[0, h.clients[0]]]);
+    h.advance(14000);
+    assert.equal(h.state.screen, 'hidden');
+    h.advance(1000);
+    assert.equal(h.state.screen, 'lobby');
+    assert.equal(h.state.notice.kind, 'error');
+    assert.deepEqual(h.game.queued.at(-1), [-1, null], 'the role is withdrawn');
+    assert.equal(h.clients[0].closed, true);
+    assert.equal(h.state.session, null);
+
+    // A role taken in time: the timer does nothing, and a short match is not missed.
+    h.ui.activate('create');
+    h.ui.activate('open');
+    h.clients[1].status('ready', 'Opponent connected.');
+    h.advance(3000);
+    h.ui.roleTaken();
+    h.advance(20000);
+    assert.equal(h.state.screen, 'hidden');
+    h.ui.gameScreen('melee');
+    h.ui.gameScreen('mainMenu');
+    assert.equal(h.state.screen, 'lobby');
+    assert.equal(h.state.notice.kind, 'info');
 });
 
 test('both page shells use the in-frame UI, not the old Online Melee section', () => {

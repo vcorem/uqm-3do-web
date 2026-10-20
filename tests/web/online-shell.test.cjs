@@ -22,7 +22,7 @@ function shell(edition = 'original', variant = null) {
             setAttribute() {}, addEventListener() {}, focus() { document.activeElement = this; } });
     }
     const calls = [];
-    const menu = { progress: [], ready: 0, failed: [], exited: [] };
+    const menu = { progress: [], ready: 0, failed: [], exited: [], taken: 0 };
     let options = null;
     const context = { document, console, URL, URLSearchParams, SharedArrayBuffer,
         location: { href: `http://localhost:10000/${edition}/index.html`, hash: '' },
@@ -35,7 +35,8 @@ function shell(edition = 'original', variant = null) {
             options = given;
             return { overlay: { hidden: false }, controller: {
                 progress: p => menu.progress.push(p), ready: () => menu.ready++,
-                fail: text => menu.failed.push(text), exited: text => menu.exited.push(text) } };
+                fail: text => menu.failed.push(text), exited: text => menu.exited.push(text),
+                roleTaken: () => menu.taken++ } };
         } } };
     if (variant) context.UQM_VARIANT = variant;
     context.window = context;
@@ -116,11 +117,39 @@ for (const edition of ['original', 'hd']) {
         const room = { state: 'ready' };
         h.options.game.queue(1, room);
         assert.equal(h.Module.webNet, room, 'the room is set before the role is returned');
+        assert.equal(h.menu.taken, 0);
         assert.equal(h.Module.takePendingNetplayRole(), 1);
+        assert.equal(h.menu.taken, 1, 'the menu learns that the engine took the role');
         assert.equal(h.Module.takePendingNetplayRole(), -1, 'the role is returned once');
+        assert.equal(h.menu.taken, 1);
         h.options.game.queue(0, room);
         assert.equal(h.Module.takePendingNetplayRole(), 0);
         assert.equal(h.calls.length, 1, 'no second engine start');
+        // A role not taken in time is withdrawn; the room stays as it was.
+        h.options.game.queue(0, room);
+        h.options.game.queue(-1, null);
+        assert.equal(h.Module.takePendingNetplayRole(), -1);
+        assert.equal(h.Module.webNet, room);
+    });
+
+    test(`${edition} shell holds the main menu for the lobby and reports every game screen`, () => {
+        const h = shell(edition);
+        h.options.game.hold(true);
+        assert.equal(h.Module.holdMainMenu, true);
+        h.options.game.hold(false);
+        assert.equal(h.Module.holdMainMenu, false);
+        const seen = [];
+        h.options.game.watchScreen(name => seen.push(name));
+        // The engine sets the screen in quick steps; each one is reported.
+        for (const name of ['transition', 'melee', 'mainMenu']) h.Module.gameScreen = name;
+        assert.deepEqual(seen, ['transition', 'melee', 'mainMenu']);
+        assert.equal(h.Module.gameScreen, 'mainMenu');
+        assert.equal(h.options.game.screen(), 'mainMenu');
+        // A failing report never reaches the engine.
+        h.options.game.watchScreen(() => { throw new Error('menu broke'); });
+        h.Module.gameScreen = 'melee';
+        assert.equal(h.Module.gameScreen, 'melee');
+        assert.match(h.elements.get('log').textContent, /menu broke/);
     });
 
     test(`${edition} shell reports load failures and the engine's exit to the menu`, () => {
