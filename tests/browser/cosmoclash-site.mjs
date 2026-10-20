@@ -5,7 +5,12 @@
 // UQM_DIST=<site> tests a site from scripts/package-editions.py (the deploy
 // job's .tools/release-web). Without UQM_DIST the test packages a site from
 // COSMO_DIST (default cosmoclash/dist, built with --base /cosmoclash/) and
-// small stand-in UQM pages, so it needs no UQM build.
+// small stand-in UQM pages, so it needs no UQM build. These sites are served by
+// the Node relay. UQM_SITE=<split site> (deploy/split-data.py output, with
+// UQM_SITE_MANIFEST, default deploy/data-parts.json) serves it with the
+// Cloudflare Worker under `wrangler dev`. UQM_ORIGIN (for example
+// https://urquanmasters.org) tests a deployed site; with UQM_DIST too, the page
+// must run the Wasm of that package.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -15,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { createNetplayServer } from '../../server/netplay.mjs';
+import { startSiteWorker } from '../helpers/site-worker.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const out = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/cosmoclash-site');
@@ -38,13 +44,18 @@ async function standInSite() {
   return { site: path.join(temp, 'site'), cleanup: () => rm(temp, { recursive: true, force: true }) };
 }
 
-const packaged = process.env.UQM_DIST ? { site: path.resolve(process.env.UQM_DIST), cleanup: async () => {} } : await standInSite();
-const site = packaged.site;
-const wasmHash = createHash('sha256').update(await readFile(path.join(site, 'cosmoclash/cosmoclash.wasm'))).digest('hex');
-const server = createNetplayServer({ distDir: site });
-const { port } = await server.listen(0, '127.0.0.1');
-const origin = `http://127.0.0.1:${port}`;
-const report = { site, wasmHash, requests: [], failed: [], errors: [], sockets: [], passed: false };
+const live = process.env.UQM_ORIGIN ? new URL(process.env.UQM_ORIGIN).origin : null;
+const workerSite = !live && process.env.UQM_SITE ? path.resolve(process.env.UQM_SITE) : null;
+const packaged = process.env.UQM_DIST ? { site: path.resolve(process.env.UQM_DIST), cleanup: async () => {} }
+  : live || workerSite ? null : await standInSite();
+const site = packaged?.site ?? workerSite;
+const wasmHash = site && createHash('sha256').update(await readFile(path.join(site, 'cosmoclash/cosmoclash.wasm'))).digest('hex');
+const worker = workerSite && await startSiteWorker({ site: workerSite,
+  manifest: process.env.UQM_SITE_MANIFEST ? path.resolve(process.env.UQM_SITE_MANIFEST) : undefined });
+const server = live || worker ? null : createNetplayServer({ distDir: site });
+const origin = live ?? worker?.origin ?? `http://127.0.0.1:${(await server.listen(0, '127.0.0.1')).port}`;
+const report = { origin, server: live ? 'deployed' : worker ? 'worker' : 'node', site, wasmHash,
+  requests: [], failed: [], errors: [], sockets: [], passed: false };
 let browser;
 try {
   browser = await chromium.launch({ headless: process.env.HEADED !== '1',
@@ -83,7 +94,9 @@ try {
 
   // The game: menu reached, the packaged Wasm runs, and every file came from /cosmoclash/.
   await page.waitForFunction(() => window.__cosmo?.state === 'menu', {}, { timeout: 90000 });
-  assert.equal(await page.evaluate(() => window.__cosmo.engine), wasmHash, 'the page runs the packaged Wasm');
+  const engine = await page.evaluate(() => window.__cosmo.engine);
+  if (wasmHash) assert.equal(engine, wasmHash, 'the page runs the packaged Wasm');
+  else assert.match(engine, /^[0-9a-f]{64}$/);
   assert.equal(await page.evaluate(() => crossOriginIsolated), true, 'the site isolation headers do not stop the game');
   await page.waitForLoadState('networkidle');
   await page.screenshot({ path: path.join(out, 'game-menu.png') });
@@ -99,8 +112,10 @@ try {
   await page.goBack();
   await page.waitForFunction(() => document.getElementById('edition-cosmoclash')?.checked === true);
   assert.equal(await page.locator('#launch-edition').isDisabled(), false);
-  await page.goto(origin + '/cosmoclash?cosmoRoom=0123456789abcdef0123456789abcdef');
-  assert.equal(page.url(), origin + '/cosmoclash/?cosmoRoom=0123456789abcdef0123456789abcdef');
+  // Only the redirect: opening the game with this invitation would ask the relay for a room.
+  const redirect = await page.request.get(origin + '/cosmoclash?cosmoRoom=0123456789abcdef0123456789abcdef', { maxRedirects: 0 });
+  assert.equal(redirect.status(), 301);
+  assert.equal(new URL(redirect.headers().location, origin).href, origin + '/cosmoclash/?cosmoRoom=0123456789abcdef0123456789abcdef');
   await page.goto(origin + '/');
   await page.locator('#edition-hd').check();
   const offersRust = await page.locator('#edition-form').getAttribute('data-engines') === 'c,rust';
@@ -109,13 +124,14 @@ try {
   assert.deepEqual(report.failed, []);
   assert.deepEqual(report.errors, []);
   report.passed = true;
-  console.log('Cosmo Clash: picker card, keyboard choice, game at /cosmoclash/ with isolation, packaged Wasm ' + wasmHash.slice(0, 12) + ', way back.');
+  console.log(`Cosmo Clash at ${origin} (${report.server}): picker card, keyboard choice, game at /cosmoclash/ with isolation, Wasm ${engine.slice(0, 12)}, way back.`);
 } catch (error) {
   report.failure = error.stack;
   throw error;
 } finally {
   await writeFile(path.join(out, 'results.json'), JSON.stringify(report, null, 2) + '\n');
   await browser?.close();
-  await server.close();
-  await packaged.cleanup();
+  await server?.close();
+  await worker?.close();
+  await packaged?.cleanup();
 }
