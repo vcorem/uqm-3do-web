@@ -2,17 +2,23 @@
 // server/netplay.mjs. One NetplayRoom object per room ID holds both players'
 // WebSockets with the hibernation API. One NetplayGate object holds the
 // connection leases for the per-IP and global bounds. One NetplayLobby object
-// per edition holds the list of named rooms that wait for a guest, and the
-// WebSockets of the players who look at that list.
+// per edition (original, hd, cosmoclash) holds the list of named rooms that
+// wait for a guest, and the WebSockets of the players who look at that list.
 import { DurableObject } from 'cloudflare:workers';
 
-// /netplay/<token> is an Original room and /netplay/hd/<token> an HD room. The two
-// engines cannot stay in sync, so the edition is part of the room name.
-const ROOM_PATH = /^\/netplay\/(?:(hd)\/)?([0-9a-f]{32})$/;
+// /netplay/<token> is an Original room, /netplay/hd/<token> an HD room and
+// /netplay/cosmoclash/<token> a Cosmo Clash room. These games cannot share a
+// stream, so the edition is part of the room name.
+const ROOM_PATH = /^\/netplay\/(?:(hd|cosmoclash)\/)?([0-9a-f]{32})$/;
 const QUERY_PART = /^(role|name|engine)=([^&]*)$/;
-const LOBBY_URL = /^\/netplay\/lobby\?edition=(original|hd)$/;
+const LOBBY_URL = /^\/netplay\/lobby\?edition=(original|hd|cosmoclash)$/;
+// The engine tags that a listed room of each edition can show. Cosmo Clash has
+// one engine, its Rust gameplay engine.
+const ENGINES = { original: ['c', 'rust'], hd: ['c', 'rust'], cosmoclash: ['rust'] };
 const roomName = (edition, token) => (edition ? edition + ':' : '') + token;
 const lobbyName = edition => 'lobby:' + (edition ?? 'original');
+/** The edition of a room name from roomName(): null for Original. */
+const roomEdition = id => (id.includes(':') ? id.slice(0, id.indexOf(':')) : null);
 const DEFAULT_ORIGINS = 'https://urquanmasters.org';
 const INVALID_ROOM = 'Invalid room URL or role.';
 const INVALID_NAME = 'Room names need 1 to 24 visible characters.';
@@ -84,7 +90,8 @@ export function addressKey(ip) {
 
 /**
  * Strict room URL: role=host|guest, and for a host only an optional name
- * (which lists the room in its edition's lobby) and engine=c|rust. Each
+ * (which lists the room in its edition's lobby) and engine=c|rust (Cosmo
+ * Clash: engine=rust, also the tag of a named room without one). Each
  * parameter at most once; nothing else.
  */
 export function parseRoomURL(pathname, search) {
@@ -101,7 +108,10 @@ export function parseRoomURL(pathname, search) {
   const engine = params.get('engine') ?? null;
   if (role !== 'host' && role !== 'guest') return { error: INVALID_ROOM };
   if (role === 'guest' && params.size > 1) return { error: INVALID_ROOM };
-  if (engine !== null && (rawName === undefined || (engine !== 'c' && engine !== 'rust'))) return { error: INVALID_ROOM };
+  const edition = path[1] ?? null;
+  if (engine !== null && (rawName === undefined || !ENGINES[edition ?? 'original'].includes(engine))) {
+    return { error: INVALID_ROOM };
+  }
   let name = null;
   if (rawName !== undefined) {
     // 24 characters of up to 4 UTF-8 bytes, each byte as %XX.
@@ -109,7 +119,11 @@ export function parseRoomURL(pathname, search) {
     catch { name = null; }
     if (name === null) return { error: INVALID_NAME };
   }
-  return { edition: path[1] ?? null, token: path[2], role, name, engine };
+  // An edition with one engine (Cosmo Clash: rust) lists every named room with
+  // that tag, also when the host sends none, so that the list never shows null.
+  const engines = ENGINES[edition ?? 'original'];
+  const tag = engine ?? (name !== null && engines.length === 1 ? engines[0] : null);
+  return { edition, token: path[2], role, name, engine: tag };
 }
 
 function integer(raw, fallback, min, max) {
@@ -192,7 +206,7 @@ export async function handleNetplay(request, env) {
   if (url.pathname === '/netplay/lobby') {
     const lobby = LOBBY_URL.exec(url.pathname + url.search);
     if (!lobby) return rejectedSocket('Invalid lobby URL.');
-    const edition = lobby[1] === 'hd' ? 'hd' : null;
+    const edition = lobby[1] === 'original' ? null : lobby[1];
     return env.NETPLAY_LOBBY.get(env.NETPLAY_LOBBY.idFromName(lobbyName(edition))).fetch(forwarded);
   }
   const parsed = parseRoomURL(url.pathname, url.search);
@@ -226,9 +240,9 @@ export class NetplayRoom extends DurableObject {
     return this.ctx.getWebSockets(role)[0] ?? null;
   }
 
+  /** The lobby of this room's edition: a Cosmo Clash room is listed only in the Cosmo Clash lobby. */
   lobby() {
-    const edition = this.room?.id.startsWith('hd:') ? 'hd' : null;
-    return this.env.NETPLAY_LOBBY.get(this.env.NETPLAY_LOBBY.idFromName(lobbyName(edition)));
+    return this.env.NETPLAY_LOBBY.get(this.env.NETPLAY_LOBBY.idFromName(lobbyName(roomEdition(this.room.id))));
   }
 
   /** Takes a named room off its lobby list. Errors are left to the lobby's liveness check. */

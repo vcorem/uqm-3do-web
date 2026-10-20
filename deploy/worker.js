@@ -1,6 +1,7 @@
 // Cloudflare Worker for urquanmasters.org: static game files with the
 // cross-origin isolation headers, the large data files joined from parts, and
-// the Online Melee relay and its room lists (deploy/netplay.js).
+// the Online Melee relay and its room lists (deploy/netplay.js). The site has
+// three games: UQM Original and HD (four engines) and Cosmo Clash at /cosmoclash/.
 import dataFiles from './data-parts.json';
 import { handleNetplay } from './netplay.js';
 
@@ -14,8 +15,25 @@ const ISOLATION = {
   'X-Content-Type-Options': 'nosniff',
 };
 const INDEX = { '/': '/index.html' };
-for (const folder of ['original', 'hd', 'original-rust', 'hd-rust']) INDEX['/' + folder + '/'] = '/' + folder + '/index.html';
+for (const folder of ['original', 'hd', 'original-rust', 'hd-rust', 'cosmoclash']) INDEX['/' + folder + '/'] = '/' + folder + '/index.html';
 const PART = /\.data\.p\d{3}$/;
+// Content types by file extension. The asset store has its own table; this one
+// makes the types the same as those of the local servers (server/netplay.mjs).
+const TYPES = {
+  html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8',
+  css: 'text/css; charset=utf-8', json: 'application/json', wasm: 'application/wasm',
+  data: 'application/octet-stream', txt: 'text/plain; charset=utf-8', glb: 'model/gltf-binary',
+  ogg: 'audio/ogg', wav: 'audio/wav', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  webp: 'image/webp', svg: 'image/svg+xml', ico: 'image/x-icon',
+};
+// Cosmo Clash is a Vite build (base /cosmoclash/). Vite names the files in
+// assets/ after their content hash, so a browser can keep them. All other files
+// (the page, cosmoclash.wasm, the models, sounds and textures) keep their names
+// from build to build: the browser asks again each time (ETag, 304). Both
+// online players must run the same Wasm.
+const COSMO = '/cosmoclash/';
+const COSMO_HASHED = /^\/cosmoclash\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/;
+const IMMUTABLE = 'public, max-age=31536000, immutable';
 
 export default {
   async fetch(request, env) {
@@ -33,12 +51,27 @@ export default {
       return isolated(new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }));
     }
     if (PART.test(url.pathname)) return isolated(new Response('Not found', { status: 404 }));
+    // The game page's relative URLs (cosmoclash.wasm) need the folder form; an invitation query stays.
+    if (url.pathname === COSMO.slice(0, -1)) {
+      url.pathname = COSMO;
+      return isolated(Response.redirect(url.toString(), 301));
+    }
     const entry = dataFiles[url.pathname];
     if (entry) return isolated(joinParts(request, env, entry));
     if (INDEX[url.pathname]) url.pathname = INDEX[url.pathname];
-    return isolated(await env.ASSETS.fetch(new Request(url, request)));
+    return isolated(typed(url.pathname, await env.ASSETS.fetch(new Request(url, request))));
   },
 };
+
+/** Sets the content type, and the cache rule of Cosmo Clash files, on a found file. */
+function typed(pathname, response) {
+  if (response.status !== 200 && response.status !== 304) return response;
+  const result = new Response(response.body, response);
+  const type = TYPES[pathname.slice(pathname.lastIndexOf('.') + 1)];
+  if (type) result.headers.set('Content-Type', type);
+  if (pathname.startsWith(COSMO)) result.headers.set('Cache-Control', COSMO_HASHED.test(pathname) ? IMMUTABLE : 'no-cache');
+  return result;
+}
 
 function joinParts(request, env, entry) {
   const etag = '"' + entry.sha256 + '"';

@@ -8,8 +8,16 @@ on:
       - 'rust/Cargo.*'
       - 'rust-toolchain.toml'
       - 'server/netplay.mjs'
+      - 'deploy/**'
+      - 'web/editions/**'
+      - 'scripts/package-editions.py'
+      - 'scripts/build-editions.sh'
       - 'tests/server/**'
-      - 'tests/helpers/rust-relay.mjs'
+      - 'tests/worker/**'
+      - 'tests/web/editions.test.cjs'
+      - 'tests/web/package-editions.test.cjs'
+      - 'tests/browser/cosmoclash-site.mjs'
+      - 'tests/helpers/**'
       - 'scripts/*rust*.sh'
       - 'package*.json'
       - '.github/workflows/cosmoclash.yml'
@@ -20,8 +28,16 @@ on:
       - 'rust/Cargo.*'
       - 'rust-toolchain.toml'
       - 'server/netplay.mjs'
+      - 'deploy/**'
+      - 'web/editions/**'
+      - 'scripts/package-editions.py'
+      - 'scripts/build-editions.sh'
       - 'tests/server/**'
-      - 'tests/helpers/rust-relay.mjs'
+      - 'tests/worker/**'
+      - 'tests/web/editions.test.cjs'
+      - 'tests/web/package-editions.test.cjs'
+      - 'tests/browser/cosmoclash-site.mjs'
+      - 'tests/helpers/**'
       - 'scripts/*rust*.sh'
       - 'package*.json'
       - '.github/workflows/cosmoclash.yml'
@@ -34,7 +50,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -67,7 +83,25 @@ jobs:
           node cosmoclash/tests/wasm.mjs
       - name: Verify existing UQM and new Cosmo Clash relay behavior
         run: npm test
+      - name: Test the Cloudflare relay (Cosmo Clash rooms and room list) and site under wrangler dev
+        timeout-minutes: 12
+        run: npm run test:worker
       - name: Test actual two-browser combat, fleets, rematches and disconnects
         run: |
           npx playwright install --with-deps chromium
           npm run test:browser --prefix cosmoclash
+      # The site build: urquanmasters.org/cosmoclash/ behind the picker, with stand-in UQM pages.
+      - name: Test the Cosmo Clash card, a battle and Online Melee at /cosmoclash/ (Node relay)
+        run: |
+          (cd cosmoclash && npx vite build --base /cosmoclash/ --outDir ../.tools/cosmoclash-site-dist --emptyOutDir)
+          python3 scripts/package-editions.py --check-cosmoclash .tools/cosmoclash-site-dist
+          COSMO_DIST=.tools/cosmoclash-site-dist UQM_TEST_OUTPUT=test-results/cosmoclash-site npm run test:cosmoclash-site
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cosmoclash-test-results
+          path: |
+            test-results
+            cosmoclash/test-results
+          retention-days: 7
+          if-no-files-found: ignore

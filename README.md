@@ -1,8 +1,24 @@
 # The Ur-Quan Masters — 3DO Web Edition
 
-This branch also includes [Cosmo Clash](cosmoclash/README.md), with a Rust
-WebAssembly game engine and private online fleet battles. Its source, assets,
-build, and validation are kept in the `cosmoclash/` directory.
+## Three games on one site
+
+[urquanmasters.org](https://urquanmasters.org/) opens a picker with three cards:
+
+| Game | Path | Ways to play |
+| --- | --- | --- |
+| **The Ur-Quan Masters, Original 3DO** | `/original/` (C), `/original-rust/` (Rust) | Campaign, local Melee, Online Melee with other Original players |
+| **The Ur-Quan Masters, Redrawn HD** | `/hd/` (C), `/hd-rust/` (Rust) | Campaign, local Melee, Online Melee with other HD players |
+| **[Cosmo Clash](cosmoclash/README.md)** by Ori Hanegby, Guy Corem and Orr Kowarsky | `/cosmoclash/` | Against the computer (Easy, Medium, Hard), two players on one keyboard, online duels |
+
+Each game has its own online rooms and room list (lobby), inside the game:
+create a named room or pick one from the list; no link to copy. A private
+room with an invite link is also possible. The rooms of one game never pair
+with another game's. Cosmo Clash is a separate 2D/3D space duel game with a
+Rust WebAssembly gameplay engine; its source, assets, build and validation are
+in `cosmoclash/`, and its hosting is in
+[the Cosmo Clash port notes](docs/cosmoclash-port.md#server-handover).
+`./scripts/build-editions.sh` builds and packages all three (`UQM_COSMO=0`
+leaves out Cosmo Clash); `npm start` then serves the site with the room lists.
 
 A local WebAssembly port of UQM 0.8.0, based on
 [intgr/uqm-wasm](https://github.com/intgr/uqm-wasm), upstream commit
@@ -43,9 +59,9 @@ Online Melee with another player using the same edition. HD has separate saves
 and rooms; HD and Original cannot play one another.
 See [HD build, storage and attribution](docs/hd-edition.md).
 
-Build the selection screen and both editions with `./scripts/build-editions.sh`.
-The first HD download is about 640 MB; the original artwork and HD artwork
-use separate engines and save databases.
+Build the selection screen, both editions and Cosmo Clash with
+`./scripts/build-editions.sh`. The first HD download is about 640 MB; the
+original artwork and HD artwork use separate engines and save databases.
 
 The browser keeps each edition's game data after the first visit
 ([`web/engine-loader`](web/engine-loader/engine-loader.js)). A later visit asks
@@ -101,9 +117,10 @@ other player's download. From the game's main menu, the **Online Melee**
 corner button or the **O** key opens the lobby again.
 See [the in-frame start screen and lobby](docs/online-ui.md).
 
-Original rooms connect to `/netplay/<room>` and HD rooms connect to
-`/netplay/hd/<room>`. One relay serves both, with separate room identities and
-shared capacity limits. A matching room code cannot connect different editions.
+Original rooms connect to `/netplay/<room>`, HD rooms to `/netplay/hd/<room>`
+and Cosmo Clash rooms to `/netplay/cosmoclash/<room>`. One relay serves all
+three, with separate room identities, separate room lists and shared capacity
+limits. A matching room code cannot connect different editions or games.
 
 Rooms use the original UQM netplay protocol and simulation over an ordered
 WebSocket relay, with a three-frame default input delay. Browser callbacks
@@ -172,8 +189,9 @@ HTML as a file, or using a server without the isolation headers, will not
 support the shared memory used by the game. The initial content bundle is
 large because it includes the complete campaign voice recordings and installed
 3DO videos. Online Melee additionally needs the same-origin Rust or Node relay at
-`/netplay/`, including its `/netplay/hd/` subtree; a static host alone is
-insufficient.
+`/netplay/`, including its `/netplay/hd/` and `/netplay/cosmoclash/` subtrees;
+a static host alone is insufficient. The room lists need the Node relay (or
+the Cloudflare relay); the Rust relay has private rooms only.
 
 ## Saving and controls
 
@@ -213,6 +231,11 @@ UQM_EDITION=hd UQM_RELAY=rust UQM_DIST=.tools/hd-dist \
 UQM_DIST=.tools/hd-dist npm run test:hd-campaign
 UQM_DIST=.tools/hd-dist npm run test:hd-stability
 python3 scripts/package-editions.py --original dist --hd .tools/hd-dist --output .tools/editions-dist
+# Optional Cosmo Clash at /cosmoclash/ behind the picker (test:cosmoclash-site needs no UQM build):
+npm ci --prefix cosmoclash && npm run build --prefix cosmoclash -- --base /cosmoclash/
+npm run test:cosmoclash-site
+python3 scripts/package-editions.py --original dist --hd .tools/hd-dist --cosmoclash cosmoclash/dist --output .tools/editions-dist
+npm run test:worker
 UQM_DIST=.tools/editions-dist npm run test:editions
 ```
 

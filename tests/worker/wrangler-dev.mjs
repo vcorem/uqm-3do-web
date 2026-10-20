@@ -37,8 +37,8 @@ export function useDataManifest() {
   test.after(async () => { if (createdManifest) await rm(manifest, { force: true }); });
 }
 
-/** Starts one `wrangler dev` with the given relay vars. */
-export async function startWorker(t, vars = {}) {
+/** Starts one `wrangler dev` with the given relay vars and extra static files ({ 'path/name': content }). */
+export async function startWorker(t, vars = {}, files = {}) {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'uqm-worker-'));
   const port = await freePort();
   const inspectorPort = await freePort();
@@ -48,6 +48,10 @@ export async function startWorker(t, vars = {}) {
   const site = path.join(temp, 'site');
   await mkdir(site);
   await writeFile(path.join(site, 'index.html'), '<canvas>game</canvas>');
+  for (const [name, content] of Object.entries(files)) {
+    await mkdir(path.dirname(path.join(site, name)), { recursive: true });
+    await writeFile(path.join(site, name), content);
+  }
   // The objects and migrations come from the real deploy config, so this test
   // also proves that the deployed config declares every object the code uses.
   const deployed = JSON.parse((await readFile(path.join(root, 'deploy/wrangler.jsonc'), 'utf8'))

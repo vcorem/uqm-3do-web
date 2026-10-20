@@ -460,7 +460,9 @@ test('static serving isolates WASM, preserves files, supports HEAD, and blocks t
   const dist = path.join(temp, 'dist');
   await mkdir(dist);
   await mkdir(path.join(dist, 'folder'));
+  await mkdir(path.join(dist, 'cosmoclash'));
   await writeFile(path.join(dist, 'index.html'), '<canvas>game</canvas>');
+  await writeFile(path.join(dist, 'cosmoclash', 'index.html'), '<canvas>cosmo</canvas>');
   await writeFile(path.join(dist, 'game.wasm'), Buffer.from([0, 97, 115, 109]));
   for (const extension of ['glb', 'ogg', 'wav']) await writeFile(path.join(dist, `asset.${extension}`), 'fixture');
   await writeFile(path.join(temp, 'secret.txt'), 'outside');
@@ -482,7 +484,21 @@ test('static serving isolates WASM, preserves files, supports HEAD, and blocks t
   assert.equal(head.status, 200);
   assert.equal(head.headers['content-length'], '4');
   assert.equal(head.body.length, 0);
-  for (const url of ['/folder', '/folder/', '/../secret.txt', '/%2e%2e/secret.txt',
+  // A folder with a page: the slash form serves it, the other form redirects and keeps the query.
+  for (const url of ['/cosmoclash/', '/cosmoclash/?cosmoRoom=0123456789abcdef0123456789abcdef', '/cosmoclash/index.html']) {
+    const folder = await request(origin, url);
+    assert.equal(folder.status, 200, url);
+    assert.equal(folder.body.toString(), '<canvas>cosmo</canvas>', url);
+    assert.equal(folder.headers['content-type'], 'text/html; charset=utf-8', url);
+    assert.equal(folder.headers['cross-origin-embedder-policy'], 'require-corp', url);
+  }
+  for (const [url, location] of [['/cosmoclash', '/cosmoclash/'],
+    ['/cosmoclash?cosmoRoom=0123456789abcdef0123456789abcdef', '/cosmoclash/?cosmoRoom=0123456789abcdef0123456789abcdef']]) {
+    const redirect = await request(origin, url);
+    assert.equal(redirect.status, 301, url);
+    assert.equal(redirect.headers.location, location, url);
+  }
+  for (const url of ['//cosmoclash', '/folder', '/folder/', '/../secret.txt', '/%2e%2e/secret.txt',
     '/..%2fsecret.txt', '/linked.txt', '/.secret', '/bad%00name', '/bad%zz']) {
     assert.equal((await request(origin, url)).status, 404, url);
   }
@@ -736,4 +752,22 @@ test('Cosmo Clash room URLs stay strict and share room and retired-ID limits', a
   const full = bounded.client(roomId(), 'host'); assert.match((await full.next()).message, /limit/); await full.closure;
   host.ws.close(); await host.closure;
   const retiredFull = bounded.client(`hd/${roomId()}`, 'host'); assert.match((await retiredFull.next()).message, /limit/); await retiredFull.closure;
+});
+
+// Contract 4 of the Cosmo Clash lobby: a relay without room lists answers the
+// lobby URL with this error before any room list, so the client reports
+// 'unsupported' and offers a private room with an invite link.
+test('the Rust relay has no room lists: lobby sockets and named rooms get the room URL error, private rooms work', async t => {
+  const {client} = await fixture(t);
+  for (const url of ['/netplay/lobby?edition=cosmoclash', '/netplay/lobby?edition=original', '/netplay/lobby?edition=hd',
+    `/netplay/cosmoclash/${roomId()}?role=host&name=Duel&engine=rust`, `/netplay/cosmoclash/${roomId()}?role=host&name=Duel`]) {
+    const refused = client(null, null, {}, url);
+    assert.deepEqual(await refused.next(), {type: 'error', message: 'Invalid room URL or role.'}, url);
+    assert.equal((await refused.closure).code, 1008, url);
+  }
+  const id = roomId();
+  const host = client(`cosmoclash/${id}`, 'host'); assert.deepEqual(await host.next(), {type: 'waiting'});
+  const guest = client(`cosmoclash/${id}`, 'guest'); assert.deepEqual(await guest.next(), {type: 'waiting'});
+  assert.deepEqual(await host.next(), {type: 'ready', role: 'host'});
+  assert.deepEqual(await guest.next(), {type: 'ready', role: 'guest'});
 });

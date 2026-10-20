@@ -6,9 +6,12 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// The same types as the Cloudflare site (deploy/worker.js).
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.wasm': 'application/wasm', '.data': 'application/octet-stream', '.json': 'application/json',
-  '.css': 'text/css; charset=utf-8', '.glb': 'model/gltf-binary', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
+  '.mjs': 'text/javascript; charset=utf-8', '.wasm': 'application/wasm', '.data': 'application/octet-stream',
+  '.json': 'application/json', '.css': 'text/css; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
+  '.glb': 'model/gltf-binary', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.png': 'image/png',
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 const isolatedHeaders = { 'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Embedder-Policy': 'require-corp', 'Cross-Origin-Resource-Policy': 'same-origin',
   'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' };
@@ -22,7 +25,10 @@ function integer(value, fallback, min, max, name) {
 // Same URL contract as the Cloudflare relay (deploy/netplay.js).
 const ROOM_PATH = /^\/netplay\/(?:(hd|cosmoclash)\/)?([0-9a-f]{32})$/;
 const QUERY_PART = /^(role|name|engine)=([^&]*)$/;
-const LOBBY_URL = /^\/netplay\/lobby\?edition=(original|hd)$/;
+const LOBBY_URL = /^\/netplay\/lobby\?edition=(original|hd|cosmoclash)$/;
+// The engine tags that a listed room of each edition can show. Cosmo Clash has
+// one engine, its Rust gameplay engine.
+const ENGINES = { original: ['c', 'rust'], hd: ['c', 'rust'], cosmoclash: ['rust'] };
 const INVALID_ROOM = 'Invalid room URL or role.';
 const INVALID_NAME = 'Room names need 1 to 24 visible characters.';
 // The same name rule is in deploy/netplay.js and sc2/wasm/netplay-client.js.
@@ -94,9 +100,10 @@ export function addressKey(ip) {
 
 /**
  * Strict room URL: role=host|guest, and for a host only an optional name
- * (which lists the room in its edition's lobby) and engine=c|rust. Each
- * parameter at most once; nothing else. The raw request target is checked, so
- * encoded path characters never match.
+ * (which lists the room in its edition's lobby) and engine=c|rust (Cosmo
+ * Clash: engine=rust, also the tag of a named room without one). Each
+ * parameter at most once; nothing else. The raw
+ * request target is checked, so encoded path characters never match.
  */
 export function parseRoomURL(target) {
   const query = target.indexOf('?');
@@ -113,7 +120,10 @@ export function parseRoomURL(target) {
   const engine = params.get('engine') ?? null;
   if (role !== 'host' && role !== 'guest') return { error: INVALID_ROOM };
   if (role === 'guest' && params.size > 1) return { error: INVALID_ROOM };
-  if (engine !== null && (rawName === undefined || (engine !== 'c' && engine !== 'rust'))) return { error: INVALID_ROOM };
+  const edition = path[1] ?? null;
+  if (engine !== null && (rawName === undefined || !ENGINES[edition ?? 'original'].includes(engine))) {
+    return { error: INVALID_ROOM };
+  }
   let name = null;
   if (rawName !== undefined) {
     // 24 characters of up to 4 UTF-8 bytes, each byte as %XX.
@@ -121,7 +131,11 @@ export function parseRoomURL(target) {
     catch { name = null; }
     if (name === null) return { error: INVALID_NAME };
   }
-  return { edition: path[1] ?? null, token: path[2], role, name, engine };
+  // An edition with one engine (Cosmo Clash: rust) lists every named room with
+  // that tag, also when the host sends none, so that the list never shows null.
+  const engines = ENGINES[edition ?? 'original'];
+  const tag = engine ?? (name !== null && engines.length === 1 ? engines[0] : null);
+  return { edition, token: path[2], role, name, engine: tag };
 }
 
 /** A bounded, two-peer relay. Room IDs are single-use capabilities for this process. */
@@ -162,6 +176,9 @@ export function createNetplayServer(options = {}) {
     catch { return true; }
   })) throw new Error('Allowed origins must be exact http(s) origins without trailing slashes');
   const distRoot = options.distDir === false ? null : path.resolve(options.distDir ?? path.join(projectRoot, 'dist'));
+  // Optional: a Cosmo Clash build (vite build --base /cosmoclash/) served at
+  // /cosmoclash/ in place of the folder of that name in distDir.
+  const cosmoRoot = options.cosmoclashDir ? path.resolve(options.cosmoclashDir) : null;
   const rooms = new Map();
   const usedRoomIds = new Set();
   const ipCounts = new Map();
@@ -169,7 +186,7 @@ export function createNetplayServer(options = {}) {
   // Join times of listed rooms per address, least recently used first.
   const listedJoins = new Map();
   // One room list per edition: named rooms that wait for a guest, oldest first, and the watching sockets.
-  const lobbies = { original: newLobby(), hd: newLobby() };
+  const lobbies = { original: newLobby(), hd: newLobby(), cosmoclash: newLobby() };
   let shuttingDown = false;
   const wss = new WebSocketServer({ noServer: true, maxPayload, perMessageDeflate: false, autoPong: false,
     maxFragments: 128, maxBufferedChunks: 128, closeTimeout: 1000 });
@@ -374,7 +391,7 @@ export function createNetplayServer(options = {}) {
       endRoom(ws.room, ws);
     });
     ws.on('message', (data, isBinary) => receive(ws, data, isBinary));
-    // HD and Original engines cannot stay in sync. Namespace active and
+    // HD, Original and Cosmo Clash cannot share a stream. Namespace active and
     // retired rooms by edition, even when their random token is identical.
     const parsed = parseRoomURL(req.url);
     if (parsed.error) return reject(ws, parsed.error);
@@ -431,20 +448,44 @@ export function createNetplayServer(options = {}) {
     }
   }
 
+  /** The document root and the path inside it for a decoded URL path, or null. */
+  function documentRoot(decoded) {
+    if (cosmoRoot && (decoded === '/cosmoclash' || decoded.startsWith('/cosmoclash/'))) {
+      return [cosmoRoot, decoded.slice('/cosmoclash'.length) || ''];
+    }
+    return distRoot ? [distRoot, decoded] : null;
+  }
+  /** A regular file inside root at relative, or null. Symlinks out of the root do not count. */
+  async function regularFile(root, relative) {
+    try {
+      const file = await realpath(path.join(root, relative));
+      if (!file.startsWith(root + path.sep)) return null;
+      const info = await stat(file);
+      return info.isFile() ? { file, info } : null;
+    } catch { return null; }
+  }
   async function serve(req, res) {
     Object.entries(isolatedHeaders).forEach(([key, value]) => res.setHeader(key, value));
     if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }); return res.end(); }
-    if (!distRoot) { res.writeHead(404); return res.end(); }
     try {
-      const rawPath = req.url.split('?')[0];
+      const query = req.url.indexOf('?');
+      const rawPath = query < 0 ? req.url : req.url.slice(0, query);
       const decoded = decodeURIComponent(rawPath);
-      if (!decoded.startsWith('/') || decoded.includes('\\') || decoded.includes('\0') ||
+      if (!decoded.startsWith('/') || decoded.startsWith('//') || decoded.includes('\\') || decoded.includes('\0') ||
           decoded.split('/').some(segment => segment.startsWith('.'))) throw new Error('Invalid path');
-      const root = await realpath(distRoot);
-      const file = await realpath(path.join(root, decoded === '/' ? 'index.html' : decoded));
-      if (!file.startsWith(root + path.sep)) throw new Error('Outside document root');
-      const info = await stat(file);
-      if (!info.isFile()) throw new Error('Not a file');
+      const target = documentRoot(decoded);
+      if (!target) throw new Error('No document root');
+      const root = await realpath(target[0]);
+      const relative = target[1];
+      // A folder path gives its index.html, as on the Cloudflare site (/original/, /cosmoclash/).
+      const found = relative !== '' && await regularFile(root, relative.endsWith('/') ? relative + 'index.html' : relative);
+      if (!found && !relative.endsWith('/') && await regularFile(root, relative + '/index.html')) {
+        // /cosmoclash opens /cosmoclash/, with the query (an invitation) kept.
+        res.writeHead(301, { Location: rawPath + '/' + (query < 0 ? '' : req.url.slice(query)) });
+        return res.end();
+      }
+      if (!found) throw new Error('Not a file');
+      const { file, info } = found;
       res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream',
         'Content-Length': info.size });
       if (req.method === 'HEAD') return res.end();
@@ -506,7 +547,8 @@ export function createNetplayServer(options = {}) {
     server,
     get stats() {
       return { rooms: rooms.size, connections: wss.clients.size, usedRoomIds: usedRoomIds.size,
-        lobbyConnections: lobbyWss.clients.size, listedRooms: lobbies.original.rooms.size + lobbies.hd.rooms.size };
+        lobbyConnections: lobbyWss.clients.size,
+        listedRooms: Object.values(lobbies).reduce((sum, lobby) => sum + lobby.rooms.size, 0) };
     },
     async listen(port = 9999, host = '127.0.0.1') {
       await new Promise((resolve, reject) => {
@@ -538,15 +580,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   for (let i = 0; i < args.length; i++) {
     const flag = args[i];
     if (flag === '--help') {
-      console.log('Usage: npm start -- [--host 127.0.0.1] [--port 9999] [--origin https://game.example] [--dist DIR]');
+      console.log('Usage: npm start -- [--host 127.0.0.1] [--port 9999] [--origin https://game.example] [--dist DIR] [--cosmoclash DIR]');
       process.exit(0);
     }
-    if (!['--host', '--port', '--origin', '--dist'].includes(flag) || !args[i + 1]) throw new Error(`Unknown or incomplete option: ${flag}`);
+    if (!['--host', '--port', '--origin', '--dist', '--cosmoclash'].includes(flag) || !args[i + 1]) throw new Error(`Unknown or incomplete option: ${flag}`);
     const value = args[++i];
     if (flag === '--host') host = value;
     if (flag === '--port') port = integer(Number(value), 9999, 0, 65535, 'port');
     if (flag === '--origin') (config.allowedOrigins ??= []).push(value);
     if (flag === '--dist') config.distDir = value;
+    if (flag === '--cosmoclash') config.cosmoclashDir = value;
   }
   const app = createNetplayServer(config);
   const address = await app.listen(port, host);

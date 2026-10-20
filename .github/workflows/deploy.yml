@@ -1,9 +1,10 @@
 name: Deploy to Cloudflare
 
 # Four published engines: Original and HD, each in C (/original/, /hd/) and in the
-# Rust port (/original-rust/, /hd-rust/). The two Rust engines build in parallel
-# jobs; the deploy job builds the C engines, adds the Rust builds, tests C against
-# Rust in real two-browser matches and deploys.
+# Rust port (/original-rust/, /hd-rust/), and the separate game Cosmo Clash
+# (/cosmoclash/). The two Rust engines build in parallel jobs; the deploy job
+# builds and tests Cosmo Clash, builds the C engines, adds the Rust builds, tests
+# C against Rust in real two-browser matches and deploys.
 on:
   push:
     branches: [deploy/cloudflare]
@@ -79,15 +80,28 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cosmoclash/package-lock.json
       - name: Install locked Node dependencies
-        run: npm ci
-      - name: Install the pinned Rust toolchain (relay tests)
-        run: rustup toolchain install 1.85.1 --profile minimal
+        run: |
+          npm ci
+          npm ci --prefix cosmoclash
+      - name: Install the pinned Rust toolchain (relay tests, Cosmo Clash gameplay Wasm)
+        run: rustup toolchain install 1.85.1 --profile minimal --target wasm32-unknown-unknown
       - name: Test browser helpers and real WebSocket relays
         run: npm test
-      - name: Test the Cloudflare relay under wrangler dev
-        timeout-minutes: 10
+      - name: Test the Cloudflare relay and site under wrangler dev
+        timeout-minutes: 12
         run: npm run test:worker
+      # Before the long engine builds: a Cosmo Clash build that cannot work at /cosmoclash/ stops here.
+      - name: Build Cosmo Clash for /cosmoclash/ and compare its Rust gameplay and Wasm
+        run: |
+          npm test --prefix cosmoclash
+          npm run build --prefix cosmoclash -- --base /cosmoclash/
+          node cosmoclash/tests/wasm.mjs
+          python3 scripts/package-editions.py --check-cosmoclash cosmoclash/dist
+          sha256sum cosmoclash/dist/cosmoclash.wasm
       - name: Install pinned Emscripten SDK
         run: |
           mkdir -p .tools
@@ -122,16 +136,19 @@ jobs:
             python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['core']=='rust' and d['game_engine']=='rust', d" .tools/$edition-rust-dist/engine-language.json
           done
           sha256sum .tools/*-dist/uqm-debug.wasm
-      - name: Package the four engines behind the edition picker
+      - name: Package the four engines and Cosmo Clash behind the picker
         run: |
           python3 scripts/package-editions.py --original .tools/original-dist --hd .tools/hd-dist \
-            --original-rust .tools/original-rust-dist --hd-rust .tools/hd-rust-dist --output .tools/release-web
+            --original-rust .tools/original-rust-dist --hd-rust .tools/hd-rust-dist \
+            --cosmoclash cosmoclash/dist --output .tools/release-web
       - name: Run actual-source Wasm transport and disconnect regressions
         run: bash sc2/src/uqm/supermelee/netplay/tests/run.sh
       - name: Test the edition picker with the real engines
         run: |
           npx playwright install --with-deps chromium
           UQM_DIST=.tools/release-web npm run test:editions
+      - name: Test the Cosmo Clash card, a battle and Online Melee on the packaged site (Node relay)
+        run: UQM_DIST=.tools/release-web UQM_TEST_OUTPUT=test-results/cosmoclash-site npm run test:cosmoclash-site
       - name: Test the room-list client in a real browser
         run: UQM_BROWSERS=chromium npm run test:lobby-client
       - name: Test Original C against Original Rust in real two-browser matches
@@ -142,6 +159,8 @@ jobs:
         run: python3 deploy/split-data.py --site .tools/release-web --output .tools/site --manifest deploy/data-parts.json
       - name: Test that return visits start from the game data kept in the browser
         run: UQM_DATA_CACHE_LEAN=1 UQM_DIST=.tools/release-web UQM_SITE=.tools/site UQM_SITE_MANIFEST=deploy/data-parts.json UQM_TEST_OUTPUT=test-results/data-cache npm run test:data-cache
+      - name: Test Cosmo Clash and its Online Melee through the Worker, its asset store and its relay
+        run: UQM_SITE=.tools/site UQM_SITE_MANIFEST=deploy/data-parts.json UQM_TEST_OUTPUT=test-results/cosmoclash-worker npm run test:cosmoclash-site
       - name: Deploy the Worker and static assets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -172,25 +191,73 @@ jobs:
           curl -fsS https://urquanmasters.org/hd-rust/index.html | grep -q 'window.UQM_VARIANT = '
           ! curl -fsS https://urquanmasters.org/original/index.html | grep -q 'window.UQM_VARIANT = '
           ! curl -fsS https://urquanmasters.org/hd/index.html | grep -q 'window.UQM_VARIANT = '
+      - name: Check the live Cosmo Clash files and headers
+        run: |
+          site=.tools/release-web
+          curl -fsS https://urquanmasters.org/ | grep -q 'id="edition-cosmoclash"'
+          # /cosmoclash opens /cosmoclash/ and keeps the invitation query.
+          curl -sS -o /dev/null -D redirect.txt 'https://urquanmasters.org/cosmoclash?cosmoRoom=0123456789abcdef0123456789abcdef'
+          cat redirect.txt
+          grep -qE '^HTTP/[0-9.]+ 301' redirect.txt
+          grep -qi '^location: https://urquanmasters.org/cosmoclash/?cosmoRoom=0123456789abcdef0123456789abcdef' redirect.txt
+          # The page: the deployed bytes, HTML, checked again on each visit, cross-origin isolated.
+          curl -fsS -D page.txt -o page.html https://urquanmasters.org/cosmoclash/
+          cat page.txt
+          cmp page.html "$site/cosmoclash/index.html"
+          grep -qi '^content-type: text/html; charset=utf-8' page.txt
+          grep -qi '^cache-control: no-cache' page.txt
+          grep -qi '^cross-origin-opener-policy: same-origin' page.txt
+          grep -qi '^cross-origin-embedder-policy: require-corp' page.txt
+          grep -qi '^cross-origin-resource-policy: same-origin' page.txt
+          # Every script and style of the page: the deployed bytes, immutable (Vite hashed names).
+          for asset in $(grep -oE '/cosmoclash/assets/[^"]+\.(js|css)' "$site/cosmoclash/index.html" | sort -u); do
+            curl -fsS -D asset.txt -o asset.bin "https://urquanmasters.org$asset"
+            cmp asset.bin "$site$asset"
+            grep -qiE '^content-type: text/(javascript|css); charset=utf-8' asset.txt
+            grep -qi '^cache-control: public, max-age=31536000, immutable' asset.txt
+            echo "$asset: same bytes, immutable"
+          done
+          # The gameplay Wasm: both online players must load the same one, so it is checked again on each visit.
+          curl -fsS -D wasm.txt -o cosmoclash.wasm https://urquanmasters.org/cosmoclash/cosmoclash.wasm
+          cmp cosmoclash.wasm "$site/cosmoclash/cosmoclash.wasm"
+          grep -qi '^content-type: application/wasm' wasm.txt
+          grep -qi '^cache-control: no-cache' wasm.txt
+          echo "cosmoclash wasm: $(sha256sum cosmoclash.wasm | cut -d' ' -f1)"
+          for file in models/gondi.glb sounds/Damage.ogg sounds/bigang.wav textures/heart.png textures/main-bk.jpg; do
+            type="$(curl -fsS -o /dev/null -w '%{content_type}' "https://urquanmasters.org/cosmoclash/$file")"
+            echo "$file: $type"
+            case "$file" in
+              *.glb) test "$type" = model/gltf-binary ;;
+              *.ogg) test "$type" = audio/ogg ;;
+              *.wav) test "$type" = audio/wav ;;
+              *.png) test "$type" = image/png ;;
+              *.jpg) test "$type" = image/jpeg ;;
+            esac
+          done
+      - name: Open the live picker card and Cosmo Clash in a real browser
+        run: UQM_ORIGIN=https://urquanmasters.org UQM_DIST=.tools/release-web UQM_TEST_OUTPUT=test-results/cosmoclash-live npm run test:cosmoclash-site
       - name: Check the live Online Melee relay
         run: |
-          node --input-type=module -e "
-            import { WebSocket } from 'ws';
-            import { randomBytes } from 'node:crypto';
-            const ws = new WebSocket('wss://urquanmasters.org/netplay/' + randomBytes(16).toString('hex') + '?role=host',
-              { origin: 'https://urquanmasters.org' });
-            const timer = setTimeout(() => { console.error('No relay answer'); process.exit(1); }, 15000);
-            ws.on('error', error => { console.error(error.message); process.exit(1); });
-            ws.on('message', data => {
-              console.log('relay:', data.toString());
-              clearTimeout(timer);
-              ws.close();
-              process.exit(JSON.parse(data).type === 'waiting' ? 0 : 1);
-            });
-          "
+          # A private room of the Original namespace and one of Cosmo Clash.
+          for namespace in '' cosmoclash/; do
+            NAMESPACE="$namespace" node --input-type=module -e "
+              import { WebSocket } from 'ws';
+              import { randomBytes } from 'node:crypto';
+              const ws = new WebSocket('wss://urquanmasters.org/netplay/' + process.env.NAMESPACE + randomBytes(16).toString('hex') + '?role=host',
+                { origin: 'https://urquanmasters.org' });
+              const timer = setTimeout(() => { console.error('No relay answer'); process.exit(1); }, 15000);
+              ws.on('error', error => { console.error(error.message); process.exit(1); });
+              ws.on('message', data => {
+                console.log('relay /netplay/' + process.env.NAMESPACE + ':', data.toString());
+                clearTimeout(timer);
+                ws.close();
+                process.exit(JSON.parse(data).type === 'waiting' ? 0 : 1);
+              });
+            "
+          done
       - name: Check the live room lists
         run: |
-          for edition in original hd; do
+          for edition in original hd cosmoclash; do
             EDITION="$edition" node --input-type=module -e "
               import { WebSocket } from 'ws';
               const ws = new WebSocket('wss://urquanmasters.org/netplay/lobby?edition=' + process.env.EDITION,

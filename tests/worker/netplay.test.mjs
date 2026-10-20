@@ -71,6 +71,43 @@ test('HD rooms are separate from Original rooms with the same token', async t =>
   }
 });
 
+test('Cosmo Clash rooms are separate from Original and HD rooms with the same token', async t => {
+  const { client } = await defaultWorker(t);
+  const id = roomId();
+  const keys = [id, `hd/${id}`, `cosmoclash/${id}`];
+  const hosts = [];
+  for (const key of keys) {
+    const host = client(null, null, {}, `/netplay/${key}?role=host`);
+    assert.deepEqual(await host.next(), { type: 'waiting' }, key);
+    hosts.push(host);
+  }
+  const guests = [];
+  for (const [index, key] of keys.entries()) {
+    const guest = client(null, null, {}, `/netplay/${key}?role=guest`);
+    assert.deepEqual(await guest.next(), { type: 'waiting' }, key);
+    assert.deepEqual(await guest.next(), { type: 'ready', role: 'guest' }, key);
+    assert.deepEqual(await hosts[index].next(), { type: 'ready', role: 'host' }, key);
+    guests.push(guest);
+  }
+  for (const [index, host] of hosts.entries()) host.ws.send(Buffer.from(`game ${index}`));
+  for (const [index, guest] of guests.entries()) assert.deepEqual(await guest.next(), Buffer.from(`game ${index}`));
+  // Closing the Cosmo Clash room retires its token there only.
+  hosts[2].ws.close();
+  assert.equal((await guests[2].next()).type, 'peer-left');
+  const retired = client(null, null, {}, `/netplay/cosmoclash/${id}?role=host`);
+  assert.match((await retired.next()).message, /expired/);
+  for (const [index, host] of hosts.slice(0, 2).entries()) {
+    host.ws.send(Buffer.from(`still ${index}`));
+    assert.deepEqual(await guests[index].next(), Buffer.from(`still ${index}`));
+  }
+  for (const url of [`/netplay/CosmoClash/${roomId()}?role=host`, `/netplay/cosmoclash/hd/${roomId()}?role=host`,
+    `/netplay/cosmoclash/${roomId()}/?role=host`, `/netplay/cosmoclash%2f${roomId()}?role=host`, `/netplay/cosmoclash/${roomId()}`]) {
+    const invalid = client(null, null, {}, url);
+    assert.equal((await invalid.next()).type, 'error', url);
+  }
+  for (const peer of [...hosts, ...guests]) peer.ws.close();
+});
+
 test('guests cannot create rooms; duplicate roles and third players cannot displace either player', async t => {
   const { client, pair } = await defaultWorker(t);
   const missing = client(roomId(), 'guest');

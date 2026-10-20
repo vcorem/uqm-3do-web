@@ -25,7 +25,10 @@ process lifetime. Room state is memory-only. Restarting terminates all rooms.
 These production constraints are unchanged from the Node implementation.
 
 The root of `--dist` must contain the already-built game or edition picker.
-The server sends the WASM isolation headers. Static delivery streams 64 KiB
+A folder path with a slash serves the folder's `index.html` (`/cosmoclash/`,
+the Cosmo Clash build of a packaged site); the same path without the slash
+redirects (301) to it and keeps the query (an invitation). The server sends the
+WASM isolation headers. Static delivery streams 64 KiB
 chunks, allows progressing downloads of any duration, and closes connections
 after 30 seconds of inactivity during an individual file read/write. No directory
 listing, hidden path segments or escaping symlinks are served. HTTP parsing is
@@ -50,6 +53,13 @@ message/control quotas, heartbeats, room retirement and timeouts match the
   All namespaces share the same capacity limits.
 - Static Cosmo Clash assets use `model/gltf-binary`, `audio/ogg` and `audio/wav`
   for GLB models and Ogg/WAV audio, alongside existing WASM/image types.
+- There are no room lists (lobbies). The room-list URL
+  `/netplay/lobby?edition=original|hd|cosmoclash` and a host URL with `name` or
+  `engine` get `{"type":"error","message":"Invalid room URL or role."}` and
+  close code 1008, before any room list. The browser clients of UQM and Cosmo
+  Clash take this as "no room lists here", do not try again and offer a
+  private room with an invite link. The Node relay and the Cloudflare relay
+  have the room lists.
 - Binary data retains order and bytes; it is never accepted before pairing.
 - A room has at most one host and one guest. Admission and teardown share one
   registry lock; a duplicate participant cannot displace another.

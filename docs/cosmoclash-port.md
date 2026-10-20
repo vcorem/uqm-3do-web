@@ -32,8 +32,11 @@ references; the playable battle loop calls the Rust engine.
 
 - Solo retains the three-ship gauntlet and Easy/Medium/Hard AI. Same-computer
   two-player play is also available.
-- Online Melee uses private two-player invitations. Each side chooses one to
-  three unique ships and their order. Both must be ready before starting.
+- Online Melee has two players in a room. On the site the relay keeps a Cosmo
+  Clash room list (`/netplay/lobby?edition=cosmoclash`) for rooms with a name;
+  a room without a name is private and needs its invite link
+  (`/cosmoclash/?cosmoRoom=<token>`). Each side chooses one to three unique
+  ships and their order. Both must be ready before starting.
 - The defeated side advances its fleet. Both ships reset for the next battle,
   as in the original local game. A fleet defeat ends the match. Rematch requires
   mutual acceptance and a fresh ready check; leaving retires the room.
@@ -65,41 +68,119 @@ npm run build --prefix cosmoclash
 npm start --prefix cosmoclash -- --port 10000
 ```
 
-Open `http://127.0.0.1:10000`. The existing UQM preview on port 9999 is independent.
-The production build writes `cosmoclash/dist/`; generated Wasm and build output
-are deliberately not tracked. `npm run dev --prefix cosmoclash` uses Vite, whose
-WebSocket proxy expects the separately running relay on port 10000.
+Open `http://127.0.0.1:10000/cosmoclash/`. The existing UQM preview on port 9999
+is independent. The production build writes `cosmoclash/dist/` for the site path
+`/cosmoclash/` (the Vite base); generated Wasm and build output are deliberately
+not tracked. `npm start --prefix cosmoclash` (`cosmoclash/scripts/serve.mjs`)
+serves the game at `/cosmoclash/` with the site's isolation headers, and online
+play with the Node relay and the Cosmo Clash room list (`-- --relay rust`: the
+Rust relay, which has no room list; the game then offers private rooms with an
+invite link). `npm run dev --prefix cosmoclash` uses Vite, whose WebSocket proxy
+expects that server on port 10000.
+
+The root Node server can serve the same build next to the UQM editions, with the
+same room list:
+
+```sh
+npm start -- --port 10000 --cosmoclash cosmoclash/dist
+```
+
+Open `http://127.0.0.1:10000/cosmoclash/`. `npm run test:cosmoclash-site` opens
+the picker card and the game at `/cosmoclash/` in Chromium, plays a short battle
+against the computer, and plays Online Melee between two pages through the
+site's relay and room list (see [Verification](#verification)).
 
 ## Server handover
 
-Build the portable game assets above. Build the existing Rust relay on Linux
-for the VPS architecture (or use a matching Linux cross-build); a macOS relay
-binary cannot run on a Hetzner Linux VPS:
+Cosmo Clash is the third game of the site: `https://urquanmasters.org/cosmoclash/`,
+with a third card on the picker at `/`. The site's Cloudflare Worker
+(`deploy/worker.js`) serves it, and the Worker's relay (`deploy/netplay.js`)
+gives it rooms and a room list. No VPS is necessary.
 
-```sh
-cargo build --locked --release --manifest-path rust/Cargo.toml -p uqm-relay
-rust/target/release/uqm-relay --host 127.0.0.1 --port 10010 \
-  --origin https://cosmo.example.com --dist /srv/cosmoclash/dist
-```
+- **Build.** `npm run build --prefix cosmoclash -- --base /cosmoclash/`. Every
+  request of the game must go to `/cosmoclash/`: Vite's own script and style
+  links do, and the game adds the base at run time to the file names that the
+  original code writes from the site root (`/models/gondi.glb`): see
+  `assetURL()` and `installAssetBase()` in `cosmoclash/src/base.ts`. `python3
+  scripts/package-editions.py --check-cosmoclash cosmoclash/dist` refuses a
+  build whose page does not load its scripts from `/cosmoclash/assets/`, loads
+  a missing file or a file of another origin (the site sends
+  `Cross-Origin-Embedder-Policy: require-corp`), or has files larger than
+  25 MiB (the Cloudflare asset limit). It does not read the scripts: the root
+  paths in them are correct. `npm run test:cosmoclash-site` checks the real
+  requests: it plays a short battle against the computer (models, sounds and
+  textures load) and refuses any 4xx answer and any request outside
+  `/cosmoclash/` and `/netplay/`.
+- **Package.** `scripts/build-editions.sh` builds Cosmo Clash first and
+  packages it with the UQM engines (`UQM_COSMO=0` leaves it out);
+  `package-editions.py --cosmoclash cosmoclash/dist` copies the build to
+  `<site>/cosmoclash/` and keeps the picker card (its art,
+  `web/editions/cosmoclash-card.jpg`, is an 800×480 copy of
+  `public/textures/main-bk.jpg`). Without `--cosmoclash` the picker has no card.
+- **Site rules.** `/cosmoclash` redirects (301) to `/cosmoclash/` and keeps the
+  query, so an invitation `/cosmoclash/?cosmoRoom=<32 hex>` always opens the
+  folder form that the page's relative URLs need. Vite's hashed files in
+  `/cosmoclash/assets/` are `immutable` for a year. The page,
+  `cosmoclash.wasm` and the models, sounds and textures are `no-cache`: the
+  browser asks again on each visit (ETag, 304), so both online players load the
+  same Wasm. Content types come from one table in the Worker (`.glb`
+  `model/gltf-binary`, `.ogg` `audio/ogg`, `.wav` `audio/wav`, `.wasm`
+  `application/wasm`); the local servers use the same types. Every response
+  has the isolation headers (COOP, COEP, CORP); all Cosmo Clash files are
+  same-origin.
+- **Online.** Rooms are `/netplay/cosmoclash/<token>`: `?role=host&name=<name>&engine=rust`
+  lists the room in the Cosmo Clash room list, `?role=host` makes a private
+  room, `?role=guest` joins. The room list is
+  `/netplay/lobby?edition=cosmoclash` (its own Durable Object,
+  `lobby:cosmoclash`); it never shows UQM rooms, and the UQM lists never show
+  Cosmo Clash rooms. Names, keepalive pings, bounds and messages are those of
+  the UQM rooms; see [Melee relay and room lists](netplay-server.md).
+- **Deploy.** `.github/workflows/deploy.yml` (branch `deploy/cloudflare`) runs
+  the Cosmo Clash tests, builds it, tests the card and the game in Chromium on
+  the packaged site and through the Worker under `wrangler dev`, deploys, and
+  then checks the live page, scripts, styles, Wasm, file types, picker card,
+  a real browser on the live site, a private Cosmo Clash room and the live
+  Cosmo Clash room list.
 
-Replace the example origin and path with the deployed values. Install the built
-relay binary and static `dist/` directory on the VPS, run the relay as an
-unprivileged system service, and use the existing HTTPS reverse proxy. It must
-forward HTTP and WebSocket upgrades for `/netplay/cosmoclash/` to this process.
-Prefer a dedicated hostname serving Cosmo at `/`; asset paths assume this root.
-Use the same hostname and scheme for the game and its WebSocket endpoint.
-Preserve the server's response headers and configure an idle timeout that allows
-long-lived WebSockets. Public HTTPS is required for reliable browser crypto and
-clipboard APIs. No Redis, database, STUN, TURN or separate game-authority process
-is required. A domain registration and public deployment are separate work.
+Room state is per Durable Object: a deploy restarts the objects and closes the
+open rooms.
 
-Room state is memory-only. Restarting the service disconnects every active room.
-Default limits are 128 active rooms, 16 connections per observed source IP, and
-10,000 distinct room identities over the process lifetime. Behind a reverse
-proxy all clients share the proxy's observed source IP; forwarded IP headers are
-not trusted. Account for this before opening to a large public audience. See
-[`rust/uqm-relay/README.md`](../rust/uqm-relay/README.md) for the exact server
-contract and [`docs/netplay-server.md`](netplay-server.md) for the existing UQM
+### Alternative: a VPS
+
+The game can also run on a Linux VPS behind an HTTPS reverse proxy that
+forwards HTTP and WebSocket upgrades for `/netplay/` (with an idle timeout that
+allows long-lived WebSockets) and keeps the server's response headers. Build
+the game with `--base /cosmoclash/` as above and serve it at `/cosmoclash/` of
+the host:
+
+- The Node server has the room list:
+  `node server/netplay.mjs --host 127.0.0.1 --port 10010 --origin https://cosmo.example --cosmoclash /srv/cosmoclash/dist`
+  (or `--dist` with a packaged site).
+- The Rust relay has private rooms only. Put the build in a `cosmoclash/`
+  folder of its `--dist` root:
+
+  ```sh
+  cargo build --locked --release --manifest-path rust/Cargo.toml -p uqm-relay
+  rust/target/release/uqm-relay --host 127.0.0.1 --port 10010 \
+    --origin https://cosmo.example --dist /srv/site
+  ```
+
+  It answers the room list URL and named rooms with "Invalid room URL or
+  role.", so the game offers a private room with an invite link.
+
+Build the Rust relay on Linux for the VPS architecture (a macOS binary cannot
+run on a Linux VPS). Replace the example origin and paths with the deployed
+values, and run the server as an unprivileged system service. Public HTTPS is
+required for reliable browser crypto and clipboard APIs. No Redis, database,
+STUN, TURN or separate game-authority process is required.
+
+Room state is memory-only. Restarting the service disconnects every active
+room. Default limits are 128 active rooms, 16 connections per observed source
+IP, and 10,000 distinct room identities over the process lifetime. Behind a
+reverse proxy all clients share the proxy's observed source IP; forwarded IP
+headers are not trusted. Account for this before opening to a large public
+audience. See [`rust/uqm-relay/README.md`](../rust/uqm-relay/README.md) for the
+exact server contract and [`docs/netplay-server.md`](netplay-server.md) for the
 hosting background. Test flags for artificial latency must not be used in
 production.
 
@@ -116,6 +197,11 @@ npm run test:wasm --prefix cosmoclash
 npm test
 npx playwright install chromium
 npm run test:browser --prefix cosmoclash
+# The site form: the build for /cosmoclash/, the picker card, the relays and the Worker.
+npm run build --prefix cosmoclash -- --base /cosmoclash/
+python3 scripts/package-editions.py --check-cosmoclash cosmoclash/dist
+npm run test:cosmoclash-site
+npm run test:worker
 ```
 
 The source comparison suites execute the original TypeScript implementation and
@@ -131,6 +217,13 @@ wins or replace simulation state. Coverage includes solo AI, morphing, local
 weapons/shield/slime, actual audio output and mute, a complete three-ship online
 fleet match, rematch, disconnect, and a separate connection with artificial
 latency/jitter. Browser checks also inspect loading failures and script errors.
+`npm run test:cosmoclash-site` runs the built game on the packaged site with the
+site's own servers: the Node relay, or (with `UQM_SITE`, as in the deploy job)
+the Worker under `wrangler dev`. The host page creates a named room, the guest
+page finds it in the cosmoclash room list and joins, both choose a ship and play
+until they verify checksums, the host leaves, and both are back in the lobby.
+Every socket must go to `/netplay/lobby?edition=cosmoclash` or
+`/netplay/cosmoclash/<token>`.
 
 Raw reports and screenshots are generated under `cosmoclash/test-results/`
 (ignored by Git). The dedicated GitHub workflow is
@@ -192,5 +285,6 @@ Before a public release, test the deployed HTTPS origin with two people on
 separate networks, verify the reverse proxy's WebSocket timeout, and exercise
 reconnection by creating a new room after a lost connection. Safari/Firefox,
 touch-only play, mobile performance, and large public concurrency have not been
-certified by the local Chrome run. This branch does not deploy or modify the live
-UQM site.
+certified by the local Chrome run. The deploy workflow publishes Cosmo Clash at
+`https://urquanmasters.org/cosmoclash/` with the UQM engines; see
+[Server handover](#server-handover).

@@ -51,7 +51,10 @@ class Digests:
 
 
 class Handler(SimpleHTTPRequestHandler):
-    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, '.wasm': 'application/wasm'}
+    # The same types as the Cloudflare site and the relays, Cosmo Clash files included.
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, '.wasm': 'application/wasm',
+                      '.js': 'text/javascript; charset=utf-8', '.glb': 'model/gltf-binary',
+                      '.ogg': 'audio/ogg', '.wav': 'audio/wav'}
     digests = Digests()
 
     def send_head(self):

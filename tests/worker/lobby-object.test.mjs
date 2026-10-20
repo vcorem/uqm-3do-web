@@ -179,6 +179,19 @@ check('the Cloudflare and Node relays parse room names and address keys the same
     assert.equal(parseRoomURL('/netplay/' + id, query).error, 'Room names need 1 to 24 visible characters.', label);
     assert.equal(node.parseRoomURL('/netplay/' + id + query).error, 'Room names need 1 to 24 visible characters.', label);
   }
+  // The same room URLs, Cosmo Clash included (engine=rust only), parse the same way.
+  for (const [pathname, query] of [[`/netplay/cosmoclash/${id}`, '?role=host&name=Cosmo&engine=rust'],
+    [`/netplay/cosmoclash/${id}`, '?role=host&name=Cosmo&engine=c'], [`/netplay/cosmoclash/${id}`, '?role=guest'],
+    [`/netplay/cosmoclash/${id}`, '?role=host&name=Cosmo'], [`/netplay/hd/${id}`, '?role=host&name=HD&engine=c'],
+    [`/netplay/cosmo/${id}`, '?role=host'], [`/netplay/${id}`, '?role=host&name=UQM&engine=rust']]) {
+    assert.deepEqual(parseRoomURL(pathname, query), node.parseRoomURL(pathname + query), pathname + query);
+  }
+  assert.equal(parseRoomURL(`/netplay/cosmoclash/${id}`, '?role=host&name=Cosmo&engine=rust').edition, 'cosmoclash');
+  assert.ok(parseRoomURL(`/netplay/cosmoclash/${id}`, '?role=host&name=Cosmo&engine=c').error);
+  // Cosmo Clash has one engine: a named room without a tag gets it; private rooms and UQM rooms keep none.
+  assert.equal(parseRoomURL(`/netplay/cosmoclash/${id}`, '?role=host&name=Cosmo').engine, 'rust');
+  assert.equal(parseRoomURL(`/netplay/cosmoclash/${id}`, '?role=host').engine, null);
+  assert.equal(parseRoomURL(`/netplay/${id}`, '?role=host&name=UQM').engine, null);
   for (const value of ['203.0.113.7', '::ffff:203.0.113.7', '2001:db8::1', '2001:db8:0:0:ffff::16', '2001:db8:0:1::1',
     'fe80::1%en0', '::', '::1', '2001:db8::1.2.3.4', '1::2::3', 'unknown', '', 'x'.repeat(100), 'A:B:C:D:E:F:0:1']) {
     assert.equal(addressKey(value), node.addressKey(value), value);
