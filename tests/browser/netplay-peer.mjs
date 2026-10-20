@@ -82,17 +82,19 @@ try {
   result.wasm = await page.evaluate(async () => { const r = performance.getEntriesByType('resource').find(e => e.name.endsWith('uqm-debug.wasm')); return r ? r.name : null; });
   await page.evaluate(seedFleet, meleeConfig);
   await page.evaluate(() => new Promise((resolve, reject) => FS.syncfs(false, error => error ? reject(error) : resolve())));
-  // The lobby's own room calls (online-ui.js): a named host room, or a guest join by token.
+  // The lobby's own room calls (online-ui.js): a private host room (not in the public
+  // list, so no other player can take it), or a guest join by token.
   const deadline = Date.now() + joinTimeout;
   for (let attempt = 1; ; attempt++) {
-    await page.evaluate(([role, token]) => role === 'host' ? online.controller.host('Remote test', token) : online.controller.join(token), [role, token]);
-    // A host is in its room after the relay's 'waiting' message; a guest only when the room is 'ready'.
+    await page.evaluate(([role, token]) => role === 'host' ? online.controller.host(null, token) : online.controller.join(token), [role, token]);
+    // A host is in its room when the room stays open (the relay refuses a bad room at
+    // once); a guest only when the room is 'ready'.
     const goal = role === 'host' ? 'waiting' : 'ready';
     const state = await page.waitForFunction(goal => {
       const room = online.state.room;
       if (online.state.session || online.state.screen === 'found') return 'ready';
       if (!room) return online.state.notice && online.state.notice.kind === 'error' ? 'error' : false;
-      return goal === 'waiting' && room.status === 'waiting' && /Waiting for your opponent/.test(room.message) ? 'waiting' : false;
+      return goal === 'waiting' && room.status === 'waiting' && room.client && Date.now() - room.opened > 2000 ? 'waiting' : false;
     }, goal, { polling: 100, timeout: 30000 }).then(handle => handle.jsonValue()).catch(() => 'timeout');
     if (state === goal || state === 'ready') { log(`in room (${state}) after ${attempt} attempt(s)`); break; }
     if (role === 'host' || Date.now() > deadline) throw new Error(`Could not enter the room: ${state}`);

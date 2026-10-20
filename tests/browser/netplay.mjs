@@ -203,7 +203,9 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
     await pages[0].keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
     await pages[0].keyboard.type(`Test ${name}`);
     await press(pages[0], 'Enter');
-    await pages[0].waitForFunction(() => online.state.room && /Waiting for your opponent/.test(online.state.room.message), null, { polling: 100 });
+    // The room is open once its client has connected; the guest then waits for it in the live list.
+    await pages[0].waitForFunction(() => online.state.screen === 'waiting' && online.state.room &&
+      online.state.room.status === 'waiting' && online.state.room.client, null, { polling: 100 });
     await press(pages[1], 'ArrowDown', 'Enter');
     await pages[1].waitForFunction(name => online.state.screen === 'lobby' && online.state.lobby.rooms.some(room => room.name === name) &&
       online.state.focus === 'room:' + online.state.lobby.rooms.find(room => room.name === name).id, `Test ${name}`, { polling: 100 });
