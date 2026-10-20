@@ -1220,12 +1220,25 @@ async fn connection(stream: TcpStream, address: SocketAddr, app: Arc<App>) {
     app.cleanup(&peer, room.as_ref().map(|(id, _)| id.as_str()));
 }
 
-async fn shutdown_signal() {
+// The SIGTERM handler is installed before the relay says that it listens, so a
+// SIGTERM right after start-up is a clean shutdown and not a kill by the signal.
+#[cfg(unix)]
+type Terminate = tokio::signal::unix::Signal;
+#[cfg(not(unix))]
+type Terminate = ();
+
+fn terminate_handler() -> Terminate {
     #[cfg(unix)]
     {
-        let mut terminate =
-            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                .expect("SIGTERM handler");
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("SIGTERM handler")
+    }
+}
+
+#[cfg_attr(not(unix), allow(unused_mut, unused_variables))]
+async fn shutdown_signal(mut terminate: Terminate) {
+    #[cfg(unix)]
+    {
         tokio::select! { _ = tokio::signal::ctrl_c() => {}, _ = terminate.recv() => {} }
     }
     #[cfg(not(unix))]
@@ -1251,6 +1264,7 @@ async fn main() {
         }
     };
     let address = listener.local_addr().unwrap();
+    let terminate = terminate_handler();
     if config.test_events {
         println!(
             "{}",
@@ -1285,7 +1299,7 @@ async fn main() {
         }
     });
     let mut tasks = tokio::task::JoinSet::new();
-    let shutdown = shutdown_signal();
+    let shutdown = shutdown_signal(terminate);
     tokio::pin!(shutdown);
     let mut accept_after = Instant::now();
     loop {
