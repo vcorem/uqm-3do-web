@@ -20,6 +20,7 @@
     "test:netplay-hook": "node tests/browser/netplay-hook.mjs",
     "test:subtitles": "node tests/browser/subtitles.mjs",
     "test:editions": "node tests/browser/editions.mjs",
+    "test:cosmoclash-site": "node tests/browser/cosmoclash-site.mjs",
     "test:lobby-client": "node tests/browser/lobby-client.mjs",
     "test:data-cache": "node tests/browser/data-cache.mjs",
     "test:online-ui": "node tests/browser/online-ui.mjs",
