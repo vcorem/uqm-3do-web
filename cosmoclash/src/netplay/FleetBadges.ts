@@ -2,9 +2,11 @@ import * as THREE from 'three';
 import { badgeSprite, disposeSprite } from '@/ui/markers';
 
 /**
- * Number badges (1, 2, 3) over the ships of the 3D ship choice that are in
- * the player's fleet. The ship containers are the groups of the selection
- * scene, in the order of the character registry (src/game/SelectionScene.ts).
+ * Badges over the ships of the 3D ship choice that are in the player's fleet:
+ * 1 on the first pick (it opens the match), a check mark on the others (after
+ * a loss the player chooses among them). The ship containers are the groups
+ * of the selection scene, in the order of the character registry
+ * (src/game/SelectionScene.ts).
  */
 export class FleetBadges {
   private badges: THREE.Sprite[] = [];
@@ -19,7 +21,7 @@ export class FleetBadges {
     picks.forEach((ship, n) => {
       const group = ships[ship];
       if (!group) return;
-      const badge = badgeSprite(n + 1, color);
+      const badge = badgeSprite(n === 0 ? 1 : '✓', color);
       // Left of the ship: the ship card is above it and the fleet tray below.
       badge.position.set(-44, 14, 0);
       group.add(badge);

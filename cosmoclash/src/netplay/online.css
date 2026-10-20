@@ -43,8 +43,8 @@
 .cc-wait-panel p { margin: 0; }
 .cc-link { color: var(--ink); background: rgba(0, 8, 30, 0.9); border: 1px dashed rgba(100, 150, 255, 0.5); border-radius: calc(6px * var(--u)); padding: calc(6px * var(--u)) calc(10px * var(--u)); user-select: all; word-break: break-all; font-size: 0.85em; }
 
-/* Fleet choice over the 3D ships */
-.cc-fleet { justify-content: space-between; padding-top: calc(16px * var(--u)); }
+/* Fleet choice and the choice of the next ship over the 3D ships */
+.cc-fleet, .cc-next { justify-content: space-between; padding-top: calc(16px * var(--u)); }
 .cc-fleet-head { display: flex; flex-direction: column; gap: calc(6px * var(--u)); align-items: center; text-shadow: 0 0 6px #000; width: 100%; }
 .cc-fleet-head .cc-sub { margin-bottom: calc(4px * var(--u)); }
 .cc-title-small { font-size: max(16px, calc(30px * var(--u))); }
@@ -97,7 +97,26 @@
 .cc-arrow:hover { color: #fff; background: rgba(20, 40, 100, 0.6); border-color: rgba(100, 180, 255, 0.8); }
 .cc-arrow.left { left: calc(18px * var(--u)); }
 .cc-arrow.right { right: calc(18px * var(--u)); }
-.cc-fleet .cc-hint { margin-top: 0; text-shadow: 0 0 6px #000; }
+.cc-fleet .cc-hint, .cc-next .cc-hint { margin-top: 0; text-shadow: 0 0 6px #000; }
+.cc-rule { font-size: max(11px, calc(14px * var(--u))); }
+
+/* The time to choose the next ship: the seconds and a bar that runs down */
+.cc-timer { display: flex; align-items: center; gap: calc(12px * var(--u)); width: min(100%, calc(440px * var(--u))); }
+.cc-timer-n {
+  min-width: 2ch; font-size: max(20px, calc(40px * var(--u))); font-weight: bold; line-height: 1; font-variant-numeric: tabular-nums;
+  color: #c9fbff; text-shadow: 0 0 calc(10px * var(--u)) #00e5ff, 0 0 calc(26px * var(--u)) #0088ff;
+}
+.cc-timer-bar { flex: 1; height: max(5px, calc(10px * var(--u))); border-radius: 99px; background: rgba(120, 150, 220, 0.25); overflow: hidden; }
+.cc-timer-run { display: block; height: 100%; width: 100%; background: var(--p1); box-shadow: 0 0 calc(10px * var(--u)) var(--p1); transform-origin: left center; animation-name: cc-timer; animation-timing-function: linear; animation-fill-mode: both; }
+.cc-timer-run.stopped { animation-play-state: paused; }
+.cc-timer.low .cc-timer-n { color: #ffd6cf; text-shadow: 0 0 calc(10px * var(--u)) #ff5a3c, 0 0 calc(26px * var(--u)) #a01800; }
+.cc-timer.low .cc-timer-run { background: var(--error); box-shadow: 0 0 calc(10px * var(--u)) var(--error); }
+@keyframes cc-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.cc-next-tray { min-width: calc(520px * var(--u)); max-width: 92%; }
+/* The winner waits over the last battle */
+.cc-next-wait { justify-content: center; }
+.cc-next-panel { display: flex; flex-direction: column; gap: calc(10px * var(--u)); align-items: center; min-width: calc(480px * var(--u)); max-width: 92%; }
+.cc-next-panel p { margin: 0; }
 
 /* Countdown over the battle */
 .cc-countdown { justify-content: center; }
@@ -119,6 +138,7 @@
 .cc-result-panel { display: flex; flex-direction: column; gap: calc(8px * var(--u)); min-width: calc(420px * var(--u)); }
 .cc-result-panel p { margin: 0; }
 .cc-result-fleet { display: flex; gap: calc(8px * var(--u)); justify-content: center; align-items: baseline; flex-wrap: wrap; }
-.cc-result-ship { text-transform: uppercase; letter-spacing: 0.06em; }
-.cc-result-ship.lost { color: #6f7c99; text-decoration: line-through; }
 .cc-rematch { color: var(--notice); }
+
+/* The loser chooses the next ship over the 3D ships: the battle bars and chips are not shown meanwhile. */
+#game-container.cc-choosing > #hud, #game-container.cc-choosing > .match-hud { visibility: hidden; }

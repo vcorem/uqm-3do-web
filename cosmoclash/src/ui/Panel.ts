@@ -5,6 +5,8 @@ import { announce } from './live';
 export interface PanelOptions {
   title: string;
   lines?: string[];
+  /** More content under the lines (the fleets of a game over). */
+  content?: Node[];
   buttons: { id: string; label: string }[];
   focus?: string;
   /** The button that Esc chooses. */
@@ -39,6 +41,7 @@ export class Panel {
     const body = el('div', { class: 'cc-dialog cc-panel', role: options.dialog ? 'alertdialog' : 'dialog', aria: { label: options.title } },
       el('h2', { class: options.titleClass ?? '', text: options.title }),
       ...(options.lines ?? []).map(line => el('p', { text: line })),
+      ...(options.content ?? []),
       el('div', { class: 'cc-buttons' }, ...options.buttons.map(item => {
         const node = button(item.id, item.label);
         node.addEventListener('click', () => this.options.onChoose(item.id));

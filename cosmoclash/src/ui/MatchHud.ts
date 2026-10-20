@@ -7,8 +7,10 @@ export interface SideInfo {
   player: string;
   /** "YOU", "OPPONENT", "COMPUTER", "PLAYER 2" */
   tag: string;
-  /** Ships in battle order and the current one; lost ships are the ones before it. */
+  /** The ships in the order they flew (a ship id below 0 is not known yet): the first `lost` are destroyed. */
   fleet: number[];
+  lost: number;
+  /** The index of the ship in battle, -1 while the player chooses the next ship. */
   current: number;
 }
 
@@ -50,9 +52,9 @@ export class MatchHud {
       node.replaceChildren(
         el('div', { class: 'match-tag' }, el('b', { text: side.player }), ' · ' + side.tag),
         el('div', { class: 'match-fleet' }, ...side.fleet.map((ship, n) => el('span', {
-          class: 'match-ship' + (n < side.current ? ' lost' : n === side.current ? ' current' : ''),
+          class: 'match-ship' + (n < side.lost ? ' lost' : n === side.current ? ' current' : ''),
           text: CHARACTER_REGISTRY[ship]?.name ?? '?',
-          title: n < side.current ? 'Destroyed' : n === side.current ? 'In battle' : 'Waiting',
+          title: n < side.lost ? 'Destroyed' : n === side.current ? 'In battle' : 'Waiting',
         }))));
     });
   }

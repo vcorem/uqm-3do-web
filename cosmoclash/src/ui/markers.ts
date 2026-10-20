@@ -40,8 +40,8 @@ export function labelSprite(text: string, color: string, scale = 60): THREE.Spri
     ctx.fillText(text, 128, 128);
   }), scale);
 }
-/** A round badge with the place of a ship in the fleet (1, 2, 3). */
-export function badgeSprite(n: number, color: string, scale = 22): THREE.Sprite {
+/** A round badge on a ship of the fleet: 1 on the ship that opens the match, a check mark on the others. */
+export function badgeSprite(n: number | string, color: string, scale = 22): THREE.Sprite {
   return sprite(canvasTexture(128, ctx => {
     ctx.fillStyle = color;
     ctx.shadowColor = color;

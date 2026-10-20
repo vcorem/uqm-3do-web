@@ -11,12 +11,15 @@ import { CHARACTER_REGISTRY } from '@/game/CharacterRegistry';
 import { el, button } from '@/ui/dom';
 import { announce } from '@/ui/live';
 import {
-  OnlineController, clock, waitingTime, LISTED_ROOM_MINUTES, PRIVATE_ROOM_MINUTES, SHIP_COUNT, type OnlineState,
+  OnlineController, clock, waitingTime, LISTED_ROOM_MINUTES, PRIVATE_ROOM_MINUTES, SHIP_COUNT, NEXT_MS, type OnlineState,
 } from './OnlineController';
+import type { FleetView } from '@/match/FleetMatch';
+import { fleetLine } from '@/ui/fleetChips';
 
 const shipName = (id: number) => CHARACTER_REGISTRY[id]?.name ?? '?';
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-const fleetText = (fleet: number[]) => fleet.map(shipName).join(' › ');
+/** The ship destroyed last (the last of the destroyed ships). */
+const lastLost = (side: FleetView | undefined) => side && side.lost ? side.ships[side.lost - 1] : -1;
 
 export class OnlineView {
   readonly root: HTMLDivElement;
@@ -89,7 +92,9 @@ export class OnlineView {
       case 'joining': return 'joining|' + !!s.room?.name;
       case 'invite': return 'invite';
       case 'fleet': return ['fleet', s.fleet.picks.join(','), net?.localReady, net?.localReady && net.peerReady, net?.changing, s.fleet.preparing, this.controller.bannerVisible(), s.notice?.kind ?? '', s.confirm].join('|');
-      case 'countdown': return ['countdown', s.confirm].join('|');
+      case 'countdown': return ['countdown', s.confirm, s.battle].join('|');
+      // The timer turns red for the last 5 seconds.
+      case 'next': return ['next', s.next?.battle, s.next?.mine, s.next?.chosen, s.next?.auto, this.controller.nextMsLeft() <= 5000, s.notice?.kind ?? '', s.confirm].join('|');
       case 'battle': return ['battle', s.confirm].join('|');
       case 'result': return ['result', s.result?.winner, net?.localRematch, net?.peerRematch, s.confirm].join('|');
       default: return s.screen;
@@ -104,6 +109,7 @@ export class OnlineView {
       case 'invite': return this.invite();
       case 'fleet': return this.fleet(s);
       case 'countdown': return this.countdown(s);
+      case 'next': return s.next?.mine ? this.nextChoice(s) : this.nextWait(s);
       case 'battle': return el('div', { class: 'cc-screen cc-over cc-battle' }, el('p', { class: 'cc-battle-status', bind: 'battle-status' }));
       case 'result': return this.result(s);
       default: return el('div');
@@ -224,15 +230,22 @@ export class OnlineView {
     const local = s.room?.role === 'guest' ? 1 : 0;
     return el('span', { class: local ? 'cc-p2' : 'cc-p1', text: local ? 'Player 2 · orange · right' : 'Player 1 · cyan · left' });
   }
+  private local(s: OnlineState): 0 | 1 { return (s.start?.localPlayer ?? (s.room?.role === 'guest' ? 1 : 0)) as 0 | 1; }
+  /** "You: chips" and "Opponent: chips" in the player colours. */
+  private sides(s: OnlineState): HTMLElement[] {
+    const local = this.local(s);
+    return [fleetLine('You', local, s.sides?.[local]), fleetLine('Opponent', (1 - local) as 0 | 1, s.sides?.[1 - local])];
+  }
   private fleet(s: OnlineState): HTMLElement {
     const ready = !!s.net?.localReady;
     const picks = s.fleet.picks;
-    const slots = el('div', { class: 'cc-slots', aria: { label: 'Your fleet in battle order' } });
+    // Ship 1 opens the match; the order of the others does not matter (the loser chooses the next ship).
+    const slots = el('div', { class: 'cc-slots', aria: { label: 'Your fleet: the first ship opens the match' } });
     for (let i = 0; i < SHIP_COUNT; i++) {
       const ship = picks[i];
-      slots.append(el('div', { class: 'cc-slot' + (ship !== undefined ? ' filled' : '') },
-        el('span', { class: 'cc-slot-n', text: String(i + 1) }),
-        el('span', { class: 'cc-slot-ship', text: ship !== undefined ? shipName(ship) : i === picks.length && !ready ? 'Next' : '—' })));
+      slots.append(el('div', { class: 'cc-slot' + (ship !== undefined ? ' filled' : '') + (i === 0 ? ' first' : '') },
+        el('span', { class: 'cc-slot-n', text: i === 0 ? '1' : ship !== undefined ? '✓' : '+', aria: { hidden: 'true' } }),
+        el('span', { class: 'cc-slot-ship', text: ship !== undefined ? shipName(ship) : i === picks.length && !ready ? (i === 0 ? 'Opener' : 'Add') : '—' })));
     }
     // Change fleet takes Ready back while the opponent still chooses (when both are ready the match starts).
     const locked = !!s.net?.changing || !!s.net?.peerReady;
@@ -257,6 +270,7 @@ export class OnlineView {
       el('div', { class: 'cc-fleet-bottom' },
         el('div', { class: 'cc-tray cc-panel' },
           slots,
+          el('p', { class: 'cc-muted cc-rule', text: 'Ship 1 opens the match. After each loss you choose your next ship from the ships left.' }),
           el('p', { class: 'cc-self', bind: 'self' }),
           el('p', { class: 'cc-opponent', bind: 'opponent' })),
         this.notice(s),
@@ -267,15 +281,72 @@ export class OnlineView {
   }
 
   private countdown(s: OnlineState): HTMLElement {
-    const start = s.start;
-    const local = start?.localPlayer ?? 0;
+    const local = this.local(s);
+    const mine = s.sides?.[local], theirs = s.sides?.[1 - local];
+    const now = (side: FleetView | undefined) => side && side.current >= 0 ? shipName(side.ships[side.current]) : '?';
     return this.screen('countdown', false,
       el('div', { class: 'cc-count', bind: 'count', aria: { hidden: 'true' } }),
       el('div', { class: 'cc-panel cc-count-panel' },
-        el('p', { class: 'cc-big' }, 'You are ', this.you(s)),
-        el('p', {}, el('b', { text: 'Your fleet: ' }), fleetText(start?.fleets[local] ?? [])),
-        el('p', {}, el('b', { text: 'Opponent: ' }), fleetText(start?.fleets[1 - local] ?? []))),
+        el('p', { class: 'cc-big' }, s.battle ? 'Next battle · You are ' : 'You are ', this.you(s)),
+        ...this.sides(s),
+        el('p', { class: 'cc-muted', text: s.battle ? `Your ${now(mine)} against the enemy ${now(theirs)}.`
+          : 'The first ship opens. After a loss, the loser chooses the next ship.' })),
       el('p', { class: 'cc-hint cc-hint-over', text: 'Fly: ↑ thrust · ← → turn · / fire · . special · Esc leave' }));
+  }
+
+  /** The time to choose: the seconds left and a bar that runs down (stopped when the ship is chosen). */
+  private timer(s: OnlineState): HTMLElement {
+    const left = this.controller.nextMsLeft();
+    const bar = el('i', { class: 'cc-timer-run' + (s.next?.chosen !== null ? ' stopped' : '') });
+    bar.style.animationDuration = NEXT_MS + 'ms';
+    bar.style.animationDelay = -(NEXT_MS - left) + 'ms';
+    return el('div', { class: 'cc-timer' + (left <= 5000 ? ' low' : ''), role: 'timer', aria: { label: 'Time to choose the next ship' } },
+      el('span', { class: 'cc-timer-n', bind: 'timer' }),
+      el('span', { class: 'cc-timer-bar' }, bar));
+  }
+  /** The loser chooses the next ship in the 3D ship choice (destroyed ships and ships not in the fleet are not shown). */
+  private nextChoice(s: OnlineState): HTMLElement {
+    const local = this.local(s);
+    const chosen = s.next?.chosen !== null;
+    const screen = this.screen('next', false,
+      el('div', { class: 'cc-fleet-head' },
+        el('h1', { class: 'cc-title cc-title-small', text: 'Choose Your Next Ship' }),
+        el('p', { class: 'cc-sub' }, `Your ${shipName(lastLost(s.sides?.[local]))} was destroyed · You are `, this.you(s)),
+        el('button', { type: 'button', class: 'cc-btn cc-ship' + (chosen ? ' locked' : ''), item: 'ship' },
+          el('span', { class: 'cc-ship-name', bind: 'ship-name' }),
+          el('span', { class: 'cc-ship-detail', bind: 'ship-detail' }),
+          el('span', { class: 'cc-ship-state', bind: 'ship-state' }))),
+      chosen ? null : el('button', { type: 'button', class: 'cc-arrow left', data: { browse: '-1' }, tabIndex: -1, aria: { label: 'Previous ship' }, text: '‹' }),
+      chosen ? null : el('button', { type: 'button', class: 'cc-arrow right', data: { browse: '1' }, tabIndex: -1, aria: { label: 'Next ship' }, text: '›' }),
+      el('div', { class: 'cc-fleet-bottom' },
+        el('div', { class: 'cc-tray cc-panel cc-next-tray' },
+          this.timer(s),
+          el('p', { class: 'cc-self', bind: 'self' }),
+          ...this.sides(s)),
+        this.notice(s),
+        el('div', { class: 'cc-buttons' }, button('leave', 'Leave match')),
+        el('p', { class: 'cc-hint', text: chosen ? 'Esc leave' : '← → ships · Enter choose · Esc leave' })));
+    if (local) screen.classList.add('cc-p2-side');
+    return screen;
+  }
+  /** The winner waits for the loser's choice, with the same time. The winner's ship stays. */
+  private nextWait(s: OnlineState): HTMLElement {
+    const local = this.local(s);
+    const mine = s.sides?.[local];
+    const screen = this.screen('next', false,
+      el('div', { class: 'cc-veil' }),
+      el('h1', { class: 'cc-title cc-title-small', text: `Enemy ${shipName(lastLost(s.sides?.[1 - local]))} destroyed!` }),
+      el('div', { class: 'cc-panel cc-next-panel' },
+        el('p', { class: 'cc-big', text: 'Your opponent is choosing the next ship' }),
+        this.timer(s),
+        el('p', { class: 'cc-self', bind: 'self' }),
+        ...this.sides(s),
+        el('p', { class: 'cc-muted', text: mine && mine.current >= 0 ? `Your ${shipName(mine.ships[mine.current])} stays for the next battle.` : '' })),
+      this.notice(s),
+      // As in the battle: no keyboard focus here (Enter does nothing), Esc asks; the button is for the mouse.
+      el('div', { class: 'cc-buttons' }, button('leave', 'Leave (Esc)')));
+    screen.classList.add('cc-next-wait');
+    return screen;
   }
 
   private result(s: OnlineState): HTMLElement {
@@ -285,12 +356,7 @@ export class OnlineView {
     const won = winner === local + 1, draw = winner === 0;
     const net = s.net;
     const label = net?.localRematch ? 'Rematch requested' : net?.peerRematch ? 'Accept rematch' : 'Rematch';
-    const line = (title: string, player: 0 | 1) => {
-      const fleet = result?.fleets[player] ?? [];
-      const lost = result?.lost[player] ?? 0;
-      return el('p', { class: 'cc-result-fleet' }, el('b', { class: player ? 'cc-p2' : 'cc-p1', text: title + ': ' }),
-        ...fleet.map((ship, i) => el('span', { class: 'cc-result-ship' + (i < lost ? ' lost' : ''), text: shipName(ship) })));
-    };
+    const line = (title: string, player: 0 | 1) => fleetLine(title, player, result?.sides[player], 'cc-result-fleet');
     return this.screen('result', false,
       el('div', { class: 'cc-veil' }),
       el('h1', { class: 'cc-title cc-result-title ' + (draw ? 'draw' : won ? 'won' : 'lost'), text: draw ? 'Draw' : won ? 'Victory' : 'Defeat' }),
@@ -304,11 +370,13 @@ export class OnlineView {
 
   private dialog(s: OnlineState): HTMLElement {
     const room = s.screen === 'fleet';
+    const choosing = s.screen === 'next' && !!s.next && s.next.chosen === null;
     return el('div', { class: 'cc-dialog-veil' },
       el('div', { class: 'cc-dialog cc-panel', role: 'alertdialog', aria: { label: room ? 'Leave the room?' : 'Leave the match?' } },
         el('h2', { text: room ? 'Leave the room?' : 'Leave the match?' }),
         el('p', { text: room ? 'Your opponent goes back to the lobby.' : 'The match ends for both players. Your opponent goes back to the lobby.' }),
         s.screen === 'battle' ? el('p', { class: 'cc-muted', text: 'The battle goes on while this question is open.' }) : null,
+        choosing ? el('p', { class: 'cc-muted', text: 'The time to choose goes on while this question is open.' }) : null,
         el('div', { class: 'cc-buttons' }, button('stay', 'Stay'), button('leave-confirm', 'Leave'))));
   }
 
@@ -354,12 +422,12 @@ export class OnlineView {
         const ready = !!net?.localReady;
         texts['ship-name'] = ship.name;
         texts['ship-detail'] = `${ship.weapon} · ${ship.special}`;
-        texts['ship-state'] = ready ? (at >= 0 ? `Ship ${at + 1} of your fleet` : 'Not in your fleet')
-          : at >= 0 ? `In your fleet as ship ${at + 1} · Enter takes it out`
-            : picks.length >= SHIP_COUNT ? 'Your fleet is full' : `Enter adds it as ship ${picks.length + 1}`;
+        texts['ship-state'] = ready ? (at === 0 ? 'Opens the match' : at > 0 ? 'In your fleet' : 'Not in your fleet')
+          : at === 0 ? 'Opens the match · Enter takes it out' : at > 0 ? 'In your fleet · Enter takes it out'
+            : picks.length >= SHIP_COUNT ? 'Your fleet is full' : picks.length ? 'Enter adds it to your fleet' : 'Enter adds it · it opens the match';
         texts.self = ready ? (net?.changing ? 'Taking Ready back…' : net?.peerReady ? 'Both ready! Starting…' : 'You are ready. Waiting for your opponent…')
           : s.fleet.preparing ? 'Getting ready…'
-            : picks.length ? `Pick up to ${SHIP_COUNT} ships, or say Ready with ${plural(picks.length, 'ship')}.` : 'Pick 1 to 3 ships. They fight in this order.';
+            : picks.length ? `Pick up to ${SHIP_COUNT} ships, or say Ready with ${plural(picks.length, 'ship')}.` : 'Pick 1 to 3 ships. Your first pick opens the match.';
         const peer = net?.peerFleet.length ?? 0;
         texts.opponent = !net?.peerFleetKnown ? 'Opponent: connecting…'
           : net.peerReady ? `Opponent: ready with ${plural(peer, 'ship')}` : `Opponent: choosing · ${peer} of ${SHIP_COUNT} picked`;
@@ -372,6 +440,25 @@ export class OnlineView {
         break;
       }
       case 'battle': texts['battle-status'] = net?.phase === 'finishing' ? 'Checking the result with your opponent…' : ''; break;
+      case 'next': {
+        const next = s.next;
+        if (!next) break;
+        const left = this.controller.nextLeft();
+        texts.timer = String(left);
+        const first = shipName(next.ships[0]);
+        if (next.mine) {
+          const ship = CHARACTER_REGISTRY[next.chosen ?? next.carousel];
+          texts['ship-name'] = ship.name;
+          texts['ship-detail'] = `${ship.weapon} · ${ship.special}`;
+          texts['ship-state'] = next.chosen !== null ? (next.auto ? `Time is up: ${ship.name} launches` : `${ship.name} launches`)
+            : next.carousel === next.ships[0] ? 'Enter launches it · it comes by itself when the time runs out' : 'Enter launches it';
+          texts.self = next.chosen !== null ? 'Starting the next battle…'
+            : `Choose in ${plural(left, 'second')}, or ${first} comes by itself.`;
+        } else {
+          texts.self = left > 0 ? `Their choice: ${next.ships.map(shipName).join(' or ')} · ${plural(left, 'second')} left` : 'Waiting for your opponent…';
+        }
+        break;
+      }
       case 'result':
         texts.rematch = net?.localRematch ? 'Rematch requested. Waiting for your opponent…' : net?.peerRematch ? 'Your opponent wants a rematch!' : 'A rematch needs both players.';
         break;
@@ -398,7 +485,14 @@ export class OnlineView {
         if (net?.localReady) return head + (net.peerReady ? 'Both ready. Starting.' : 'You are ready. Waiting for your opponent.');
         return head + `Choose your fleet. ${CHARACTER_REGISTRY[s.fleet.carousel].name}. ${plural(s.fleet.picks.length, 'ship')} picked.` + notice;
       }
-      case 'countdown': return `The battle starts. You are ${s.start?.localPlayer ? 'Player 2, orange, right' : 'Player 1, cyan, left'}.`;
+      case 'countdown': return `${s.battle ? 'The next battle starts.' : 'The battle starts.'} You are ${s.start?.localPlayer ? 'Player 2, orange, right' : 'Player 1, cyan, left'}.`;
+      case 'next': {
+        const next = s.next;
+        if (!next) return '';
+        if (!next.mine) return this.controller.nextLeft() > 0 ? `Your opponent is choosing the next ship. ${NEXT_MS / 1000} seconds.` + notice : 'Waiting for your opponent.' + notice;
+        if (next.chosen !== null) return (next.auto ? 'Time is up. ' : '') + `${shipName(next.chosen)} launches.`;
+        return `Choose your next ship in ${NEXT_MS / 1000} seconds. ${shipName(next.carousel)}.` + notice;
+      }
       case 'battle': return 'Battle.';
       case 'result': {
         const r = s.result;
@@ -411,14 +505,15 @@ export class OnlineView {
 
   // ------------------------------------------------------------ focus
   private applyFocus(s: OnlineState): void {
-    const focus = s.confirm ? s.confirmFocus : s.focus;
+    // In the battle the keys fly the ship: no button holds the focus there (nor while the opponent chooses the next ship).
+    const none = !s.confirm && (s.screen === 'battle' || s.screen === 'countdown' || (s.screen === 'next' && !s.next?.mine));
+    const focus = none ? null : s.confirm ? s.confirmFocus : s.focus;
     let target: HTMLElement | null = null;
     for (const node of this.root.querySelectorAll<HTMLElement>('[data-item]')) {
       node.classList.toggle('is-focus', node.dataset.item === focus);
       if (node.dataset.item === focus) target = node;
     }
-    // In the battle the keys fly the ship: no button holds the focus there.
-    if (!s.confirm && (s.screen === 'battle' || s.screen === 'countdown')) {
+    if (none) {
       const active = document.activeElement as HTMLElement | null;
       if (active && this.root.contains(active)) active.blur();
       return;

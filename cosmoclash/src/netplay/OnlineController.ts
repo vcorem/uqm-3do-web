@@ -7,12 +7,14 @@
  *
  * Screens: hidden (main menu or local play), lobby, name, waiting (host),
  * joining (guest), invite (?cosmoRoom= link), fleet (3D ship choice),
- * countdown, battle, result. A confirm dialog can cover fleet, countdown,
- * battle and result ("Leave the match?").
+ * countdown, battle, next (the loser chooses the next ship in the 3D ship
+ * choice, the winner waits; NEXT_MS for the choice), result. A confirm dialog
+ * can cover fleet, countdown, battle, next and result ("Leave the match?").
  */
 import { checkRoomName, defaultRoomName } from './roomName';
 import type { LobbyRoom, LobbyStatus, LobbyWatcher } from './CosmoLobby';
-import type { MatchStart, NetplayState, Role } from './CosmoNetplay';
+import type { MatchStart, NetplayState, NextBattle, Role } from './CosmoNetplay';
+import type { FleetView } from '@/match/FleetMatch';
 
 export const NAME_KEY = 'cosmoclash.online.roomName.v1';
 export const COUNTDOWN_MS = 3000;
@@ -27,8 +29,10 @@ const BANNER_MS = 2500;
 export const INPUT_LOCK_MS = 600;
 /** Open room waits this long for the room list to answer (named room or private room). */
 export const LIST_WAIT_MS = 10000;
+/** The loser chooses the next ship in this time; then the first ship left in fleet order comes. */
+export const NEXT_MS = 20000;
 
-export type Screen = 'hidden' | 'lobby' | 'name' | 'waiting' | 'joining' | 'invite' | 'fleet' | 'countdown' | 'battle' | 'result';
+export type Screen = 'hidden' | 'lobby' | 'name' | 'waiting' | 'joining' | 'invite' | 'fleet' | 'countdown' | 'battle' | 'next' | 'result';
 export interface Notice { text: string; kind: 'info' | 'error' | 'link' }
 export interface RoomInfo { token: string; role: Role; name: string; listed: boolean; opened: number; closing?: boolean }
 export interface FleetState {
@@ -40,7 +44,26 @@ export interface FleetState {
   banner: string;
   bannerUntil: number;
 }
-export interface MatchResult { winner: 0 | 1 | 2; localPlayer: 0 | 1; fleets: [number[], number[]]; lost: [number, number] }
+export interface MatchResult { winner: 0 | 1 | 2; localPlayer: 0 | 1; sides: [FleetView, FleetView] }
+/** The choice of the next ship after a lost battle (the 'next' screen). */
+export interface NextState {
+  battle: number;
+  /** The loser, who chooses (0 host, 1 guest). */
+  player: 0 | 1;
+  /** This player chooses (else the opponent chooses and this player waits). */
+  mine: boolean;
+  /** The ships that can fly next, in fleet order: the first one comes when the time runs out. */
+  ships: number[];
+  /** The ship that the 3D ship choice shows. */
+  carousel: number;
+  /** env.now() when the time to choose runs out. */
+  deadline: number;
+  chosen: number | null;
+  /** env.now() at the choice (the time to choose stops there). */
+  chosenAt?: number;
+  /** The time ran out and the game chose. */
+  auto: boolean;
+}
 export interface OnlineState {
   screen: Screen;
   focus: string | null;
@@ -56,6 +79,11 @@ export interface OnlineState {
   fleet: FleetState;
   start: MatchStart | null;
   countdownEnd: number;
+  /** The battle of the countdown: 0 is the first one, later battles come after a choice. */
+  battle: number;
+  /** Both fleets for the countdown and the next screen (destroyed ships first). */
+  sides: [FleetView, FleetView] | null;
+  next: NextState | null;
   result: MatchResult | null;
   invite: string | null;
   /** Lobby: the player moved the focus (new rooms do not take it then). */
@@ -74,6 +102,8 @@ export interface SessionLike {
   ready(): void;
   /** Take Ready back (Change fleet). */
   unready(): void;
+  /** Protocol 3: this player's next ship (the loser's choice). */
+  chooseNext(ship: number): void;
   rematch(): void;
   close(): void;
 }
@@ -81,6 +111,7 @@ export interface SessionHandlers {
   onState(state: NetplayState): void;
   onStart(start: MatchStart): void;
   onEnd(winner: 0 | 1 | 2): void;
+  onNext(next: NextBattle): void;
 }
 export interface OnlineEnv {
   now(): number;
@@ -110,14 +141,18 @@ export interface OnlineEnv {
     start(start: MatchStart): void;
     /** The session ended: remove the battle and the ship choice. */
     stop(): void;
-    /** Ships lost per player at the end of the match. */
-    lost(): [number, number];
+    /** Both fleets now (the countdown, the choice of the next ship, the result). */
+    fleets(): [FleetView, FleetView];
+    /** The next ship is agreed: build the next battle (it starts after the countdown). */
+    next(next: NextBattle): void;
   };
   changed?(state: OnlineState): void;
 }
 
 const ESCAPE: Partial<Record<Screen, string>> = { lobby: 'back', name: 'cancel', waiting: 'cancel', joining: 'cancel', invite: 'dismiss' };
-const IN_MATCH: Screen[] = ['fleet', 'countdown', 'battle', 'result'];
+const IN_MATCH: Screen[] = ['fleet', 'countdown', 'battle', 'next', 'result'];
+/** An open "Leave the match?" stays open while the match goes from one of these screens to another. */
+const KEEP_CONFIRM: Screen[] = ['countdown', 'battle', 'next'];
 /** Text of the room client that tells the old page what to do next. The screens show their own next steps. */
 export function cleanMessage(message: unknown): string {
   return String(message ?? '').replace(/\s*(Reload|Please try|Create a new room)[^.]*\.\s*$/i, '').trim();
@@ -143,6 +178,7 @@ export class OnlineController {
   private clockTimer: unknown = null;
   private noticeTimer: unknown = null;
   private listTimer: unknown = null;
+  private nextTimer: unknown = null;
   private lastRoom: string | null = null;
 
   constructor(private readonly env: OnlineEnv) {
@@ -151,7 +187,7 @@ export class OnlineController {
       lobby: { status: 'idle', rooms: [], error: '', retries: 0 },
       notice: null, name: '', nameError: '', room: null, net: null,
       fleet: { carousel: 0, picks: [], preparing: false, banner: '', bannerUntil: 0 },
-      start: null, countdownEnd: 0, result: null, invite: null, touched: false, opening: false, lockUntil: 0,
+      start: null, countdownEnd: 0, battle: 0, sides: null, next: null, result: null, invite: null, touched: false, opening: false, lockUntil: 0,
     };
   }
 
@@ -174,6 +210,8 @@ export class OnlineController {
       case 'invite': return ['join', 'dismiss'];
       case 'fleet': return this.localReady() ? ['ship', 'change', 'leave'] : ['ship', 'ready', 'undo', 'leave'];
       case 'countdown': case 'battle': return ['leave'];
+      // The loser: the ship card (Enter chooses), Leave. The winner waits: Leave only (Esc or a click).
+      case 'next': return s.next?.mine ? ['ship', 'leave'] : ['leave'];
       case 'result': return ['rematch', 'lobby'];
       default: return [];
     }
@@ -187,9 +225,9 @@ export class OnlineController {
   private show(screen: Screen, focus?: string): void {
     const s = this.state;
     const wasLobby = s.screen === 'lobby' || s.screen === 'name';
-    // An open "Leave the match?" stays open when the countdown becomes the battle.
-    if (screen !== s.screen) { s.touched = false; if (!(s.screen === 'countdown' && screen === 'battle')) s.confirm = false; }
-    if (screen !== s.screen && (screen === 'fleet' || screen === 'result')) s.lockUntil = this.env.now() + INPUT_LOCK_MS;
+    // An open "Leave the match?" stays open when the countdown becomes the battle, and around the choice of the next ship.
+    if (screen !== s.screen) { s.touched = false; if (!(KEEP_CONFIRM.includes(s.screen) && KEEP_CONFIRM.includes(screen))) s.confirm = false; }
+    if (screen !== s.screen && (screen === 'fleet' || screen === 'result' || screen === 'next')) s.lockUntil = this.env.now() + INPUT_LOCK_MS;
     if (screen !== 'name') this.stopOpening();
     s.screen = screen;
     if (focus !== undefined) s.focus = focus;
@@ -298,6 +336,8 @@ export class OnlineController {
     const session = this.session;
     this.session = null;
     if (this.countdownTimer) { this.env.clearTimeout(this.countdownTimer); this.countdownTimer = null; }
+    this.stopNextTimer();
+    this.state.next = null;
     if (this.state.room) this.state.room.closing = true;
     this.state.room = null;
     this.state.net = null;
@@ -320,6 +360,7 @@ export class OnlineController {
         onState: net => this.roomState(session, room, net),
         onStart: start => this.started(session, start),
         onEnd: winner => this.ended(session, winner),
+        onNext: next => this.nexted(session, next),
       });
       this.session = session;
       // Enter must not close a room just opened: Copy invite link has the focus first.
@@ -358,6 +399,11 @@ export class OnlineController {
       else this.changed();
       return;
     }
+    if (net.phase === 'choosing') {
+      if (s.screen !== 'next') this.enterNext(net);
+      else this.changed();
+      return;
+    }
     // 'ended' comes just before onEnd(winner), which shows the result.
     this.changed();
   }
@@ -382,7 +428,10 @@ export class OnlineController {
     const s = this.state;
     s.start = start;
     s.result = null;
+    s.next = null;
     this.env.game.start(start);
+    s.battle = 0;
+    s.sides = this.env.game.fleets();
     s.countdownEnd = this.env.now() + COUNTDOWN_MS;
     this.show('countdown', 'leave');
     this.scheduleCountdown();
@@ -402,8 +451,84 @@ export class OnlineController {
     const s = this.state;
     const start = s.start;
     const local = (start?.localPlayer ?? (s.room?.role === 'guest' ? 1 : 0)) as 0 | 1;
-    s.result = { winner, localPlayer: local, fleets: start?.fleets ?? [[], []], lost: this.env.game.lost() };
+    this.stopNextTimer();
+    s.next = null;
+    s.result = { winner, localPlayer: local, sides: this.env.game.fleets() };
     this.show('result', 'rematch');
+  }
+
+  // ------------------------------------------------------------ the next ship (protocol 3)
+  /** The lockstep waits for the loser's choice: the 3D ship choice for the loser, a waiting screen for the winner. */
+  private enterNext(net: NetplayState): void {
+    const s = this.state;
+    const pending = net.next;
+    if (!pending) { this.changed(); return; }
+    const local = s.start?.localPlayer ?? (s.room?.role === 'guest' ? 1 : 0);
+    const mine = pending.player === local;
+    s.next = { battle: pending.battle, player: pending.player, mine, ships: [...pending.ships], carousel: pending.ships[0],
+      deadline: this.env.now() + NEXT_MS, chosen: null, auto: false };
+    s.sides = this.env.game.fleets();
+    this.notice(null);
+    this.show('next', mine ? 'ship' : 'leave');
+    this.scheduleNext();
+  }
+  private stopNextTimer(): void {
+    if (this.nextTimer) { this.env.clearTimeout(this.nextTimer); this.nextTimer = null; }
+  }
+  /** The countdown of the choice changes at each full second; at the end the loser's game chooses. */
+  private scheduleNext(): void {
+    this.stopNextTimer();
+    const next = this.state.next;
+    if (!next || this.state.screen !== 'next') return;
+    const left = next.deadline - this.env.now();
+    if (left <= 0) { this.timeUp(); return; }
+    this.nextTimer = this.env.setTimeout(() => {
+      this.nextTimer = null;
+      if (this.state.screen !== 'next' || this.state.next !== next) return;
+      if (this.env.now() >= next.deadline) { this.timeUp(); return; }
+      this.changed();
+      this.scheduleNext();
+    }, left % 1000 || 1000);
+  }
+  /** The time ran out: the loser's game takes the first ship left in fleet order. The winner never chooses. */
+  private timeUp(): void {
+    const next = this.state.next;
+    if (next?.mine && next.chosen === null) { this.chooseNext(next.ships[0], true); return; }
+    this.changed();
+  }
+  private chooseNext(ship: number, auto = false): void {
+    const s = this.state;
+    const next = s.next;
+    if (s.screen !== 'next' || !next?.mine || next.chosen !== null || !next.ships.includes(ship)) return;
+    next.chosen = ship;
+    next.chosenAt = this.env.now();
+    next.carousel = ship;
+    next.auto = auto;
+    this.stopNextTimer();
+    try { this.session?.chooseNext(ship); } catch { /* The session checks the ship. */ }
+    this.changed();
+  }
+  /** Both peers have the next ship: build the next battle and count down. */
+  private nexted(session: SessionLike, next: NextBattle): void {
+    if (this.session !== session) return;
+    const s = this.state;
+    this.stopNextTimer();
+    this.env.game.next(next);
+    s.next = null;
+    s.battle = next.battle;
+    s.sides = this.env.game.fleets();
+    s.countdownEnd = this.env.now() + COUNTDOWN_MS;
+    this.show('countdown', 'leave');
+    this.scheduleCountdown();
+  }
+  /** Seconds left to choose the next ship (20 to 0). */
+  nextLeft(): number { return Math.ceil(this.nextMsLeft() / 1000); }
+  /** Milliseconds left to choose the next ship; at the choice the time stops. */
+  nextMsLeft(): number {
+    const next = this.state.next;
+    if (!next) return 0;
+    if (next.chosen !== null) return Math.max(0, next.deadline - (next.chosenAt ?? next.deadline));
+    return Math.max(0, next.deadline - this.env.now());
   }
   /** The first ship from index (in the direction) that is not picked; index when all are. */
   private nextFree(picks: number[], index: number, direction: 1 | -1 | 0): number {
@@ -424,6 +549,15 @@ export class OnlineController {
   /** Left/Right in the 3D ship choice. */
   browse(delta: 1 | -1): void {
     const s = this.state;
+    if (s.screen === 'next') {
+      const next = s.next;
+      if (!next?.mine || next.chosen !== null || s.confirm) return;
+      const index = Math.max(0, next.ships.indexOf(next.carousel));
+      next.carousel = next.ships[(index + delta + next.ships.length) % next.ships.length];
+      s.focus = 'ship';
+      this.changed();
+      return;
+    }
     if (s.screen !== 'fleet' || s.confirm) return;
     s.fleet.carousel = ((s.fleet.carousel + delta) % SHIP_COUNT + SHIP_COUNT) % SHIP_COUNT;
     s.focus = 'ship';
@@ -568,7 +702,10 @@ export class OnlineController {
         this.show('hidden');
         this.env.game.menu();
         return;
-      case 'ship': this.toggleShip(); return;
+      case 'ship':
+        if (s.screen === 'next') { if (s.next) this.chooseNext(s.next.carousel); return; }
+        this.toggleShip();
+        return;
       case 'ready': this.ready(); return;
       case 'change': this.unready(); return;
       case 'undo': this.undo(); return;
@@ -690,6 +827,7 @@ export class OnlineController {
       return false;
     }
     if (s.screen === 'fleet') return this.fleetKey(name);
+    if (s.screen === 'next') return this.nextKey(name);
     switch (name) {
       case 'ArrowUp': this.move(-1); return true;
       case 'ArrowDown': this.move(1); return true;
@@ -735,6 +873,21 @@ export class OnlineController {
       case 'Enter': case ' ': this.activate(s.focus); return true;
       case 'Backspace': case 'Delete': this.undo(); return true;
       case 'Escape': this.activate('leave', { escape: true }); return true;
+      default: return false;
+    }
+  }
+  /** The next ship: the loser browses and chooses; the winner waits (only Esc, as in the battle). */
+  private nextKey(name: string): boolean {
+    const s = this.state;
+    if (name === 'Escape') { this.activate('leave', { escape: true }); return true; }
+    if (!s.next?.mine) return false;
+    switch (name) {
+      case 'ArrowLeft': case 'ArrowRight':
+        if (s.focus === 'ship') this.browse(name === 'ArrowLeft' ? -1 : 1);
+        return true;
+      case 'ArrowDown': if (s.focus !== 'leave') { s.focus = 'leave'; this.changed(); } return true;
+      case 'ArrowUp': if (s.focus !== 'ship') { s.focus = 'ship'; this.changed(); } return true;
+      case 'Enter': case ' ': this.activate(s.focus); return true;
       default: return false;
     }
   }

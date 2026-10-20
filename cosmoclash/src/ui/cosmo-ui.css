@@ -100,3 +100,14 @@
 .cc-dialog h2.won { font-size: max(24px, calc(56px * var(--u))); }
 .cc-dialog h2.lost { font-size: max(24px, calc(56px * var(--u))); color: #ffd6cf; text-shadow: 0 0 calc(12px * var(--u)) #ff5a3c, 0 0 calc(30px * var(--u)) #a01800; }
 .cc-dialog .cc-hint { margin-top: calc(4px * var(--u)); }
+
+/* Fleets as chips: destroyed ships struck through, the ship in battle bright (countdown, next ship, result) */
+.cc-fleet-line { margin: 0; display: flex; gap: calc(8px * var(--u)); justify-content: center; align-items: baseline; flex-wrap: wrap; }
+.cc-chip {
+  text-transform: uppercase; letter-spacing: 0.06em; font-size: max(11px, calc(15px * var(--u))); color: #c4cbe0;
+  padding: calc(1px * var(--u)) calc(8px * var(--u)); border: 1px solid rgba(120, 150, 220, 0.4); border-radius: calc(4px * var(--u));
+  background: rgba(0, 0, 20, 0.6);
+}
+.cc-chip.current { color: #ffffff; border-color: var(--p1); box-shadow: 0 0 calc(8px * var(--u)) var(--p1); background: rgba(20, 40, 100, 0.75); }
+.cc-line-p2 .cc-chip.current { border-color: var(--p2); box-shadow: 0 0 calc(8px * var(--u)) var(--p2); }
+.cc-chip.lost { color: #6f7c99; text-decoration: line-through; border-style: dashed; }

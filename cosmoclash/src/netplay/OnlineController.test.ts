@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { OnlineController, NAME_KEY, NOTICE_MS, COUNTDOWN_MS, INPUT_LOCK_MS, LIST_WAIT_MS, cleanMessage, clock, waitingTime, type SessionHandlers, type SessionLike } from './OnlineController';
+import { OnlineController, NAME_KEY, NOTICE_MS, COUNTDOWN_MS, INPUT_LOCK_MS, LIST_WAIT_MS, NEXT_MS, cleanMessage, clock, waitingTime, type SessionHandlers, type SessionLike } from './OnlineController';
+import type { FleetView } from '@/match/FleetMatch';
 import type { LobbyRoom, LobbyStatus, LobbyWatcher } from './CosmoLobby';
 import type { MatchStart, NetplayState, Role } from './CosmoNetplay';
 
@@ -12,7 +13,7 @@ function netState(over: Partial<NetplayState> = {}): NetplayState {
 class FakeSession implements SessionLike {
   state: NetplayState = netState();
   connected: { room: string; role: Role; name?: string | null } | null = null;
-  readied = false; rematched = false; closed = false; unreadied = 0; fleets: number[][] = [];
+  readied = false; rematched = false; closed = false; unreadied = 0; fleets: number[][] = []; nexts: number[] = [];
   constructor(readonly handlers: SessionHandlers, private readonly refuse = '') {}
   connect(options: { origin: string; room: string; role: Role; name?: string | null }): void {
     if (this.refuse) throw new Error(this.refuse);
@@ -24,6 +25,7 @@ class FakeSession implements SessionLike {
   ready(): void { this.readied = true; this.set({ localReady: true }); }
   unready(): void { this.unreadied++; this.set(this.state.role === 'host' ? { localReady: false } : { changing: true }); }
   rematch(): void { this.rematched = true; this.set({ localRematch: true }); }
+  chooseNext(ship: number): void { this.nexts.push(ship); this.set({ next: { ...this.state.next!, chosen: ship } }); }
   close(): void { this.closed = true; this.set({ phase: 'closed', message: 'You left the room.' }); }
   lobby(): void { this.set({ phase: 'lobby', peerFleetKnown: true }); }
 }
@@ -35,7 +37,7 @@ function harness(options: { refuse?: string; storage?: Record<string, string> } 
   const sessions: FakeSession[] = [];
   const watchers: { handlers: { onRooms(rooms: LobbyRoom[]): void; onStatus(status: LobbyStatus, message: string): void }; closed: boolean }[] = [];
   const calls: string[] = [];
-  let lost: [number, number] = [0, 0];
+  let fleets: [FleetView, FleetView] = [{ ships: [0], lost: 0, current: 0 }, { ships: [1], lost: 0, current: 0 }];
   const controller = new OnlineController({
     now: () => now, random: () => 0.5,
     setTimeout: (fn, ms) => { const id = next++; timers.set(id, { at: now + ms, fn }); return id; },
@@ -57,7 +59,8 @@ function harness(options: { refuse?: string; storage?: Record<string, string> } 
     sound: name => calls.push('sound:' + name),
     clearInvite: () => calls.push('clearInvite'),
     game: {
-      menu: () => calls.push('menu'), start: () => calls.push('start'), stop: () => calls.push('stop'), lost: () => lost,
+      menu: () => calls.push('menu'), start: () => calls.push('start'), stop: () => calls.push('stop'), fleets: () => fleets,
+      next: next => calls.push('next:' + JSON.stringify(next)),
     },
   });
   return {
@@ -75,7 +78,7 @@ function harness(options: { refuse?: string; storage?: Record<string, string> } 
       }
       now = end;
     },
-    setLost(value: [number, number]) { lost = value; },
+    setFleets(value: [FleetView, FleetView]) { fleets = value; },
   };
 }
 const room = (c: string, name: string, created = 0): LobbyRoom => ({ id: token(c), name, engine: 'rust', created });
@@ -340,10 +343,11 @@ describe('fleet choice, battle and result', () => {
     h.session.set({ phase: 'playing' });
     h.session.handlers.onStart({ round: 0, seed: 7, fleets: [[2], [0]], localPlayer: 1 });
     h.advance(COUNTDOWN_MS);
-    h.setLost([1, 0]);
+    const sides: [FleetView, FleetView] = [{ ships: [2], lost: 1, current: -1 }, { ships: [0], lost: 0, current: 0 }];
+    h.setFleets(sides);
     h.session.set({ phase: 'ended' });
     h.session.handlers.onEnd(2);
-    expect(h.s).toMatchObject({ screen: 'result', focus: 'rematch', result: { winner: 2, localPlayer: 1, fleets: [[2], [0]], lost: [1, 0] } });
+    expect(h.s).toMatchObject({ screen: 'result', focus: 'rematch', result: { winner: 2, localPlayer: 1, sides } });
     h.session.set({ peerRematch: true });
     // A key pressed for the battle does not choose on the new result screen.
     h.keys('Enter');
@@ -513,6 +517,127 @@ describe('fresh room lists, Open room and Change fleet', () => {
     expect(g.session.unreadied).toBe(1);
     g.session.set({ changing: false, localReady: false });
     expect(g.s.items).toEqual(['ship', 'ready', 'undo', 'leave']);
+  });
+});
+
+/** In a battle of a fleet match (the host is player 0); the battle ended and the lockstep waits for the choice of the next ship. */
+function inChoice(role: Role, chooser: 0 | 1) {
+  const h = inFleet(role);
+  const local = role === 'host' ? 0 : 1;
+  h.session.set({ phase: 'playing' });
+  h.session.handlers.onStart({ round: 0, seed: 7, fleets: [[1, 2, 0], [0, 1, 2]], localPlayer: local });
+  h.advance(COUNTDOWN_MS);
+  expect(h.s.screen).toBe('battle');
+  const lost: FleetView = { ships: chooser ? [0, 1, 2] : [1, 2, 0], lost: 1, current: -1 };
+  const stays: FleetView = { ships: chooser ? [1, 2, 0] : [0, 1, 2], lost: 0, current: 0 };
+  h.setFleets(chooser ? [stays, lost] : [lost, stays]);
+  h.session.set({ phase: 'choosing', next: { battle: 1, player: chooser, ships: chooser ? [1, 2] : [2, 0], chosen: null } });
+  return h;
+}
+describe('the next ship (protocol 3)', () => {
+  it('the loser chooses in the 3D ship choice: the ships left, Enter chooses, then a countdown and the battle', () => {
+    const h = inChoice('host', 0);
+    expect(h.s).toMatchObject({ screen: 'next', focus: 'ship', items: ['ship', 'leave'],
+      next: { battle: 1, player: 0, mine: true, ships: [2, 0], carousel: 2, chosen: null, auto: false } });
+    expect(h.s.sides?.[0]).toEqual({ ships: [1, 2, 0], lost: 1, current: -1 });
+    expect(h.controller.running).toBe(false);
+    expect(h.controller.nextLeft()).toBe(NEXT_MS / 1000);
+    // A key pressed for the battle does not choose on the new screen.
+    h.keys('Enter');
+    expect(h.session.nexts).toEqual([]);
+    h.advance(INPUT_LOCK_MS);
+    h.keys('ArrowRight');
+    expect(h.s.next?.carousel).toBe(0);
+    h.keys('ArrowLeft', 'ArrowLeft');
+    expect(h.s.next?.carousel).toBe(0);
+    h.controller.browse(1);
+    expect(h.s.next?.carousel).toBe(2);
+    h.keys('ArrowDown');
+    expect(h.s.focus).toBe('leave');
+    h.keys('ArrowLeft');
+    expect(h.s.next?.carousel).toBe(2);
+    h.keys('ArrowUp', 'ArrowRight', 'Enter');
+    expect(h.session.nexts).toEqual([0]);
+    expect(h.s.next).toMatchObject({ chosen: 0, auto: false });
+    // The choice is made: no other ship, no second choice; the time stops.
+    h.keys('ArrowRight', 'Enter');
+    expect(h.session.nexts).toEqual([0]);
+    const left = h.controller.nextLeft();
+    h.advance(5000);
+    expect(h.controller.nextLeft()).toBe(left);
+    h.session.set({ phase: 'playing', next: null });
+    expect(h.s.screen).toBe('next');
+    h.session.handlers.onNext({ battle: 1, player: 0, ship: 0 });
+    expect(h.calls).toContain('next:{"battle":1,"player":0,"ship":0}');
+    expect(h.s).toMatchObject({ screen: 'countdown', battle: 1, next: null });
+    h.advance(COUNTDOWN_MS);
+    expect(h.s.screen).toBe('battle');
+    expect(h.controller.running).toBe(true);
+  });
+  it('the winner waits with the same time and never chooses; only Esc is a key there', () => {
+    const h = inChoice('guest', 0);
+    expect(h.s).toMatchObject({ screen: 'next', items: ['leave'], next: { player: 0, mine: false, ships: [2, 0] } });
+    h.advance(INPUT_LOCK_MS);
+    expect(h.controller.key('Enter')).toBe(false);
+    expect(h.controller.key('ArrowRight')).toBe(false);
+    h.controller.activate('ship');
+    h.controller.browse(1);
+    expect(h.s.next?.carousel).toBe(2);
+    h.advance(NEXT_MS);
+    expect(h.controller.nextLeft()).toBe(0);
+    expect(h.session.nexts).toEqual([]);
+    expect(h.s.screen).toBe('next');
+    expect(h.controller.key('Escape')).toBe(true);
+    expect(h.s.confirm).toBe(true);
+  });
+  it('the time runs out: the loser\'s game takes the first ship left in fleet order', () => {
+    const h = inChoice('guest', 1);
+    expect(h.s.next).toMatchObject({ mine: true, ships: [1, 2], carousel: 1 });
+    h.advance(INPUT_LOCK_MS);
+    h.keys('ArrowRight');
+    expect(h.s.next?.carousel).toBe(2);
+    h.advance(NEXT_MS - INPUT_LOCK_MS - 1000);
+    expect(h.controller.nextLeft()).toBe(1);
+    expect(h.session.nexts).toEqual([]);
+    h.advance(1000);
+    expect(h.session.nexts).toEqual([1]);
+    expect(h.s.next).toMatchObject({ chosen: 1, auto: true, carousel: 1 });
+  });
+  it('the countdown of the choice changes at each full second', () => {
+    const h = inChoice('host', 0);
+    const seen: number[] = [];
+    (h.controller as unknown as { env: { changed(): void } }).env.changed = () => seen.push(h.controller.nextLeft());
+    h.advance(3000);
+    expect(seen).toEqual([19, 18, 17]);
+  });
+  it('Esc during the choice asks "Leave the match?" and the time goes on; the question stays when the battle starts; Leave goes to the lobby', () => {
+    const h = inChoice('host', 0);
+    h.advance(INPUT_LOCK_MS);
+    h.keys('Escape');
+    expect(h.s).toMatchObject({ confirm: true, confirmFocus: 'stay' });
+    h.keys('ArrowLeft', 'ArrowRight');
+    expect(h.s.next?.carousel).toBe(2);
+    h.advance(NEXT_MS);
+    // The time ran out while the question was open: the first ship left comes.
+    expect(h.session.nexts).toEqual([2]);
+    h.session.set({ phase: 'playing', next: null });
+    h.session.handlers.onNext({ battle: 1, player: 0, ship: 2 });
+    expect(h.s).toMatchObject({ screen: 'countdown', confirm: true });
+    h.keys('ArrowRight', 'Enter');
+    expect(h.session.closed).toBe(true);
+    expect(h.s).toMatchObject({ screen: 'lobby', notice: { text: 'You left the room.' } });
+    expect(h.calls).toContain('stop');
+  });
+  it('the opponent leaves or the connection is lost during the choice: back to the lobby with the reason', () => {
+    for (const chooser of [0, 1] as const) {
+      const h = inChoice('host', chooser);
+      h.session.set({ phase: 'closed', message: 'Your opponent left the room.' });
+      expect(h.s).toMatchObject({ screen: 'lobby', next: null, notice: { text: 'Your opponent left the room.', kind: 'info' } });
+      expect(h.calls.filter(call => call === 'stop').length).toBeGreaterThan(1);
+      // The time to choose does not run on in the lobby.
+      h.advance(NEXT_MS);
+      expect(h.session.nexts).toEqual([]);
+    }
   });
 });
 

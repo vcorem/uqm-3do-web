@@ -26,6 +26,11 @@ export interface FleetView {
   current: number;
 }
 
+/** The seed of battle n (0 is the first) of an online match: the same on both peers, a new one for each battle. */
+export function battleSeed(matchSeed: number, battle: number): number {
+  return (matchSeed + Math.imul(battle, 0x9e3779b9)) >>> 0;
+}
+
 /** 1 to 3 different ships (0 MichiGichi, 1 Gondi, 2 Sholev). */
 export function validFleet(fleet: unknown): fleet is number[] {
   return Array.isArray(fleet) && fleet.length >= 1 && fleet.length <= SHIP_COUNT

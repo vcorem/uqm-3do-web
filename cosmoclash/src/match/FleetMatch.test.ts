@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { FleetMatch, validFleet } from './FleetMatch';
+import { FleetMatch, battleSeed, validFleet } from './FleetMatch';
 import { FleetPicker } from './FleetPicker';
 
 describe('fleet match (all three modes)', () => {
@@ -50,6 +50,26 @@ describe('fleet match (all three modes)', () => {
     a.choose(1, 1); b.choose(1, 2);
     expect(JSON.stringify(a.state())).not.toBe(JSON.stringify(b.state()));
     expect(a.state()).toEqual({ fleets: [[0, 1, 2], [0, 1, 2]], destroyed: [[], [0]], active: [0, 1], battles: 1 });
+  });
+  it('determinism: the same losses and choices give the same states on two peers; each battle has its own seed', () => {
+    const run = (choices: number[]) => {
+      const m = new FleetMatch([[0, 1, 2], [2, 0, 1]]);
+      const states: string[] = [];
+      for (const [loser, choice] of [[1, choices[0]], [0, choices[1]], [1, -1], [0, -1]] as const) {
+        const next = m.lose(loser);
+        if (next === 'choose') m.choose(loser, choice);
+        states.push(JSON.stringify(m.state()));
+      }
+      return states;
+    };
+    expect(run([1, 2])).toEqual(run([1, 2]));
+    expect(run([1, 2])[0]).not.toBe(run([0, 2])[0]);
+    expect(battleSeed(123456789, 0)).toBe(123456789);
+    expect(battleSeed(0xffffffff, 0)).toBe(0xffffffff);
+    const seeds = [0, 1, 2, 3, 4].map(n => battleSeed(123456789, n));
+    expect(new Set(seeds).size).toBe(5);
+    expect(seeds.every(seed => Number.isInteger(seed) && seed >= 0 && seed <= 0xffffffff)).toBe(true);
+    expect(battleSeed(123456789, 3)).toBe((123456789 + Math.imul(3, 0x9e3779b9)) >>> 0);
   });
   it('fleets have 1 to 3 different ships', () => {
     expect([[0], [2, 1], [0, 1, 2]].every(validFleet)).toBe(true);
