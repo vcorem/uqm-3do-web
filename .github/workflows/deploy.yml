@@ -188,7 +188,13 @@ jobs:
           for folder in original hd original-rust hd-rust; do
             curl -fsSI "https://urquanmasters.org/$folder/uqm-debug.wasm" | grep -qi '^content-type: application/wasm'
             want="$(sha256sum .tools/release-web/$folder/uqm-debug.wasm | cut -d' ' -f1)"
-            got="$(curl -fsS "https://urquanmasters.org/$folder/uqm-debug.wasm" | sha256sum | cut -d' ' -f1)"
+            # Right after a deploy the edge can still serve the previous file for a short time
+            # (the C builds are not byte-identical between runs): try again for up to two minutes.
+            for try in $(seq 12); do
+              got="$(curl -fsS -H 'Cache-Control: no-cache' "https://urquanmasters.org/$folder/uqm-debug.wasm" | sha256sum | cut -d' ' -f1)"
+              [ "$got" = "$want" ] && break
+              echo "$folder wasm: $got, waiting for $want"; sleep 10
+            done
             echo "$folder wasm: $got"
             test "$got" = "$want"
             expected="$(python3 -c "import json,sys; print(json.load(open('deploy/data-parts.json'))['/' + sys.argv[1] + '/uqm-debug.data']['sha256'])" "$folder")"

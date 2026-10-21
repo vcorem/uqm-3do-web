@@ -166,6 +166,26 @@ test('disconnect notifies and closes the survivor and forbids token reuse', asyn
   }
 });
 
+test('a survivor that sends game data while the other player closes still hears that it left', async t => {
+  // Live, the closing player's close handler waits for the gate; meanwhile the survivor's
+  // next packet found no peer and ended the room with the survivor as the one who left.
+  const { pair } = await defaultWorker(t);
+  for (const departingRole of Array.from({ length: Number(process.env.RACE_ROUNDS || 10) }, (_, n) => n % 2 ? 'guest' : 'host')) {
+    const peers = await pair();
+    const departing = peers[departingRole];
+    const survivor = peers[departingRole === 'host' ? 'guest' : 'host'];
+    let sending = true;
+    const flood = (async () => { while (sending && survivor.ws.readyState === WebSocket.OPEN) { survivor.ws.send(Buffer.from([1, 2, 3])); await pause(2); } })();
+    await pause(20);
+    departing.ws.close();
+    const message = await survivor.next();
+    sending = false;
+    await flood;
+    assert.deepEqual(message, { type: 'peer-left', message: 'The other player disconnected.' }, departingRole + ' left');
+    await Promise.all([departing.closure, survivor.closure]);
+  }
+});
+
 test('the origin must match the configured site exactly', async t => {
   const { client, origin } = await defaultWorker(t);
   for (const bad of ['https://evil.example', 'null', undefined, `${origin}/`]) {
