@@ -443,7 +443,9 @@ export class NetplayRoom extends DurableObject {
     rate.messages++;
     if (rate.bytes > 1048576 || rate.messages > 1000) return this.reject(ws, 'Game data rate exceeded.');
     const peer = this.socket(role === 'host' ? 'guest' : 'host');
-    if (!peer) return this.endRoom(ws);
+    // The room is paired, so a missing peer has left: its close handler still waits for the
+    // gate. The sender is the survivor and hears why (peer-left), as on the queued path below.
+    if (!peer) return this.endRoom(null);
     this.lastData = now;
     // Persist the activity time at most once a minute; the idle limit is 15 minutes.
     if (now - this.savedLastData > 60000) {
