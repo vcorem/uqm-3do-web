@@ -1,0 +1,50 @@
+name: Afterlight campaign and native encounters
+on:
+  push:
+    branches: [main, 'codex/**']
+    paths: ['campaign/**', 'rust/uqm-engine-original/**', 'scripts/**', 'server/**', 'package*.json', '.github/workflows/afterlight.yml']
+  pull_request:
+    paths: ['campaign/**', 'rust/uqm-engine-original/**', 'scripts/**', 'server/**', 'package*.json', '.github/workflows/afterlight.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: afterlight-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies and pinned toolchains
+        run: |
+          npm ci
+          rustup toolchain install 1.85.1 --profile minimal
+          rustup toolchain install "$(cat .rust-wasm-toolchain)" --profile minimal --component rust-src --target wasm32-unknown-emscripten
+          mkdir -p .tools
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git .tools/emsdk
+          .tools/emsdk/emsdk install "$(cat .emscripten-version)"
+          .tools/emsdk/emsdk activate "$(cat .emscripten-version)"
+          npx playwright install --with-deps chromium
+      - name: Validate story routes, save integrity, assets and surface physics
+        run: npm run test:afterlight
+      - name: Build production Rust combat and portable campaign
+        env:
+          JOBS: '4'
+        run: bash scripts/build-afterlight.sh
+      - name: Play all three endings through the real browser interface
+        run: npm run test:afterlight:browser
+      - name: Play physical surface expeditions and real UQM encounters
+        run: |
+          node campaign/tests/lander-browser.mjs
+          node campaign/tests/combat-browser.mjs
+          node campaign/tests/integration-encounters.mjs
+      - name: Check source whitespace
+        run: git diff --check

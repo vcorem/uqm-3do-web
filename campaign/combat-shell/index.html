@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Afterlight — combat</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui,sans-serif;background:#050914;color:#e5edf7}*{box-sizing:border-box}body{margin:0;min-height:100dvh;display:grid;place-items:center}.screen{width:min(100vw,calc((100dvh - 55px)*4/3));position:relative}canvas{width:100%;height:auto;aspect-ratio:4/3;display:block;image-rendering:pixelated;outline:none}.overlay{position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:14px;padding:24px;background:#050914ed;text-align:center}.overlay p{max-width:38em;line-height:1.5;margin:0}[hidden]{display:none!important}button{font:inherit;font-weight:600;padding:12px 24px;border:1px solid #bce7ea;background:#bee8e6;color:#07171b;border-radius:4px;cursor:pointer}button:disabled{opacity:.5;cursor:wait}button:focus-visible{outline:3px solid white;outline-offset:4px}footer{height:55px;font-size:13px;text-align:center;color:#acbcd1;display:flex;gap:20px;align-items:center;justify-content:center}footer button{font-size:13px;padding:7px 12px;background:#1c2436;color:#fff;border-color:#65758d}progress{width:min(400px,80%)}
+</style></head><body><main><div class="screen"><canvas id="canvas" width="640" height="480" tabindex="0" aria-label="UQM combat. Arrow keys fly, Enter fires, right Shift activates special." oncontextmenu="event.preventDefault()"></canvas><div class="overlay" id="overlay"><h1>Battle stations</h1><p id="status" role="status">Loading the original combat engine…</p><progress id="progress"></progress><button id="start" disabled>Loading…</button></div></div><footer><span>↑ Thrust · ← → Turn · Enter Fire · Right Shift Special</span><button id="retreat" disabled>Retreat</button></footer></main>
+<script src="host.js"></script>
+{{{ SCRIPT }}}
+</body></html>

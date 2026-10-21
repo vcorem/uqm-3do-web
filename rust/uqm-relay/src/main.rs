@@ -650,7 +650,7 @@ fn decode_path(raw: &str) -> Option<String> {
 fn mime(path: &Path) -> &'static str {
     match path.extension().and_then(|s| s.to_str()).unwrap_or("") {
         "html" => "text/html; charset=utf-8",
-        "js" => "text/javascript; charset=utf-8",
+        "js" | "mjs" => "text/javascript; charset=utf-8",
         "wasm" => "application/wasm",
         "glb" => "model/gltf-binary",
         "ogg" => "audio/ogg",

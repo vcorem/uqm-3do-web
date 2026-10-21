@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#08131c">
+  <meta name="description" content="The Afterlight Accord. An original, branching space adventure set after The Ur-Quan Masters.">
+  <title>The Afterlight Accord</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="app"><main class="boot"><span class="eyebrow">THE FAR REACH</span><h1>Finding a signal…</h1><p>Preparing your expedition.</p></main></div>
+  <div id="combat-layer" hidden role="dialog" aria-modal="true" aria-label="Space combat">
+    <header><span class="eyebrow">ENGAGEMENT / LIVE LINK</span><button id="retreat">Disengage</button></header>
+    <p id="combat-status" role="status">Preparing the ship…</p>
+    <div id="combat-frame"></div>
+    <div id="combat-recovery" hidden><button id="retry-combat">Retry loading</button><button id="cancel-combat">Withdraw to the campaign</button></div>
+    <p class="combat-controls">↑ Thrust · ← → Turn · Right Ctrl / Enter Fire · Right Shift Special · Esc Pause</p>
+  </div>
+  <div id="surface-layer" hidden role="dialog" aria-modal="true" aria-label="Surface expedition"><h2 id="surface-heading" class="eyebrow"></h2><div id="surface-frame"></div></div>
+  <dialog id="confirm-dialog"><form method="dialog"><span class="eyebrow">CAPTAIN’S DECISION</span><h2 id="confirm-title">Confirm your course</h2><p id="confirm-text"></p><footer><button value="cancel">Go back</button><button class="primary" value="confirm">Confirm</button></footer></form></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <input id="import-file" type="file" accept=".json,application/json" hidden>
+  <script type="module" src="./src/app.mjs"></script>
+</body>
+</html>

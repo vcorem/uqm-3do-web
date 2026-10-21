@@ -1853,6 +1853,14 @@ unsafe extern "C" fn TryStartGame() -> BOOLEAN {
     MenuState.InputFunc = Some(
         DoRestart as unsafe extern "C" fn(*mut MENU_STATE) -> BOOLEAN,
     ) as Option<unsafe extern "C" fn(*mut menu_state) -> BOOLEAN>;
+    // AFTERLIGHT: a separate campaign owns narrative/save state and uses Melee only.
+    if crate::campaign::enabled() {
+        FreeGameData();
+        setBrowserGameScreen(b"campaignCombat\0".as_ptr() as *const ::core::ffi::c_char);
+        Melee();
+        GlobData.Game_state.CurrentActivity |= C2Rust_Unnamed_2::CHECK_ABORT.0 as ACTIVITY;
+        return BOOLEAN::FALSE;
+    }
     if webNetplayRole >= 0 as ::core::ffi::c_int {
         FreeGameData();
         setBrowserGameScreen(b"melee\0".as_ptr() as *const ::core::ffi::c_char);

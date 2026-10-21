@@ -1244,6 +1244,25 @@ pub unsafe extern "C" fn selectShipNetwork(
     return BOOLEAN::TRUE;
 }
 unsafe extern "C" fn DoGetMelee(mut gms: *mut GETMELEE_STATE) -> BOOLEAN {
+    // AFTERLIGHT: consume authored fleets in order, spawning the original ships.
+    if crate::campaign::running() {
+        if crate::campaign::retreat_requested() {
+            GlobData.Game_state.CurrentActivity |= C2Rust_Unnamed_7::CHECK_ABORT.0 as ACTIVITY;
+            return BOOLEAN::FALSE;
+        }
+        for side in 0..2usize {
+            if (*gms).player[side].selecting.0 != 0 && (*gms).player[side].done.0 == 0 {
+                (*gms).player[side].randomIndex = 0;
+                if !setShipSelected(gms, side as COUNT, u16::MAX, false) {
+                    GlobData.Game_state.CurrentActivity |= C2Rust_Unnamed_7::CHECK_ABORT.0 as ACTIVITY;
+                    return BOOLEAN::FALSE;
+                }
+                Flash_terminate((*gms).player[side].flashContext);
+                (*gms).player[side].flashContext = ::core::ptr::null_mut();
+            }
+        }
+        return BOOLEAN::FALSE;
+    }
     let mut done: BOOLEAN = BOOLEAN::FALSE;
     let mut playerI: COUNT = 0;
     SetMenuSounds(

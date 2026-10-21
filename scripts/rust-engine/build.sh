@@ -10,7 +10,12 @@ if [[ "$edition" = hd ]]; then
 fi
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$root/.tools/rust-engine-$edition}"
 export RUSTFLAGS="${RUSTFLAGS:-} -C target-feature=+atomics,+bulk-memory,+mutable-globals -C panic=abort"
+campaign_features=()
+if [[ "$edition" = original && "${AFTERLIGHT_COMBAT_TEST_DRIVER:-0}" = 1 ]]; then
+  campaign_features=(--features campaign-test-driver)
+fi
 cargo "+$(cat "$root/.rust-wasm-toolchain")" build --locked \
+  ${campaign_features[@]+"${campaign_features[@]}"} \
   -Zbuild-std=core,alloc,compiler_builtins \
   --manifest-path "$root/rust/uqm-engine-$edition/Cargo.toml" \
   --target wasm32-unknown-emscripten --release

@@ -19,7 +19,11 @@
     "test:subtitles": "node tests/browser/subtitles.mjs",
     "test:editions": "node tests/browser/editions.mjs",
     "test:hd-campaign": "node tests/browser/hd-campaign.mjs",
-    "test:hd-stability": "node tests/browser/hd-stability.mjs"
+    "test:hd-stability": "node tests/browser/hd-stability.mjs",
+    "build:afterlight": "bash scripts/build-afterlight.sh",
+    "start:afterlight": "bash scripts/run-afterlight.sh",
+    "test:afterlight": "node --test campaign/tests/*.test.mjs",
+    "test:afterlight:browser": "node campaign/tests/browser.mjs"
   },
   "dependencies": {
     "ws": "8.22.0"

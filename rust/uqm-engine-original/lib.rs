@@ -20,6 +20,7 @@ extern crate uqm_core;
 extern crate alloc;
 mod uqm_allocator;
 mod uqm_engine_init;
+pub mod campaign;
 
 pub mod src {
 #[path = "uqm.rs"]

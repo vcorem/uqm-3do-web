@@ -1,0 +1,390 @@
+{
+  "schemaVersion": 1,
+  "testedAt": "2026-10-21",
+  "purpose": "Recorded development validation of actual production native UQM combat and new surface gameplay; not a claim of full campaign narrative QA.",
+  "nativeCombat": {
+    "passed": true,
+    "browser": "155.0.8059.85",
+    "build": {
+      "uqm-debug.wasm": "9f3c30fe8f8a39ac032ae216910460a2dda32982ba9df6ce399450a112a58295",
+      "uqm-debug.js": "11db2bd6121cc4d5eee8bb5ea00012793ba682fd0a48f21117d771254301a07d",
+      "host.js": "c8f2209ec6bf92df79a078afd2b236547707379e4cd93f372b449e2564ce8931"
+    },
+    "audio": {
+      "context": "running",
+      "peak": 0.9921875,
+      "samples": 1955,
+      "musicGain": 0
+    },
+    "shipMatrix": [
+      {
+        "id": "hull-0",
+        "name": "Androsynth Guardian",
+        "startingCrew": 20,
+        "outcome": "retreat",
+        "crew": 20,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-1",
+        "name": "Arilou Skiff",
+        "startingCrew": 6,
+        "outcome": "retreat",
+        "crew": 6,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-2",
+        "name": "Chenjesu Broodhome",
+        "startingCrew": 36,
+        "outcome": "retreat",
+        "crew": 36,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-3",
+        "name": "Chmmr Avatar",
+        "startingCrew": 42,
+        "outcome": "retreat",
+        "crew": 42,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-4",
+        "name": "Druuge Mauler",
+        "startingCrew": 14,
+        "outcome": "retreat",
+        "crew": 14,
+        "enemyRemaining": 1,
+        "frames": 6
+      },
+      {
+        "id": "hull-5",
+        "name": "Earthling Cruiser",
+        "startingCrew": 18,
+        "outcome": "retreat",
+        "crew": 18,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-6",
+        "name": "Ilwrath Avenger",
+        "startingCrew": 22,
+        "outcome": "retreat",
+        "crew": 22,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-7",
+        "name": "Kohr-Ah Marauder",
+        "startingCrew": 42,
+        "outcome": "retreat",
+        "crew": 42,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-8",
+        "name": "Melnorme Trader",
+        "startingCrew": 20,
+        "outcome": "retreat",
+        "crew": 20,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-9",
+        "name": "Mmrnmhrm X-Form",
+        "startingCrew": 20,
+        "outcome": "retreat",
+        "crew": 20,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-10",
+        "name": "Mycon Podship",
+        "startingCrew": 20,
+        "outcome": "retreat",
+        "crew": 20,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-11",
+        "name": "Orz Nemesis",
+        "startingCrew": 16,
+        "outcome": "retreat",
+        "crew": 16,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-12",
+        "name": "Pkunk Fury",
+        "startingCrew": 8,
+        "outcome": "retreat",
+        "crew": 8,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-13",
+        "name": "Shofixti Scout",
+        "startingCrew": 6,
+        "outcome": "retreat",
+        "crew": 6,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-14",
+        "name": "Slylandro Probe",
+        "startingCrew": 12,
+        "outcome": "retreat",
+        "crew": 12,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-15",
+        "name": "Spathi Eluder",
+        "startingCrew": 30,
+        "outcome": "retreat",
+        "crew": 30,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-16",
+        "name": "Supox Blade",
+        "startingCrew": 12,
+        "outcome": "retreat",
+        "crew": 12,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-17",
+        "name": "Syreen Penetrator",
+        "startingCrew": 42,
+        "outcome": "retreat",
+        "crew": 42,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-18",
+        "name": "Thraddash Torch",
+        "startingCrew": 8,
+        "outcome": "retreat",
+        "crew": 8,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-19",
+        "name": "Umgah Drone",
+        "startingCrew": 10,
+        "outcome": "retreat",
+        "crew": 10,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-20",
+        "name": "Ur-Quan Dreadnought",
+        "startingCrew": 42,
+        "outcome": "retreat",
+        "crew": 42,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-21",
+        "name": "Utwig Jugger",
+        "startingCrew": 20,
+        "outcome": "retreat",
+        "crew": 20,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-22",
+        "name": "VUX Intruder",
+        "startingCrew": 20,
+        "outcome": "retreat",
+        "crew": 20,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-23",
+        "name": "Yehat Terminator",
+        "startingCrew": 20,
+        "outcome": "retreat",
+        "crew": 20,
+        "enemyRemaining": 1,
+        "frames": 4
+      },
+      {
+        "id": "hull-24",
+        "name": "Zoq-Fot-Pik Stinger",
+        "startingCrew": 10,
+        "outcome": "retreat",
+        "crew": 10,
+        "enemyRemaining": 1,
+        "frames": 4
+      }
+    ],
+    "errors": []
+  },
+  "nativeEncounters": [
+    {
+      "id": "victory",
+      "outcome": "victory",
+      "crew": 3,
+      "enemyRemaining": 0,
+      "frames": 388
+    },
+    {
+      "id": "defeat",
+      "outcome": "defeat",
+      "crew": 0,
+      "enemyRemaining": 1,
+      "frames": 185
+    },
+    {
+      "id": "retreat",
+      "outcome": "retreat",
+      "crew": 17,
+      "enemyRemaining": 3,
+      "frames": 22
+    },
+    {
+      "id": "reused",
+      "outcome": "defeat",
+      "crew": 0,
+      "enemyRemaining": 1,
+      "frames": 669
+    }
+  ],
+  "ordinaryUQM": {
+    "passed": true,
+    "errors": [],
+    "screens": [
+      "mainMenu",
+      "melee"
+    ],
+    "campaignAPIExported": false,
+    "browser": "155.0.8059.85"
+  },
+  "surfaceExpedition": {
+    "passed": true,
+    "errors": [],
+    "results": [
+      {
+        "outcome": "surveyed",
+        "salvage": 6,
+        "hullRemaining": 30,
+        "beacons": 3,
+        "id": "browser-77"
+      },
+      {
+        "outcome": "retreated",
+        "salvage": 0,
+        "hullRemaining": 100,
+        "beacons": 0,
+        "id": "browser-88"
+      },
+      {
+        "outcome": "retreated",
+        "salvage": 0,
+        "hullRemaining": 100,
+        "beacons": 0,
+        "id": "browser-99"
+      }
+    ],
+    "browser": "155.0.8059.85"
+  },
+  "unitTests": {
+    "nativeMailbox": 1,
+    "combatAdapter": 3,
+    "surfacePhysics": 7,
+    "relayNodeAndRust": 63
+  },
+  "preservationChecks": {
+    "pinnedExportsPresent": 2444,
+    "provenancePinsPassed": 19,
+    "regenerationPatchFilesReconstructedExactly": 8
+  },
+  "sourceHashes": {
+    "campaign/src/combat.mjs": "2f28839424a08bedf2b4c22995324138ae316d0926b0656c8e94a4bb7278562c",
+    "campaign/src/lander.mjs": "85d87deeb4e2bf1183888d6ddb7d3077f0d12c1be1ebaf1171a212ee43c5113e",
+    "rust/uqm-engine-original/campaign.rs": "1d966ae4d6d6ae1b1aa7524c600c406b0015a4d8a9687bde2b78003bd6d3a353",
+    "campaign/native-hooks.patch": "34d3012ab9ab071b3ff46fe68ec62bba1e1be0b87d7ff9b2f49380b7c405c659",
+    "campaign/src/app.mjs": "3a2afd0731c2273e1fe44341b3d12218f1fd9e4021f8ae426667db134231558b",
+    "campaign/src/state.mjs": "1c6eb0f0ee03210dda07c38698f1da99a499a5e6f6d8fa8fc9dec47fd353d522",
+    "campaign/content/campaign.json": "8966b9cc6d4959d86995668935c3234016942d837b740c792cd5fdc5241a3925"
+  },
+  "commands": [
+    "node --test campaign/tests/combat.test.mjs campaign/tests/lander.test.mjs",
+    "AFTERLIGHT_SHIP_MATRIX=1 node campaign/tests/combat-browser.mjs",
+    "node campaign/tests/lander-browser.mjs",
+    "node campaign/tests/original-regression.mjs",
+    "node --test tests/server/netplay.test.mjs tests/server/rust-netplay.test.mjs",
+    "node campaign/tests/integration-encounters.mjs"
+  ],
+  "limitations": [
+    "Native combat uses original UQM pixel art; the new campaign art is separate.",
+    "Native retreat uses the actual battle abort/cleanup path, not the original campaign hyperspace escape animation.",
+    "Surface gameplay is newly authored JavaScript with deterministic fixed-step physics; it is not the original UQM lander.",
+    "Browser validation used desktop Chrome 155 on macOS. Mobile surface layout/pointer controls were checked in a narrow browser viewport; native combat still requires a desktop keyboard."
+  ],
+  "parentIntegration": {
+    "passed": true,
+    "errors": [],
+    "steps": [
+      "Visible campaign survey launch creates only a pending receipt",
+      "Physical beacon visits and return award the authored survey exactly once",
+      "Pending survey reload resumes safely; early withdrawal grants no survey reward",
+      "Actual native battle result advances the campaign and preserves its crew/recovery rules"
+    ],
+    "surface": {
+      "system": "cinder",
+      "dayBefore": 9,
+      "dayAfter": 10,
+      "creditsBefore": 370,
+      "creditsAfter": 421,
+      "beacons": 3,
+      "hullBeforeReturn": 100
+    },
+    "battle": {
+      "receipt": {
+        "type": "uqm-campaign:result",
+        "id": "afterlight-accord:20:lantern-drone",
+        "outcome": "victory",
+        "crew": 6,
+        "enemyRemaining": 0,
+        "frames": 947
+      },
+      "crewAfter": 6,
+      "scene": "a2_ferry_rescue",
+      "dayBefore": 11,
+      "dayAfter": 12
+    },
+    "fixture": {
+      "openingRevision": 17,
+      "surveySystem": "cinder",
+      "surveyRevision": 18,
+      "battleRevision": 19
+    },
+    "browser": "155.0.8059.85"
+  }
+}

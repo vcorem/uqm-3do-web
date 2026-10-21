@@ -3128,6 +3128,26 @@ pub unsafe extern "C" fn DoMelee(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
     let mut TimeIn: DWORD = GetTimeCounter();
     let mut force_select: BOOLEAN = BOOLEAN::FALSE;
     ::core::ptr::write_volatile(&raw mut GamePaused, BOOLEAN::FALSE);
+    // AFTERLIGHT: idle mailbox loop, using original StartMelee/Battle.
+    if crate::campaign::enabled() {
+        if crate::campaign::pending() {
+            // UQM stores setup teams in reverse order to battle player numbers.
+            let mut fleet = [MeleeShip::MELEE_NONE; 14];
+            fleet[0] = MeleeShip(crate::campaign::player());
+            for (index, ship) in fleet.iter().enumerate() { MeleeSetup_setShip((*pMS).meleeSetup, 1, index as COUNT, *ship); }
+            for (index, slot) in fleet.iter_mut().enumerate() { *slot = MeleeShip(crate::campaign::enemy(index)); }
+            for (index, ship) in fleet.iter().enumerate() { MeleeSetup_setShip((*pMS).meleeSetup, 0, index as COUNT, *ship); }
+            *(&raw mut PlayerControl as *mut BYTE).offset(0) = crate::campaign::player_control();
+            *(&raw mut PlayerControl as *mut BYTE).offset(1) = 6 | crate::campaign::rating() as u8;
+            *(&raw mut PlayerControls as *mut CONTROL_TEMPLATE).offset(0) = CONTROL_TEMPLATE::CONTROL_TEMPLATE_KB_1;
+            TFB_SeedRandom(crate::campaign::seed());
+            crate::campaign::start();
+            StartMelee(pMS);
+            crate::campaign::complete();
+        }
+        SleepThreadUntil(TimeIn.wrapping_add(840 / 30));
+        return BOOLEAN::TRUE;
+    }
     if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
         & C2Rust_Unnamed_5::CHECK_ABORT.0 as ::core::ffi::c_int != 0
     {
@@ -3530,7 +3550,7 @@ pub unsafe extern "C" fn Melee() {
     DoInput(&raw mut MenuState as *mut ::core::ffi::c_void, BOOLEAN::TRUE);
     StopMusic();
     WaitForSoundEnd(!(0 as ::core::ffi::c_int) as COUNT);
-    if webSession.0 == 0 {
+    if webSession.0 == 0 && !crate::campaign::enabled() {
         WriteMeleeConfig(&raw mut MenuState);
     }
     FreeMeleeInfo(&raw mut MenuState);

@@ -24,3 +24,6 @@ panic = "abort"
 strip = "debuginfo"
 [profile.dev]
 panic = "abort"
+
+[features]
+campaign-test-driver = []

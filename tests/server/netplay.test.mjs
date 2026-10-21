@@ -457,7 +457,7 @@ test('static serving isolates WASM, preserves files, supports HEAD, and blocks t
   await mkdir(path.join(dist, 'folder'));
   await writeFile(path.join(dist, 'index.html'), '<canvas>game</canvas>');
   await writeFile(path.join(dist, 'game.wasm'), Buffer.from([0, 97, 115, 109]));
-  for (const extension of ['glb', 'ogg', 'wav']) await writeFile(path.join(dist, `asset.${extension}`), 'fixture');
+  for (const extension of ['glb', 'ogg', 'wav', 'mjs']) await writeFile(path.join(dist, `asset.${extension}`), 'fixture');
   await writeFile(path.join(temp, 'secret.txt'), 'outside');
   await writeFile(path.join(dist, '.secret'), 'hidden');
   await symlink(path.join(temp, 'secret.txt'), path.join(dist, 'linked.txt'));
@@ -470,7 +470,7 @@ test('static serving isolates WASM, preserves files, supports HEAD, and blocks t
   const wasm = await request(origin, '/game.wasm');
   assert.equal(wasm.headers['content-type'], 'application/wasm');
   assert.deepEqual(wasm.body, Buffer.from([0, 97, 115, 109]));
-  for (const [extension, contentType] of [['glb', 'model/gltf-binary'], ['ogg', 'audio/ogg'], ['wav', 'audio/wav']]) {
+  for (const [extension, contentType] of [['glb', 'model/gltf-binary'], ['ogg', 'audio/ogg'], ['wav', 'audio/wav'], ['mjs', 'text/javascript; charset=utf-8']]) {
     assert.equal((await request(origin, `/asset.${extension}`)).headers['content-type'], contentType);
   }
   const head = await request(origin, '/game.wasm', 'HEAD');

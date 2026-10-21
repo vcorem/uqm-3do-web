@@ -1,0 +1,208 @@
+{
+  "date": "2026-10-21",
+  "scope": "Local development verification; no public deployment or hosted CI result claimed.",
+  "campaign": {
+    "scenes": 103,
+    "choices": 163,
+    "systems": 32,
+    "quests": 15,
+    "characters": 10,
+    "surveys": 18,
+    "endings": 3,
+    "uniqueNarrativeProseWords": 26531,
+    "choiceWords": 1754,
+    "totalStoryWords": 28285
+  },
+  "unitTests": {
+    "passed": 61,
+    "failed": 0
+  },
+  "browser": {
+    "passed": true,
+    "errors": [],
+    "routes": [
+      {
+        "ending": "accord",
+        "actions": 86,
+        "day": 90,
+        "systems": 16,
+        "decisions": 50
+      },
+      {
+        "ending": "mandate",
+        "actions": 54,
+        "day": 43,
+        "systems": 9,
+        "decisions": 32
+      },
+      {
+        "ending": "partition",
+        "actions": 54,
+        "day": 43,
+        "systems": 9,
+        "decisions": 32
+      }
+    ],
+    "screenshots": [
+      "title.png",
+      "opening.png",
+      "act-two-chart.png",
+      "expedition-menu.png",
+      "ending-accord.png",
+      "ending-mandate.png",
+      "ending-partition.png",
+      "mobile-dialogue.png",
+      "mobile-chart.png"
+    ],
+    "browser": "155.0.8059.85",
+    "assets": {
+      "portraits": [
+        1254,
+        1254,
+        1254,
+        1254,
+        1254,
+        1254,
+        1254,
+        1254,
+        1254,
+        1254
+      ],
+      "decoded": [
+        {
+          "id": "afterlight",
+          "duration": 89.304,
+          "channels": 2
+        },
+        {
+          "id": "drift",
+          "duration": 76.8,
+          "channels": 2
+        },
+        {
+          "id": "hearth",
+          "duration": 73.848,
+          "channels": 2
+        },
+        {
+          "id": "mandate",
+          "duration": 83.48,
+          "channels": 2
+        },
+        {
+          "id": "counterpoint",
+          "duration": 109.092,
+          "channels": 2
+        },
+        {
+          "id": "firstvoice",
+          "duration": 106.668,
+          "channels": 2
+        },
+        {
+          "id": "smallcourage",
+          "duration": 60,
+          "channels": 2
+        },
+        {
+          "id": "witness",
+          "duration": 116.364,
+          "channels": 2
+        },
+        {
+          "id": "ceramic",
+          "duration": 55.386,
+          "channels": 2
+        },
+        {
+          "id": "secondrain",
+          "duration": 102.128,
+          "channels": 2
+        },
+        {
+          "id": "convoy",
+          "duration": 71.112,
+          "channels": 2
+        },
+        {
+          "id": "battle",
+          "duration": 58.182,
+          "channels": 2
+        },
+        {
+          "id": "fracture",
+          "duration": 126.316,
+          "channels": 2
+        },
+        {
+          "id": "accord",
+          "duration": 80,
+          "channels": 2
+        },
+        {
+          "id": "homecoming",
+          "duration": 77.838,
+          "channels": 2
+        }
+      ]
+    },
+    "saveRecovery": true,
+    "mobile": true
+  },
+  "parentIntegration": {
+    "passed": true,
+    "errors": [],
+    "steps": [
+      "Visible campaign survey launch creates only a pending receipt",
+      "Physical beacon visits and return award the authored survey exactly once",
+      "Pending survey reload resumes safely; early withdrawal grants no survey reward",
+      "Actual native battle result advances the campaign and preserves its crew/recovery rules"
+    ],
+    "surface": {
+      "system": "cinder",
+      "dayBefore": 9,
+      "dayAfter": 10,
+      "creditsBefore": 370,
+      "creditsAfter": 421,
+      "beacons": 3,
+      "hullBeforeReturn": 100
+    },
+    "battle": {
+      "receipt": {
+        "type": "uqm-campaign:result",
+        "id": "afterlight-accord:20:lantern-drone",
+        "outcome": "victory",
+        "crew": 6,
+        "enemyRemaining": 0,
+        "frames": 947
+      },
+      "crewAfter": 6,
+      "scene": "a2_ferry_rescue",
+      "dayBefore": 11,
+      "dayAfter": 12
+    },
+    "fixture": {
+      "openingRevision": 17,
+      "surveySystem": "cinder",
+      "surveyRevision": 18,
+      "battleRevision": 19
+    },
+    "browser": "155.0.8059.85"
+  },
+  "sourceSha256": {
+    "campaign/content/campaign.json": "d92cf23fe6a0248be93420101153e5841d1ae2310307902bdc3c4d84f1a3f65d",
+    "campaign/src/app.mjs": "3a2afd0731c2273e1fe44341b3d12218f1fd9e4021f8ae426667db134231558b",
+    "campaign/src/state.mjs": "208e2860383b7de77d5dec68aed12cd47cbba79a3864d1f559a1d2f45f0a5a48",
+    "campaign/src/lander.mjs": "85d87deeb4e2bf1183888d6ddb7d3077f0d12c1be1ebaf1171a212ee43c5113e",
+    "campaign/src/combat.mjs": "2f28839424a08bedf2b4c22995324138ae316d0926b0656c8e94a4bb7278562c",
+    "campaign/src/audio.mjs": "105345444374c0afce92be560b9693a5fabc9fb4fcca845dda27205c806376e6"
+  },
+  "additionalEvidence": "gameplay-validation.json",
+  "limitations": [
+    "Literary quality, emotional effect and musical taste require independent human playtesting.",
+    "The scope is smaller than the original campaign; story word counts include all branches, not one reading path.",
+    "Recorded voices, new native ship sprite sets and localization are not included.",
+    "Chrome on macOS was verified; Safari, Firefox and extended assistive-technology testing remain outstanding.",
+    "Native space combat requires a keyboard; narrow-screen reading and surface pointer controls were verified."
+  ]
+}

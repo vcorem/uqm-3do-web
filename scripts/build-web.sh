@@ -42,7 +42,12 @@ if [[ "${UQM_CORE:-rust}" = rust ]]; then
   "$root/scripts/rust-engine/build.sh" original >"$root/.tools/rust-engine-original-build.log" 2>&1 || {
     tail -n 100 "$root/.tools/rust-engine-original-build.log" >&2; exit 1;
   }
-  python3 "$root/scripts/rust-engine/link.py" original --source "$root/sc2" \
+  campaign_options=()
+  if [[ "${UQM_CAMPAIGN_COMBAT:-0}" = 1 ]]; then
+    campaign_options=(--campaign-combat)
+    if [[ "${AFTERLIGHT_COMBAT_TEST_DRIVER:-0}" = 1 ]]; then campaign_options+=(--campaign-test-driver); fi
+  fi
+  python3 "$root/scripts/rust-engine/link.py" original ${campaign_options[@]+"${campaign_options[@]}"} --source "$root/sc2" \
     --generated "$root/rust/uqm-engine-original" \
     --library "${CARGO_TARGET_DIR:-$root/.tools/rust-engine-original}/wasm32-unknown-emscripten/release/libuqm_engine_original.a" \
     --output "$output"

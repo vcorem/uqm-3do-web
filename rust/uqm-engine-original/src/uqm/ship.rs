@@ -1201,6 +1201,12 @@ unsafe extern "C" fn spawn_ship(mut StarShipPtr: *mut STARSHIP) -> BOOLEAN {
         return BOOLEAN::FALSE;
     }
     (*StarShipPtr).RaceDescPtr = RDPtr;
+    // AFTERLIGHT: starting damage belongs to the campaign; later damage is native.
+    if crate::campaign::running() && (*StarShipPtr).playerNr == 0 {
+        if let Some(crew) = crate::campaign::starting_crew((*RDPtr).ship_info.max_crew as u32) {
+            (*RDPtr).ship_info.crew_level = crew as COUNT;
+        }
+    }
     (*StarShipPtr).ship_input_state = 0 as BYTE;
     (*StarShipPtr).cur_status_flags = 0 as STATUS_FLAGS;
     (*StarShipPtr).old_status_flags = 0 as STATUS_FLAGS;

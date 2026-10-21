@@ -1,5 +1,10 @@
 # The Ur-Quan Masters — 3DO Web Edition
 
+## Original sequel campaign: The Afterlight Accord
+
+This branch includes a complete new single-player campaign with original English writing, illustrated characters, an original instrumental score, surface expeditions and genuine Rust UQM space combat. See [play instructions and source guide](campaign/README.md) and the [developer handover](docs/afterlight-handover.html). Build with `npm run build:afterlight`, run `npm run start:afterlight`, then open http://127.0.0.1:10002/. The existing Original/HD launchers remain separate.
+
+
 This branch also includes [Cosmo Clash](cosmoclash/README.md), with a Rust
 WebAssembly game engine and private online fleet battles. Its source, assets,
 build, and validation are kept in the `cosmoclash/` directory.

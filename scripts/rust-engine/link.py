@@ -20,6 +20,8 @@ parser.add_argument('--library', type=Path, required=True)
 parser.add_argument('--generated', type=Path, required=True)
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--source', type=Path, required=True)
+parser.add_argument('--campaign-combat', action='store_true')
+parser.add_argument('--campaign-test-driver', action='store_true')
 args = parser.parse_args()
 source = args.source.resolve()
 generated = args.generated.resolve()
@@ -34,6 +36,29 @@ if "uqm_HAVE_REGEX='0'" in build:
     compile_flags += ['-Isrc/regex']
 link_flags = [value for value in flags('uqm_LDFLAGS')
               if not value.endswith('/libuqm_core.a')]
+campaign_content = None
+if args.campaign_combat:
+    if args.edition != 'original':
+        raise SystemExit('Afterlight combat currently uses the Original Rust engine.')
+    for option, replacement in [('--shell-file', root / 'campaign/combat-shell/index.html'),
+                                ('--pre-js', root / 'campaign/combat-shell/pre.js')]:
+        link_flags[link_flags.index(option) + 1] = str(replacement)
+    # Combat requires the base ship/UI assets, not the original campaign's
+    # enormous voice and FMV add-ons. Keep the source media tree untouched.
+    campaign_content = tempfile.TemporaryDirectory(prefix='uqm-afterlight-content-')
+    combat_content = Path(campaign_content.name)
+    shutil.copytree(source / 'content/base', combat_content / 'base')
+    (combat_content / 'addons').mkdir()
+    for name in ('uqm.rmp', 'uqm.key', 'menu.key', 'version'):
+        shutil.copy2(source / 'content' / name, combat_content / name)
+    link_flags[link_flags.index('--preload-file=content')] = '--preload-file=' + str(combat_content) + '@/content'
+    exports = ['_main'] + ['_uqm_campaign_' + suffix for suffix in
+        ('enable', 'begin', 'phase', 'outcome', 'crew', 'remaining', 'frames', 'retreat')]
+    if args.campaign_test_driver:
+        exports.append('_uqm_campaign_test_ai')
+    link_flags.append('-sEXPORTED_FUNCTIONS=' + json.dumps(exports, separators=(',', ':')))
+elif args.campaign_test_driver:
+    raise SystemExit('The test driver requires the isolated campaign combat build.')
 emcc = shutil.which('emcc')
 if not emcc:
     raise SystemExit('Emscripten must be on PATH.')
@@ -60,6 +85,8 @@ for index, adapter in enumerate(adapters):
 subprocess.run([str(emcc), *map(str, objects), str(library), *link_flags,
                 '-o', str(output / 'uqm-debug.html')], cwd=source, check=True)
 shutil.copy2(output / 'uqm-debug.html', output / 'index.html')
+if args.campaign_combat:
+    shutil.copy2(root / 'campaign/combat-shell/host.js', output / 'host.js')
 shutil.copy2(source / 'wasm/compat/toolchain-fixes.json', output / 'toolchain-fixes.json')
 if args.edition == 'original':
     shutil.copy2(source / 'COPYING', output / 'COPYING.txt')
@@ -81,5 +108,7 @@ else:
     'emscripten': (root / '.emscripten-version').read_text().strip(),
 }, indent=2) + '\n')
 temporary.cleanup()
+if campaign_content:
+    campaign_content.cleanup()
 (output / 'link-inputs.json').write_text(json.dumps(policy, indent=2) + '\n')
 print('Linked Rust engine:', output / 'index.html')

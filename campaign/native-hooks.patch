@@ -1,0 +1,183 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index d05946627..4b8b5c3a8 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -24,3 +24,6 @@ panic = "abort"
+ strip = "debuginfo"
+ [profile.dev]
+ panic = "abort"
++
++[features]
++campaign-test-driver = []
+diff --git a/lib.rs b/lib.rs
+index ec7bb031b..86d4f0e4c 100644
+--- a/lib.rs
++++ b/lib.rs
+@@ -20,3 +20,4 @@ extern crate uqm_core;
+ extern crate alloc;
+ mod uqm_allocator;
+ mod uqm_engine_init;
++pub mod campaign;
+diff --git a/src/uqm/battle.rs b/src/uqm/battle.rs
+index 9e56e326e..fcf74aeee 100644
+--- a/src/uqm/battle.rs
++++ b/src/uqm/battle.rs
+@@ -1757,6 +1757,8 @@ unsafe extern "C" fn ProcessInput() {
+             );
+             hNextShip = (*StarShipPtr).succ as HSTARSHIP;
+             if !(*StarShipPtr).hShip.is_null() {
++                // AFTERLIGHT: read exact live native crew.
++                crate::campaign::observe_crew(cur_player, (*(*StarShipPtr).RaceDescPtr).ship_info.crew_level as u32);
+                 (*StarShipPtr).control = *(&raw mut PlayerControl as *mut BYTE)
+                     .offset(cur_player as isize);
+                 InputState = (*(**(&raw mut PlayerInput as *mut *mut InputContext)
+@@ -1903,6 +1905,11 @@ unsafe extern "C" fn DoBattle(mut bs: *mut BATTLE_STATE) -> BOOLEAN {
+         flushPacketQueues();
+         addLocalChecksum(battleFrameCount, checksum);
+     }
++    // AFTERLIGHT: retreat takes the existing abort/cleanup path.
++    crate::campaign::frame();
++    if crate::campaign::retreat_requested() {
++        GlobData.Game_state.CurrentActivity |= C2Rust_Unnamed_6::CHECK_ABORT.0 as ACTIVITY;
++    }
+     ProcessInput();
+     if getNumNetConnections() > 0 as size_t {
+         let mut delay: size_t = getBattleInputDelay();
+@@ -2089,6 +2096,9 @@ pub unsafe extern "C" fn Battle(mut callback: Option<BattleFrameCallback>) -> BO
+                 DoInput(&raw mut bs as *mut ::core::ffi::c_void, BOOLEAN::FALSE);
+             }
+         }
++        // AFTERLIGHT: capture actual survivors before abort flags are cleared.
++        crate::campaign::result(battle_counter[0] as u32, battle_counter[1] as u32,
++            GlobData.Game_state.CurrentActivity & C2Rust_Unnamed_6::CHECK_ABORT.0 as ACTIVITY != 0);
+         if GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
+             == C2Rust_Unnamed_6::SUPER_MELEE.0 as ::core::ffi::c_int
+         {
+@@ -2101,7 +2111,7 @@ pub unsafe extern "C" fn Battle(mut callback: Option<BattleFrameCallback>) -> BO
+                     .CurrentActivity as ::core::ffi::c_int
+                     & !(C2Rust_Unnamed_6::CHECK_ABORT.0 as ::core::ffi::c_int))
+                     as ACTIVITY;
+-            } else {
++            } else if !crate::campaign::enabled() {
+                 MeleeGameOver();
+             }
+         }
+diff --git a/src/uqm/init.rs b/src/uqm/init.rs
+index 1d14e8622..98b7365cd 100644
+--- a/src/uqm/init.rs
++++ b/src/uqm/init.rs
+@@ -917,6 +917,8 @@ pub unsafe extern "C" fn UninitShips() {
+             (*StarShipPtr).crew_level = (*(*StarShipPtr).RaceDescPtr)
+                 .ship_info
+                 .crew_level;
++            // AFTERLIGHT: include native end-of-battle crew retrieval.
++            crate::campaign::observe_crew((*StarShipPtr).playerNr as usize, (*StarShipPtr).crew_level as u32);
+             SPtr[(*StarShipPtr).playerNr as usize] = StarShipPtr;
+             free_ship((*StarShipPtr).RaceDescPtr, BOOLEAN::TRUE, BOOLEAN::TRUE);
+             (*StarShipPtr).RaceDescPtr = ::core::ptr::null_mut::<RACE_DESC>();
+diff --git a/src/uqm/restart.rs b/src/uqm/restart.rs
+index c26428e59..28865452c 100644
+--- a/src/uqm/restart.rs
++++ b/src/uqm/restart.rs
+@@ -1853,6 +1853,14 @@ unsafe extern "C" fn TryStartGame() -> BOOLEAN {
+     MenuState.InputFunc = Some(
+         DoRestart as unsafe extern "C" fn(*mut MENU_STATE) -> BOOLEAN,
+     ) as Option<unsafe extern "C" fn(*mut menu_state) -> BOOLEAN>;
++    // AFTERLIGHT: a separate campaign owns narrative/save state and uses Melee only.
++    if crate::campaign::enabled() {
++        FreeGameData();
++        setBrowserGameScreen(b"campaignCombat\0".as_ptr() as *const ::core::ffi::c_char);
++        Melee();
++        GlobData.Game_state.CurrentActivity |= C2Rust_Unnamed_2::CHECK_ABORT.0 as ACTIVITY;
++        return BOOLEAN::FALSE;
++    }
+     if webNetplayRole >= 0 as ::core::ffi::c_int {
+         FreeGameData();
+         setBrowserGameScreen(b"melee\0".as_ptr() as *const ::core::ffi::c_char);
+diff --git a/src/uqm/ship.rs b/src/uqm/ship.rs
+index 7fd2be813..9024ee94c 100644
+--- a/src/uqm/ship.rs
++++ b/src/uqm/ship.rs
+@@ -1201,6 +1201,12 @@ unsafe extern "C" fn spawn_ship(mut StarShipPtr: *mut STARSHIP) -> BOOLEAN {
+         return BOOLEAN::FALSE;
+     }
+     (*StarShipPtr).RaceDescPtr = RDPtr;
++    // AFTERLIGHT: starting damage belongs to the campaign; later damage is native.
++    if crate::campaign::running() && (*StarShipPtr).playerNr == 0 {
++        if let Some(crew) = crate::campaign::starting_crew((*RDPtr).ship_info.max_crew as u32) {
++            (*RDPtr).ship_info.crew_level = crew as COUNT;
++        }
++    }
+     (*StarShipPtr).ship_input_state = 0 as BYTE;
+     (*StarShipPtr).cur_status_flags = 0 as STATUS_FLAGS;
+     (*StarShipPtr).old_status_flags = 0 as STATUS_FLAGS;
+diff --git a/src/uqm/supermelee/melee.rs b/src/uqm/supermelee/melee.rs
+index 79a1cc5bb..8e60e5f7f 100644
+--- a/src/uqm/supermelee/melee.rs
++++ b/src/uqm/supermelee/melee.rs
+@@ -3128,6 +3128,26 @@ pub unsafe extern "C" fn DoMelee(mut pMS: *mut MELEE_STATE) -> BOOLEAN {
+     let mut TimeIn: DWORD = GetTimeCounter();
+     let mut force_select: BOOLEAN = BOOLEAN::FALSE;
+     ::core::ptr::write_volatile(&raw mut GamePaused, BOOLEAN::FALSE);
++    // AFTERLIGHT: idle mailbox loop, using original StartMelee/Battle.
++    if crate::campaign::enabled() {
++        if crate::campaign::pending() {
++            // UQM stores setup teams in reverse order to battle player numbers.
++            let mut fleet = [MeleeShip::MELEE_NONE; 14];
++            fleet[0] = MeleeShip(crate::campaign::player());
++            for (index, ship) in fleet.iter().enumerate() { MeleeSetup_setShip((*pMS).meleeSetup, 1, index as COUNT, *ship); }
++            for (index, slot) in fleet.iter_mut().enumerate() { *slot = MeleeShip(crate::campaign::enemy(index)); }
++            for (index, ship) in fleet.iter().enumerate() { MeleeSetup_setShip((*pMS).meleeSetup, 0, index as COUNT, *ship); }
++            *(&raw mut PlayerControl as *mut BYTE).offset(0) = crate::campaign::player_control();
++            *(&raw mut PlayerControl as *mut BYTE).offset(1) = 6 | crate::campaign::rating() as u8;
++            *(&raw mut PlayerControls as *mut CONTROL_TEMPLATE).offset(0) = CONTROL_TEMPLATE::CONTROL_TEMPLATE_KB_1;
++            TFB_SeedRandom(crate::campaign::seed());
++            crate::campaign::start();
++            StartMelee(pMS);
++            crate::campaign::complete();
++        }
++        SleepThreadUntil(TimeIn.wrapping_add(840 / 30));
++        return BOOLEAN::TRUE;
++    }
+     if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int
+         & C2Rust_Unnamed_5::CHECK_ABORT.0 as ::core::ffi::c_int != 0
+     {
+@@ -3530,7 +3550,7 @@ pub unsafe extern "C" fn Melee() {
+     DoInput(&raw mut MenuState as *mut ::core::ffi::c_void, BOOLEAN::TRUE);
+     StopMusic();
+     WaitForSoundEnd(!(0 as ::core::ffi::c_int) as COUNT);
+-    if webSession.0 == 0 {
++    if webSession.0 == 0 && !crate::campaign::enabled() {
+         WriteMeleeConfig(&raw mut MenuState);
+     }
+     FreeMeleeInfo(&raw mut MenuState);
+diff --git a/src/uqm/supermelee/pickmele.rs b/src/uqm/supermelee/pickmele.rs
+index a30607d68..dbf49b939 100644
+--- a/src/uqm/supermelee/pickmele.rs
++++ b/src/uqm/supermelee/pickmele.rs
+@@ -1244,6 +1244,25 @@ pub unsafe extern "C" fn selectShipNetwork(
+     return BOOLEAN::TRUE;
+ }
+ unsafe extern "C" fn DoGetMelee(mut gms: *mut GETMELEE_STATE) -> BOOLEAN {
++    // AFTERLIGHT: consume authored fleets in order, spawning the original ships.
++    if crate::campaign::running() {
++        if crate::campaign::retreat_requested() {
++            GlobData.Game_state.CurrentActivity |= C2Rust_Unnamed_7::CHECK_ABORT.0 as ACTIVITY;
++            return BOOLEAN::FALSE;
++        }
++        for side in 0..2usize {
++            if (*gms).player[side].selecting.0 != 0 && (*gms).player[side].done.0 == 0 {
++                (*gms).player[side].randomIndex = 0;
++                if !setShipSelected(gms, side as COUNT, u16::MAX, false) {
++                    GlobData.Game_state.CurrentActivity |= C2Rust_Unnamed_7::CHECK_ABORT.0 as ACTIVITY;
++                    return BOOLEAN::FALSE;
++                }
++                Flash_terminate((*gms).player[side].flashContext);
++                (*gms).player[side].flashContext = ::core::ptr::null_mut();
++            }
++        }
++        return BOOLEAN::FALSE;
++    }
+     let mut done: BOOLEAN = BOOLEAN::FALSE;
+     let mut playerI: COUNT = 0;
+     SetMenuSounds(

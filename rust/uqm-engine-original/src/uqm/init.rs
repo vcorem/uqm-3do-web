@@ -917,6 +917,8 @@ pub unsafe extern "C" fn UninitShips() {
             (*StarShipPtr).crew_level = (*(*StarShipPtr).RaceDescPtr)
                 .ship_info
                 .crew_level;
+            // AFTERLIGHT: include native end-of-battle crew retrieval.
+            crate::campaign::observe_crew((*StarShipPtr).playerNr as usize, (*StarShipPtr).crew_level as u32);
             SPtr[(*StarShipPtr).playerNr as usize] = StarShipPtr;
             free_ship((*StarShipPtr).RaceDescPtr, BOOLEAN::TRUE, BOOLEAN::TRUE);
             (*StarShipPtr).RaceDescPtr = ::core::ptr::null_mut::<RACE_DESC>();

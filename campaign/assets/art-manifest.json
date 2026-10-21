@@ -1,0 +1,96 @@
+{
+  "created": "2026-10-21",
+  "tool": "OpenAI built-in image_gen",
+  "mode": "generate",
+  "direction": "Original high-resolution retro space-opera illustration, tactile worn materials, deep navy/mineral teal shadows and warm amber light, readable alien silhouettes; no text, logos or watermark.",
+  "assets": [
+    {
+      "id": "ilex",
+      "file": "assets/portraits/ilex.png",
+      "brief": "Chmmr envoy, cyan crystalline core joined to bronze articulated lattice, complementary light rhythms, no humanoid face; cooperation without erased difference.",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "0e1e71c9fc0254f017982cfcd927e960027890ddbd8c32d0a7f4497c6fabf43e"
+    },
+    {
+      "id": "khervat",
+      "file": "assets/portraits/khervat.png",
+      "brief": "Elderly Ur-Quan keeper, suspended green segmented body, small violet eyes, scarred mandibles and tendrils, holding an unmarked memorial token in an archive.",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "263ca1af40c2a02a08ed41eddcdc46e069a3368eed4c602ab77e35bf642446f7"
+    },
+    {
+      "id": "lilt",
+      "file": "assets/portraits/lilt.png",
+      "brief": "Newly born Afterlight person, amber and violet filaments making an incomplete open hand inside a rescued transmitter, one strand examining a screw.",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "df8505e3a788bfa45d2d1884fe4ac46cec3a7b23d3fcfd99cb599741eb2bc035"
+    },
+    {
+      "id": "mara",
+      "file": "assets/portraits/mara.png",
+      "brief": "Human expedition engineer, short dark curls with silver temples, navy patched work jacket, solder lamp, repaired cup; warmth and practical competence.",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "061bc4f7fc17da679c7a7a53f58d42dffbdfc0d49597e5950d6e5574acbd63ec"
+    },
+    {
+      "id": "moss",
+      "file": "assets/portraits/moss.png",
+      "brief": "Supox botanist, rust-red and green leaves, expressive seedpod eyes, root tendrils, grafting tools, humid shipboard greenhouse; entirely botanical anatomy.",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "041835a3e20fe1cd8f34801a03b8ff94e812063b8c5bf49ffd6604b120624dfb"
+    },
+    {
+      "id": "nacre",
+      "file": "assets/portraits/nacre.png",
+      "brief": "Votir acoustic architect, asymmetric ivory ceramic shells, indigo tissue, tiny amber eyes, bronze resonant rings, one carefully repaired crack.",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "32e75cc83636976f7a6cd14bdc1f08ec6c70fab0ed31de90b39fffd4d29ee0ba"
+    },
+    {
+      "id": "pell",
+      "file": "assets/portraits/pell.png",
+      "brief": "Yehat convoy commander, long ochre beak, swept crest, folded wing-arms, repaired navy/bronze harness, navigation astrolabe and emergency blankets.",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "83505ad57986219885f6d8590b517de946e5a58a16eed2546a5b93cb4ef3540a"
+    },
+    {
+      "id": "sera",
+      "file": "assets/portraits/sera.png",
+      "brief": "Silver-haired human reconstruction architect, ivory uniform, repaired wrist brace, relief charts and one living plant; compassionate, controlled, tired.",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "60bc8aa6f481c39db7dfad2dc0ec7538863de70d2c5a996e81e5928352a4313a"
+    },
+    {
+      "id": "shear",
+      "file": "assets/portraits/shear.png",
+      "brief": "Afterlight dissenter, white-blue angular light threads and violet prisms in an asymmetrical torn sail, parallel strands, one tiny amber reaching filament.",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "54280237341d86e0c95be3e141b430d7b5d1a27eac52f5b5240a3587a98daeaf"
+    },
+    {
+      "id": "tallow",
+      "file": "assets/portraits/tallow.png",
+      "brief": "Anxious Spathi risk assessor, one large eye on a curved stalk, sea-green asymmetric body, pink carapace, tiny colored flags and a passenger emergency kit.",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "a4066166ef24d75955ede22ad426cf32b8e5fab0e08913210acc926957637c49"
+    },
+    {
+      "id": "afterlight",
+      "file": "assets/scenes/afterlight.png",
+      "brief": "A rugged survey ship approaches a liberated ocean world. Its amber shield is separating like a chrysalis; repair crews and civilian ships work below. Uneasy hope and a subtle distant beacon, dark left space for the title.",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "482edc9bb8a7dcc9f67eea898c9eb824f07cd1b3e564e178f259479e00bcbf3c"
+    }
+  ]
+}

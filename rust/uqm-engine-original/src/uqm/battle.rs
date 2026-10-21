@@ -1757,6 +1757,8 @@ unsafe extern "C" fn ProcessInput() {
             );
             hNextShip = (*StarShipPtr).succ as HSTARSHIP;
             if !(*StarShipPtr).hShip.is_null() {
+                // AFTERLIGHT: read exact live native crew.
+                crate::campaign::observe_crew(cur_player, (*(*StarShipPtr).RaceDescPtr).ship_info.crew_level as u32);
                 (*StarShipPtr).control = *(&raw mut PlayerControl as *mut BYTE)
                     .offset(cur_player as isize);
                 InputState = (*(**(&raw mut PlayerInput as *mut *mut InputContext)
@@ -1902,6 +1904,11 @@ unsafe extern "C" fn DoBattle(mut bs: *mut BATTLE_STATE) -> BOOLEAN {
         Netplay_NotifyAll_checksum(battleFrameCount, checksum);
         flushPacketQueues();
         addLocalChecksum(battleFrameCount, checksum);
+    }
+    // AFTERLIGHT: retreat takes the existing abort/cleanup path.
+    crate::campaign::frame();
+    if crate::campaign::retreat_requested() {
+        GlobData.Game_state.CurrentActivity |= C2Rust_Unnamed_6::CHECK_ABORT.0 as ACTIVITY;
     }
     ProcessInput();
     if getNumNetConnections() > 0 as size_t {
@@ -2089,6 +2096,9 @@ pub unsafe extern "C" fn Battle(mut callback: Option<BattleFrameCallback>) -> BO
                 DoInput(&raw mut bs as *mut ::core::ffi::c_void, BOOLEAN::FALSE);
             }
         }
+        // AFTERLIGHT: capture actual survivors before abort flags are cleared.
+        crate::campaign::result(battle_counter[0] as u32, battle_counter[1] as u32,
+            GlobData.Game_state.CurrentActivity & C2Rust_Unnamed_6::CHECK_ABORT.0 as ACTIVITY != 0);
         if GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
             == C2Rust_Unnamed_6::SUPER_MELEE.0 as ::core::ffi::c_int
         {
@@ -2101,7 +2111,7 @@ pub unsafe extern "C" fn Battle(mut callback: Option<BattleFrameCallback>) -> BO
                     .CurrentActivity as ::core::ffi::c_int
                     & !(C2Rust_Unnamed_6::CHECK_ABORT.0 as ::core::ffi::c_int))
                     as ACTIVITY;
-            } else {
+            } else if !crate::campaign::enabled() {
                 MeleeGameOver();
             }
         }
