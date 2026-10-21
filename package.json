@@ -23,7 +23,9 @@
     "build:afterlight": "bash scripts/build-afterlight.sh",
     "start:afterlight": "bash scripts/run-afterlight.sh",
     "test:afterlight": "node --test campaign/tests/*.test.mjs",
-    "test:afterlight:browser": "node campaign/tests/browser.mjs"
+    "test:afterlight:browser": "node campaign/tests/browser.mjs",
+    "test:afterlight:recovery": "node campaign/tests/recovery-browser.mjs",
+    "test:afterlight:progression": "node campaign/tests/progression-browser.mjs"
   },
   "dependencies": {
     "ws": "8.22.0"

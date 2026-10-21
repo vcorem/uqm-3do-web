@@ -8,6 +8,8 @@ import {chromium} from 'playwright';
 import {createNetplayServer} from '../../server/netplay.mjs';
 import {applyAction,getView,previewTravel,serializeSave,loadSave,resolveBattle,resolveSurvey} from '../src/state.mjs';
 import {planItinerary,OPENING_CHOICES} from './routes.mjs';
+import {surfaceObjective} from '../src/lander.mjs';
+import {surfaceWaypoints} from './surface-driver.mjs';
 
 const root=path.resolve(new URL('../..',import.meta.url).pathname);
 const dist=path.resolve(process.env.AFTERLIGHT_DIST||path.join(root,'.tools/afterlight-dist'));
@@ -39,35 +41,33 @@ async function steer(target,radius=26){
     }
     throw new Error('Parent surface navigation timed out');
 }
-function safeRoute(start,target,hazards){
-    // The scanner exposes all vents. Route ordinary keyboard controls around
-    // them, with room for inertia; this never changes the simulation itself.
-    const clear=(a,b)=>hazards.every(h=>{
-        const dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((h.x-a.x)*dx+(h.y-a.y)*dy)/(dx*dx+dy*dy||1)));
-        return Math.hypot(a.x+t*dx-h.x,a.y+t*dy-h.y)>h.radius+47;
-    });
-    if(clear(start,target))return[target];
-    const nodes=[];for(let y=32;y<710;y+=32)for(let x=32;x<1010;x+=32){const p={x,y};if(clear(p,p))nodes.push(p);}
-    nodes.unshift(start);nodes.push(target);const end=nodes.length-1,open=new Set([0]),cost=new Map([[0,0]]),came=new Map();
-    const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-    while(open.size){
-        const current=[...open].sort((a,b)=>(cost.get(a)+distance(nodes[a],target))-(cost.get(b)+distance(nodes[b],target)))[0];
-        if(current===end){const route=[target];let at=end;while(came.has(at)){at=came.get(at);route.unshift(nodes[at]);}const simple=[];let atIndex=0;while(atIndex<route.length-1){let furthest=route.length-1;while(furthest>atIndex+1&&!clear(route[atIndex],route[furthest]))furthest--;simple.push(route[furthest]);atIndex=furthest;}return simple;}
-        open.delete(current);
-        for(let other=1;other<nodes.length;other++)if(other!==current){const d=distance(nodes[current],nodes[other]);if(d>80&&other!==end)continue;if(!clear(nodes[current],nodes[other]))continue;const next=cost.get(current)+d;if(next<(cost.get(other)??Infinity)){cost.set(other,next);came.set(other,current);open.add(other);}}
-    }
-    throw new Error('No safe scanner route found');
-}
-async function navigateSurface(target,radius=26){
+async function navigateSurface(target,radius=10){
     const state=await page.evaluate(()=>window.__afterlight.surface);assert.ok(state);
-    const route=safeRoute(state,target,state.hazards);for(let i=0;i<route.length;i++)await steer(route[i],i===route.length-1?radius:14);
+    const route=surfaceWaypoints(state,target);for(let i=0;i<route.length;i++)await steer(route[i],i===route.length-1?radius:12);
+    await setKeys([]);
+}
+async function completeSurfaceTasks(){
+    const deadline=Date.now()+180000;
+    while(Date.now()<deadline){
+        const state=await page.evaluate(()=>window.__afterlight.surface);
+        if(!state||state.beacons.every(b=>b.visited))return;
+        const objective=surfaceObjective(state),signature=`${objective.kind}:${objective.target.id??'pad'}`;
+        await navigateSurface(objective.target);
+        await page.waitForFunction(({kind,id})=>{
+            const s=window.__afterlight.surface;if(!s)return true;
+            if(kind==='deliver')return s.cargo===null;
+            if(kind==='pickup')return s.cargo===id;
+            return s.beacons[id].visited;
+        },{kind:objective.kind,id:objective.target.id},{timeout:15000});
+    }
+    throw new Error('Parent surface objectives timed out');
 }
 async function resumeAfterReload(){await page.reload();await page.locator('[data-action=resume]').click();await page.waitForFunction(()=>window.__afterlight.state!==null);}
 
 try{
     // The normal opening grants access to Act II; no synthetic flags or resources.
     const opening=planItinerary(data,OPENING_CHOICES).state;
-    const surveySystem=data.systems.find(system=>system.survey && opening.knownSystems.includes(system.id) && previewTravel(data,opening,system.id).allowed);
+    const surveySystem=data.systems.find(system=>system.survey?.mode==='survey' && opening.knownSystems.includes(system.id) && previewTravel(data,opening,system.id).allowed);
     assert.ok(surveySystem,'an actual accessible survey must exist');
     const surveyFixture=opening.location===surveySystem.id?opening:action(opening,{type:'travel',systemId:surveySystem.id});
     let battleFixture=opening;if(battleFixture.scene)battleFixture=action(battleFixture,{type:'leave'});
@@ -86,13 +86,14 @@ try{
     const pending=await snapshot();assert.ok(pending.pendingSurvey);assert.equal(pending.resources.credits,surveyFixture.resources.credits,'launch alone must not award survey resources');assert.equal(pending.surveyedSystems.includes(surveySystem.id),false);
     const terrain=await page.evaluate(()=>window.__afterlight.surface);assert.equal(terrain.seed,pending.pendingSurvey.seed);
     mark('Visible campaign survey launch creates only a pending receipt');
-    for(const beacon of terrain.beacons){await navigateSurface(beacon);const current=await page.evaluate(()=>window.__afterlight.surface);assert.ok(current?.beacons[beacon.id].visited,'the lander must physically visit each beacon');}
+    await page.getByRole('button',{name:'Deploy lander',exact:true}).click();
+    await completeSurfaceTasks();
     assert.ok((await snapshot()).pendingSurvey,'all three scans alone must not resolve campaign rewards');
     await page.screenshot({path:path.join(output,'parent-surface-survey.png')});
     const beforeReturn=await page.evaluate(()=>window.__afterlight.surface);await navigateSurface(terrain.pad,18);
     await page.waitForFunction(()=>window.__afterlight.state.pendingSurvey===null);const surveyed=await snapshot();
     assert.equal(surveyed.surveyedSystems.includes(surveySystem.id),true);assert.equal(surveyed.journal.filter(entry=>entry.type==='survey'&&entry.systemId===surveySystem.id).length,1);
-    const surveyOracle=resolveSurvey(data,pending,{id:pending.pendingSurvey.id,outcome:'surveyed',beacons:3,hullRemaining:beforeReturn.hull,salvage:surveyed.surveySalvage[surveySystem.id]});assert.equal(surveyOracle.ok,true,surveyOracle.error);assert.deepEqual(surveyed,surveyOracle.state,'actual surface return must apply exactly the authored reward/event rules');
+    const surveyOracle=resolveSurvey(data,pending,{id:pending.pendingSurvey.id,outcome:'surveyed',beacons:3,hullRemaining:Math.ceil(beforeReturn.hull),salvage:surveyed.surveySalvage[surveySystem.id]});assert.equal(surveyOracle.ok,true,surveyOracle.error);assert.deepEqual(surveyed,surveyOracle.state,'actual surface return must apply exactly the authored reward/event rules');
     assert.equal(await page.locator('#surface-layer').isVisible(),false);assert.equal(await page.locator('#app').evaluate(element=>element.inert),false);
     assert.equal(await page.locator('[data-action=survey]').count(),0,'completed survey is no longer offered');
     report.surface={system:surveySystem.id,dayBefore:surveyFixture.day,dayAfter:surveyed.day,creditsBefore:surveyFixture.resources.credits,creditsAfter:surveyed.resources.credits,beacons:3,hullBeforeReturn:beforeReturn.hull};mark('Physical beacon visits and return award the authored survey exactly once');
@@ -100,7 +101,7 @@ try{
 
     // Import the legitimate pre-survey save again to exercise interrupted flights.
     await importFixture(surveyFixture);await page.locator('[data-action=survey]').click();await page.waitForFunction(()=>window.__afterlight.surface!==null);
-    const interrupted=await snapshot();await page.keyboard.down('ArrowUp');await sleep(250);await page.keyboard.up('ArrowUp');
+    const interrupted=await snapshot();await page.getByRole('button',{name:'Deploy lander',exact:true}).click();await page.keyboard.down('ArrowUp');await sleep(250);await page.keyboard.up('ArrowUp');
     await resumeAfterReload();await page.waitForFunction(()=>window.__afterlight.surface!==null);
     assert.deepEqual((await snapshot()).pendingSurvey,interrupted.pendingSurvey,'pending survey identity and seed survive reload');
     const resumed=await page.evaluate(()=>window.__afterlight.surface);assert.equal(resumed.beacons.filter(b=>b.visited).length,0);assert.equal(resumed.salvage,0,'unfinished local collection is never rewarded across reload');

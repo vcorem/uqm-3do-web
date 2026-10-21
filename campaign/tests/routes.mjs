@@ -2,10 +2,10 @@
  * No state injection, debug flags, or reward shortcuts. A browser can replay
  * the returned actions through the visible controls and compare the result.
  */
-import { createGame, applyAction, previewTravel } from '../src/state.mjs';
+import { createGame, applyAction, previewTravel, getView } from '../src/state.mjs';
 
 export const OPENING_CHOICES = Object.freeze(['a1_wake_duty', 'a1_brief_question', 'a1_terms_depart',
-  'a1_cinder_listen', 'a1_name_welcome', 'a1_container_build', 'a1_report_publish',
+  'a1_cinder_listen', 'a1_signal_callback', 'a1_signal_continue', 'a1_name_welcome', 'a1_container_build', 'a1_report_publish',
   'a1_mara_promise', 'a1_interval_origin', 'a1_forum_councils', 'a1_compact_launch']);
 
 export const LEAD_CHOICES = Object.freeze({
@@ -24,8 +24,8 @@ export function thirdActRoute(lead = 'promises') {
 }
 
 export const INVESTIGATION_CHOICES = Object.freeze([
-  'a3_glass_listen', 'a3_glass_central', 'a3_glass_complete',
-  'a3_unwritten_preserve', 'a3_drafts_people', 'a3_archive_close',
+  'a3_glass_listen', 'a3_glass_compare', 'a3_glass_diagnose_route', 'a3_glass_central', 'a3_glass_complete',
+  'a3_unwritten_preserve', 'a3_archive_compare', 'a3_archive_diagnose_fork', 'a3_drafts_people', 'a3_archive_rewire', 'a3_archive_close',
   'a3_sera_account', 'a3_sera_next', 'a3_crisis_depart',
 ]);
 
@@ -45,15 +45,15 @@ export const ENDING_ROUTES = Object.freeze({
     ...LEAD_CHOICES.promises, ...LEAD_CHOICES.synthesis, 'a2_quiet_enter',
     ...INVESTIGATION_CHOICES, ...ACCORD_PREPARATION_CHOICES,
     'a4_table_listen', 'a4_testimony_costs', 'a4_choose_accord',
-    'a4_junction_bypass', 'a4_junction_finish',
+    'a4_junction_bypass', 'a4_junction_begin_accord', 'a4_accord_buffer_cycle', 'a4_accord_stagger', 'a4_accord_live_refusal', 'a4_junction_finish',
     'a4_accord_review', 'a4_accord_accept', 'a4_accord_end']),
   mandate: Object.freeze([...thirdActRoute(), ...INVESTIGATION_CHOICES,
     'a4_table_listen', 'a4_testimony_costs', 'a4_choose_mandate',
-    'a4_junction_bypass', 'a4_junction_finish',
+    'a4_junction_bypass', 'a4_junction_begin_mandate', 'a4_mandate_build_panel', 'a4_mandate_loadtest', 'a4_mandate_set_breakers', 'a4_junction_finish',
     'a4_mandate_expiry', 'a4_mandate_watch', 'a4_mandate_end']),
   partition: Object.freeze([...thirdActRoute(), ...INVESTIGATION_CHOICES,
     'a4_table_listen', 'a4_testimony_costs', 'a4_choose_partition',
-    'a4_junction_bypass', 'a4_junction_finish',
+    'a4_junction_bypass', 'a4_junction_begin_partition', 'a4_partition_mark_carriers', 'a4_partition_bridge', 'a4_partition_separate', 'a4_junction_finish',
     'a4_partition_corridor', 'a4_partition_witness', 'a4_partition_end']),
 });
 
@@ -72,7 +72,7 @@ export const GRAND_TOUR_CHOICES = Object.freeze([
   ...INVESTIGATION_CHOICES.map(c => c === 'a3_glass_central' ? 'a3_glass_local' : c),
   'a3_lilt_contacts', 'a3_shear_independent', 'a3_moss_specific', 'a3_sera_workers',
   'a3_tallow_policy', 'a3_silence_request', 'a3_silence_finish', 'a3_keeper_witness',
-  ...ACCORD_PREPARATION_CHOICES, 'a3_convoy_record', 'a3_convoy_finish',
+  ...ACCORD_PREPARATION_CHOICES, 'a3_crossing_stagger', 'a3_crossing_complete', 'a3_home_work', 'a3_home_finish', 'a3_convoy_record', 'a3_convoy_finish',
   'a3_nacre_privacy', 'a4_review_self', 'a4_lilt_story', 'a4_supper_finish',
   ...ENDING_ROUTES.accord.slice(ENDING_ROUTES.accord.indexOf('a4_table_listen')),
 ]);
@@ -83,8 +83,8 @@ const authorityAlternatives = Object.freeze({
   a2_bell_work: 'a2_bell_hold', a2_redress_council: 'a2_redress_expert',
   a2_thread_slow: 'a2_thread_force', a2_thread_take: 'a2_thread_forced_take',
   a2_shear_truce: 'a2_shear_order', a2_return_private: 'a2_return_public',
-  a3_drafts_people: 'a3_drafts_precaution', a3_silence_request: 'a3_silence_force',
-  a3_nacre_privacy: 'a3_nacre_open',
+  a3_drafts_people: 'a3_drafts_precaution', a3_archive_rewire: 'a3_archive_central', a3_silence_request: 'a3_silence_force',
+  a3_nacre_privacy: 'a3_nacre_open', a2_return_finish: 'a2_return_hearing', a3_silence_finish: 'a3_silence_breach_work',
 });
 /** A contrasting expedition that records losses, intrusive choices, and an
  * explicit rejection of the captain's recommendation by the governed council.
@@ -92,7 +92,7 @@ const authorityAlternatives = Object.freeze({
 export const AUTHORITY_TOUR_CHOICES = Object.freeze([
   ...GRAND_TOUR_CHOICES.slice(0, GRAND_TOUR_CHOICES.indexOf('a4_table_listen'))
     .flatMap(c => c === 'a2_redress_council' ? ['a2_redress_expert', 'a2_redress_accept_council']
-      : [authorityAlternatives[c] ?? c]),
+      : c === 'a2_shear_truce' ? ['a2_shear_order', 'a2_shear_repair'] : [authorityAlternatives[c] ?? c]),
   ...ENDING_ROUTES.mandate.slice(ENDING_ROUTES.mandate.indexOf('a4_table_listen'))
     .map(c => c === 'a4_mandate_expiry' ? 'a4_mandate_board'
       : c === 'a4_mandate_watch' ? 'a4_mandate_speed' : c),
@@ -120,8 +120,20 @@ export function planItinerary(data, choiceIds, initialState = createGame(data)) 
         if (!preview.allowed && state.resources.fuel < preview.fuel) perform({ type: 'distress' });
         if (state.location !== scene.systemId) perform({ type: 'travel', systemId: scene.systemId });
       }
-      perform({ type: 'enter', sceneId: scene.id });
+      // Winter closes the original seed encounter until its public repair is
+      // completed. Enter that authored recovery before requesting the old scene.
+      if (scene.id === 'a2_ember' && state.flags.winter_warning && !state.flags.winter_repaired) {
+        perform({ type: 'enter', sceneId: 'a2_ember_cold' });
+        perform({ type: 'choose', choiceId: 'a2_ember_restart_work' });
+      }
+      if (state.scene !== scene.id) perform({ type: 'enter', sceneId: scene.id });
     }
+    // Travel/work can cross declared world deadlines. Resolve the resulting
+    // repair through its visible authored action, never by patching flags.
+    const repairs={a4_junction_finish:'a4_junction_cool_work',
+      a4_junction_begin_accord:'a4_junction_cool_work',a4_junction_begin_mandate:'a4_junction_cool_work',a4_junction_begin_partition:'a4_junction_cool_work'};
+    const repair=repairs[choiceId];
+    if(repair){const view=getView(data,state),repairChoice=view.choices.find(c=>c.id===repair&&c.enabled),wanted=view.choices.find(c=>c.id===choiceId);if(repairChoice&&!wanted?.enabled)perform({type:'choose',choiceId:repair});}
     perform({ type: 'choose', choiceId });
     if (state.pendingBattle || state.pendingSurvey) {
       if (choiceId !== choiceIds.at(-1)) throw new Error('Resolve the physical encounter before planning further dialogue.');

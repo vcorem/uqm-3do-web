@@ -21,18 +21,107 @@ function route(ids, state = createGame(data)) {
   return planItinerary(data, ids, state).state;
 }
 
+function travel(state, systemId) {
+  if (state.scene) state = perform(state, { type: 'leave' });
+  if (state.location === systemId) return state;
+  if (!previewTravel(data, state, systemId).allowed) state = perform(state, { type: 'distress' });
+  return state.location === systemId ? state : perform(state, { type: 'travel', systemId });
+}
+
+function waitUntil(state, day) {
+  while (state.day < day) state = perform(state, { type: 'distress' });
+  return state;
+}
+
+/** Receipt fixtures test campaign routing; real combat and lander input are
+ * exercised independently. They never assign flags, rewards, or resources. */
+function battleResult(state, outcome) {
+  assert.ok(state.pendingBattle, 'the authored choice launched a battle');
+  const result = resolveBattle(data, state, { id: state.pendingBattle.battleId, outcome,
+    crew: outcome === 'defeat' ? 0 : 1,
+    enemyRemaining: outcome === 'victory' ? 0 : state.pendingBattle.enemies.length, frames: 500 });
+  assert.equal(result.ok, true, result.error);
+  assert.deepEqual(validateState(data, result.state).errors, []);
+  return result.state;
+}
+
+function engagementScenarios() {
+  const mandate = ENDING_ROUTES.mandate, junction = mandate.indexOf('a4_junction_bypass');
+  return [
+    { opening: OPENING_CHOICES, fight: 'a2_ferry_battle', regroup: 'a2_ferry_setback_leave',
+      alternative: ['a2_ferry_labor', 'a2_ferry_complete'], victory: ['a2_ferry_complete'], flag: 'anet_saved' },
+    { opening: [...thirdActRoute(), ...INVESTIGATION_CHOICES, 'a2_shoal_records', 'a2_pell_depart'],
+      fight: 'a3_convoy_fight', regroup: 'a3_convoy_regroup',
+      alternative: ['a3_convoy_record', 'a3_convoy_finish'], victory: ['a3_convoy_finish'], flag: 'pell_supports' },
+    { opening: mandate.slice(0, junction), fight: 'a4_junction_battle', regroup: 'a4_junction_regroup',
+      alternative: mandate.slice(junction), victory: mandate.slice(junction + 1), flag: 'junction_ready' },
+    { opening: OPENING_CHOICES, fight: 'a2_breakwater_fight', regroup: 'a2_breakwater_regroup',
+      alternative: ['a2_breakwater_tug', 'a2_breakwater_complete'],
+      victory: ['a2_breakwater_salvage', 'a2_breakwater_complete'], flag: 'breakwater_open' },
+    { opening: [...thirdActRoute(), ...INVESTIGATION_CHOICES, 'a3_crossing_stagger', 'a3_crossing_complete'],
+      fight: 'a3_crossing_guard_fight', regroup: 'a3_crossing_guard_regroup',
+      alternative: ['a3_crossing_guard_decoy', 'a3_crossing_guard_finish'],
+      victory: ['a3_crossing_guard_salvage', 'a3_crossing_guard_finish'], flag: 'crossing_secured' },
+  ];
+}
+
 test('authored campaign has valid identifiers, data types, references, and complete dialogue', () => {
   const check = validateCampaign(data);
   assert.deepEqual(check.errors, []);
   assert.deepEqual(check.warnings, []);
   assert.equal(data.systems.length, 32);
   assert.ok(data.characters.length >= 10);
-  assert.ok(data.scenes.length >= 100, 'complete, authored multi-act campaign');
+  assert.ok(data.scenes.length >= 149, 'the expanded multi-act campaign retains all authored encounters');
+  assert.ok(data.scenes.reduce((count, scene) => count + scene.choices.length, 0) >= 267,
+    'the expanded campaign retains its decision branches');
+  assert.equal(data.quests.length, 17);
   const targets = new Set(data.scenes.flatMap(s => s.choices.flatMap(c =>
     [c.next, c.combat?.winSceneId, c.combat?.loseSceneId, c.combat?.retreatSceneId].filter(Boolean))));
   for (const scene of data.scenes) if (scene.entry === false && scene.id !== data.start.sceneId)
     assert.ok(targets.has(scene.id), `Continuation ${scene.id} has an authored incoming link`);
-  for (const id of targets) assert.equal(data.scenes.find(s => s.id === id).entry, false, `Continuation ${id} is not a premature local entry`);
+  const publicContinuations = data.scenes.filter(s => targets.has(s.id) && s.entry !== false);
+  assert.deepEqual(publicContinuations.map(s => s.id).sort(), ['a2_ember', 'a4_partition_terms'],
+    'only authored recovery hubs are also public entries');
+  for (const scene of publicContinuations) assert.ok(scene.requires, `${scene.id} retains its prerequisite gate`);
+});
+
+test('public recovery hubs respect their prerequisites before and after the winter deadline', () => {
+  const early = travel(route(OPENING_CHOICES), 'ember');
+  assert.equal(applyAction(data, early, { type: 'enter', sceneId: 'a2_ember_cold' }).ok, false);
+  assert.equal(applyAction(data, early, { type: 'enter', sceneId: 'a2_ember_return_repair' }).ok, false);
+  let late = travel(waitUntil(early, 45), 'ember');
+  assert.equal(late.flags.winter_warning, true);
+  assert.equal(applyAction(data, late, { type: 'enter', sceneId: 'a2_ember' }).ok, false,
+    'an incoming recovery link cannot bypass the frozen greenhouse');
+  assert.ok(!getView(data, late).availableScenes.some(s => s.id === 'a2_ember'));
+  late = route(['a2_ember_restart_work'], late);
+  assert.equal(late.scene, 'a2_ember', 'the real repair reopens the public seed encounter');
+  assert.equal(late.flags.winter_repaired, true);
+  late = route(['a2_ember_wait', 'a2_ember_depart'], late);
+  assert.ok(late.items.includes('thermal_seed'));
+});
+
+test('the public partition recovery hub waits for a real separation and repairs a missing corridor', () => {
+  const choices = ENDING_ROUTES.partition, selection = choices.indexOf('a4_choose_partition');
+  const proposal = perform(route(choices.slice(0, selection)), { type: 'leave' });
+  assert.equal(applyAction(data, proposal, { type: 'enter', sceneId: 'a4_partition_terms' }).ok, false);
+  const selected = route(['a4_choose_partition'], proposal);
+  assert.equal(applyAction(data, selected, { type: 'enter', sceneId: 'a4_partition_terms' }).ok, false,
+    'choosing partition does not substitute for physically separating its circuits');
+  const ratification = choices.indexOf('a4_partition_corridor');
+  let ready = route(choices.slice(selection + 1, ratification)
+    .map(id => id === 'a4_partition_bridge' ? 'a4_partition_store' : id), selected);
+  ready = travel(ready, 'assembly');
+  ready = perform(ready, { type: 'enter', sceneId: 'a4_partition_terms' });
+  assert.equal(applyAction(data, ready, { type: 'choose', choiceId: 'a4_partition_corridor' }).ok, false,
+    'radio-only separation cannot promise an absent physical corridor');
+  const beforeRepair = ready.day;
+  ready = route(['a4_partition_rebuild_corridor'], ready);
+  assert.equal(ready.day, beforeRepair + 2);
+  assert.equal(ready.scene, 'a4_partition_terms');
+  ready = route(choices.slice(ratification), ready);
+  assert.equal(ready.ending, 'partition');
+  assert.equal(ready.flags.partition_bridge_rebuilt, true);
 });
 
 test('the authored first act is playable using ordinary choices and interstellar travel', () => {
@@ -99,6 +188,9 @@ for (const [endingId, choices] of Object.entries(ENDING_ROUTES)) {
     assert.equal(applyAction(data, state, { type: 'distress' }).ok, false, 'an ending remains final');
     const otherRoutes = ['accord', 'mandate', 'partition'].filter(id => id !== endingId);
     for (const id of otherRoutes) assert.notEqual(state.flags[`route_${id}`], true);
+    const operations = { accord: 'finale_distributed', mandate: 'finale_mandate', partition: 'finale_partition' };
+    assert.equal(state.flags[operations[endingId]], true, 'the selected settlement completes its physical operation');
+    for (const id of otherRoutes) assert.notEqual(state.flags[operations[id]], true);
   });
 }
 
@@ -180,24 +272,24 @@ test('late, penniless, fuel-stranded captains can still complete every main endi
   }
 });
 
-test('all three native engagement setbacks preserve a noncombat route to their objective', () => {
-  const scenarios = [
-    { opening: [...OPENING_CHOICES, 'a2_ferry_battle'], after: ['a2_ferry_setback_leave', 'a2_ferry_labor', 'a2_ferry_complete'],
-      flag: 'anet_saved' },
-    { opening: [...thirdActRoute(), ...INVESTIGATION_CHOICES, 'a2_shoal_hold', 'a2_pell_depart', 'a3_convoy_fight'],
-      after: ['a3_convoy_regroup', 'a3_convoy_record', 'a3_convoy_finish'], flag: 'pell_supports' },
-    { opening: [...ENDING_ROUTES.mandate.slice(0, ENDING_ROUTES.mandate.indexOf('a4_junction_bypass')), 'a4_junction_battle'],
-      after: ['a4_junction_regroup', 'a4_junction_bypass', 'a4_junction_finish', 'a4_mandate_expiry', 'a4_mandate_watch', 'a4_mandate_end'],
-      flag: 'junction_ready' },
-  ];
+test('all five native engagements preserve both a retry and a noncombat route after defeat or retreat', () => {
+  const scenarios = engagementScenarios();
+  assert.deepEqual(new Set(scenarios.map(s => s.fight)),
+    new Set(data.scenes.flatMap(s => s.choices).filter(c => c.combat).map(c => c.id)),
+    'every authored native engagement has a setback itinerary');
   for (const scenario of scenarios) for (const outcome of ['defeat', 'retreat']) {
-    let state = route(scenario.opening);
-    // Fixture verifies receipt routing only. Native combat has independent real-engine tests.
-    const resolution = resolveBattle(data, state, { id: state.pendingBattle.battleId, outcome,
-      crew: outcome === 'defeat' ? 0 : 1, enemyRemaining: state.pendingBattle.enemies.length, frames: 500 });
-    assert.equal(resolution.ok, true, resolution.error);
-    state = route(scenario.after, resolution.state);
-    assert.equal(state.flags[scenario.flag], true, `${scenario.flag} after ${outcome}`);
+    const before = route([...scenario.opening, scenario.fight]);
+    const regrouped = route([scenario.regroup], battleResult(before, outcome));
+    const peaceful = route(scenario.alternative, regrouped);
+    assert.equal(peaceful.flags[scenario.flag], true, `${scenario.flag} after ${outcome}`);
+    assert.equal(peaceful.battleOutcomes[before.pendingBattle.id], outcome,
+      'the alternative never invents a native victory');
+    const retry = route([scenario.fight], regrouped);
+    assert.equal(retry.pendingBattle.id, before.pendingBattle.id, 'the same encounter can be retried');
+    assert.notEqual(retry.pendingBattle.battleId, before.pendingBattle.battleId, 'the retry requires a fresh receipt');
+    const victorious = route(scenario.victory, battleResult(retry, 'victory'));
+    assert.equal(victorious.flags[scenario.flag], true, `${scenario.flag} after ${outcome} and a retry`);
+    assert.equal(victorious.battleOutcomes[before.pendingBattle.id], 'victory');
   }
 });
 
@@ -215,17 +307,39 @@ test('every authored scene is reachable and an extensive expedition can resolve 
   const upgrade = route([...full.slice(0, preparation), 'a3_harbor_small', 'a3_harbor_complete', ...rest]);
   for (const id of upgrade.visitedScenes) visited.add(id);
 
-  for (const choices of [
-    [...OPENING_CHOICES, 'a2_ferry_battle'],
-    [...thirdActRoute(), ...INVESTIGATION_CHOICES, 'a2_shoal_hold', 'a2_pell_depart', 'a3_convoy_fight'],
-    [...ENDING_ROUTES.mandate.slice(0, ENDING_ROUTES.mandate.indexOf('a4_junction_bypass')), 'a4_junction_battle'],
-  ]) {
-    const before = route(choices);
-    const result = resolveBattle(data, before, { id: before.pendingBattle.battleId,
-      outcome: 'defeat', crew: 0, enemyRemaining: before.pendingBattle.enemies.length, frames: 500 });
-    assert.equal(result.ok, true, result.error);
-    for (const id of result.state.visitedScenes) visited.add(id);
+  const collect = state => { for (const id of state.visitedScenes) visited.add(id); return state; };
+  for (const scenario of engagementScenarios()) {
+    const before = route([...scenario.opening, scenario.fight]);
+    collect(battleResult(before, 'defeat'));
+    collect(route(scenario.victory, battleResult(before, 'victory')));
   }
+
+  const mistakes = {
+    a3_glass_compare: ['a3_glass_private_files', 'a3_glass_back_to_records'],
+    a3_glass_diagnose_route: ['a3_glass_diagnose_staff', 'a3_glass_diagnose_retry'],
+    a3_archive_compare: ['a3_archive_playback', 'a3_archive_live_test'],
+    a3_archive_diagnose_fork: ['a3_archive_diagnose_merge', 'a3_archive_merge_abort'],
+    a3_crossing_stagger: ['a3_crossing_double', 'a3_crossing_retry'],
+    a4_accord_stagger: ['a4_accord_simultaneous', 'a4_accord_retry'],
+    a4_accord_live_refusal: ['a4_accord_cached', 'a4_accord_clear_cache'],
+    a4_mandate_loadtest: ['a4_mandate_trusttest', 'a4_mandate_test_return'],
+    a4_partition_separate: ['a4_partition_estimate', 'a4_partition_receipt'],
+  };
+  for (const choices of [GRAND_TOUR_CHOICES, ENDING_ROUTES.mandate, ENDING_ROUTES.partition])
+    collect(route(choices.flatMap(id => mistakes[id] ?? [id])));
+
+  collect(route([...OPENING_CHOICES, 'a2_ember_order', 'a2_ember_depart',
+    'a2_meadow_consent', 'a2_roots_complete', 'a2_growers_repair_work']));
+  collect(route([...OPENING_CHOICES, 'a2_thread_force', 'a2_thread_forced_take',
+    'a2_synthesis_complete', 'a2_thread_repair_trace']));
+  collect(route([...thirdActRoute().map(id => id === 'a1_report_publish' ? 'a1_report_direct' : id),
+    'a2_return_public', 'a2_return_defend', 'a3_mara_repair_work']));
+  collect(route([...OPENING_CHOICES, ...LEAD_CHOICES.roots, 'a2_growers_accept_blade']));
+
+  const frozen = waitUntil(route(OPENING_CHOICES), 45);
+  collect(route(LEAD_CHOICES.roots, frozen));
+  const seedTaken = waitUntil(route([...OPENING_CHOICES, 'a2_ember_wait', 'a2_ember_depart']), 45);
+  collect(route(['a2_meadow_consent', 'a2_roots_complete', 'a2_ember_return_work'], seedTaken));
   assert.deepEqual(data.scenes.filter(s => !visited.has(s.id)).map(s => s.id), [], 'no authored scene is stranded');
 });
 
@@ -269,10 +383,10 @@ test('authored scheduled consequences fire once and preserve a late expeditionâ€
   assert.equal(state.flags.anet_saved, undefined, 'a survival extension never pretends to complete the rescue');
 });
 
-test('all eighteen authored surface discoveries are reachable and reward only a completed expedition once', () => {
+test('all twenty authored surface discoveries are reachable and reward only a completed expedition once', () => {
   const sites = data.systems.filter(s => s.survey);
-  assert.equal(sites.length, 18);
-  assert.equal(new Set(sites.map(s => s.survey.text)).size, 18, 'every surface discovery is authored separately');
+  assert.equal(sites.length, 20);
+  assert.equal(new Set(sites.map(s => s.survey.text)).size, 20, 'every surface discovery is authored separately');
   let state = route(GRAND_TOUR_CHOICES.slice(0, GRAND_TOUR_CHOICES.indexOf('a4_table_listen')));
   if (state.scene) state = perform(state, { type: 'leave' });
   for (const system of sites) {
@@ -280,9 +394,11 @@ test('all eighteen authored surface discoveries are reachable and reward only a 
       if (!previewTravel(data, state, system.id).allowed) state = perform(state, { type: 'distress' });
       if (state.location !== system.id) state = perform(state, { type: 'travel', systemId: system.id });
     }
-    const money = state.resources.credits;
+    const before = state, money = state.resources.credits;
     state = perform(state, { type: 'launchSurvey' });
     assert.equal(state.resources.credits, money);
+    assert.deepEqual(state.items, before.items, 'launching does not grant recovered equipment');
+    assert.deepEqual(state.evidence, before.evidence, 'launching does not grant surface evidence');
     // Contract fixture only: the surface physics and keyboard completion have
     // separate lander tests; this checks each actual authored reward/reference.
     const completion = resolveSurvey(data, state, { id: state.pendingSurvey.id,
@@ -290,10 +406,14 @@ test('all eighteen authored surface discoveries are reachable and reward only a 
     assert.equal(completion.ok, true, completion.error);
     state = completion.state;
     assert.equal(state.resources.credits, money + system.survey.rewards.credits);
+    for (const id of system.survey.rewards.giveItems ?? []) assert.ok(state.items.includes(id), `${system.id} rewards ${id}`);
+    for (const id of system.survey.rewards.evidence ?? []) assert.ok(state.evidence.includes(id), `${system.id} discovers ${id}`);
+    for (const [id, value] of Object.entries(system.survey.rewards.flags ?? {}))
+      assert.equal(state.flags[id], value, `${system.id} activates ${id}`);
     assert.equal(applyAction(data, state, { type: 'launchSurvey' }).ok, false);
     assert.equal(state.journal.filter(e => e.type === 'survey' && e.systemId === system.id).length, 1);
   }
-  assert.equal(state.surveyedSystems.length, 18);
+  assert.equal(state.surveyedSystems.length, 20);
   state = route(ENDING_ROUTES.accord.slice(ENDING_ROUTES.accord.indexOf('a4_table_listen')), state);
   assert.equal(state.ending, 'accord');
 });

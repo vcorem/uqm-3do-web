@@ -131,43 +131,58 @@ style does not imply that all 25 native ship sprite sets have been redrawn.
 ## Original surface expeditions
 
 `campaign/src/lander.mjs` implements a separate new surface game for Afterlight,
-not a port of the original game's lander. It renders seeded terrain, nine
-damaging vents, three physical survey sites, optional ore and a landing pad.
-The player steers with acceleration and braking, records all three sites, then
-returns physically to the pad. Returning early or exhausting the 120-second
-battery evacuates; hull destruction performs an emergency retrieval. A visible
-return button and Escape always allow withdrawal. Hidden tabs pause the active
-simulation clock. Keyboard and pointer controls are included.
+not a port of the original game's lander. Three modes share seeded terrain,
+acceleration and braking, moving or pulsing hazards, optional ore and a safe pad:
+
+- **Mapping:** stop at three sites in any order for a 3.2-second scan, then return.
+- **Recovery:** pick up one objective at a time, carry it at reduced speed and
+  unload at the pad. Each delivered objective survives recall, damage and a
+  later launch through the campaign's `surveyProgress` record.
+- **Relay:** link numbered stations in order during their signal windows, then
+  return. Waiting inside an objective ring is safe.
+
+The briefing waits for **Deploy lander**. Manual pause, window blur and hidden
+pages stop the simulation and require an explicit resume. Base battery budgets
+are 150, 180 and 165 seconds respectively; difficulty and installed cells modify
+those budgets. Shielding reduces damage. Escape and the return button recall
+the lander. Keyboard and pointer controls are included. Named objectives stay
+consistent with the actual authored cargo or field teams.
 
 ```js
 const expedition = new SurfaceExpedition({
   container, seed: pendingSurvey.seed, biome: 'crystal', id: pendingSurvey.id,
+  mode: 'rescue', difficulty: 'standard', shielding: 35, batteryBonus: 40,
+  completedTasks: state.surveyProgress?.[system.id] || [],
+  objectiveLabels: system.survey.objectiveLabels,
   onComplete(receipt) { /* resolve against the campaign's pending survey */ },
 }).start();
 // expedition.retreat(); expedition.destroy();
 ```
 
-Completion occurs once with `{id?, outcome, salvage, hullRemaining, beacons}`.
-Outcomes are `surveyed`, `retreated`, `damaged`. Salvage is bounded at 24 per
-attempt, hull at 0–100, beacons at 0–3. Successful surveys require all three
-actual visits plus returning to the pad. The campaign state layer applies
-authored rewards and its cumulative salvage limit; the surface module never
-edits campaign saves. Destroying the UI does not manufacture a receipt.
+Completion occurs once with `{id?, outcome, salvage, hullRemaining, beacons,
+completedTasks?}`. Outcomes are `surveyed`, `retreated`, `damaged`. Salvage is
+bounded at 24 per attempt, hull at 0–100, objectives at 0–3. Success requires
+all three tasks and a physical return to the pad. Rescue receipts include
+unique delivered IDs from 0–2. The campaign applies authored rewards and its
+persistent salvage cap; the surface module never edits campaign saves.
+Destroying the UI does not manufacture a receipt.
 
-`createSurface`, `stepSurface`, `surfaceReceipt` and `SURFACE` expose the pure
-fixed-step simulation for deterministic tests. Inputs are direction components
-in `[-1, 1]` and optional `retreat`; time is measured in seconds. Terrain
-generation does not use global randomness. The input state is never mutated.
+`createSurface`, `stepSurface`, `surfaceObjective`, `surfaceReceipt` and `SURFACE`
+expose pure state/diagnostics for deterministic tests. Inputs are direction
+components in `[-1, 1]` and optional `retreat`; time is measured in seconds.
+Terrain generation does not use global randomness. Input state is not mutated.
 
 ```sh
 node --test campaign/tests/lander.test.mjs
-CHROME_BIN='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
-  node campaign/tests/lander-browser.mjs
+node campaign/tests/lander-browser.mjs
+node campaign/tests/progression-browser.mjs
 ```
 
-The browser check uses actual keyboard movement to collect ore, visit all three
-sites and return; it also checks pointer steering, button/Escape recall,
-single-delivery completion, mobile overflow and cleanup. Evidence is written to
-`test-results/afterlight-lander/` (override `AFTERLIGHT_LANDER_RESULTS`). The unit
-suite covers 300 seeded maps, time partitioning, movement, collision boundaries,
-invulnerability, salvage conservation, full surveys and failure/retreat routes.
+The surface browser check completes all three modes through actual keyboard
+movement and checks briefing, pause, blur, authored labels, pointer steering,
+recall, mobile layout and cleanup. The progression browser check verifies that
+an actual partial delivery survives recall and save/load through the parent
+campaign, and that equipment reaches the real surface simulation. Unit tests
+include 360 input-driven completions across seeds, modes and difficulties,
+fixed-step determinism, boundaries, damage, salvage and recovery. Reports live
+under `test-results/afterlight-lander/` and `test-results/afterlight-progression/`.

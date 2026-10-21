@@ -16,10 +16,36 @@ const unique = a => Array.isArray(a) && new Set(a).size === a.length;
 const lookup = (data, type, id) => (data[type] ?? []).find(entry => entry.id === id);
 const addUnique = (a, value) => { if (!a.includes(value)) a.push(value); };
 
-function economy(data, ship = data.start?.ship ?? 5) {
+/** Installed equipment is represented by ordinary validated campaign flags, preserving v1 saves. */
+export function getCapabilities(data, state) {
+  const benefits = { fuelCapacity: data.economy?.fuelCapacity ?? 100, travelEfficiency: 0,
+    surveyShielding: 0, surveyBattery: 0 };
+  for (const upgrade of data.upgrades ?? []) if (state?.flags?.[`upgrade_${upgrade.id}`]) {
+    for (const [key, value] of Object.entries(upgrade.benefits ?? {})) benefits[key] += value;
+  }
+  benefits.travelEfficiency = Math.min(75, benefits.travelEfficiency);
+  benefits.surveyShielding = Math.min(75, benefits.surveyShielding);
+  benefits.surveyBattery = Math.min(300, benefits.surveyBattery);
+  return benefits;
+}
+
+function economy(data, shipOrState = data.start?.ship ?? 5) {
+  const state = plain(shipOrState) ? shipOrState : null;
+  const ship = state?.ship ?? shipOrState;
   return { fuelCapacity: 100, refuelPrice: 2, repairPrice: 3,
     travelFuelScale: 8, travelDayScale: 12, distressDays: 7, distressFee: 50,
-    ...(data.economy ?? {}), crewCapacity: SHIPS[ship]?.maxCrew ?? 18 };
+    ...(data.economy ?? {}), ...(state ? { fuelCapacity: getCapabilities(data, state).fuelCapacity } : {}),
+    crewCapacity: SHIPS[ship]?.maxCrew ?? 18 };
+}
+
+const ownsShip = (data, state, ship) => ship === (data.start.ship ?? 5) || ship === state.ship || state.flags[`ship_${ship}`] === true;
+
+/** First matching variant wins; the base remains a safe fallback for old playthroughs. */
+export function resolveScene(data, state, sceneOrId) {
+  const scene = typeof sceneOrId === 'string' ? lookup(data, 'scenes', sceneOrId) : sceneOrId;
+  if (!scene) return null;
+  const variant = (scene.variants ?? []).find(v => meets(state, v.requires));
+  return variant ? { ...scene, paragraphs: variant.paragraphs } : scene;
 }
 
 function unsafeTree(value, depth = 0) {
@@ -126,6 +152,35 @@ export function validateCampaign(data) {
     if (e.ship !== undefined && (!integer(e.ship) || !SHIPS[e.ship])) err(path, 'ship must be a native Melee id in 0..24');
     if (e.journal !== undefined && (typeof e.journal !== 'string' || !e.journal.trim())) err(path, 'journal must be nonempty text');
   };
+  const offerIds = new Set(), offeredShips = new Set();
+  for (let ship = 0; ship < SHIPS.length; ship++) flagsSet.add(`ship_${ship}`);
+  for (const kind of ['upgrades', 'shipyard']) {
+    if (data[kind] !== undefined && !Array.isArray(data[kind])) { err(kind, 'must be an array'); continue; }
+    for (const offer of data[kind] ?? []) {
+      if (!plain(offer) || !ID.test(offer.id ?? '') || !ID.test(`upgrade_${offer.id}`) || offerIds.has(offer.id)) {
+        err(kind, 'offers require unique valid ids'); continue;
+      }
+      offerIds.add(offer.id);
+      const path = `${kind}.${offer.id}`;
+      for (const key of ['name', 'description']) if (typeof offer[key] !== 'string' || !offer[key].trim()) err(path, `${key} is required`);
+      if (!integer(offer.price) || offer.price < 0 || offer.price > MAX_VALUE) err(path, 'price must be a nonnegative integer');
+      if (offer.requires) condition(offer.requires, `${path}.requires`);
+      if (offer.systemIds !== undefined) {
+        if (!unique(offer.systemIds) || !offer.systemIds.length) err(path, 'systemIds must be a nonempty array of unique systems');
+        else offer.systemIds.forEach(id => ref('systems', id, path));
+      }
+      if (kind === 'upgrades') {
+        flagsSet.add(`upgrade_${offer.id}`);
+        const limits = { fuelCapacity: 250, travelEfficiency: 75, surveyShielding: 75, surveyBattery: 180 };
+        if (!plain(offer.benefits) || !Object.keys(offer.benefits).length) err(path, 'equipment requires benefits');
+        else for (const [key, value] of Object.entries(offer.benefits)) if (!own(limits, key) || !integer(value) || value <= 0 || value > limits[key]) err(path, `invalid equipment benefit ${key}`);
+      } else {
+        if (!integer(offer.ship) || !SHIPS[offer.ship]) err(path, 'ship must be a native Melee id in 0..24');
+        else if (offeredShips.has(offer.ship)) err(path, 'each hull must have one shipyard offer');
+        offeredShips.add(offer.ship);
+      }
+    }
+  }
   for (const [id, system] of maps.systems) {
     if (typeof system.name !== 'string' || !system.name.trim()) err(id, 'system name is required');
     if (![system.x, system.y].every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 100)) err(id, 'coordinates must be in 0..100');
@@ -138,6 +193,9 @@ export function validateCampaign(data) {
     else if (system.survey) {
       if (typeof system.survey.text !== 'string' || !system.survey.text.trim()) err(id, 'survey requires authored text');
       if (own(system.survey, 'days') && (!integer(system.survey.days) || system.survey.days < 0)) err(id, 'invalid survey days');
+      if (own(system.survey, 'mode') && !['survey', 'rescue', 'relay'].includes(system.survey.mode)) err(id, 'invalid surface mission mode');
+      if (own(system.survey, 'biome') && !['ice', 'ocean', 'desert', 'basalt', 'crystal'].includes(system.survey.biome)) err(id, 'invalid surface biome');
+      if (own(system.survey, 'difficulty') && !['gentle', 'standard', 'hazardous', 1, 2, 3].includes(system.survey.difficulty)) err(id, 'invalid surface difficulty');
       if (system.survey.rewards) effects(system.survey.rewards, `${id}.survey.rewards`);
     }
   }
@@ -150,6 +208,13 @@ export function validateCampaign(data) {
     if (!Array.isArray(scene.paragraphs) || scene.paragraphs.length === 0
       || scene.paragraphs.some(s => typeof s !== 'string' || !s.trim())) err(id, 'requires authored paragraphs');
     if (scene.requires) condition(scene.requires, `${id}.requires`);
+    if (scene.variants !== undefined && !Array.isArray(scene.variants)) err(id, 'variants must be an array');
+    for (const [index, variant] of (Array.isArray(scene.variants) ? scene.variants : []).entries()) {
+      const path = `${id}.variants[${index}]`;
+      if (!plain(variant) || !variant.requires || !Array.isArray(variant.paragraphs) || !variant.paragraphs.length
+        || variant.paragraphs.some(p => typeof p !== 'string' || !p.trim())) { err(path, 'variant requires a condition and authored paragraphs'); continue; }
+      condition(variant.requires, `${path}.requires`);
+    }
     for (const key of ['repeatable', 'entry']) if (own(scene, key) && typeof scene[key] !== 'boolean') err(id, `${key} must be boolean`);
     if (!Array.isArray(scene.choices) || scene.choices.length === 0) { err(id, 'requires choices'); continue; }
     for (const choice of scene.choices) {
@@ -262,11 +327,16 @@ function enterScene(data, state, id, automatic = false) {
   if (!meets(state, scene.requires)) throw new Error(conditionReason(state, scene.requires));
   if (!automatic && scene.entry === false && !state.visitedScenes.includes(id)) throw new Error('This conversation follows from another encounter.');
   if (!automatic && !outcomeSceneAllowed(data, state, id)) throw new Error('This report is available only after the corresponding engagement or its authored alternative.');
-  if (!scene.repeatable && state.completedScenes.includes(id)) throw new Error('That conversation is already complete. Read it again in the journal.');
+  if (!scene.repeatable && state.completedScenes.includes(id)) {
+    if (automatic && failurePathScene(data, state, id)) state.completedScenes = state.completedScenes.filter(done => done !== id);
+    else throw new Error('That conversation is already complete. Read it again in the journal.');
+  }
   state.scene = id;
   const firstVisit = !state.visitedScenes.includes(id);
   addUnique(state.visitedScenes, id);
-  if (firstVisit) log(state, 'conversation', scene.title, scene.paragraphs.join('\n\n'), { sceneId: id });
+  const transcript = resolveScene(data, state, scene).paragraphs.join('\n\n');
+  const previous = state.journal.findLast(entry => entry.type === 'conversation' && entry.sceneId === id);
+  if (firstVisit || previous?.text !== transcript) log(state, 'conversation', scene.title, transcript, { sceneId: id });
   // Automatic links also reveal their destination system for consistent saves.
   if (automatic) addUnique(state.knownSystems, scene.systemId);
 }
@@ -277,12 +347,12 @@ export function createGame(data, options = {}) {
   const state = {
     schemaVersion: SAVE_SCHEMA_VERSION, campaignId: data.id, campaignVersion: data.version,
     captainName: 'Captain', day: 0, location: data.start.systemId, scene: null,
-    ship: data.start.ship ?? 5,
+    ship: data.start.ship ?? 5, reserveCrew: 0,
     resources: { credits: data.start.credits, fuel: data.start.fuel, crew: data.start.crew },
     flags: { ...(data.start.flags ?? {}) }, items: [], evidence: [], quests: {}, reputation: {},
     knownSystems: data.systems.filter(s => s.known !== false).map(s => s.id),
     visitedSystems: [data.start.systemId], visitedScenes: [], completedScenes: [],
-    usedChoices: [], surveyedSystems: [], surveySalvage: {}, journal: [], ending: null, revision: 0,
+    usedChoices: [], surveyedSystems: [], surveySalvage: {}, surveyProgress: {}, journal: [], ending: null, revision: 0,
     pendingBattle: null, pendingSurvey: null, battleOutcomes: {}, triggeredEvents: [],
   };
   addUnique(state.knownSystems, data.start.systemId);
@@ -300,13 +370,13 @@ function cleanName(name) {
 }
 
 export function previewTravel(data, state, systemId) {
-  const from = lookup(data, 'systems', state.location), to = lookup(data, 'systems', systemId), eco = economy(data, state.ship);
+  const from = lookup(data, 'systems', state.location), to = lookup(data, 'systems', systemId), eco = economy(data, state);
   const result = { systemId, days: 0, fuel: 0, distance: 0, allowed: false, reason: null };
   if (!from || !to || !state.knownSystems.includes(systemId)) return { ...result, reason: 'This system has not been charted.' };
   if (systemId === state.location) return { ...result, reason: 'You are already here.' };
   result.distance = Math.hypot(to.x - from.x, to.y - from.y);
   result.days = Math.max(1, Math.ceil(result.distance / eco.travelDayScale));
-  result.fuel = Math.max(1, Math.ceil(result.distance / eco.travelFuelScale));
+  result.fuel = Math.max(1, Math.ceil(result.distance / eco.travelFuelScale * (1 - getCapabilities(data, state).travelEfficiency / 100)));
   if (state.ending) result.reason = 'This expedition has concluded.';
   else if (state.pendingBattle) result.reason = 'Resolve the current engagement first.';
   else if (state.pendingSurvey) result.reason = 'Return the surface expedition to the ship first.';
@@ -325,10 +395,30 @@ function effectCostReason(state, effects = {}) {
   return null;
 }
 
-function choiceReason(state, choice) {
-  if (choice.once !== false && state.usedChoices.includes(choice.id)) return 'This decision has already been made.';
+function failurePathScene(data, state, sceneId) {
+  const choices = data.scenes.flatMap(s => s.choices), battles = choices.filter(c => c.combat).map(c => c.combat);
+  const victories = new Set(battles.map(b => b.winSceneId));
+  const pending = battles.filter(b => ['defeat', 'retreat'].includes(state.battleOutcomes[b.id]))
+    .flatMap(b => [b.loseSceneId, b.retreatSceneId].filter(Boolean));
+  const visited = new Set();
+  while (pending.length) {
+    const id = pending.pop();
+    if (visited.has(id) || victories.has(id)) continue;
+    if (id === sceneId) return true;
+    visited.add(id);
+    const scene = lookup(data, 'scenes', id);
+    for (const choice of scene?.choices ?? []) if (choice.next && !choice.combat) pending.push(choice.next);
+  }
+  return false;
+}
+
+function choiceReason(data, state, choice) {
+  const used = choice.once !== false && state.usedChoices.includes(choice.id);
+  const retry = choice.combat && ['defeat', 'retreat'].includes(state.battleOutcomes[choice.combat.id]);
+  if (choice.combat && state.battleOutcomes[choice.combat.id] === 'victory') return 'This engagement is already won.';
+  if (used && !retry) return failurePathScene(data, state, state.scene) ? null : 'This decision has already been made.';
   if (choice.combat && state.resources.crew < 1) return 'Recover the crew before entering combat.';
-  return conditionReason(state, choice.requires) || effectCostReason(state, choice.effects);
+  return conditionReason(state, choice.requires) || (used ? null : effectCostReason(state, choice.effects));
 }
 
 function outcomeSceneAllowed(data, state, sceneId) {
@@ -357,21 +447,56 @@ export function getBattleRequest(data, state) {
     enemies: [...state.pendingBattle.enemies], seed: deterministicSeed(state.pendingBattle.battleId), difficulty: 'standard' };
 }
 
+function offerReason(state, offer, owned) {
+  if (owned) return 'Already acquired.';
+  if (state.ending) return 'This expedition has concluded.';
+  if (state.pendingBattle) return 'Resolve the current engagement first.';
+  if (state.pendingSurvey) return 'Return the surface expedition to the ship first.';
+  if (offer.systemIds?.length && !offer.systemIds.includes(state.location)) return 'Visit its listed shipyard to acquire this equipment.';
+  return conditionReason(state, offer.requires) || (state.resources.credits < offer.price ? `Requires ${offer.price} credits.` : null);
+}
+
+function fleetView(data, state) {
+  const hulls = new Set([data.start.ship ?? 5, state.ship, ...(data.shipyard ?? []).map(o => o.ship)]);
+  for (let ship = 0; ship < SHIPS.length; ship++) if (state.flags[`ship_${ship}`]) hulls.add(ship);
+  return [...hulls].map(ship => {
+    const offer = (data.shipyard ?? []).find(o => o.ship === ship), owned = ownsShip(data, state, ship), active = ship === state.ship;
+    const reason = active ? 'Currently deployed.' : owned
+      ? state.pendingBattle ? 'Resolve the current engagement first.' : state.pendingSurvey ? 'Return the surface expedition first.'
+        : state.ending ? 'This expedition has concluded.' : !hasCrewTransferPort(data, state) ? 'Visit a fuel depot or repair port to transfer crews and change ships.' : null
+      : offerReason(state, offer, false);
+    return { ...(offer ?? {}), ship, name: offer?.name ?? SHIPS[ship].name, hull: SHIPS[ship],
+      offerId: offer?.id ?? null, owned, active, enabled: !reason, reason,
+      description: offer?.description ?? 'An available escort hull. The existing crew transfers when you change ships.' };
+  });
+}
+
+function hasCrewTransferPort(data, state) {
+  const services = lookup(data, 'systems', state.location)?.services;
+  return !!(services?.refuel || services?.repair);
+}
+
 /** UI projection: labels remain authored; predicates never leak internal flag names. */
 export function getView(data, state) {
   const system = lookup(data, 'systems', state.location);
-  const scene = lookup(data, 'scenes', state.scene) ?? null;
+  const scene = resolveScene(data, state, state.scene);
   const choices = (scene?.choices ?? []).map(choice => {
     const reason = state.pendingBattle ? 'Resolve the current engagement first.'
-      : state.pendingSurvey ? 'Return the surface expedition to the ship first.' : choiceReason(state, choice);
+      : state.pendingSurvey ? 'Return the surface expedition to the ship first.' : choiceReason(data, state, choice);
     return { ...choice, enabled: !reason && !state.ending, reason };
   }).filter(choice => !choice.hidden || choice.enabled);
   return {
-    system, scene, choices, economy: economy(data, state.ship), ship: SHIPS[state.ship], pendingBattle: state.pendingBattle, pendingSurvey: state.pendingSurvey,
+    system, scene, choices, economy: economy(data, state), ship: SHIPS[state.ship], pendingBattle: state.pendingBattle, pendingSurvey: state.pendingSurvey,
+    capabilities: getCapabilities(data, state), fleet: fleetView(data, state),
+    reserveCrew: state.reserveCrew ?? 0, totalCrew: state.resources.crew + (state.reserveCrew ?? 0),
+    upgrades: (data.upgrades ?? []).map(offer => {
+      const owned = state.flags[`upgrade_${offer.id}`] === true, reason = offerReason(state, offer, owned);
+      return { ...offer, owned, enabled: !reason, reason };
+    }),
     ending: getEnding(data, state),
     availableScenes: data.scenes.filter(s => (s.entry !== false || state.visitedScenes.includes(s.id)) && s.systemId === state.location && s.id !== state.scene
       && (s.repeatable || !state.completedScenes.includes(s.id)) && meets(state, s.requires) && outcomeSceneAllowed(data, state, s.id)
-      && s.choices.some(c => !choiceReason(state, c))),
+      && s.choices.some(c => !choiceReason(data, { ...state, scene: s.id }, c))),
     travelOptions: data.systems.filter(s => state.knownSystems.includes(s.id))
       .map(s => ({ ...s, ...previewTravel(data, state, s.id) })),
     quests: data.quests.filter(q => state.quests[q.id]).map(q => ({ ...q, status: state.quests[q.id] })),
@@ -391,15 +516,17 @@ function applyEffects(data, state, effects = {}, schedule = true) {
   const reason = effectCostReason(state, effects);
   if (reason) throw new Error(reason);
   if (effects.ship !== undefined) {
+    state.flags[`ship_${state.ship}`] = true;
     state.ship = effects.ship;
+    state.flags[`ship_${effects.ship}`] = true;
     state.resources.crew = SHIPS[effects.ship].crew;
   }
-  const eco = economy(data, state.ship);
+  Object.assign(state.flags, effects.flags ?? {});
+  const eco = economy(data, state);
   for (const key of ['credits', 'fuel', 'crew']) {
     const maximum = key === 'credits' ? MAX_VALUE : eco[`${key}Capacity`];
     state.resources[key] = Math.min(maximum, state.resources[key] + (effects[key] ?? 0));
   }
-  Object.assign(state.flags, effects.flags ?? {});
   for (const id of effects.takeItems ?? []) state.items = state.items.filter(item => item !== id);
   for (const id of effects.giveItems ?? []) addUnique(state.items, id);
   for (const id of effects.evidence ?? []) addUnique(state.evidence, id);
@@ -493,9 +620,10 @@ export function applyAction(data, state, action) {
         if (!scene) throw new Error('There is no active conversation.');
         const choice = scene.choices.find(c => c.id === action.choiceId);
         if (!choice) throw new Error('That response is not part of this conversation.');
-        const reason = choiceReason(next, choice);
+        const reason = choiceReason(data, next, choice);
         if (reason) throw new Error(reason);
-        applyEffects(data, next, choice.effects);
+        // A retry may revisit its setback dialogue, but earned effects never repeat.
+        if (!next.usedChoices.includes(choice.id)) applyEffects(data, next, choice.effects);
         if (choice.once !== false) addUnique(next.usedChoices, choice.id);
         if (!scene.repeatable) addUnique(next.completedScenes, scene.id);
         log(next, 'decision', scene.title, choice.text, { sceneId: scene.id, choiceId: choice.id });
@@ -517,7 +645,7 @@ export function applyAction(data, state, action) {
         break;
       }
       case 'refuel': case 'repair': {
-        const system = lookup(data, 'systems', next.location), eco = economy(data, next.ship);
+        const system = lookup(data, 'systems', next.location), eco = economy(data, next);
         if (!system.services?.[action.type]) throw new Error(`This system has no ${action.type === 'refuel' ? 'fuel depot' : 'crew recovery facility'}.`);
         const resource = action.type === 'refuel' ? 'fuel' : 'crew';
         if (!integer(action.amount) || action.amount <= 0) throw new Error('Choose a positive whole amount.');
@@ -529,8 +657,41 @@ export function applyAction(data, state, action) {
         log(next, 'service', action.type === 'refuel' ? 'Refuelled' : 'Crew recovered', `${action.amount} ${resource} restored for ${cost} credits.`);
         break;
       }
+      case 'purchaseUpgrade': {
+        const offer = lookup(data, 'upgrades', action.upgradeId);
+        if (!offer) throw new Error('That equipment is not available.');
+        const reason = offerReason(next, offer, next.flags[`upgrade_${offer.id}`] === true);
+        if (reason) throw new Error(reason);
+        next.resources.credits -= offer.price;
+        next.flags[`upgrade_${offer.id}`] = true;
+        log(next, 'service', `${offer.name} installed`, `${offer.description} Installation costs ${offer.price} credits.`);
+        break;
+      }
+      case 'purchaseShip': {
+        const offer = lookup(data, 'shipyard', action.offerId);
+        if (!offer) throw new Error('That vessel is not available.');
+        const reason = offerReason(next, offer, ownsShip(data, next, offer.ship));
+        if (reason) throw new Error(reason);
+        next.resources.credits -= offer.price;
+        next.flags[`ship_${offer.ship}`] = true;
+        log(next, 'service', `${offer.name} joins the fleet`, `${offer.description} Acquisition costs ${offer.price} credits. Select the vessel to transfer your existing crew.`);
+        break;
+      }
+      case 'switchShip': {
+        if (!integer(action.ship) || !SHIPS[action.ship] || !ownsShip(data, next, action.ship)) throw new Error('That hull has not joined your fleet.');
+        if (next.ship === action.ship) throw new Error('That vessel is already deployed.');
+        if (!hasCrewTransferPort(data, next)) throw new Error('Visit a fuel depot or repair port to transfer crews and change ships.');
+        const total = next.resources.crew + (next.reserveCrew ?? 0);
+        next.flags[`ship_${next.ship}`] = true;
+        next.flags[`ship_${action.ship}`] = true;
+        next.ship = action.ship;
+        next.resources.crew = Math.min(total, SHIPS[action.ship].maxCrew);
+        next.reserveCrew = total - next.resources.crew;
+        log(next, 'service', `${SHIPS[action.ship].name} deployed`, `${next.resources.crew} crew transfer aboard; ${next.reserveCrew} remain aboard the tender. Changing vessels preserves the total available crew.`);
+        break;
+      }
       case 'distress': {
-        const eco = economy(data, next.ship), home = lookup(data, 'systems', data.start.systemId);
+        const eco = economy(data, next), home = lookup(data, 'systems', data.start.systemId);
         const fee = Math.min(eco.distressFee, next.resources.credits);
         next.resources.credits -= fee; next.resources.fuel = Math.max(next.resources.fuel, Math.min(40, eco.fuelCapacity));
         next.resources.crew = Math.max(next.resources.crew, Math.ceil(SHIPS[next.ship].crew / 2));
@@ -559,17 +720,27 @@ export function applyAction(data, state, action) {
 /** Surface-adapter result. Authored discoveries require an actual completed expedition. */
 export function resolveSurvey(data, state, receipt) {
   if (validateState(data, state).errors.length) return failure(state, 'Invalid campaign state.', 'invalid_state');
+  const authoredSurvey = lookup(data, 'systems', state.pendingSurvey?.systemId)?.survey;
   if (!plain(receipt) || !state.pendingSurvey || receipt.id !== state.pendingSurvey.id
     || !['surveyed', 'retreated', 'damaged'].includes(receipt.outcome)
     || !integer(receipt.salvage) || receipt.salvage < 0 || receipt.salvage > 60
     || !integer(receipt.hullRemaining) || receipt.hullRemaining < 0 || receipt.hullRemaining > 100
     || !integer(receipt.beacons) || receipt.beacons < 0 || receipt.beacons > 3
-    || (receipt.outcome === 'surveyed' && (receipt.beacons !== 3 || receipt.hullRemaining === 0)))
+    || (receipt.outcome === 'surveyed' && (receipt.beacons !== 3 || receipt.hullRemaining === 0))
+    || (receipt.completedTasks !== undefined && (authoredSurvey?.mode !== 'rescue'
+      || !unique(receipt.completedTasks) || receipt.completedTasks.length !== receipt.beacons
+      || receipt.completedTasks.some(id => !integer(id) || id < 0 || id > 2))))
     return failure(state, 'Invalid, stale, or duplicate surface-expedition result.', 'invalid_survey_result');
   const next = clone(state), pending = next.pendingSurvey, logStart = next.journal.length;
   try {
     const system = lookup(data, 'systems', pending.systemId), survey = system.survey;
     next.pendingSurvey = null;
+    if (survey.mode === 'rescue') {
+      next.surveyProgress ??= {};
+      const completed = new Set(next.surveyProgress[system.id] ?? []);
+      for (const id of receipt.completedTasks ?? (receipt.outcome === 'surveyed' ? [0, 1, 2] : [])) completed.add(id);
+      next.surveyProgress[system.id] = [...completed].sort();
+    }
     const recovered = Math.min(receipt.salvage, 60 - (next.surveySalvage[system.id] ?? 0));
     next.surveySalvage[system.id] = (next.surveySalvage[system.id] ?? 0) + recovered;
     next.resources.credits = Math.min(MAX_VALUE, next.resources.credits + recovered);
@@ -583,8 +754,10 @@ export function resolveSurvey(data, state, receipt) {
       addUnique(next.surveyedSystems, system.id);
       log(next, 'survey', survey.title ?? `${system.name} survey`, survey.text, { systemId: system.id });
     } else log(next, 'expedition', receipt.outcome === 'damaged' ? 'Surface team recovered' : 'Surface team recalled',
-      receipt.outcome === 'damaged' ? 'The damaged lander returned without completing the survey. Up to three crew require recovery; the expedition can be attempted again.'
-        : 'The lander returned before completing the survey. Its discoveries remain incomplete; another expedition is possible.', { systemId: system.id });
+      (receipt.outcome === 'damaged' ? 'The damaged lander returned without completing the survey. Up to three crew require recovery; the expedition can be attempted again.'
+        : 'The lander returned before completing the survey. Its discoveries remain incomplete; another expedition is possible.')
+        + (survey.mode === 'rescue' && next.surveyProgress[system.id].length
+          ? ` ${next.surveyProgress[system.id].length} recovery objectives are secured aboard and will remain safe on the next attempt.` : ''), { systemId: system.id });
     if (recovered) log(next, 'salvage', 'Recovered material', `${recovered} credits of usable material recovered from ${system.name}.`, { systemId: system.id });
     processDueEvents(data, next); next.revision++;
     const check = validateState(data, next);
@@ -623,6 +796,10 @@ export function resolveBattle(data, state, receipt) {
       { battleId: battle.battleId, outcome: receipt.outcome });
     const destination = receipt.outcome === 'victory' ? battle.winSceneId
       : receipt.outcome === 'retreat' ? (battle.retreatSceneId ?? battle.loseSceneId) : battle.loseSceneId;
+    if (receipt.outcome !== 'victory') {
+      const source = data.scenes.find(s => s.choices.some(c => c.id === battle.choiceId));
+      if (source) next.completedScenes = next.completedScenes.filter(id => id !== source.id);
+    }
     enterScene(data, next, destination, true);
     next.revision++;
     const check = validateState(data, next);
@@ -639,8 +816,8 @@ export function validateState(data, state) {
   if (state.campaignId !== data.id || state.campaignVersion !== data.version) err('Save belongs to a different campaign version.');
   const allowed = new Set(['schemaVersion', 'campaignId', 'campaignVersion', 'captainName', 'day', 'location', 'scene',
     'resources', 'flags', 'items', 'evidence', 'quests', 'reputation', 'knownSystems', 'visitedSystems', 'visitedScenes',
-    'completedScenes', 'usedChoices', 'surveyedSystems', 'surveySalvage', 'journal', 'ending', 'revision',
-    'pendingBattle', 'pendingSurvey', 'ship', 'battleOutcomes', 'triggeredEvents']);
+    'completedScenes', 'usedChoices', 'surveyedSystems', 'surveySalvage', 'surveyProgress', 'journal', 'ending', 'revision',
+    'pendingBattle', 'pendingSurvey', 'ship', 'reserveCrew', 'battleOutcomes', 'triggeredEvents']);
   for (const key of Object.keys(state)) if (!allowed.has(key)) err(`Unknown state field ${key}.`);
   try { if (cleanName(state.captainName) !== state.captainName) err('Invalid captain name.'); } catch { err('Invalid captain name.'); }
   for (const key of ['day', 'revision']) if (!integer(state[key]) || state[key] < 0 || state[key] > MAX_VALUE) err(`Invalid ${key}.`);
@@ -648,13 +825,17 @@ export function validateState(data, state) {
   const scene = state.scene === null ? null : lookup(data, 'scenes', state.scene);
   if (state.scene !== null && (!scene || scene.systemId !== state.location)) err('Invalid active conversation.');
   if (!integer(state.ship) || !SHIPS[state.ship]) err('Invalid combat ship.');
-  const eco = economy(data, state.ship);
+  if (state.reserveCrew !== undefined && (!integer(state.reserveCrew) || state.reserveCrew < 0
+    || state.reserveCrew > MAX_VALUE || state.reserveCrew + (state.resources?.crew ?? 0) > MAX_VALUE)) err('Invalid reserve crew.');
+  const eco = economy(data, state);
   if (!plain(state.resources) || Object.keys(state.resources).length !== 3) err('Invalid resources.');
   else for (const key of ['credits', 'fuel', 'crew']) {
     const max = key === 'credits' ? MAX_VALUE : eco[`${key}Capacity`];
     if (!integer(state.resources[key]) || state.resources[key] < 0 || state.resources[key] > max) err(`Invalid ${key} resource.`);
   }
   const allowedFlags = new Set(Object.keys(data.start?.flags ?? {}));
+  for (const upgrade of data.upgrades ?? []) allowedFlags.add(`upgrade_${upgrade.id}`);
+  for (let ship = 0; ship < SHIPS.length; ship++) allowedFlags.add(`ship_${ship}`);
   for (const s of data.systems) for (const key of Object.keys(s.survey?.rewards?.flags ?? {})) allowedFlags.add(key);
   for (const s of data.scenes) for (const c of s.choices) for (const key of Object.keys(c.effects?.flags ?? {})) allowedFlags.add(key);
   for (const e of data.events ?? []) for (const key of Object.keys(e.effects?.flags ?? {})) allowedFlags.add(key);
@@ -674,6 +855,9 @@ export function validateState(data, state) {
   if (!unique(state.triggeredEvents) || state.triggeredEvents.some(id => !(data.events ?? []).some(e => e.id === id))) err('Invalid triggered events.');
   if (!plain(state.surveySalvage) || Object.entries(state.surveySalvage).some(([id, value]) => !lookup(data, 'systems', id)?.survey
     || !integer(value) || value < 0 || value > 60)) err('Invalid surface salvage totals.');
+  if (state.surveyProgress !== undefined && (!plain(state.surveyProgress) || Object.entries(state.surveyProgress).some(([id, tasks]) =>
+    lookup(data, 'systems', id)?.survey?.mode !== 'rescue' || !unique(tasks)
+    || tasks.some(task => !integer(task) || task < 0 || task > 2)))) err('Invalid secured surface recovery groups.');
   if (Array.isArray(state.knownSystems) && !state.knownSystems.includes(state.location)) err('Current system must be charted.');
   if (Array.isArray(state.visitedSystems) && !state.visitedSystems.includes(state.location)) err('Current system must have been visited.');
   if (Array.isArray(state.completedScenes) && Array.isArray(state.visitedScenes)
@@ -700,6 +884,7 @@ export function validateState(data, state) {
     const choice = plain(b) ? data.scenes.flatMap(s => s.choices).find(c => c.id === b.choiceId) : null;
     if (!choice?.combat || b.systemId !== state.location || state.scene !== null
       || typeof b.battleId !== 'string' || !b.battleId.startsWith(`${data.id}:`)
+      || state.battleOutcomes?.[choice?.combat?.id] === 'victory'
       || !Array.isArray(state.usedChoices) || !state.usedChoices.includes(b.choiceId)) err('Invalid pending battle.');
     else for (const key of ['id', 'enemies', 'winSceneId', 'loseSceneId', 'retreatSceneId']) if (JSON.stringify(b[key]) !== JSON.stringify(choice.combat[key])) err('Pending battle differs from authored encounter.');
   }

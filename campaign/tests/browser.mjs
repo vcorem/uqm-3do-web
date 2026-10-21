@@ -2,18 +2,20 @@
 import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import path from 'node:path';
-import {chromium} from 'playwright';
+import {chromium,firefox,webkit} from 'playwright';
 import {createNetplayServer} from '../../server/netplay.mjs';
 import {createGame,serializeSave,applyAction} from '../src/state.mjs';
 import * as routes from './routes.mjs';
 const root=path.resolve(new URL('../..',import.meta.url).pathname);
 const data=JSON.parse(await readFile(path.join(root,'campaign/content/campaign.json'),'utf8'));
-const output=path.join(root,'test-results/afterlight-browser');await mkdir(output,{recursive:true});
+const browserName=process.env.AFTERLIGHT_BROWSER||'chromium';
+if(!['chromium','firefox','webkit'].includes(browserName))throw Error('Unsupported browser '+browserName);
+const output=path.join(root,'test-results/afterlight-browser'+(browserName==='chromium'?'':'-'+browserName));await mkdir(output,{recursive:true});
 const report={passed:false,errors:[],routes:[],screenshots:[]};
 let browser,server;
 const saveKey='uqm.afterlight.save.v1';
 const screenshot=async(page,name)=>{await page.screenshot({path:path.join(output,name+'.png'),fullPage:true});report.screenshots.push(name+'.png');};
-async function click(page,selector){await page.locator(selector).click();}
+async function click(page,selector){await page.locator(selector).first().click();}
 async function confirm(page){const dialog=page.locator('#confirm-dialog[open]');if(await dialog.count())await dialog.getByRole('button',{name:'Confirm',exact:true}).click();}
 async function replay(page,actions){
   for(const action of actions){
@@ -32,7 +34,7 @@ async function replay(page,actions){
 }
 try{
   server=createNetplayServer({distDir:path.join(root,'.tools/afterlight-dist')});const address=await server.listen(0,'127.0.0.1');const url=`http://127.0.0.1:${address.port}/`;
-  browser=await chromium.launch({headless:true,...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{}),args:['--disable-background-timer-throttling']});report.browser=browser.version();
+  browser=await ({chromium,firefox,webkit}[browserName]).launch({headless:true,...(browserName==='chromium'&&process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{}),...(browserName==='chromium'?{args:['--disable-background-timer-throttling']}:{})});report.browser={name:browserName,version:browser.version()};
   const page=await browser.newPage({viewport:{width:1440,height:1000}});
   page.on('pageerror',e=>report.errors.push(e.message));page.on('response',r=>{if(r.status()>=400&&!r.url().endsWith('/favicon.ico'))report.errors.push(`${r.status()} ${r.url()}`);});
   await page.addInitScript(()=>{const Native=window.AudioContext;window.AudioContext=class extends Native{constructor(...args){super(...args);window.__audioTestContext=this;window.__audioTestGains=[];}createGain(){const gain=super.createGain();window.__audioTestGains.push(gain);return gain;}};});

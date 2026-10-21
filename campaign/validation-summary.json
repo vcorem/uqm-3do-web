@@ -1,20 +1,25 @@
 {
   "date": "2026-10-21",
-  "scope": "Local development verification; no public deployment or hosted CI result claimed.",
+  "recordedAt": "2026-10-21T09:03:33.083057+00:00",
+  "scope": "Local campaign revision verification. Story playthroughs use visible controls in three browser engines. Real acquired-hull launch/withdrawal and a partial physical rescue also passed in each engine. No public deployment or hosted CI result is claimed.",
   "campaign": {
-    "scenes": 103,
-    "choices": 163,
+    "scenes": 149,
+    "choices": 267,
     "systems": 32,
-    "quests": 15,
+    "quests": 17,
     "characters": 10,
-    "surveys": 18,
+    "surveys": 20,
     "endings": 3,
-    "uniqueNarrativeProseWords": 26531,
-    "choiceWords": 1754,
-    "totalStoryWords": 28285
+    "upgrades": 6,
+    "additionalHulls": 5,
+    "nativeEncounters": 5,
+    "uniqueNarrativeProseWords": 26423,
+    "choiceWords": 2816,
+    "totalStoryWords": 29239
   },
   "unitTests": {
-    "passed": 61,
+    "tests": 102,
+    "passed": 102,
     "failed": 0
   },
   "browser": {
@@ -23,24 +28,24 @@
     "routes": [
       {
         "ending": "accord",
-        "actions": 86,
-        "day": 90,
+        "actions": 98,
+        "day": 103,
         "systems": 16,
-        "decisions": 50
+        "decisions": 61
       },
       {
         "ending": "mandate",
-        "actions": 54,
-        "day": 43,
+        "actions": 65,
+        "day": 48,
         "systems": 9,
-        "decisions": 32
+        "decisions": 43
       },
       {
         "ending": "partition",
-        "actions": 54,
-        "day": 43,
+        "actions": 65,
+        "day": 51,
         "systems": 9,
-        "decisions": 32
+        "decisions": 43
       }
     ],
     "screenshots": [
@@ -54,7 +59,10 @@
       "mobile-dialogue.png",
       "mobile-chart.png"
     ],
-    "browser": "155.0.8059.85",
+    "browser": {
+      "name": "chromium",
+      "version": "151.0.7922.34"
+    },
     "assets": {
       "portraits": [
         1254,
@@ -149,6 +157,604 @@
     "saveRecovery": true,
     "mobile": true
   },
+  "browsers": [
+    {
+      "passed": true,
+      "errors": [],
+      "routes": [
+        {
+          "ending": "accord",
+          "actions": 98,
+          "day": 103,
+          "systems": 16,
+          "decisions": 61
+        },
+        {
+          "ending": "mandate",
+          "actions": 65,
+          "day": 48,
+          "systems": 9,
+          "decisions": 43
+        },
+        {
+          "ending": "partition",
+          "actions": 65,
+          "day": 51,
+          "systems": 9,
+          "decisions": 43
+        }
+      ],
+      "screenshots": [
+        "title.png",
+        "opening.png",
+        "act-two-chart.png",
+        "expedition-menu.png",
+        "ending-accord.png",
+        "ending-mandate.png",
+        "ending-partition.png",
+        "mobile-dialogue.png",
+        "mobile-chart.png"
+      ],
+      "browser": {
+        "name": "chromium",
+        "version": "151.0.7922.34"
+      },
+      "assets": {
+        "portraits": [
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254
+        ],
+        "decoded": [
+          {
+            "id": "afterlight",
+            "duration": 89.304,
+            "channels": 2
+          },
+          {
+            "id": "drift",
+            "duration": 76.8,
+            "channels": 2
+          },
+          {
+            "id": "hearth",
+            "duration": 73.848,
+            "channels": 2
+          },
+          {
+            "id": "mandate",
+            "duration": 83.48,
+            "channels": 2
+          },
+          {
+            "id": "counterpoint",
+            "duration": 109.092,
+            "channels": 2
+          },
+          {
+            "id": "firstvoice",
+            "duration": 106.668,
+            "channels": 2
+          },
+          {
+            "id": "smallcourage",
+            "duration": 60,
+            "channels": 2
+          },
+          {
+            "id": "witness",
+            "duration": 116.364,
+            "channels": 2
+          },
+          {
+            "id": "ceramic",
+            "duration": 55.386,
+            "channels": 2
+          },
+          {
+            "id": "secondrain",
+            "duration": 102.128,
+            "channels": 2
+          },
+          {
+            "id": "convoy",
+            "duration": 71.112,
+            "channels": 2
+          },
+          {
+            "id": "battle",
+            "duration": 58.182,
+            "channels": 2
+          },
+          {
+            "id": "fracture",
+            "duration": 126.316,
+            "channels": 2
+          },
+          {
+            "id": "accord",
+            "duration": 80,
+            "channels": 2
+          },
+          {
+            "id": "homecoming",
+            "duration": 77.838,
+            "channels": 2
+          }
+        ]
+      },
+      "saveRecovery": true,
+      "mobile": true
+    },
+    {
+      "passed": true,
+      "errors": [],
+      "routes": [
+        {
+          "ending": "accord",
+          "actions": 98,
+          "day": 103,
+          "systems": 16,
+          "decisions": 61
+        },
+        {
+          "ending": "mandate",
+          "actions": 65,
+          "day": 48,
+          "systems": 9,
+          "decisions": 43
+        },
+        {
+          "ending": "partition",
+          "actions": 65,
+          "day": 51,
+          "systems": 9,
+          "decisions": 43
+        }
+      ],
+      "screenshots": [
+        "title.png",
+        "opening.png",
+        "act-two-chart.png",
+        "expedition-menu.png",
+        "ending-accord.png",
+        "ending-mandate.png",
+        "ending-partition.png",
+        "mobile-dialogue.png",
+        "mobile-chart.png"
+      ],
+      "browser": {
+        "name": "firefox",
+        "version": "153.0"
+      },
+      "assets": {
+        "portraits": [
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254
+        ],
+        "decoded": [
+          {
+            "id": "afterlight",
+            "duration": 89.304,
+            "channels": 2
+          },
+          {
+            "id": "drift",
+            "duration": 76.8,
+            "channels": 2
+          },
+          {
+            "id": "hearth",
+            "duration": 73.848,
+            "channels": 2
+          },
+          {
+            "id": "mandate",
+            "duration": 83.48,
+            "channels": 2
+          },
+          {
+            "id": "counterpoint",
+            "duration": 109.092,
+            "channels": 2
+          },
+          {
+            "id": "firstvoice",
+            "duration": 106.668,
+            "channels": 2
+          },
+          {
+            "id": "smallcourage",
+            "duration": 60,
+            "channels": 2
+          },
+          {
+            "id": "witness",
+            "duration": 116.364,
+            "channels": 2
+          },
+          {
+            "id": "ceramic",
+            "duration": 55.386,
+            "channels": 2
+          },
+          {
+            "id": "secondrain",
+            "duration": 102.128,
+            "channels": 2
+          },
+          {
+            "id": "convoy",
+            "duration": 71.112,
+            "channels": 2
+          },
+          {
+            "id": "battle",
+            "duration": 58.182,
+            "channels": 2
+          },
+          {
+            "id": "fracture",
+            "duration": 126.316,
+            "channels": 2
+          },
+          {
+            "id": "accord",
+            "duration": 80,
+            "channels": 2
+          },
+          {
+            "id": "homecoming",
+            "duration": 77.838,
+            "channels": 2
+          }
+        ]
+      },
+      "saveRecovery": true,
+      "mobile": true
+    },
+    {
+      "passed": true,
+      "errors": [],
+      "routes": [
+        {
+          "ending": "accord",
+          "actions": 98,
+          "day": 103,
+          "systems": 16,
+          "decisions": 61
+        },
+        {
+          "ending": "mandate",
+          "actions": 65,
+          "day": 48,
+          "systems": 9,
+          "decisions": 43
+        },
+        {
+          "ending": "partition",
+          "actions": 65,
+          "day": 51,
+          "systems": 9,
+          "decisions": 43
+        }
+      ],
+      "screenshots": [
+        "title.png",
+        "opening.png",
+        "act-two-chart.png",
+        "expedition-menu.png",
+        "ending-accord.png",
+        "ending-mandate.png",
+        "ending-partition.png",
+        "mobile-dialogue.png",
+        "mobile-chart.png"
+      ],
+      "browser": {
+        "name": "webkit",
+        "version": "26.5"
+      },
+      "assets": {
+        "portraits": [
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254,
+          1254
+        ],
+        "decoded": [
+          {
+            "id": "afterlight",
+            "duration": 89.304,
+            "channels": 2
+          },
+          {
+            "id": "drift",
+            "duration": 76.796,
+            "channels": 2
+          },
+          {
+            "id": "hearth",
+            "duration": 73.848,
+            "channels": 2
+          },
+          {
+            "id": "mandate",
+            "duration": 83.48,
+            "channels": 2
+          },
+          {
+            "id": "counterpoint",
+            "duration": 109.092,
+            "channels": 2
+          },
+          {
+            "id": "firstvoice",
+            "duration": 106.668,
+            "channels": 2
+          },
+          {
+            "id": "smallcourage",
+            "duration": 59.996,
+            "channels": 2
+          },
+          {
+            "id": "witness",
+            "duration": 116.364,
+            "channels": 2
+          },
+          {
+            "id": "ceramic",
+            "duration": 55.386,
+            "channels": 2
+          },
+          {
+            "id": "secondrain",
+            "duration": 102.128,
+            "channels": 2
+          },
+          {
+            "id": "convoy",
+            "duration": 71.112,
+            "channels": 2
+          },
+          {
+            "id": "battle",
+            "duration": 58.182,
+            "channels": 2
+          },
+          {
+            "id": "fracture",
+            "duration": 126.316,
+            "channels": 2
+          },
+          {
+            "id": "accord",
+            "duration": 79.996,
+            "channels": 2
+          },
+          {
+            "id": "homecoming",
+            "duration": 77.838,
+            "channels": 2
+          }
+        ]
+      },
+      "saveRecovery": true,
+      "mobile": true
+    }
+  ],
+  "recovery": {
+    "passed": true,
+    "checks": [
+      "Malformed preferences preserve Continue, overwrite confirmation and the exact expedition.",
+      "A missing primary save can recover its valid backup.",
+      "Write failure keeps live state and export available; restoring storage saves the exact latest revision.",
+      "Chart opens the map; an unfinished conversation resumes; both reading modes work.",
+      "Partial refuel purchases preserve remaining money.",
+      "Import cannot silently replace a live expedition when no autosave has ever succeeded."
+    ],
+    "errors": [],
+    "browser": {
+      "name": "chromium",
+      "version": "151.0.7922.34"
+    }
+  },
+  "progression": {
+    "passed": true,
+    "errors": [],
+    "checks": [
+      "An earned Supox hull transfers twelve crew and preserves six reserves through reload; switching back neither heals nor loses crew.",
+      "Visible equipment and hull purchases charge their actual prices, increase capacity without free fuel or crew, and fit a narrow screen.",
+      "The purchased Spathi hull actually launches in native UQM with the surviving crew; a real withdrawal returns through the campaign rules.",
+      "A keyboard-controlled rescue delivery survives recall, save/load and a new launch; the unfinished mission remains available."
+    ],
+    "browser": {
+      "name": "chromium",
+      "version": "151.0.7922.34"
+    },
+    "native": {
+      "ship": 15,
+      "receipt": {
+        "type": "uqm-campaign:result",
+        "id": "afterlight-accord:40:lantern-drone",
+        "outcome": "retreat",
+        "crew": 18,
+        "enemyRemaining": 1,
+        "frames": 25
+      }
+    }
+  },
+  "progressionBrowsers": [
+    {
+      "passed": true,
+      "errors": [],
+      "checks": [
+        "An earned Supox hull transfers twelve crew and preserves six reserves through reload; switching back neither heals nor loses crew.",
+        "Visible equipment and hull purchases charge their actual prices, increase capacity without free fuel or crew, and fit a narrow screen.",
+        "The purchased Spathi hull actually launches in native UQM with the surviving crew; a real withdrawal returns through the campaign rules.",
+        "A keyboard-controlled rescue delivery survives recall, save/load and a new launch; the unfinished mission remains available."
+      ],
+      "browser": {
+        "name": "chromium",
+        "version": "151.0.7922.34"
+      },
+      "native": {
+        "ship": 15,
+        "receipt": {
+          "type": "uqm-campaign:result",
+          "id": "afterlight-accord:40:lantern-drone",
+          "outcome": "retreat",
+          "crew": 18,
+          "enemyRemaining": 1,
+          "frames": 25
+        }
+      }
+    },
+    {
+      "passed": true,
+      "errors": [],
+      "checks": [
+        "An earned Supox hull transfers twelve crew and preserves six reserves through reload; switching back neither heals nor loses crew.",
+        "Visible equipment and hull purchases charge their actual prices, increase capacity without free fuel or crew, and fit a narrow screen.",
+        "The purchased Spathi hull actually launches in native UQM with the surviving crew; a real withdrawal returns through the campaign rules.",
+        "A keyboard-controlled rescue delivery survives recall, save/load and a new launch; the unfinished mission remains available."
+      ],
+      "browser": {
+        "name": "firefox",
+        "version": "153.0"
+      },
+      "native": {
+        "ship": 15,
+        "receipt": {
+          "type": "uqm-campaign:result",
+          "id": "afterlight-accord:40:lantern-drone",
+          "outcome": "retreat",
+          "crew": 18,
+          "enemyRemaining": 1,
+          "frames": 22
+        }
+      }
+    },
+    {
+      "passed": true,
+      "errors": [],
+      "checks": [
+        "An earned Supox hull transfers twelve crew and preserves six reserves through reload; switching back neither heals nor loses crew.",
+        "Visible equipment and hull purchases charge their actual prices, increase capacity without free fuel or crew, and fit a narrow screen.",
+        "The purchased Spathi hull actually launches in native UQM with the surviving crew; a real withdrawal returns through the campaign rules.",
+        "A keyboard-controlled rescue delivery survives recall, save/load and a new launch; the unfinished mission remains available."
+      ],
+      "browser": {
+        "name": "webkit",
+        "version": "26.5"
+      },
+      "native": {
+        "ship": 15,
+        "receipt": {
+          "type": "uqm-campaign:result",
+          "id": "afterlight-accord:40:lantern-drone",
+          "outcome": "retreat",
+          "crew": 18,
+          "enemyRemaining": 1,
+          "frames": 22
+        }
+      }
+    }
+  ],
+  "surfaces": {
+    "passed": true,
+    "errors": [],
+    "results": [
+      {
+        "outcome": "surveyed",
+        "salvage": 6,
+        "hullRemaining": 74,
+        "beacons": 3,
+        "id": "browser-0"
+      },
+      {
+        "outcome": "surveyed",
+        "salvage": 15,
+        "hullRemaining": 100,
+        "beacons": 3,
+        "completedTasks": [
+          0,
+          1,
+          2
+        ],
+        "id": "browser-1"
+      },
+      {
+        "outcome": "surveyed",
+        "salvage": 6,
+        "hullRemaining": 100,
+        "beacons": 3,
+        "id": "browser-2"
+      },
+      {
+        "outcome": "retreated",
+        "salvage": 0,
+        "hullRemaining": 100,
+        "beacons": 1,
+        "completedTasks": [
+          1
+        ],
+        "id": "browser-3"
+      },
+      {
+        "outcome": "retreated",
+        "salvage": 0,
+        "hullRemaining": 100,
+        "beacons": 0,
+        "id": "browser-4"
+      }
+    ],
+    "modes": [
+      {
+        "mode": "survey",
+        "legs": 4,
+        "wallSeconds": 29,
+        "simulationSeconds": 27.816666666666666
+      },
+      {
+        "mode": "rescue",
+        "legs": 6,
+        "wallSeconds": 31,
+        "simulationSeconds": 31.066666666666666
+      },
+      {
+        "mode": "relay",
+        "legs": 4,
+        "wallSeconds": 25,
+        "simulationSeconds": 25
+      }
+    ],
+    "browser": {
+      "name": "chromium",
+      "version": "151.0.7922.34"
+    }
+  },
   "parentIntegration": {
     "passed": true,
     "errors": [],
@@ -159,50 +765,197 @@
       "Actual native battle result advances the campaign and preserves its crew/recovery rules"
     ],
     "surface": {
-      "system": "cinder",
-      "dayBefore": 9,
-      "dayAfter": 10,
-      "creditsBefore": 370,
-      "creditsAfter": 421,
+      "system": "ledger",
+      "dayBefore": 8,
+      "dayAfter": 9,
+      "creditsBefore": 390,
+      "creditsAfter": 429,
       "beacons": 3,
       "hullBeforeReturn": 100
     },
     "battle": {
       "receipt": {
         "type": "uqm-campaign:result",
-        "id": "afterlight-accord:20:lantern-drone",
-        "outcome": "victory",
-        "crew": 6,
-        "enemyRemaining": 0,
-        "frames": 947
+        "id": "afterlight-accord:22:lantern-drone",
+        "outcome": "defeat",
+        "crew": 0,
+        "enemyRemaining": 1,
+        "frames": 842
       },
-      "crewAfter": 6,
-      "scene": "a2_ferry_rescue",
+      "crewAfter": 9,
+      "scene": "a2_ferry_setback",
       "dayBefore": 11,
-      "dayAfter": 12
+      "dayAfter": 15
     },
     "fixture": {
-      "openingRevision": 17,
-      "surveySystem": "cinder",
-      "surveyRevision": 18,
-      "battleRevision": 19
+      "openingRevision": 19,
+      "surveySystem": "ledger",
+      "surveyRevision": 20,
+      "battleRevision": 21
     },
-    "browser": "155.0.8059.85"
+    "browser": {
+      "name": "chromium",
+      "version": "151.0.7922.34"
+    }
+  },
+  "legacyCompatibility": {
+    "checkpoints": 572,
+    "loaded": 572,
+    "authenticStoryContinuationFixtures": 3
+  },
+  "independentReview": {
+    "passes": 2,
+    "remainingConfirmedFindings": 0,
+    "scope": "Independent app/state review and separate story/gameplay review, followed by reproduced-fix audits. This does not claim exhaustive proof of all possible states or human enjoyment.",
+    "finalContentAudit": {
+      "sha256": "4491923cecf4ea1ee7403ba4da22b07ebf094e223338fc6cd9d42078c52e590a",
+      "checkedAt": "2026-10-21T08:59:11.186Z",
+      "results": [
+        {
+          "id": "convoy_has_actual_accepted_fallback",
+          "ok": true,
+          "evidence": {
+            "day": 23,
+            "harbor": false,
+            "convoy": "completed"
+          }
+        },
+        {
+          "id": "optional_memories_do_not_appear_without_visits",
+          "ok": true,
+          "evidence": {
+            "lowtideVisited": false,
+            "liltContacts": false
+          }
+        },
+        {
+          "id": "mandate_panels_have_distinct_cost_and_payoff",
+          "ok": true,
+          "evidence": {
+            "localDay": 48,
+            "centralDay": 46,
+            "local": [
+              "The unanswered ferry case",
+              "A quieter memorial",
+              "A date that remains a date",
+              "The key outside the office",
+              "A hearing before the shipment",
+              "The panel outside the short circuit"
+            ],
+            "central": [
+              "The unanswered ferry case",
+              "A quieter memorial",
+              "A date that remains a date",
+              "The key outside the office",
+              "A hearing before the shipment",
+              "The bus both desks shared"
+            ]
+          }
+        },
+        {
+          "id": "recovered_local_panel_does_not_invent_two_work_days",
+          "ok": true,
+          "evidence": {
+            "manualRelease": true,
+            "choice": "a4_mandate_local_panel"
+          }
+        },
+        {
+          "id": "partition_radio_needs_physical_rebuild_and_has_cargo_payoff",
+          "ok": true,
+          "evidence": {
+            "daysRebuilding": 2,
+            "ending": "partition",
+            "stocked": true,
+            "rebuilt": true
+          }
+        },
+        {
+          "id": "partition_final_policies_are_exclusive",
+          "ok": true,
+          "evidence": {
+            "reentryAllowed": false
+          }
+        },
+        {
+          "id": "crossing_mistake_no_longer_saves_fuel",
+          "ok": true,
+          "evidence": {
+            "correctFuel": 49,
+            "incorrectFuel": 49
+          }
+        },
+        {
+          "id": "ember_day44_preparation_repairs_and_resumes",
+          "ok": true,
+          "evidence": [
+            {
+              "choice": "a2_ember_wait",
+              "repair": "a2_ember_return_work",
+              "day": 57,
+              "roots": "completed"
+            },
+            {
+              "choice": "a2_ember_wait",
+              "repair": "a2_ember_return_pay",
+              "day": 51,
+              "roots": "completed"
+            },
+            {
+              "choice": "a2_ember_graft",
+              "repair": "a2_ember_return_work",
+              "day": 54,
+              "roots": "completed"
+            },
+            {
+              "choice": "a2_ember_graft",
+              "repair": "a2_ember_return_pay",
+              "day": 48,
+              "roots": "completed"
+            }
+          ]
+        },
+        {
+          "id": "all_three_routes_still_end",
+          "ok": true,
+          "evidence": [
+            {
+              "ending": "accord",
+              "day": 103,
+              "scenes": 60
+            },
+            {
+              "ending": "mandate",
+              "day": 48,
+              "scenes": 42
+            },
+            {
+              "ending": "partition",
+              "day": 51,
+              "scenes": 42
+            }
+          ]
+        }
+      ]
+    }
   },
   "sourceSha256": {
-    "campaign/content/campaign.json": "d92cf23fe6a0248be93420101153e5841d1ae2310307902bdc3c4d84f1a3f65d",
-    "campaign/src/app.mjs": "3a2afd0731c2273e1fe44341b3d12218f1fd9e4021f8ae426667db134231558b",
-    "campaign/src/state.mjs": "208e2860383b7de77d5dec68aed12cd47cbba79a3864d1f559a1d2f45f0a5a48",
-    "campaign/src/lander.mjs": "85d87deeb4e2bf1183888d6ddb7d3077f0d12c1be1ebaf1171a212ee43c5113e",
+    "campaign/content/campaign.json": "4491923cecf4ea1ee7403ba4da22b07ebf094e223338fc6cd9d42078c52e590a",
+    "campaign/src/app.mjs": "d82fc38180d7022153104b9f623e630ad9a3943cedca53c609eac4f75d5c82f3",
+    "campaign/src/state.mjs": "6d950db8b1b9683288c7b289735a596c43f9488305bf09b63b494465eeb551d1",
+    "campaign/src/lander.mjs": "03b9709ec8eb4e99a4bf46c96a860fc6e5ec56f6e1704c72470fd6ad546fe068",
     "campaign/src/combat.mjs": "2f28839424a08bedf2b4c22995324138ae316d0926b0656c8e94a4bb7278562c",
-    "campaign/src/audio.mjs": "105345444374c0afce92be560b9693a5fabc9fb4fcca845dda27205c806376e6"
+    "campaign/src/audio.mjs": "105345444374c0afce92be560b9693a5fabc9fb4fcca845dda27205c806376e6",
+    "campaign/style.css": "9c62f5430c1399caf3ea52b1f812f1c409cb79c9ac079e6c12e9bf593c9a7beb"
   },
   "additionalEvidence": "gameplay-validation.json",
   "limitations": [
-    "Literary quality, emotional effect and musical taste require independent human playtesting.",
-    "The scope is smaller than the original campaign; story word counts include all branches, not one reading path.",
+    "Literary quality, emotional effect, perceived difficulty and sustained enjoyment still require independent human playthroughs.",
+    "The campaign is substantially smaller and more dialogue-led than Star Control II; word counts include all branches and conditional passages.",
+    "Mapping, recovery and relay expeditions are compact optional activities, not large action levels.",
     "Recorded voices, new native ship sprite sets and localization are not included.",
-    "Chrome on macOS was verified; Safari, Firefox and extended assistive-technology testing remain outstanding.",
-    "Native space combat requires a keyboard; narrow-screen reading and surface pointer controls were verified."
+    "Playwright Chromium, Firefox and WebKit were checked on macOS; this is not every Safari release, physical phone, assistive technology or long-session configuration.",
+    "Actual purchased-ship launch/withdrawal and partial rescue were checked in each browser. The complete 25-hull native matrix and victory/defeat evidence belong to the separately recorded Chromium run; that full matrix was not rerun in Firefox/WebKit.",
+    "Native space combat requires a keyboard; narrow-screen reading, outfitting and surface pointer controls were checked."
   ]
 }

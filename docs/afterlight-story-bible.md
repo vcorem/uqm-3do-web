@@ -22,26 +22,29 @@ The final authored corpus contains:
 |---|---:|
 | Navigable systems | 32 |
 | Major speaking characters | 10 |
-| Quest chains | 15 |
-| Authored scenes | 103 |
-| Player choices | 163 |
-| Act I scenes | 22 |
-| Act II scenes | 30 |
-| Act III scenes | 33 |
-| Act IV scenes | 18 |
-| Physical surface survey discoveries | 18 |
-| Native UQM combat encounters | 3, all with noncombat alternatives |
+| Quest chains | 17 |
+| Authored scenes | 149 |
+| Player choices | 267 |
+| Act I scenes | 24 |
+| Act II scenes | 41 |
+| Act III scenes | 53 |
+| Act IV scenes | 31 |
+| Physical surface discoveries | 20 |
+| Native UQM combat encounters | 5, all with noncombat alternatives |
+| Attainable additional hulls | 5 |
+| Expedition upgrades | 6 |
 | Main endings | 3 |
-| Distinct conditional epilogue paragraphs | 28 |
-| Scheduled, fail-forward world events | 4 |
-| Scene prose words | 22,544 |
-| Player-choice words | 1,754 |
-| Surface discovery words | 1,963 |
-| Main ending words | 579 |
-| Unique conditional epilogue words | 1,445 |
-| **Unique story words under this counting method** | **28,285** |
+| Distinct conditional epilogue paragraphs | 45 |
+| Scheduled, recoverable world events | 4 |
+| Unique base scene prose words | 19,187 |
+| Additional history-dependent scene words | 2,193 |
+| Player-choice words | 2,816 |
+| Unique surface discovery words | 2,356 |
+| Unique main ending words | 528 |
+| Unique conditional epilogue words | 2,159 |
+| **Unique story words under this counting method** | **29,239** |
 
-Word counts use whitespace-delimited words. The total excludes system descriptions, registries, quest summaries, journal effects, documentation, keys and markup. Shared epilogues are counted once even though the JSON attaches them to all applicable endings. It does not count an outline as implemented prose or inflate the result by counting the same epilogue three times. The original dialogue inventory's 104,316-word count uses a broader resource-file method and therefore should not be presented as an exact like-for-like prose comparison.
+Word counts use whitespace-delimited words. The total excludes system descriptions, registries, quest summaries, journal effects, documentation, keys and markup. Unique paragraphs, including history-dependent scene variants, are counted once even when repeated across branches. Shared epilogues are counted once even though the JSON attaches them to all applicable endings. It does not count an outline as implemented prose or inflate the result by counting the same epilogue three times. The original dialogue inventory's 104,316-word count uses a broader resource-file method and therefore should not be presented as an exact like-for-like prose comparison.
 
 ## Continuity: evidence versus invention
 
@@ -108,6 +111,24 @@ All routes require physical stabilization at Lastlight. Native UQM combat can op
 
 The three routes then require different decisions about governance, review and continuing obligations. The resulting ending is not an abstract alignment score. It describes who retained power, what capacity was saved or sacrificed, and what work will have to continue. Conditional epilogues recall actual decisions from earlier chapters, including those that embarrass the expedition.
 
+## Playability revision: evidence, progression and different final operations
+
+The October 21 revision shortens speeches while expanding decisions. Cinder separates a recording from a live response using three observable channels. Glasshouse requires comparing arrivals, departures and the physical route. The Archive compares simultaneous replies before the player intervenes in its power network. Observations remain readable in the journal; characters report readings without automatically supplying the diagnosis. Mistakes have explicit feedback and a way forward.
+
+The field expeditions now have three physical modes: mapping, recovery shuttles and timed relay links. Their discoveries can replace manual work, support testimony, open alternate investigations, improve equipment or change evacuation options. Completed rescue deliveries persist. Six upgrades and five additional hulls connect exploration, earned trust and spending to travel, lander capability and real combat. Changing hulls preserves surviving crew and overflow reserves; it is not a healing shortcut.
+
+Common Crossing restores a practical transit connection and earns navigation vanes. Homeward reopens a receiving station, retrieves its team and carries Lilt’s new correspondence. These were previously empty destinations. Optional Needle and Crossing patrols give the fleet additional uses, with technical or diplomatic alternatives. A failed fight can be retried without duplicating story rewards.
+
+At Lastlight, the political proposal determines a different three-stage operation:
+
+- **Accord:** establish a buffer, sequence independent carriers, and test an actual refusal against the cached assent. An old reset key can be dismantled or retained; the later consequences remember that choice.
+- **Mandate:** separate vital power from transit, test a real load fault, and assign control of the breakers. A local independent panel and a second central desk have different physical failure consequences. Installing a recovered manual release saves work; authority alone cannot make the circuit independent.
+- **Partition:** provide for reactorless Raft, choose what capacity crosses the temporary link, and disconnect in a safe order. A voluntary receiving station, independent harbor or prepared central berths lead to different displacement outcomes. A removed physical corridor must be rebuilt before it can become a standing service. Final corridor and local-reserve policies are exclusive.
+
+Four announced deadlines now have recoverable practical effects. In particular, winter destroys the early free growers’ ship allocation, leaving a paid rebuilding route after repair; an overheating Lastlight pump must be repaired even when its deadline occurs during the operation. Work and reading remain distinct: only actual voyage actions spend days. Emergency recovery prevents resource exhaustion from ending the campaign, while time, equipment and relationships still shape what is available.
+
+Publicizing private letters, compelling a community channel, or overriding Shear receives a different aftermath from asking permission. Reconciliation can restore cooperation without deleting the history of harm. Optional memories require the relevant visit or choice. Old saves paused inside the previous aftermaths receive history-appropriate variants as well.
+
 ## Character and performance notes
 
 | Character | Voice and want | Arc and guardrail |
@@ -157,7 +178,7 @@ The endings do not resurrect unrescued passengers, assume an unresolved quest su
 1. All required evidence for the main plot remains available through conversations. Surface play earns specific discoveries and resources without making a difficult landing an unannounced story lock.
 2. Reading never advances the day. Travel and explicitly labelled work do. Scheduled events warn, alter context or recall a bounded resource; they do not silently kill Anet or choose the political ending.
 3. The ferry has a zero-credit, three-day recovery route. Convoy patrol and Lastlight have diplomatic or physical alternatives after a failed native battle.
-4. Automatic conversation continuations are not available as first manual entries. The final proposal can be deferred without being consumed, and a selected proposal cannot be combined with a second route's flags.
+4. Automatic conversation continuations are not available as first manual entries, except explicitly gated recovery hubs. Repeatable policy hubs must close after either exclusive policy is selected. The final proposal can be deferred without being consumed, and a selected proposal cannot be combined with a second route's flags.
 5. A limited harbor can later be upgraded. Essential infrastructure is not irreversibly lost because a player explored in an unexpected order.
 6. Every ending must remain reachable without debug flag injection. Tests should traverse authored choices, including side quests needed by the strict accord route.
 7. Conditional epilogues use actual state. Shared prose must not be counted repeatedly when describing authored scope.

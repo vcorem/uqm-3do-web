@@ -40,11 +40,14 @@ jobs:
           JOBS: '4'
         run: bash scripts/build-afterlight.sh
       - name: Play all three endings through the real browser interface
-        run: npm run test:afterlight:browser
+        run: |
+          npm run test:afterlight:browser
+          node campaign/tests/recovery-browser.mjs
       - name: Play physical surface expeditions and real UQM encounters
         run: |
           node campaign/tests/lander-browser.mjs
           node campaign/tests/combat-browser.mjs
           node campaign/tests/integration-encounters.mjs
+          node campaign/tests/progression-browser.mjs
       - name: Check source whitespace
         run: git diff --check
