@@ -9,7 +9,10 @@ import { announce } from './live';
  * (web/game-help/game-help.js): when the window is wider than the 4:3 game
  * (also in full screen), a panel in each dark margin beside it: flying and
  * the ships on the left, the menus and the game keys on the right under the
- * Keys (K) button. Without room, the same help is a pop-up over the game.
+ * Keys (K) button (narrow margins, as 16:10 screens and MacBooks in full
+ * screen, have one column: each key above its label). Without room, the same
+ * help is a pop-up over the game, and the button is under the game (a phone
+ * upright) or in its corner.
  *
  * K or the button shows or hides it in every screen. Nothing pauses (the
  * online lockstep goes on) and the keyboard focus stays with the game. The
@@ -19,26 +22,46 @@ import { announce } from './live';
 export type KeysMode = 'menu' | 'ai' | 'local' | 'online';
 /** The remembered choice for the side panels: 'shown' (also the default) or 'hidden'. */
 export const KEYS_STORAGE = 'cosmoclash.keys.v1';
-/** The side panels need this many pixels in each margin beside the game, and a frame this high. */
-export const SIDE_MIN = 140;
+/**
+ * The side panels need this many pixels in each margin beside the game, and a
+ * frame this high. 96 px also takes the 16:10 screens and the MacBooks in full
+ * screen (1280x800: 107, 1440x900: 120, 1470x956: 98, 1512x982: 101).
+ */
+export const SIDE_MIN = 96;
 export const SIDE_MIN_HEIGHT = 300;
+/** Margins under this width have one-column panels (each key above its label), which need a frame this high. */
+export const SIDE_WIDE = 150;
+export const COMPACT_MIN_HEIGHT = 600;
+/** Without side panels, a bar this high under the game (a phone upright) takes the button. */
+export const BAR_MIN = 48;
 
 export interface KeysLayout {
   /** Panels in the side margins (else the pop-up). */
   side: boolean;
+  /** Narrow margins: one column in each panel, each key above its label. */
+  compact: boolean;
+  /** No side panels, but a bar under the game: the button goes there, not over the game. */
+  below: boolean;
   /** The width of each margin beside the game. */
   margin: number;
   /** The text size of the side panels and their distance to the edges (px). */
   font: number;
   gap: number;
 }
-/** The side panels or the pop-up, from the size of the frame and the width of the 4:3 game in it. */
-export function keysLayout(frameWidth: number, frameHeight: number, gameWidth: number): KeysLayout {
+const clamp = (value: number, low: number, high: number): number => Math.min(high, Math.max(low, value));
+/** The height of the 4:3 game in the frame, as Viewport makes it. */
+export const gameHeightIn = (frameWidth: number, frameHeight: number): number =>
+  frameWidth / frameHeight > 4 / 3 ? frameHeight : Math.floor(frameWidth * 3 / 4);
+/** The side panels or the pop-up, from the size of the frame and the size of the 4:3 game in it. */
+export function keysLayout(frameWidth: number, frameHeight: number, gameWidth: number, gameHeight = gameHeightIn(frameWidth, frameHeight)): KeysLayout {
   const margin = Math.max(0, Math.floor((frameWidth - gameWidth) / 2));
-  const side = margin >= SIDE_MIN && frameHeight >= SIDE_MIN_HEIGHT;
-  const font = Math.round(Math.min(18, Math.max(12, Math.min(margin / 12, frameHeight / 48))) * 10) / 10;
-  const gap = Math.round(Math.min(16, Math.max(8, margin * 0.05)));
-  return { side, margin, font, gap };
+  const bar = Math.max(0, Math.floor((frameHeight - gameHeight) / 2));
+  const compact = margin < SIDE_WIDE;
+  const side = margin >= SIDE_MIN && frameHeight >= (compact ? COMPACT_MIN_HEIGHT : SIDE_MIN_HEIGHT);
+  // Two columns need about 12 font sizes of width, one column about 8 (and its rows about 70 of height). Never under 12 px.
+  const font = Math.round(clamp(compact ? Math.min(margin / 8, frameHeight / 70) : Math.min(margin / 12, frameHeight / 48), 12, compact ? 16 : 18) * 10) / 10;
+  const gap = compact ? 6 : Math.round(clamp(margin * 0.05, 8, 16));
+  return { side, compact: side && compact, below: !side && bar >= BAR_MIN, margin, font, gap };
 }
 
 // ---------------------------------------------------------------- content
@@ -134,8 +157,8 @@ export interface KeysHelpOptions {
   container: HTMLElement;
   storage?: KeysStore;
   mode?: KeysMode;
-  /** The frame width and height and the game width (tests; else measured). */
-  measure?(): [number, number, number];
+  /** The frame width and height and the game width, and the game height (tests; else measured). */
+  measure?(): [number, number, number, number?];
 }
 /** The key event parts that KeysHelp reads (a KeyboardEvent in the page). */
 export type KeysEvent = Pick<KeyboardEvent, 'key' | 'code' | 'repeat' | 'ctrlKey' | 'metaKey' | 'altKey' | 'isComposing' | 'target' | 'composedPath'>;
@@ -160,6 +183,9 @@ export class KeysHelp {
   private shown: boolean;
   private popOpen = false;
   private side = false;
+  private oneColumn = false;
+  /** Where the button is: on top of the right margin, in the bar under the game, or in the corner of the game. */
+  private place: 'side' | 'below' | 'corner' | null = null;
 
   constructor(private readonly options: KeysHelpOptions) {
     this.storage = options.storage ?? localStore;
@@ -182,10 +208,11 @@ export class KeysHelp {
     close.addEventListener('mousedown', event => event.preventDefault());
     close.addEventListener('click', () => this.close());
     this.popBody = el('div', { class: 'ck-pop-body' });
-    // Not modal: the game goes on under it and keeps the keyboard.
+    // Not modal: the game goes on under it and keeps the keyboard. In the frame, centred over the
+    // game: as wide as the game at most, and as high as the frame (a phone upright has bars above and under the game).
     this.pop = el('div', { id: 'cosmo-keys-pop', class: 'ck-pop', role: 'dialog', hidden: true, aria: { label: 'Keys', modal: 'false' } },
       el('header', {}, this.popTitle = el('h2', { text: 'Keys' }), close), this.popBody);
-    options.container.append(this.pop);
+    options.frame.append(this.pop);
 
     this.render();
     this.layout();
@@ -195,6 +222,8 @@ export class KeysHelp {
   get visible(): boolean { return this.side ? this.shown : this.popOpen; }
   /** There is room for the side panels. */
   get sideMode(): boolean { return this.side; }
+  /** The side panels have one column (narrow margins). */
+  get compact(): boolean { return this.oneColumn; }
   get currentMode(): KeysMode { return this.mode; }
 
   /** The game mode for the content: the main menu shows both players. */
@@ -207,18 +236,30 @@ export class KeysHelp {
   /** After a size change of the frame (Viewport.onResize): side panels or the pop-up. */
   layout(): void {
     const { frame, container } = this.options;
-    const [width, height, game] = this.options.measure?.() ?? [frame.clientWidth || window.innerWidth, frame.clientHeight || window.innerHeight, container.offsetWidth];
-    const layout = keysLayout(width, height, game);
+    const [width, height, game, measured] = this.options.measure?.() ?? [frame.clientWidth || window.innerWidth, frame.clientHeight || window.innerHeight, container.offsetWidth, container.offsetHeight];
+    const gameHeight = measured || gameHeightIn(width, height);
+    const layout = keysLayout(width, height, game, gameHeight);
     frame.style.setProperty('--ck-margin', `${layout.margin}px`);
     frame.style.setProperty('--ck-font', `${layout.font}px`);
     frame.style.setProperty('--ck-gap', `${layout.gap}px`);
-    if (layout.side !== this.side || !this.button.isConnected) {
-      this.side = layout.side;
-      // The pop-up never opens by itself, also not after a size change.
-      this.popOpen = false;
+    frame.style.setProperty('--ck-game-w', `${game}px`);
+    frame.style.setProperty('--ck-game-h', `${gameHeight}px`);
+    // The pop-up and the button under the game are outside #game-container: the same --u (the size unit of the menus).
+    const unit = container.style.getPropertyValue('--u') || String(Math.max(0.3, gameHeight / 720));
+    for (const node of [this.pop, this.button]) node.style.setProperty('--u', unit);
+    this.oneColumn = layout.compact;
+    for (const margin of this.margins) margin.classList.toggle('ck-compact', layout.compact);
+    // The pop-up never opens by itself, also not after a size change.
+    if (layout.side !== this.side) this.popOpen = false;
+    this.side = layout.side;
+    const place = layout.side ? 'side' : layout.below ? 'below' : 'corner';
+    if (place !== this.place || !this.button.isConnected) {
+      this.place = place;
       const focused = document.activeElement === this.button;
-      // Beside the game: on top of the right margin. Without margins: the bottom right corner of the game.
-      if (this.side) this.margins[1].prepend(this.button); else this.options.container.append(this.button);
+      // Beside the game: on top of the right margin. A phone upright: in the bar under the game. Else the bottom right corner of the game.
+      if (place === 'side') this.margins[1].prepend(this.button);
+      else if (place === 'below') frame.append(this.button);
+      else container.append(this.button);
       if (focused) this.button.focus({ preventScroll: true });
     }
     this.sync();

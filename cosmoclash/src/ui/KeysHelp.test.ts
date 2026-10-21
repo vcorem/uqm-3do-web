@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CHARACTER_REGISTRY } from '@/game/CharacterRegistry';
-import { KeysHelp, KEYS_STORAGE, SIDE_MIN, isKeysKey, keysContent, keysLayout, type KeysHelpOptions } from './KeysHelp';
+import { KeysHelp, KEYS_STORAGE, SIDE_MIN, SIDE_WIDE, isKeysKey, keysContent, keysLayout, type KeysHelpOptions } from './KeysHelp';
 import { attachLiveRegion, announced } from './live';
 
 let frame: HTMLDivElement, container: HTMLDivElement;
@@ -15,34 +15,63 @@ beforeEach(() => {
 });
 afterEach(() => { document.body.innerHTML = ''; vi.restoreAllMocks(); });
 
-const WIDE: [number, number, number] = [1280, 720, 960];
-const NARROW: [number, number, number] = [1024, 768, 1024];
+type Size = [number, number, number, number?];
+const WIDE: Size = [1280, 720, 960];
+const NARROW: Size = [1024, 768, 1024];
+/** A MacBook Pro 14" in full screen: 101 px beside the game. */
+const MACBOOK: Size = [1512, 982, 1309];
+/** A phone upright: the game as wide as the screen, a bar above and under it. */
+const PHONE: Size = [390, 844, 390, 292];
 function memory(initial: Record<string, string> = {}) {
   const data = { ...initial };
   return { data, get: (key: string) => data[key] ?? null, set: (key: string, value: string) => { data[key] = value; } };
 }
-function help(size: [number, number, number], options: Partial<KeysHelpOptions> = {}) {
+function help(size: Size, options: Partial<KeysHelpOptions> = {}) {
   let current = size;
   const keys = new KeysHelp({ frame, container, storage: memory(), measure: () => current, ...options });
-  return { keys, resize(next: [number, number, number]) { current = next; keys.layout(); } };
+  return { keys, resize(next: Size) { current = next; keys.layout(); } };
 }
 const press = (keys: KeysHelp, key: string, init: KeyboardEventInit = {}) => keys.key(new KeyboardEvent('keydown', { key, ...init }));
 const titles = (node: Element) => [...node.querySelectorAll('h3')].map(h => h.textContent);
 
 describe('keys beside the game: the margin decision', () => {
   it('wide windows and full screen have a panel in each margin; 4:3 windows and phones have the pop-up', () => {
-    expect(keysLayout(1280, 720, 960)).toEqual({ side: true, margin: 160, font: 13.3, gap: 8 });
-    expect(keysLayout(1920, 1080, 1440)).toEqual({ side: true, margin: 240, font: 18, gap: 12 });
-    expect(keysLayout(1366, 768, 1024).side).toBe(true);
-    expect(keysLayout(1024, 768, 1024)).toMatchObject({ side: false, margin: 0 });
+    expect(keysLayout(1280, 720, 960)).toEqual({ side: true, compact: false, below: false, margin: 160, font: 13.3, gap: 8 });
+    expect(keysLayout(1920, 1080, 1440)).toEqual({ side: true, compact: false, below: false, margin: 240, font: 18, gap: 12 });
+    expect(keysLayout(1366, 768, 1024)).toMatchObject({ side: true, compact: false });
+    expect(keysLayout(1024, 768, 1024)).toMatchObject({ side: false, below: false, margin: 0 });
     expect(keysLayout(960, 720, 960).side).toBe(false);
-    // A phone upright: the game is as wide as the screen (bars above and under it).
-    expect(keysLayout(390, 844, 390).side).toBe(false);
+    // A phone upright: the game is as wide as the screen (bars above and under it): the button goes under the game.
+    expect(keysLayout(390, 844, 390, 292)).toMatchObject({ side: false, below: true });
+    expect(keysLayout(390, 844, 390)).toMatchObject({ side: false, below: true });
+    // A phone on its side, with less than SIDE_MIN beside the game: the button in the corner of the game.
+    expect(keysLayout(667, 375, 500)).toMatchObject({ side: false, below: false });
     // Just enough room beside the game, or not.
     expect(keysLayout(960 + 2 * SIDE_MIN, 720, 960).side).toBe(true);
     expect(keysLayout(960 + 2 * SIDE_MIN - 2, 720, 960).side).toBe(false);
     // A window too low for the panels.
     expect(keysLayout(700, 280, 373).side).toBe(false);
+  });
+  it('16:10 screens and MacBooks in full screen have one-column side panels, never under 12 px', () => {
+    // [frame width, frame height, game width] in full screen, and the margin beside the game.
+    const screens: [number, number, number, number][] = [
+      [1280, 800, 1066, 107], [1440, 900, 1200, 120], [1470, 956, 1274, 98], [1512, 982, 1309, 101],
+      [1600, 1000, 1333, 133], [1680, 1050, 1400, 140], [1710, 1112, 1482, 114], [1728, 1117, 1489, 119],
+    ];
+    for (const [width, height, game, margin] of screens) {
+      const layout = keysLayout(width, height, game);
+      expect(layout, `${width}x${height}`).toMatchObject({ side: true, compact: true, below: false, margin, gap: 6 });
+      expect(layout.font).toBeGreaterThanOrEqual(12);
+      expect(layout.font).toBeLessThanOrEqual(16);
+    }
+    expect(keysLayout(1512, 982, 1309).font).toBe(12.6);
+    // The SIDE_MIN edge of the old two-column panels (1680x1050) has 15 px text now.
+    expect(keysLayout(1680, 1050, 1400).font).toBe(15);
+    // From SIDE_WIDE on: two columns again.
+    expect(keysLayout(960 + 2 * SIDE_WIDE, 720, 960)).toMatchObject({ side: true, compact: false });
+    expect(keysLayout(960 + 2 * SIDE_WIDE - 2, 720, 960)).toMatchObject({ side: true, compact: true });
+    // One column is long: a narrow margin on a low window (a phone on its side) gets the pop-up.
+    expect(keysLayout(740, 360, 480)).toMatchObject({ side: false, margin: 130 });
   });
 });
 
@@ -137,7 +166,8 @@ describe('the keys panels and the pop-up', () => {
     expect(keys.pop.hidden).toBe(true);
     expect(keys.pop.getAttribute('role')).toBe('dialog');
     expect(keys.pop.getAttribute('aria-label')).toBe('Keys');
-    expect(container.contains(keys.pop)).toBe(true);
+    // In the frame (centred over the game), so it can be as high as the frame.
+    expect(keys.pop.parentElement).toBe(frame);
     // The button is in the corner of the game, the margins are hidden.
     expect(keys.button.parentElement).toBe(container);
     expect(keys.panels.every(panel => panel.parentElement!.hidden)).toBe(true);
@@ -169,6 +199,39 @@ describe('the keys panels and the pop-up', () => {
     resize(NARROW);
     expect(keys.visible).toBe(false);
     expect(keys.button.parentElement).toBe(container);
+  });
+  it('a phone upright: the button is in the bar under the game, the pop-up has the size unit of the game', () => {
+    const { keys, resize } = help(PHONE);
+    expect(keys.sideMode).toBe(false);
+    expect(keys.button.parentElement).toBe(frame);
+    expect(container.contains(keys.button)).toBe(false);
+    expect(frame.style.getPropertyValue('--ck-game-w')).toBe('390px');
+    expect(frame.style.getPropertyValue('--ck-game-h')).toBe('292px');
+    expect(keys.pop.style.getPropertyValue('--u')).toBe(String(292 / 720));
+    keys.toggle();
+    expect(keys.visible).toBe(true);
+    // Turned on its side (no room beside the game): the button goes into the corner of the game; the pop-up stays open.
+    container.style.setProperty('--u', '0.52');
+    resize([667, 375, 500, 375]);
+    expect(keys.button.parentElement).toBe(container);
+    expect(keys.visible).toBe(true);
+    expect(keys.pop.style.getPropertyValue('--u')).toBe('0.52');
+    expect(keys.button.style.getPropertyValue('--u')).toBe('0.52');
+  });
+  it('a MacBook in full screen: the side panels have one column; wider margins have two', () => {
+    const { keys, resize } = help(MACBOOK);
+    expect(keys.sideMode).toBe(true);
+    expect(keys.compact).toBe(true);
+    expect(keys.visible).toBe(true);
+    expect(keys.panels.every(panel => panel.parentElement!.classList.contains('ck-compact'))).toBe(true);
+    expect(frame.style.getPropertyValue('--ck-margin')).toBe('101px');
+    expect(frame.style.getPropertyValue('--ck-font')).toBe('12.6px');
+    expect(keys.button.parentElement).toBe(keys.panels[1].parentElement);
+    resize(WIDE);
+    expect(keys.compact).toBe(false);
+    expect(keys.panels.some(panel => panel.parentElement!.classList.contains('ck-compact'))).toBe(false);
+    resize(NARROW);
+    expect(keys.compact).toBe(false);
   });
   it('a K typed in a text field is a letter; Ctrl, Cmd and Alt with K are browser keys', () => {
     const { keys } = help(WIDE);
