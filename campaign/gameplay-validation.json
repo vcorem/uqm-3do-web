@@ -330,8 +330,8 @@
     "rust/uqm-engine-original/campaign.rs": "1d966ae4d6d6ae1b1aa7524c600c406b0015a4d8a9687bde2b78003bd6d3a353",
     "campaign/native-hooks.patch": "34d3012ab9ab071b3ff46fe68ec62bba1e1be0b87d7ff9b2f49380b7c405c659",
     "campaign/src/app.mjs": "3a2afd0731c2273e1fe44341b3d12218f1fd9e4021f8ae426667db134231558b",
-    "campaign/src/state.mjs": "1c6eb0f0ee03210dda07c38698f1da99a499a5e6f6d8fa8fc9dec47fd353d522",
-    "campaign/content/campaign.json": "8966b9cc6d4959d86995668935c3234016942d837b740c792cd5fdc5241a3925"
+    "campaign/src/state.mjs": "208e2860383b7de77d5dec68aed12cd47cbba79a3864d1f559a1d2f45f0a5a48",
+    "campaign/content/campaign.json": "d92cf23fe6a0248be93420101153e5841d1ae2310307902bdc3c4d84f1a3f65d"
   },
   "commands": [
     "node --test campaign/tests/combat.test.mjs campaign/tests/lander.test.mjs",
