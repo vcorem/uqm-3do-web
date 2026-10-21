@@ -180,7 +180,24 @@ describe('the keys panels and the pop-up', () => {
     expect(used).toBe(false);
     expect(keys.visible).toBe(true);
     for (const modifier of ['ctrlKey', 'metaKey', 'altKey']) expect(press(keys, 'k', { [modifier]: true })).toBe(false);
+    expect(press(keys, 'k', { isComposing: true })).toBe(false);
     expect(keys.visible).toBe(true);
+  });
+  it('Esc closes the pop-up also from the room name field (it does not cancel the name too)', () => {
+    const { keys } = help(NARROW);
+    const input = document.createElement('input');
+    container.appendChild(input);
+    const used: boolean[] = [];
+    input.addEventListener('keydown', event => { used.push(keys.key(event)); });
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', bubbles: true }));
+    expect(keys.visible).toBe(false);
+    keys.toggle();
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, isComposing: true }));
+    expect(keys.visible).toBe(true);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(keys.visible).toBe(false);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(used).toEqual([false, false, true, false]);
   });
   it('K is the letter K, or the K key of a non-Latin layout (Hebrew ל)', () => {
     expect(isKeysKey({ key: 'k', code: 'KeyK' })).toBe(true);

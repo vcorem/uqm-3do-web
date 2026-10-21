@@ -534,9 +534,10 @@ function menuKey(e:KeyboardEvent):boolean {
   return false;
 }
 window.addEventListener('keydown',e=>{
-  if(shouldIgnoreGameKeyDown(e))return;
-  // K shows or hides the keys in every screen (nothing pauses); Esc closes the pop-up of the keys only.
+  // K shows or hides the keys in every screen (nothing pauses); Esc closes the pop-up of the keys only
+  // (also in the room name field). A K typed in a text field is a letter.
   if(keys.key(e)){e.preventDefault();e.stopPropagation();return;}
+  if(shouldIgnoreGameKeyDown(e))return;
   // The game's handlers make every Enter and Space choice. The browser's own
   // action would click the button that has the focus by then (the key that
   // skips the logo would also start a game), so it never runs.

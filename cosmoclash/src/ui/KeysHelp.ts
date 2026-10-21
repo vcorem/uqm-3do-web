@@ -248,17 +248,18 @@ export class KeysHelp {
   /**
    * A key press. Returns true when the help used it (the page then gives it to
    * nobody else): K (a held-key repeat does nothing), and Esc while the pop-up
-   * is open (it closes the pop-up only, so it does not also pause or leave).
-   * A K typed in a text field (the room name) is a letter.
+   * is open (it closes the pop-up only, so it does not also pause, leave or
+   * cancel the room name). A K typed in a text field (the room name) is a letter.
    */
   key(event: KeysEvent): boolean {
+    const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.isComposing;
+    if (event.key === 'Escape' && this.popOpen && !this.side && plain) {
+      if (!event.repeat) this.close();
+      return true;
+    }
     if (shouldIgnoreGameKeyDown(event as KeyboardEvent)) return false;
     if (isKeysKey(event)) {
       if (!event.repeat) this.toggle();
-      return true;
-    }
-    if (event.key === 'Escape' && this.popOpen && !this.side) {
-      if (!event.repeat) this.close();
       return true;
     }
     return false;
