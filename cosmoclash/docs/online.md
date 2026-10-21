@@ -85,16 +85,21 @@ says so).
   shows or hides them on every screen of this table, also in the battles, local
   and online; nothing pauses (the lockstep goes on) and the keyboard focus stays
   with the game. A held-key repeat does not toggle again; a K typed in the room
-  name is a letter. With 140 px or more beside the 4:3 game (1280x720,
-  1920x1080, also in full screen), an `aside` in each dark margin, never over the
-  game: the mode, the players' keys and the ships (weapon and special from
-  `CHARACTER_REGISTRY`) on the left; the menus and the game keys (Esc, M, F, K)
-  on the right, under the button. They show at first; a hidden choice is
-  remembered (`cosmoclash.keys.v1` in localStorage). Without that room (4:3
-  windows, phones) the button is in the bottom right corner of the game and
-  opens the same keys as a dialog over the game (it never opens by itself); `K`,
-  Esc or Close (K) closes it, and that Esc does not also pause, leave or cancel
-  the room name. Two Players and the main menu show both players; vs Computer and
+  name is a letter. With 96 px (`SIDE_MIN`) or more beside the 4:3 game
+  (1280x720, 1920x1080, and in full screen also the 16:10 screens and MacBooks:
+  1280x800 107 px, 1440x900 120, 1470x956 98, 1512x982 101, 1680x1050 140), an
+  `aside` in each dark margin, never over the game: the mode, the players' keys
+  and the ships (weapon and special from `CHARACTER_REGISTRY`) on the left; the
+  menus and the game keys (Esc, M, F, K) on the right, under the button. Under
+  150 px (`SIDE_WIDE`) each panel has one column, each key above its label, and
+  needs a frame 600 px high. The text is 12 to 18 px (no part under 11 px).
+  They show at first; a hidden choice is remembered (`cosmoclash.keys.v1` in
+  localStorage). Without that room (4:3 windows, phones) the button is in the
+  bottom right corner of the game (on a phone upright in the bar under the game)
+  and opens the same keys as a dialog over the game (it never opens by itself;
+  in `#cosmo-frame`, as wide as the game and as high as the screen at most);
+  `K`, Esc or Close (K) closes it, and that Esc does not also pause, leave or
+  cancel the room name. Two Players and the main menu show both players; vs Computer and
   Online show the Player 1 keys and say so (online both players fly with the
   arrows on their own computer). `?` (the key of the UQM pages) is Shift + `/`
   here, two fire keys of a Two Players battle, so the key is `K`.
@@ -229,9 +234,14 @@ the list, the adapter is not used.
   saves the keys beside the game at 1280x720 and 1920x1080 and over it at
   1024x768 (the main menu, a battle against the computer and its pause, a Two
   Players battle, the online lobby, the fleet choice and an online battle; the
-  battle against the computer and a menu also in full screen) in
+  battle against the computer and a menu also in full screen), in one column at
+  1440x900, 1512x982 and 1680x1050 (full screen on MacBooks and 16:10 screens)
+  and over the game on a phone upright (390x844) in
   `test-results/keys-help/`, and measures that the side panels never overlap
-  the game frame and that the game frame has the same size with and without them. `online-ui.mjs` saves every online screen in
+  the game frame, that the game frame has the same size with and without them,
+  and that no text is cut or under 11 px. It also holds both thrust keys across
+  K (both ships go on thrusting), presses a real `?` (no toggle) and clicks the
+  Keys (K) button in a battle. `online-ui.mjs` saves every online screen in
   `test-results/online-ui/` (1280x720, 1024x768, 1920x1080) and `results.json`.
   In its fleet match one player flies and the other does not, so the losers
   come in a known order: the guest chooses the next ship with the keyboard
