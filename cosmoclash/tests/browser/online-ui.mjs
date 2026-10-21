@@ -115,7 +115,8 @@ async function nextShip(pages, ci, how) {
     await chooser.keyboard.press('ArrowRight');
     ship = (await read(chooser)).online.next.carousel;
     assert.notEqual(ship, choice.ships[0]);
-    assert.equal(await chooser.locator('.cc-ship-name').textContent(), ['MichiGichi', 'Gondi', 'Sholev'][ship]);
+    // The screen shows the new ship on its next frame (slow on the CI runner).
+    await chooser.waitForFunction(name => document.querySelector('.cc-ship-name')?.textContent === name, ['MichiGichi', 'Gondi', 'Sholev'][ship], { timeout: 5000 });
     await chooser.keyboard.press('Enter');
   } else if (how === 'timeout') {
     ship = choice.ships[0];
