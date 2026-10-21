@@ -213,6 +213,9 @@ describe('the keys panels and the pop-up', () => {
     expect(titles(keys.panels[0])).toEqual(['Player 1', 'Player 2', 'Ships']);
     expect(titles(keys.panels[1])).toEqual(['Menus', 'Game']);
     expect(keys.panels[0].querySelectorAll('.ck-ships li')).toHaveLength(3);
+    // The labels of the ship choice card: Weapon and Special.
+    expect([...keys.panels[0].querySelectorAll('.ck-ships li')].map(li => [...li.children].map(node => node.textContent)))
+      .toEqual(CHARACTER_REGISTRY.map(def => [def.name, 'Weapon ' + def.weapon, 'Special ' + def.special]));
     keys.setMode('ai');
     expect(keys.currentMode).toBe('ai');
     expect(titles(keys.panels[0])).toEqual(['Your ship', 'Ships']);

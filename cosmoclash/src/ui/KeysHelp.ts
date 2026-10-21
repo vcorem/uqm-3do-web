@@ -112,7 +112,7 @@ function shipsNode(ships: ShipKeys[]): HTMLElement {
     el('h3', { text: 'Ships' }),
     el('ul', {}, ...ships.map(ship => el('li', {},
       el('b', { text: ship.name }),
-      el('span', {}, el('i', { text: 'Fire ' }), ship.weapon),
+      el('span', {}, el('i', { text: 'Weapon ' }), ship.weapon),
       el('span', {}, el('i', { text: 'Special ' }), ship.special)))));
 }
 /** The mode and who flies with which keys, then the players' keys (the pop-up has the mode in its title). */
