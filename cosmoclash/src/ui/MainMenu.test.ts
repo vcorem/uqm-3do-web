@@ -37,7 +37,7 @@ describe('main menu', () => {
     const corner = document.querySelector<HTMLButtonElement>('.menu-fullscreen')!;
     expect(corner.textContent).toBe('Full screen (F)');
     expect(corner.closest('[role=menu]')).toBe(null);
-    expect(document.querySelector('.menu-keys')?.textContent).toContain('F full screen');
+    expect(document.querySelector('.menu-keys')?.textContent).toBe('↑ ↓ choose · Enter start · F full screen · K keys');
     corner.click();
     expect(toggles).toBe(1);
     expect(corner.textContent).toBe('Exit full screen (F)');

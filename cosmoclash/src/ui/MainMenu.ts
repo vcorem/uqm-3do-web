@@ -44,7 +44,7 @@ export class MainMenu {
     }
     this.root.append(list,
       el('p', { class: 'menu-controls', text: 'Fly: ↑ thrust · ← → turn · / fire · . special  ·  M mute' }),
-      el('p', { class: 'menu-keys', text: fullscreen ? '↑ ↓ choose · Enter start · F full screen' : '↑ ↓ choose · Enter start' }),
+      el('p', { class: 'menu-keys', text: '↑ ↓ choose · Enter start' + (fullscreen ? ' · F full screen' : '') + ' · K keys' }),
       el('div', { class: 'menu-credits', text: 'Made by Ori Hanegby, Guy Corem, Orr Kowarsky' }));
     parent.appendChild(this.root);
     if (fullscreen) {

@@ -26,6 +26,7 @@ import { FleetBadges } from '@/netplay/FleetBadges';
 import { FleetMatch, battleSeed, type FleetView } from '@/match/FleetMatch';
 import { FleetPicker, type PickResult } from '@/match/FleetPicker';
 import { FleetPickView } from '@/ui/FleetPickView';
+import { KeysHelp } from '@/ui/KeysHelp';
 import { fleetLine } from '@/ui/fleetChips';
 import '@/ui/hud.css';
 import '@/ui/main-menu.css';
@@ -39,6 +40,9 @@ const viewport=new Viewport();
 const container=viewport.container;
 attachLiveRegion(container);
 const renderer=createRenderer(container);
+/** The keys beside the game (wide windows, full screen) or over it: K or the Keys (K) button, in every screen. */
+const keys=new KeysHelp({frame:viewport.frame,container});
+viewport.onResize(()=>keys.layout());
 const battle=new BattleView();
 const input=new InputManager();
 const sound=SoundManager.getInstance();
@@ -145,10 +149,10 @@ function showMenu(focus:MenuChoice=mode):void {
   online.reset();
   menu?.destroy();menu=null;difficultyUI?.destroy();difficultyUI=null;
   clearSelection();clearRound();clearMessage();accumulator=0;state='menu';onlineMatch=null;netSession=null;
-  match=null;nextChooser=null;
+  match=null;nextChooser=null;keys.setMode('menu');
   menu=new MainMenu(container,choice=>{
     void fullscreenGesture();
-    menu?.destroy();menu=null;mode=choice;
+    menu?.destroy();menu=null;mode=choice;keys.setMode(choice);
     if(choice==='ai')showDifficulty();
     else if(choice==='local')showFleetPick(1);
     else {state='online';online.openLobby();}
@@ -258,7 +262,7 @@ function pauseLocal():void {
   if(mode==='online'||(state!=='playing'&&state!=='roundOver')||panel)return;
   paused=true;
   panel=new Panel(container,{title:'Paused',lines:[mode==='ai'?'Leaving ends this game against the computer.':'Leaving ends this fleet match.'],
-    buttons:[{id:'resume',label:'Resume'},{id:'menu',label:'Main menu'}],escape:'resume',dialog:true,hint:'Enter choose · Esc resume',
+    buttons:[{id:'resume',label:'Resume'},{id:'menu',label:'Main menu'}],escape:'resume',dialog:true,hint:'Enter choose · Esc resume · K keys',
     chooseKeys:mode==='local'?['Enter']:undefined,
     onChoose:id=>{if(id==='resume'){clearPanel();accumulator=0;}else showMenu();}});
 }
@@ -459,7 +463,7 @@ function render():void {
   const choosing=s.screen==='next'&&!!s.next?.mine;
   container.classList.toggle('cc-choosing',choosing);
   if(s.screen==='hidden')return;
-  mode='online';
+  mode='online';keys.setMode('online');
   if(s.screen==='fleet'){
     state='online';
     if(!selection){
@@ -531,6 +535,8 @@ function menuKey(e:KeyboardEvent):boolean {
 }
 window.addEventListener('keydown',e=>{
   if(shouldIgnoreGameKeyDown(e))return;
+  // K shows or hides the keys in every screen (nothing pauses); Esc closes the pop-up of the keys only.
+  if(keys.key(e)){e.preventDefault();e.stopPropagation();return;}
   // The game's handlers make every Enter and Space choice. The browser's own
   // action would click the button that has the focus by then (the key that
   // skips the logo would also start a game), so it never runs.
@@ -575,12 +581,13 @@ Object.defineProperty(window,'__cosmo',{value:Object.freeze({
   get online(){const s=online.state;return {screen:s.screen,focus:s.focus,items:[...s.items],confirm:s.confirm,lobby:s.lobby.status,rooms:s.lobby.rooms.map(r=>r.name),notice:s.notice?.text??'',picks:[...s.fleet.picks],carousel:s.fleet.carousel,room:s.room?.name??null,opening:s.opening,
     next:s.next?{...s.next,ships:[...s.next.ships],left:online.nextLeft()}:null,battle:s.battle};},
   get fullscreen(){return document.fullscreenElement?.id??null;},
+  get keys(){return {side:keys.sideMode,visible:keys.visible,mode:keys.currentMode};},
   get paused(){return paused;},
 }),writable:false});
 showMessage('Loading ships and game engine…');
 Promise.all([RustEngine.load(),battle.prepare()]).then(([loaded])=>{
   engine=loaded;clearMessage();gameLoop.start();state='logo';new LogoSplash(container,()=>{
     const invite=readInvite(location.href);
-    if(invite){mode='online';state='online';online.invite(invite);}else showMenu('ai');
+    if(invite){mode='online';state='online';keys.setMode('online');online.invite(invite);}else showMenu('ai');
   });
 }).catch(fail);
