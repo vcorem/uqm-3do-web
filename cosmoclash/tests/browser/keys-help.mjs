@@ -4,14 +4,19 @@
 // on 4:3 windows a pop-up over the game that only K or the Keys (K) button
 // opens; K or Esc closes it, and that Esc does not also pause. In every
 // screen K toggles without pausing: the main menu, a battle against the
-// computer, a Two Players battle (also K with Shift, the special key of
-// Player 2, held), the online lobby, the room name (a K typed there is a
+// computer (also with the Keys (K) button beside the game and in its corner),
+// a Two Players battle (K with Shift, the special key of Player 2, held; K
+// while both players hold their thrust keys, which go on; Shift + / is ? and
+// does not toggle), the online lobby, the room name (a K typed there is a
 // letter), the fleet choice and an online battle (the lockstep goes on).
 // The screenshots are at 1280x720 and 1920x1080 (side panels) and 1024x768
 // (the pop-up), also in full screen (document.fullscreenElement is
-// #cosmo-frame), in test-results/keys-help/. Each one measures that the side
-// panels and the button never overlap #game-container, that their text is not
-// cut, and that the game frame has the same size with and without them.
+// #cosmo-frame), and in full screen on 16:10 screens and MacBooks (1440x900,
+// 1512x982, 1680x1050: one-column side panels) and on a phone upright (390x844:
+// the pop-up as high as the screen, the button under the game), in
+// test-results/keys-help/. Each one measures that the side panels and the
+// button never overlap #game-container, that their text is not cut and not
+// under 11 px, and that the game frame has the same size with and without them.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -22,7 +27,11 @@ import { root, launch, poll, read, screen, watchPage, wasmHash, textOutside, set
 const output = path.resolve(root, process.env.COSMO_KEYS_HELP_DIR || 'test-results/keys-help');
 await fs.rm(output, { recursive: true, force: true });
 await fs.mkdir(output, { recursive: true });
-const SIZES = [[1280, 720], [1920, 1080], [1024, 768]];
+/** Window sizes and what they show: 'side' panels, 'compact' (one-column) side panels, or the pop-up with the button in the corner of the game ('pop') or under it ('below'). */
+const SIZES = [[1280, 720, 'side'], [1920, 1080, 'side'], [1024, 768, 'pop']];
+/** Full screen on 16:10 screens and MacBooks (98 to 140 px beside the game). */
+const LAPTOPS = [[1440, 900, 'compact'], [1512, 982, 'compact'], [1680, 1050, 'compact']];
+const PHONE = [[390, 844, 'below']];
 const shots = [];
 const result = { passed: false, checks: {}, layouts: [], shots };
 const sink = { errors: [], requests: [], sockets: [] };
@@ -44,7 +53,16 @@ const measure = page => page.evaluate(() => {
       if (r.width && (r.left < box.left - 0.5 || r.right > box.right + 0.5)) cut.push(node.textContent.trim().slice(0, 40));
     }
   }
-  const fonts = panels.filter(rect).flatMap(panel => [...panel.querySelectorAll('dd, span, p, h3, kbd')].map(node => parseFloat(getComputedStyle(node).fontSize)));
+  const fonts = panels.filter(rect).flatMap(panel => [...panel.querySelectorAll('dd, span, p, h3, kbd, b, strong')].map(node => parseFloat(getComputedStyle(node).fontSize)));
+  // The pop-up: text that goes out of it at the sides (it may scroll down), and its smallest text.
+  const pop = document.getElementById('cosmo-keys-pop');
+  const popCut = [];
+  if (rect(pop)) {
+    const box = pop.getBoundingClientRect();
+    if (pop.scrollWidth > pop.clientWidth + 1) popCut.push('the pop-up scrolls sideways');
+    for (const node of pop.querySelectorAll('*')) { const r = node.getBoundingClientRect(); if (r.width && (r.left < box.left - 0.5 || r.right > box.right + 0.5)) popCut.push(node.textContent.trim().slice(0, 40)); }
+  }
+  const popFonts = rect(pop) ? [...pop.querySelectorAll('dd, span, p, h3, kbd, b')].map(node => parseFloat(getComputedStyle(node).fontSize)) : [];
   return {
     viewport: { width: innerWidth, height: innerHeight },
     fullscreen: document.fullscreenElement?.id ?? null,
@@ -54,7 +72,8 @@ const measure = page => page.evaluate(() => {
     pop: rect(document.getElementById('cosmo-keys-pop')),
     scrolls: panels.filter(rect).map(panel => panel.scrollHeight > panel.clientHeight + 1 ? getComputedStyle(panel).overflowY : 'fits'),
     minFont: fonts.length ? Math.min(...fonts) : null,
-    cut,
+    cut, popCut, popMinFont: popFonts.length ? Math.min(...popFonts) : null,
+    close: rect(document.querySelector('#cosmo-keys-pop .ck-close')),
     keys: window.__cosmo.keys,
     expanded: document.getElementById('cosmo-keys-button')?.getAttribute('aria-expanded'),
   };
@@ -75,9 +94,10 @@ async function pressK(page, key = 'k') {
  * The side panels beside the game: shown, never over the game, inside the
  * window, not cut, readable; hiding them does not move or resize the game.
  */
-async function checkSide(page, label) {
+async function checkSide(page, label, compact = false) {
   const shown = await measure(page);
   assert.equal(shown.keys.side, true, `${label}: side panels`);
+  assert.equal(shown.keys.compact, compact, `${label}: ${compact ? 'one column' : 'two columns'}`);
   assert.equal(shown.keys.visible, true, `${label}: the side panels show`);
   assert.equal(shown.expanded, 'true');
   assert.equal(shown.buttonInGame, false, `${label}: the button is beside the game`);
@@ -99,23 +119,36 @@ async function checkSide(page, label) {
   assert.ok(hidden.button && !overlaps(hidden.button, hidden.game), `${label}: the button stays beside the game`);
   assert.equal(await pressK(page), true);
   assert.deepEqual((await measure(page)).game, shown.game);
-  result.layouts.push({ label, game: shown.game, panels: shown.panels, button: shown.button, scrolls: shown.scrolls, minFont: shown.minFont, fullscreen: shown.fullscreen });
+  result.layouts.push({ label, compact, game: shown.game, panels: shown.panels, button: shown.button, scrolls: shown.scrolls, minFont: shown.minFont, fullscreen: shown.fullscreen });
   return shown;
 }
-/** Without room beside the game: no panel; K opens the pop-up over the game (all its text inside the game frame). */
-async function openPop(page, label) {
+/**
+ * Without room beside the game: no panel; the button (a finger's size) is in
+ * the corner of the game, or under it on a phone upright. K opens the pop-up
+ * over the game: never wider than the game, as high as the frame at most, its
+ * text not cut and not under 11 px.
+ */
+async function openPop(page, label, below = false) {
   const closed = await measure(page);
   assert.equal(closed.keys.side, false, `${label}: no room beside the game`);
   assert.equal(closed.keys.visible, false, `${label}: the pop-up does not open by itself`);
   assert.deepEqual([closed.panels, closed.pop], [[null, null], null]);
-  assert.ok(closed.buttonInGame && inside(closed.button, closed.game), `${label}: the button is in the corner of the game`);
+  assert.ok(closed.button.width >= 44 && closed.button.height >= 28, `${label}: the button is ${closed.button.width}x${closed.button.height}`);
+  if (below) assert.ok(!closed.buttonInGame && closed.button.top >= closed.game.bottom && inside(closed.button, frameBox(closed.viewport)), `${label}: the button is under the game ${JSON.stringify(closed.button)}`);
+  else assert.ok(closed.buttonInGame && inside(closed.button, closed.game), `${label}: the button is in the corner of the game`);
   assert.equal(await pressK(page), true);
   const open = await measure(page);
-  assert.ok(open.pop && inside(open.pop, open.game), `${label}: the pop-up is over the game ${JSON.stringify(open.pop)}`);
+  const column = { left: open.game.left, right: open.game.right, top: 0, bottom: open.viewport.height };
+  assert.ok(open.pop && inside(open.pop, column) && overlaps(open.pop, open.game), `${label}: the pop-up is over the game ${JSON.stringify(open.pop)}`);
+  assert.deepEqual(open.popCut, [], `${label}: cut text in the pop-up`);
+  assert.ok(open.popMinFont >= 11, `${label}: text size ${open.popMinFont} in the pop-up`);
+  assert.ok(open.close.width >= 44 && open.close.height >= 28, `${label}: Close is ${open.close.width}x${open.close.height}`);
+  // A phone upright: the bars above and under the game have room, so the pop-up scrolls less (or not at all).
+  if (below) assert.ok(open.pop.height > open.game.height, `${label}: the pop-up uses the height of the screen`);
   assert.equal(open.expanded, 'true');
   assert.deepEqual(await textOutside(page), [], `${label}: text outside the game frame`);
   assert.deepEqual(open.game, closed.game);
-  result.layouts.push({ label, game: open.game, pop: open.pop, fullscreen: open.fullscreen });
+  result.layouts.push({ label, game: open.game, pop: open.pop, button: closed.button, fullscreen: open.fullscreen });
 }
 /** Esc closes the pop-up only (it does not pause, resume or ask to leave). */
 async function escapePop(page, label) {
@@ -131,21 +164,23 @@ async function escapePop(page, label) {
 }
 /**
  * The screen at 1280x720 and 1920x1080 (side panels) and 1024x768 (the
- * pop-up, opened with K for the screenshot and closed with Esc); back to 1280x720.
+ * pop-up, opened with K for the screenshot and closed with Esc), or the sizes
+ * given; back to 1280x720.
  */
 async function capture(page, name, options = {}) {
   const n = String(++counter).padStart(2, '0');
-  for (const [width, height] of options.sizes ?? SIZES) {
+  for (const [width, height, kind] of options.sizes ?? SIZES) {
     await page.setViewportSize({ width, height });
     await settle(page, 150);
     const label = `${name} ${width}x${height}`;
     if (options.fullscreen) assert.equal((await read(page)).fullscreen, 'cosmo-frame', `${label}: full screen`);
-    if (width / height > 1.5) await checkSide(page, label); else await openPop(page, label);
+    const side = kind === 'side' || kind === 'compact';
+    if (side) await checkSide(page, label, kind === 'compact'); else await openPop(page, label, kind === 'below');
     if (options.check) await options.check(width, height);
     const file = path.join(output, `${n}-${name}-${width}x${height}.png`);
     await screenshot(page, file);
     shots.push(path.relative(root, file));
-    if (width / height <= 1.5) await escapePop(page, label);
+    if (!side) await escapePop(page, label);
   }
   await page.setViewportSize({ width: 1280, height: 720 });
   await settle(page, 100);
@@ -184,7 +219,7 @@ try {
 
   // ------------------------------------------------------------ the main menu (not in full screen)
   assert.equal(await A.locator('.menu-keys').textContent(), '↑ ↓ choose · Enter start · F full screen · K keys');
-  assert.deepEqual(await A.evaluate(() => window.__cosmo.keys), { side: true, visible: true, mode: 'menu' });
+  assert.deepEqual(await A.evaluate(() => window.__cosmo.keys), { side: true, compact: false, visible: true, mode: 'menu' });
   assert.equal(await A.locator('#cosmo-keys-flying').getAttribute('aria-label'), 'Keys: flying and ships');
   assert.equal(await A.locator('#cosmo-keys-button').getAttribute('aria-controls'), 'cosmo-keys-flying cosmo-keys-menus');
   assert.deepEqual(await A.locator('#cosmo-keys-flying h3').allTextContents(), ['Player 1', 'Player 2', 'Ships']);
@@ -209,7 +244,7 @@ try {
   await A.getByRole('button', { name: 'Close (K)', exact: true }).click();
   await A.waitForFunction(() => !window.__cosmo.keys.visible);
   await A.setViewportSize({ width: 1280, height: 720 }); await settle(A);
-  await capture(A, 'menu');
+  await capture(A, 'menu', { sizes: [...SIZES, ...PHONE] });
   result.checks.menu = true;
 
   // ------------------------------------------------------------ vs Computer, in full screen
@@ -225,16 +260,34 @@ try {
   // K in the battle: nothing pauses, the computer flies on.
   await pressK(A); await goesOn(A); await pressK(A);
   assert.equal((await read(A)).paused, false);
-  await capture(A, 'vs-computer-battle-fullscreen', { fullscreen: true, check: () => goesOn(A) });
+  // The Keys (K) button in the battle, beside the game and in the corner of the game: it shows and hides the keys,
+  // nothing pauses, and the keyboard stays with the ship.
+  for (const [width, height] of [[1280, 720], [1024, 768]]) {
+    await A.setViewportSize({ width, height }); await settle(A);
+    const before = await A.evaluate(() => window.__cosmo.keys.visible);
+    for (const visible of [!before, before]) {
+      await A.locator('#cosmo-keys-button').click();
+      await A.waitForFunction(v => window.__cosmo.keys.visible === v, visible);
+      assert.equal((await read(A)).paused, false, `${width}x${height}: the button does not pause`);
+      assert.notEqual(await A.evaluate(() => document.activeElement?.id), 'cosmo-keys-button', 'the button does not take the keyboard');
+      await goesOn(A);
+    }
+    await A.keyboard.down('ArrowUp');
+    await poll(() => A.evaluate(() => (window.__cosmo.inputs[0] & 1) === 1), 5000, 'thrust after a click on the button');
+    await A.keyboard.up('ArrowUp');
+  }
+  await A.setViewportSize({ width: 1280, height: 720 }); await settle(A);
+  result.checks.buttonInBattle = true;
+  await capture(A, 'vs-computer-battle-fullscreen', { fullscreen: true, sizes: [...SIZES, ...LAPTOPS], check: () => goesOn(A) });
   // Paused: the hint mentions K.
   await A.keyboard.press('Escape');
   await A.waitForFunction(() => window.__cosmo.paused);
   assert.equal(await A.locator('.cc-dialog .cc-hint').textContent(), 'Enter choose · Esc resume · K keys');
-  await capture(A, 'vs-computer-paused-fullscreen', { fullscreen: true, sizes: [[1280, 720], [1024, 768]] });
+  await capture(A, 'vs-computer-paused-fullscreen', { fullscreen: true, sizes: [SIZES[0], SIZES[2]] });
   assert.equal((await read(A)).paused, true, 'Esc closed the pop-up and the battle stays paused');
   await A.getByRole('button', { name: 'Main menu', exact: true }).click();
   await waitState(A, 'menu');
-  await capture(A, 'menu-fullscreen', { fullscreen: true });
+  await capture(A, 'menu-fullscreen', { fullscreen: true, sizes: [...SIZES, ...LAPTOPS] });
   result.checks.vsComputer = true;
 
   // ------------------------------------------------------------ Two Players (F: not in full screen)
@@ -259,7 +312,34 @@ try {
   await A.keyboard.up('Shift');
   await goesOn(A);
   await pressK(A);
-  await capture(A, 'two-players-battle', { check: () => goesOn(A) });
+  await capture(A, 'two-players-battle', { sizes: [...SIZES, ...LAPTOPS, ...PHONE], check: () => goesOn(A) });
+  // Both players hold their thrust keys (↑ and W): K shows or hides the keys and both ships go on thrusting.
+  const thrusting = () => A.evaluate(() => window.__cosmo.inputs.map(mask => (mask & 1) === 1));
+  const speeds = async () => (await read(A)).snapshot.players.map(ship => Math.hypot(ship.accelVec.x, ship.accelVec.y));
+  await A.keyboard.down('ArrowUp'); await A.keyboard.down('w');
+  await poll(async () => (await thrusting()).every(Boolean), 5000, 'both ships thrust');
+  for (const shown of [false, true]) {
+    assert.equal(await pressK(A), shown);
+    await goesOn(A);
+    assert.deepEqual(await thrusting(), [true, true], 'K does not take the held thrust keys');
+    assert.ok((await speeds()).every(speed => speed > 0), 'both ships fly');
+  }
+  await A.keyboard.up('ArrowUp'); await A.keyboard.up('w');
+  // ? is Shift + /: the special of Player 2 with the fire key of Player 1 (the Slash key, so the page gets '?').
+  // It does not show or hide the keys.
+  await A.evaluate(() => { window.__slashKey = null; addEventListener('keydown', event => { if (event.code === 'Slash') window.__slashKey = event.key; }); });
+  await A.keyboard.down('Shift');
+  await A.keyboard.down('Slash');
+  await poll(() => A.evaluate(() => (window.__cosmo.inputs[1] & 16) === 16), 5000, 'Player 2 holds the special');
+  await goesOn(A);
+  assert.equal(await A.evaluate(() => window.__slashKey), '?');
+  assert.equal((await A.evaluate(() => window.__cosmo.keys)).visible, true, 'Shift + / (?) does not hide the keys');
+  // Not a keys check: does the fire key of Player 1 work while Player 2 holds Shift (the game gets '?', not '/')?
+  result.p1FireUnderShift = await A.evaluate(() => (window.__cosmo.inputs[0] & 8) === 8);
+  await A.keyboard.up('Slash');
+  await A.keyboard.up('Shift');
+  assert.equal((await A.evaluate(() => window.__cosmo.keys)).visible, true);
+  result.checks.flying = true;
   await A.keyboard.press('Escape');
   await A.waitForFunction(() => window.__cosmo.paused);
   await A.getByRole('button', { name: 'Main menu', exact: true }).click();
@@ -324,7 +404,7 @@ try {
   await pressK(A); await Promise.all([goesOn(A, true), goesOn(B, true)]);
   await A.waitForFunction(n => window.__cosmo.netplay.verifiedChecksums > n, checksums, { timeout: 30000 });
   assert.deepEqual(await Promise.all([A, B].map(async page => (await read(page)).online.screen)), ['battle', 'battle']);
-  await capture(A, 'online-battle', { sizes: [[1280, 720], [1024, 768]], check: () => goesOn(A, true) });
+  await capture(A, 'online-battle', { sizes: [SIZES[0], SIZES[2]], check: () => goesOn(A, true) });
   for (const state of await Promise.all([A, B].map(read))) assert.ok(!['error', 'closed'].includes(state.net.phase), JSON.stringify(state.net));
   result.checks.online = true;
 

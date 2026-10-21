@@ -577,12 +577,14 @@ Object.defineProperty(window,'__cosmo',{value:Object.freeze({
   get state(){return state;},get mode(){return mode;},get engine(){return engine?.buildId;},
   get snapshot(){return snapshot?structuredClone(snapshot):null;},get hash(){return lastHash;},
   get frames(){return frames;},get netplay(){return netSession?.state??null;},
+  // The input masks of the last local step (1 thrust, 2 left, 4 right, 8 fire, 16 special).
+  get inputs(){return [...lastInputs];},
   get fleet(){return {battle:battleIndex,lost:[match?.lost(0).length??0,match?.lost(1).length??0],current:[match?.current(0)??null,match?.current(1)??null],chooser:match?.chooser??null,sides:match?.views()??null,nextChooser};},
   get pick(){return picker?{player:picking,picks:[...picker.picks],carousel:picker.carousel,focus:picker.focus,notice:picker.notice}:null;},
   get online(){const s=online.state;return {screen:s.screen,focus:s.focus,items:[...s.items],confirm:s.confirm,lobby:s.lobby.status,rooms:s.lobby.rooms.map(r=>r.name),notice:s.notice?.text??'',picks:[...s.fleet.picks],carousel:s.fleet.carousel,room:s.room?.name??null,opening:s.opening,
     next:s.next?{...s.next,ships:[...s.next.ships],left:online.nextLeft()}:null,battle:s.battle};},
   get fullscreen(){return document.fullscreenElement?.id??null;},
-  get keys(){return {side:keys.sideMode,visible:keys.visible,mode:keys.currentMode};},
+  get keys(){return {side:keys.sideMode,compact:keys.compact,visible:keys.visible,mode:keys.currentMode};},
   get paused(){return paused;},
 }),writable:false});
 showMessage('Loading ships and game engine…');
