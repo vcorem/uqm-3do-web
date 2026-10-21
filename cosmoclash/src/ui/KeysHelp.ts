@@ -123,8 +123,8 @@ function flyingNodes(content: KeysContent, title: boolean): HTMLElement[] {
 const menuNodes = (content: KeysContent): HTMLElement[] => content.menus.map(sectionNode);
 
 // ---------------------------------------------------------------- the panels
-interface Storage { get(key: string): string | null; set(key: string, value: string): void }
-const localStore: Storage = {
+interface KeysStore { get(key: string): string | null; set(key: string, value: string): void }
+const localStore: KeysStore = {
   get(key) { try { return localStorage.getItem(key); } catch { return null; } },
   set(key, value) { try { localStorage.setItem(key, value); } catch { /* Private mode: this visit only. */ } },
 };
@@ -132,7 +132,7 @@ export interface KeysHelpOptions {
   /** The full-window frame (the full screen element) and the 4:3 game container in it. */
   frame: HTMLElement;
   container: HTMLElement;
-  storage?: Storage;
+  storage?: KeysStore;
   mode?: KeysMode;
   /** The frame width and height and the game width (tests; else measured). */
   measure?(): [number, number, number];
@@ -154,7 +154,7 @@ export class KeysHelp {
   private readonly margins: [HTMLDivElement, HTMLDivElement];
   private readonly popBody: HTMLDivElement;
   private readonly popTitle: HTMLHeadingElement;
-  private readonly storage: Storage;
+  private readonly storage: KeysStore;
   private mode: KeysMode;
   /** The player's choice for the side panels (remembered). */
   private shown: boolean;
