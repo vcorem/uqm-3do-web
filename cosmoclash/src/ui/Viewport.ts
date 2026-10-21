@@ -1,4 +1,6 @@
 const ASPECT = 4 / 3;
+/** Under this frame height (CSS px) the fleet screens leave out their secondary lines (see cosmo-ui.css). */
+export const SHORT_HEIGHT = 420;
 /** Design height of the menu screens: their sizes scale with var(--u) = height / 720. */
 const DESIGN_HEIGHT = 720;
 
@@ -59,6 +61,8 @@ export class Viewport {
     this.container.style.left = `${Math.floor((w - cw) / 2)}px`;
     this.container.style.top = `${Math.floor((h - ch) / 2)}px`;
     this.container.style.setProperty('--u', String(Math.max(0.3, ch / DESIGN_HEIGHT)));
+    // A low frame (a phone held upright): the fleet screens leave out their secondary lines.
+    this.container.classList.toggle('cc-short', ch < SHORT_HEIGHT);
     for (const listener of this.listeners) listener();
   }
 

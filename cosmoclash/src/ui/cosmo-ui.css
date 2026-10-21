@@ -111,3 +111,10 @@
 .cc-chip.current { color: #ffffff; border-color: var(--p1); box-shadow: 0 0 calc(8px * var(--u)) var(--p1); background: rgba(20, 40, 100, 0.75); }
 .cc-line-p2 .cc-chip.current { border-color: var(--p2); box-shadow: 0 0 calc(8px * var(--u)) var(--p2); }
 .cc-chip.lost { color: #6f7c99; text-decoration: line-through; border-style: dashed; }
+
+/* A low frame (a phone held upright): the ship needs the room. The keys help (K) has the keys. */
+#game-container.cc-short .cc-fleet .cc-rule,
+#game-container.cc-short .cc-fleet .cc-hint,
+#game-container.cc-short .cc-next .cc-hint,
+#game-container.cc-short .cc-local-fleet .cc-fleet-head .cc-sub { display: none; }
+

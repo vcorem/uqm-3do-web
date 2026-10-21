@@ -122,18 +122,45 @@ function fail(error:unknown):void {
 function clearPanel():void { panel?.destroy();panel=null;paused=false; }
 function clearSelection():void {badges?.dispose();badges=null;selection?.dispose();selection=null;selectionUI?.destroy();selectionUI=null;pickView?.destroy();pickView=null;picker=null;}
 function clearRound():void {battle.clear();hud?.destroy();hud=null;matchHud?.destroy();matchHud=null;snapshot=null;clearPanel();}
-// The online fleet screen has its picks panel under the ship: the ship shows a little
-// higher there (a fraction of the frame height), in the space between the name box and the panel.
-const FLEET_LIFT=0.05;
-let selectionLift=0;
+// The 3D ship of a choice screen sits in the free space between the boxes above it (name card,
+// fleet header) and the controls under it (picks tray, Choose button). Their sizes differ a lot
+// between a desktop and a phone held upright, so the space is measured, not assumed: the camera
+// view moves the ship to the middle of it and, when the space is too small, zooms out.
+const SHIP_ABOVE=['.selection-info-panel','.selection-header','.cc-fleet-head'];
+const SHIP_BELOW=['.selection-bottom','.cc-fleet-bottom'];
+/** The share of the frame height that a ship takes at zoom 1 (the tallest ship, with a margin). */
+const SHIP_SHARE=0.36;
+let fitKey='';
+function edge(selectors:string[],side:'bottom'|'top'):number|null {
+  const frame=container.getBoundingClientRect();let best:number|null=null;
+  for(const node of container.querySelectorAll<HTMLElement>(selectors.join(','))){
+    const box=node.getBoundingClientRect();
+    if(!box.height||!box.width||getComputedStyle(node).visibility==='hidden')continue;
+    const y=(side==='bottom'?box.bottom:box.top)-frame.top;
+    best=best===null?y:side==='bottom'?Math.max(best,y):Math.min(best,y);
+  }
+  return best;
+}
+function fitShip(force=false):void {
+  if(!selection)return;
+  const height=viewport.height,width=viewport.width;
+  const top=edge(SHIP_ABOVE,'bottom')??0,bottom=edge(SHIP_BELOW,'top')??height;
+  const margin=Math.max(6,height*0.015);
+  const free=Math.max(1,Math.min(bottom,height)-Math.max(top,0)-2*margin);
+  const zoom=Math.min(1,free/(SHIP_SHARE*height));
+  const middle=(Math.max(top,0)+Math.min(bottom,height))/2;
+  const shift=Math.round(height/2-middle);
+  const key=[width,height,shift,zoom.toFixed(3)].join(',');
+  if(!force&&key===fitKey)return;
+  fitKey=key;
+  const camera=selection.camera;
+  camera.zoom=zoom;
+  if(shift)camera.setViewOffset(width,height,0,shift,width,height);else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
 function resizeCameras():void {
   renderer.setSize(viewport.width,viewport.height);battle.camera.aspect=viewport.width/viewport.height;battle.camera.updateProjectionMatrix();
-  if(selection){
-    selection.camera.aspect=viewport.width/viewport.height;
-    if(selectionLift)selection.camera.setViewOffset(viewport.width,viewport.height,0,Math.round(viewport.height*selectionLift),viewport.width,viewport.height);
-    else selection.camera.clearViewOffset();
-    selection.camera.updateProjectionMatrix();
-  }
+  if(selection){selection.camera.aspect=viewport.width/viewport.height;selection.camera.updateProjectionMatrix();fitShip(true);}
 }
 viewport.onResize(resizeCameras);
 /** The 3D ship choice turns to this ship (with the fly animation when it is next to the current one). */
@@ -174,7 +201,7 @@ function showDifficulty():void {
  */
 function showSelection(player:0|1):void {
   clearSelection();clearMessage();clearPanel();state='selection';selectingPlayer=player;
-  selectionLift=0;selection=new SelectionScene();selection.state=player===0?SelectionState.SELECTING_P1:SelectionState.SELECTING_P2;
+  selection=new SelectionScene();selection.state=player===0?SelectionState.SELECTING_P1:SelectionState.SELECTING_P2;
   resizeCameras();
   const left=match&&nextChooser!==null?match.left(nextChooser):null;
   if(left){selection.setDisabledShips(new Set(CHARACTER_REGISTRY.filter((_,i)=>!left.includes(i)).map(def=>def.id)));selection.jumpToIndex(left[0]);}
@@ -201,7 +228,7 @@ function showSelection(player:0|1):void {
 function showFleetPick(player:0|1):void {
   clearSelection();clearMessage();clearPanel();state='fleet';picking=player;match=null;nextChooser=null;
   if(player===1)localFleets=[[],[]];
-  selectionLift=FLEET_LIFT;selection=new SelectionScene();selection.state=SelectionState.SELECTING_P1;resizeCameras();
+  selection=new SelectionScene();selection.state=SelectionState.SELECTING_P1;resizeCameras();
   badges=new FleetBadges(selection.scene);
   picker=new FleetPicker(['Enter']);
   pickView=new FleetPickView(container,player,picker,{changed:syncFleetPick,result:fleetPickResult});
@@ -467,7 +494,7 @@ function render():void {
   if(s.screen==='fleet'){
     state='online';
     if(!selection){
-      selection=new SelectionScene();selection.state=SelectionState.SELECTING_P1;selectionLift=FLEET_LIFT;resizeCameras();
+      selection=new SelectionScene();selection.state=SelectionState.SELECTING_P1;resizeCameras();
       selection.jumpToIndex(s.fleet.carousel);badges=new FleetBadges(selection.scene);sound.playMusic('intro');
     }else{
       const delta=(s.fleet.carousel-selection.currentIndex+3)%3;
@@ -478,7 +505,7 @@ function render():void {
     // Destroyed ships and ships that are not in the fleet are not shown (as on Choose Your Next Ship against the computer).
     const next=s.next!;
     if(!selection){
-      selection=new SelectionScene();selection.state=SelectionState.SELECTING_P1;selectionLift=FLEET_LIFT;resizeCameras();
+      selection=new SelectionScene();selection.state=SelectionState.SELECTING_P1;resizeCameras();
       selection.setDisabledShips(new Set(CHARACTER_REGISTRY.filter((_,i)=>!next.ships.includes(i)).map(def=>def.id)));
       selection.jumpToIndex(next.carousel);
     }else turnSelection(next.carousel);
@@ -568,7 +595,8 @@ const gameLoop=new GameLoop(dt=>{
     }
   }catch(error){fail(error);}
 },()=>{
-  if(selection)renderer.render(selection.scene,selection.camera);
+  // The boxes around the ship can change size (a longer ship text, a notice): cheap to check each frame.
+  if(selection){fitShip();renderer.render(selection.scene,selection.camera);}
   else if(snapshot)renderer.render(battle.scene,battle.camera);
   else renderer.clear();
 });
