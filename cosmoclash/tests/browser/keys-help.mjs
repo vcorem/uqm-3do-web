@@ -334,8 +334,9 @@ try {
   await goesOn(A);
   assert.equal(await A.evaluate(() => window.__slashKey), '?');
   assert.equal((await A.evaluate(() => window.__cosmo.keys)).visible, true, 'Shift + / (?) does not hide the keys');
-  // Not a keys check: does the fire key of Player 1 work while Player 2 holds Shift (the game gets '?', not '/')?
+  // Player 1 fires while Player 2 holds Shift: the game gets '?', which counts as '/' (InputManager).
   result.p1FireUnderShift = await A.evaluate(() => (window.__cosmo.inputs[0] & 8) === 8);
+  assert.equal(result.p1FireUnderShift, true, 'Player 1 fires while Player 2 holds Shift');
   await A.keyboard.up('Slash');
   await A.keyboard.up('Shift');
   assert.equal((await A.evaluate(() => window.__cosmo.keys)).visible, true);

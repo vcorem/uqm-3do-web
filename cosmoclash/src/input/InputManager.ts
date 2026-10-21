@@ -49,6 +49,13 @@ const DEFAULT_BINDINGS: PlayerKeyBindings[] = [
   },
 ];
 
+/**
+ * Shift is Player 2's special. While it is held, Player 1's '/' and '.' report the
+ * shifted symbols ('?' and '>' on US keyboards), and Player 1 could not fire.
+ * They count as the keys under them, on press and on release.
+ */
+const UNSHIFTED: Record<string, string> = { '?': '/', '>': '.' };
+
 export class InputManager {
   private pressed = new Set<string>();
   private bindings: PlayerKeyBindings[];
@@ -70,14 +77,16 @@ export class InputManager {
 
     this.onKeyDown = (e: KeyboardEvent) => {
       if (shouldIgnoreGameKeyDown(e)) return;
-      if (this.allGameKeys.has(e.key)) {
+      const key = UNSHIFTED[e.key] ?? e.key;
+      if (this.allGameKeys.has(key)) {
         e.preventDefault();
       }
-      this.pressed.add(e.key);
+      this.pressed.add(key);
     };
 
     this.onKeyUp = (e: KeyboardEvent) => {
       this.pressed.delete(e.key);
+      this.pressed.delete(UNSHIFTED[e.key] ?? e.key);
       // Shift modifier changes key case: releasing 'd' while Shift is held
       // reports 'D', leaving lowercase 'd' stuck. Delete both cases.
       if (e.key.length === 1) {

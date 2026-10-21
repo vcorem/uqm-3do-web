@@ -232,3 +232,26 @@ it('releases held controls when the browser loses focus', () => {
   expect(manager.player(0).thrust).toBe(false);
   manager.destroy();
 });
+
+describe('Player 1 fires while Player 2 holds Shift', () => {
+  it("'?' and '>' count as '/' and '.' on press and on release, whatever the order", () => {
+    const im = new InputManager();
+    try {
+      press('Shift');
+      press('?');
+      expect(im.player(0).firePrimary).toBe(true);
+      expect(im.player(1).fireSecondary).toBe(true);
+      release('Shift');
+      release('/'); // Shift came up first: the release reports '/'.
+      expect(im.player(0).firePrimary).toBe(false);
+      press('/'); press('Shift');
+      release('?'); // Shift went down meanwhile: the release reports '?'.
+      expect(im.player(0).firePrimary).toBe(false);
+      press('>');
+      expect(im.player(0).fireSecondary).toBe(true);
+      release('.');
+      expect(im.player(0).fireSecondary).toBe(false);
+    } finally { im.destroy(); }
+  });
+});
+
