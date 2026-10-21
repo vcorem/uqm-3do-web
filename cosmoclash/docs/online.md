@@ -38,12 +38,12 @@ by itself (no choice screen); with none the match is over.
 
 | Screen | What it shows | Keys |
 | --- | --- | --- |
-| Main menu | Play vs Computer, Two Players · Same Computer, Online Melee; Full screen (F) in the corner | ↑ ↓, Enter/Space, F |
+| Main menu | Play vs Computer, Two Players · Same Computer, Online Melee; Full screen (F) in the corner; the hint "↑ ↓ choose · Enter start · F full screen · K keys" | ↑ ↓, Enter/Space, F |
 | Difficulty | Easy, Medium (focus), Hard, Back | ↑ ↓, Enter, Esc |
 | Fleet choice (Two Players) | PLAYER 2 · CHOOSE YOUR FLEET (then Player 1), the 3D ships, the ship card (Enter adds it; the first pick opens the match), the slots (1 is the opener, a check mark for the others; badges in 3D too), Done · N ships, Undo, Back | ← → ships, Enter (not Space), ↓ ↑ buttons, Backspace undo, Esc main menu |
 | Ship choice (local) | The 3D ships; vs Computer: the difficulty, later "Choose Your Next Ship" with the two ships left ("You have 2 ships left"); Two Players: "Player 2: Choose Your Next Ship". Destroyed ships are not shown; "Choose Your Next Ship" also shows both fleets as chips over Choose this ship, and its hint says "Esc Leave" | ← →, Enter (vs Computer also Space), Esc; on "Choose Your Next Ship" Esc asks "Leave this game?" (Keep playing, Main menu) |
 | Battle (local) | HUD bars, P1/P2 and who (You, Computer, Player 1/2), both fleets as chips (destroyed struck through, the ship in battle bright; the computer's ships that did not fly are ?), rings in the player colours for 3 s, a message after each battle: "Your Gondi was destroyed" with "Choose your next ship.", "Your last ship: Sholev" or the end (a long one wraps to two lines above its second line) | Esc or Menu (Esc): Paused |
-| Paused (local) | Resume, Main menu; the battle waits | ← →, Enter, Esc resumes |
+| Paused (local) | Resume, Main menu; the battle waits; the hint "Enter choose · Esc resume · K keys" | ← →, Enter, Esc resumes |
 | Game over (local) | Victory or Defeat (vs Computer), Player N wins; both fleets; Play again, Main menu. Enter and Space do nothing for the first 600 ms (it opens by itself after the last battle) | Enter, Esc |
 | Lobby | ONLINE MELEE, the live list of open rooms (name, waiting time, the newest has the focus), Create room, Back. States: connecting, no rooms, lost list (Try again; the game also tries again after 1, 2, 4, 8, 15 s), no room list on this server (Create private room) | ↑ ↓ list, ← → list and buttons, Home/End/PageUp/PageDown, Enter, Esc |
 | Name | The room name (remembered; first "Pilot NN"; selected, so typing replaces it), the reason when a name is refused, Open room, Cancel. Before the room list answered, Open room shows "Checking the room list…" and waits up to 10 s | type, Enter, Esc, ↓ |
@@ -81,7 +81,25 @@ says so).
   prevented (else the key that skips the logo would also start a game).
 - Enter never cancels: after Open room the focus is on Copy invite link; Joining
   ignores Enter; the Leave questions have Stay first.
-- One live region (`#cosmo-status`, `role=status`) says each screen and message.
+- The keys (`src/ui/KeysHelp.ts`, `keys-help.css`): `K` or the Keys (K) button
+  shows or hides them on every screen of this table, also in the battles, local
+  and online; nothing pauses (the lockstep goes on) and the keyboard focus stays
+  with the game. A held-key repeat does not toggle again; a K typed in the room
+  name is a letter. With 140 px or more beside the 4:3 game (1280x720,
+  1920x1080, also in full screen), an `aside` in each dark margin, never over the
+  game: the mode, the players' keys and the ships (weapon and special from
+  `CHARACTER_REGISTRY`) on the left; the menus and the game keys (Esc, M, F, K)
+  on the right, under the button. They show at first; a hidden choice is
+  remembered (`cosmoclash.keys.v1` in localStorage). Without that room (4:3
+  windows, phones) the button is in the bottom right corner of the game and
+  opens the same keys as a dialog over the game (it never opens by itself); `K`,
+  Esc or Close (K) closes it, and that Esc does not also pause, leave or cancel
+  the room name. Two Players and the main menu show both players; vs Computer and
+  Online show the Player 1 keys and say so (online both players fly with the
+  arrows on their own computer). `?` (the key of the UQM pages) is Shift + `/`
+  here, two fire keys of a Two Players battle, so the key is `K`.
+- One live region (`#cosmo-status`, `role=status`) says each screen and message
+  (and each change of the keys).
   On the choice of the next ship it says the ship and the seconds left when the
   text changes (a new ship, the last 5 s, after a question), never each second.
 - A menu choice (a user gesture, not Esc) asks for full screen of the game
@@ -207,7 +225,13 @@ the list, the adapter is not used.
   with the adapter, and `unsupported` from the Rust relay and the Node relay
   without it), `base.test.ts`.
 - `npm run test:browser --prefix cosmoclash`: `solo.mjs`, `game.mjs`,
-  `online-ui.mjs`. `online-ui.mjs` saves every online screen in
+  `online-ui.mjs`, `keys-help.mjs`. `keys-help.mjs` (`npm run test:keys-help`)
+  saves the keys beside the game at 1280x720 and 1920x1080 and over it at
+  1024x768 (the main menu, a battle against the computer and its pause, a Two
+  Players battle, the online lobby, the fleet choice and an online battle; the
+  battle against the computer and a menu also in full screen) in
+  `test-results/keys-help/`, and measures that the side panels never overlap
+  the game frame and that the game frame has the same size with and without them. `online-ui.mjs` saves every online screen in
   `test-results/online-ui/` (1280x720, 1024x768, 1920x1080) and `results.json`.
   In its fleet match one player flies and the other does not, so the losers
   come in a known order: the guest chooses the next ship with the keyboard

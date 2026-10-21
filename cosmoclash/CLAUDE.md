@@ -77,6 +77,7 @@ Neo, Orca, Ptera, Lepid, Gondi, Tiktok, Sholev, Phyto — each with unique speed
 - Player 1: ArrowUp/Left/Right (thrust/rotate), `/` (fire), `.` (morph/secondary)
 - Player 2: WASD (thrust/rotate), Space (fire), Shift (secondary/snot)
 - M: toggle mute
+- K: the keys beside the game (wide windows, full screen) or over it (`src/ui/KeysHelp.ts`), in every screen; nothing pauses. Not `?`: that is Shift + `/`, two fire keys of Two Players. Keep K free of other uses
 - F: full screen on or off (menu screens only; never while a ship flies, F is near the keys of Player 2)
 - Esc: pause a local battle; in an online match (also on its next-ship screens) it asks "Leave the match?"; on a local "Choose Your Next Ship" it asks "Leave this game?"
 - Two Players on one computer: Space is P2 fire, so menus there choose with Enter only (`chooseKey` in `src/main.ts`, `Panel` `chooseKeys`, `FleetPicker` choose keys)
@@ -91,6 +92,7 @@ Neo, Orca, Ptera, Lepid, Gondi, Tiktok, Sholev, Phyto — each with unique speed
 - Fleet matches in all three modes: one pure model, `src/match/FleetMatch.ts` (the first ship opens; the loser with two or more ships left chooses, the last ship comes by itself). `main.ts` keeps one `match`; the online peers hash `match.state()` and use `battleSeed()`. Online the choice is room protocol 3 (`awaitNext`/`chooseNext`, packets `next` and `next-ack`, see `docs/online.md`): call `awaitNext` last in the frame, after the checksum of that tick. A packet change in TypeScript alone needs a new `PROTOCOL_VERSION`.
 - The upstream `SelectionScene.setDisabledShips` only hides ships (it never shows them again): make a new scene for each choice.
 - `NEXT_MS` (the time to choose) is a protocol constant in `CosmoNetplay.ts` (the waiting peer's `NEXT_WAIT_MS` and the loser's `NEXT_ACK_MS` depend on it); `OnlineController` re-exports it.
+- The keys help: `main.ts` calls `keys.key(e)` first in its keydown handler (before the text field check: Esc closes its pop-up also in the room name) and `keys.setMode()` when the mode changes. Its side panels are in `#cosmo-frame`, outside `#game-container`, so they do not count for `textOutside()`; existing screenshots at 1280x720 and 1920x1080 show them. `window.__cosmo.keys` has `{side, visible, mode}`.
 - Browser test screenshots: use `settle()` and `screenshot()` from `tests/browser/helpers.mjs` (Chrome on a busy Mac can give an old frame after a new viewport size; `screenshot()` takes it again). For short online screens, `online-ui.mjs` holds the guest's room packets (`whileHeld`, both locksteps stop; less than the 20 s battle silence limit) or stops the page clocks (`stopClock`, the last seconds of a choice).
 
 ## Sprite Atlas Best Practices

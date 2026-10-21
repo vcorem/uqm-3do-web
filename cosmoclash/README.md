@@ -41,6 +41,17 @@ Enter chooses in the menus). Both online players use the first player's keys on
 their own computer. Esc pauses a local battle and asks before it leaves an online
 match or a game against the computer.
 
+`K` (or the **Keys (K)** button) shows or hides the keys in every screen, also
+during a battle; nothing pauses. When the window is wider than the 4:3 game
+(for example 1280x720, 1920x1080, also in full screen), the keys show at first
+in the dark margins beside the game, never over it: the players' keys and the
+ships on the left, the menus and the game keys on the right; the game remembers
+when the player hides them. On a 4:3 window or a phone they open over the
+game, and `K`, Esc or Close closes them. Two Players shows the keys of both
+players; vs Computer and Online show the first player's keys. The UQM pages use
+`?` for their keys, but here `?` is Shift + `/`, two fire keys of a Two Players
+battle.
+
 Every game is a fleet match: the first ship of a fleet opens the match, and
 after each battle the loser chooses the next ship from the ships left (the
 winner's ship stays). The last ship comes by itself, and a fleet without ships
@@ -88,7 +99,10 @@ a choice through the Rust relay with an invite link) and
 the room list, saving every screen at 1280x720, 1024x768 and 1920x1080 in
 `test-results/online-ui/`; `solo.mjs` saves the local screens in
 `test-results/local-ui/`; the screens of the fleet matches and the choice of
-the next ship are also in `test-results/next-ship/`).
+the next ship are also in `test-results/next-ship/`) and
+`tests/browser/keys-help.mjs` (`npm run test:keys-help`: the keys beside and
+over the game in the menu, the local and online battles, the lobby and the fleet
+choice, also in full screen, in `test-results/keys-help/`).
 On macOS the browser runner defaults to installed Google Chrome; set `CHROME_BIN`
 to select another executable. Linux uses Playwright Chromium.
 
