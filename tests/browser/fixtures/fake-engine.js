@@ -51,19 +51,25 @@
     paint(screen);
   }
   Module.callMain = args => {
+    log.push('callMain');
     window.fakeArgs = args;
     const role = (args.find(arg => arg.indexOf('--web-netplay=') === 0) || '').split('=')[1];
     setScreen('transition');
-    setTimeout(() => setScreen(role ? 'melee' : 'mainMenu'), role ? 200 : 500);
+    const menu = Module.meleeOnly ? 'meleeMenu' : 'mainMenu';
+    const local = Module.meleeOnly && Module.takePendingLocalMelee?.();
+    setTimeout(() => setScreen(role || local ? 'melee' : menu), role || local ? 200 : 500);
     setInterval(() => {
-      if (Module.gameScreen === 'mainMenu') {
+      if (Module.gameScreen === menu) {
         if (hook) Module.supportsNetplayHook = true;
         const take = hook && typeof Module.takePendingNetplayRole === 'function' ? Module.takePendingNetplayRole() : -1;
         if (take === 0 || take === 1) { log.push('hook:' + take); setScreen('melee'); }
+        else if (Module.meleeOnly && Module.takePendingLocalMelee?.()) {
+          log.push('local-hook'); Module.webNet = undefined; setScreen('melee');
+        }
       } else if (Module.gameScreen === 'melee' && Module.webNet && ['closed', 'error'].includes(Module.webNet.state) && !Module.leaving) {
         // The engine shows its own "connection closed" popup, then returns to the main menu.
         Module.leaving = true;
-        setTimeout(() => { Module.leaving = false; setScreen('mainMenu'); }, 600);
+        setTimeout(() => { Module.leaving = false; setScreen(menu); }, 600);
       }
     }, 50);
   };

@@ -9,6 +9,7 @@ import { createGameBackend } from '../helpers/game-backend.mjs';
 import { createLobbyStub } from '../helpers/online-lobby.mjs';
 import { shimPath } from './online-harness.mjs';
 import { verifyCaptainReactions } from './captain-reactions.mjs';
+import { recordMeleeScreens, assertMeleeScreens, assertMeleeChoices, launchLocalMelee, leaveLocalFleet, exerciseLocalBattle, leaveLocalBattle } from './melee-navigation.mjs';
 
 const browserEngines = { chromium, firefox, webkit };
 const selectedEngines = [
@@ -37,6 +38,8 @@ const output = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/browser
 // and ship indexes. Every peer in a test plays the selected edition.
 const edition = process.env.UQM_EDITION || 'original';
 const remastered = process.env.UQM_REMASTERED === '1';
+const meleeOnly = process.env.UQM_MELEE_ONLY === '1';
+assert.ok(!meleeOnly || edition === 'hd', 'The dedicated Melee profile is HD-only');
 const captains = process.env.UQM_CAPTAINS === '1';
 assert.ok(!remastered || edition === 'hd', 'Remastered presentation is an HD feature');
 assert.ok(!captains || (remastered && process.env.UQM_SHIP_SMOKE),
@@ -186,7 +189,7 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
   const roomSockets = [[], []];
   const failures = [];
   const entry = {
-    name, edition, latencyPatternMs, passed: false, relay: process.env.UQM_RELAY || 'node',
+    name, edition, meleeOnly, latencyPatternMs, passed: false, relay: process.env.UQM_RELAY || 'node',
     distDir, peerDist,
     browsers: selectedEngines.map((engine, index) => ({
       role: index === 0 ? 'host' : 'guest', engine, version: null,
@@ -253,6 +256,10 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       const expected = i === 1 && peerDist ? peerBuildHashes : buildHashes;
       for (const hash of entry.fetchedWasmHashes[i]) assert.equal(hash, expected['uqm-debug.wasm']);
     }
+    if (meleeOnly) {
+      await Promise.all(pages.map(recordMeleeScreens));
+      await Promise.all(pages.map(page => assertMeleeChoices(page)));
+    }
     const fleet = { file: meleeConfig, guestShip: smokeShip ?? 5,
       ...(smokeShip === null ? {} : { hostShip: 20, shipCount: 14 }) };
     const expectedFleet = await pages[0].evaluate(seedFleet, fleet);
@@ -261,11 +268,21 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
     // replacement of local fleet/control settings by the online session.
     await Promise.all(pages.map(page => page.evaluate(() => new Promise((resolve, reject) =>
       FS.syncfs(false, error => error ? reject(error) : resolve())))));
+    if (meleeOnly && name === 'normal') {
+      // Reuse a real local engine for the later network session; the guest still
+      // covers the initial --web-netplay launch path on its independent engine.
+      await launchLocalMelee(pages[0]);
+      await pages[0].screenshot({ path: path.join(output, 'local-fleet-before-network.png') });
+      await leaveLocalFleet(pages[0]);
+      entry.localBeforeNetwork = await assertMeleeScreens(pages[0]);
+      assert.deepEqual(await pages[0].evaluate(file => Array.from(FS.readFile(file)), meleeConfig), expectedFleet);
+    }
     // Keyboard only, in the game frame: the host opens a named room from the lobby,
     // the guest picks it from the live list, and the match starts by itself.
     const press = async (page, ...keys) => { for (const name of keys) { await page.keyboard.press(name); await sleep(80); } };
     const screen = (page, name, timeout = 30000) => page.waitForFunction(name => online.state.screen === name, name, { polling: 100, timeout });
-    await press(pages[0], 'ArrowDown', 'Enter');
+    if (meleeOnly) await pages[0].getByRole('button', { name: 'Network Melee', exact: true }).click();
+    else await press(pages[0], 'ArrowDown', 'Enter');
     await screen(pages[0], 'lobby');
     await pages[0].waitForFunction(() => online.state.focus === 'create', null, { polling: 100 });
     await press(pages[0], 'Enter');
@@ -437,6 +454,7 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
     }
     // Closing a real browser, rather than merely updating a mocked connection,
     // exercises relay departure and the engine's wait/cleanup paths together.
+    if (meleeOnly) entry.guestScreenHistory = await assertMeleeScreens(pages[1]);
     await browsers[1].close();
     await pages[0].waitForFunction(() => Module.webNet.state === 'closed', null, { polling: 100 });
     await sleep(1500);
@@ -444,20 +462,42 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
     for (let attempt = 0; attempt < 3; attempt++) {
       await key([pages[0]], 'Enter');
       try {
-        await pages[0].waitForFunction(() => Module.gameScreen === 'mainMenu', null, { polling: 100, timeout: 10000 });
+        await pages[0].waitForFunction(expected => Module.gameScreen === expected,
+          meleeOnly ? 'meleeMenu' : 'mainMenu', { polling: 100, timeout: 10000 });
         break;
       } catch (error) { if (attempt === 2) throw error; }
     }
-    entry.returnedToMainMenu = true;
+    if (meleeOnly) {
+      await assertMeleeChoices(pages[0], true);
+      entry.returnedToModeChoices = true;
+      entry.screenHistory = await assertMeleeScreens(pages[0]);
+    } else entry.returnedToMainMenu = true;
     await pages[0].screenshot({ path: path.join(output, `${name}-returned-menu.png`) });
     assert.deepEqual(await pages[0].evaluate(file => Array.from(FS.readFile(file)), meleeConfig), expectedFleet);
     const logs = await pages[0].locator('#log').textContent();
     assert.doesNotMatch(logs, /Aborted\(|Assertion failed|memory access out of bounds|Uncaught RuntimeError/);
     assert.deepEqual(failures, []);
+    if (meleeOnly && name === 'normal') {
+      await launchLocalMelee(pages[0]);
+      await pages[0].screenshot({ path: path.join(output, 'local-fleet-after-network.png') });
+      entry.localAfterNetwork = await exerciseLocalBattle(pages[0], path.join(output, 'local-after-network'));
+      await leaveLocalBattle(pages[0], path.join(output, 'local-after-network-quit.png'));
+      entry.screenHistory = await assertMeleeScreens(pages[0]);
+    }
     await pages[0].reload();
     await pages[0].waitForFunction(() => runtimeReady, null, { polling: 100, timeout: 90000 });
     assert.deepEqual(await pages[0].evaluate(file => Array.from(FS.readFile(file)), meleeConfig), expectedFleet);
     entry.localFleetPreservedAfterReload = true;
+    if (meleeOnly) {
+      await recordMeleeScreens(pages[0]);
+      await assertMeleeChoices(pages[0]);
+      if (name === 'normal') {
+        await launchLocalMelee(pages[0]);
+        await leaveLocalFleet(pages[0]);
+        entry.localAfterReload = true;
+      }
+      entry.screenHistoryAfterReload = await assertMeleeScreens(pages[0]);
+    }
     entry.passed = true;
     console.log(`${name}: ${disconnectAt} disconnect and persisted local settings passed`);
   } catch (error) {
@@ -500,8 +540,10 @@ if (process.env.UQM_SHIP_SMOKE) {
     'UQM_SHIP_SMOKE must be all or comma-separated Melee indexes 0..24');
   for (const ship of [...new Set(ships)]) await scenario(`ship-${ship}`, [0], 'battle', ship);
 } else {
-  await scenario('normal', [0], 'selection');
-  await scenario('jitter', [80, 120, 30, 60], 'battle');
-  await scenario('setup', [0], 'setup');
+  const scenarios = { normal: [[0], 'selection'], jitter: [[80, 120, 30, 60], 'battle'], setup: [[0], 'setup'] };
+  for (const name of (process.env.UQM_SCENARIOS || 'normal,jitter,setup').split(',')) {
+    assert.ok(Object.hasOwn(scenarios, name), 'UQM_SCENARIOS must contain normal, jitter or setup');
+    await scenario(name, ...scenarios[name]);
+  }
 }
 console.log(`All real-browser multiplayer scenarios passed. See ${path.join(output, 'results.json')}.`);

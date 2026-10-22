@@ -1,9 +1,14 @@
 # Melee Remastered
 
-This branch upgrades the real HD UQM Melee presentation. It uses the existing
+This branch is a dedicated HD UQM Melee edition with two choices: **Melee**
+for local battles and **Network Melee** for online battles. It uses the existing
 Rust engine, ships, weapons, special abilities, gravity, movement, collision
 images, AI, scoring, fleets and network protocol. It is not a second combat
 implementation.
+
+The dedicated entry page, captured after returning from a real local battle:
+
+![Melee and Network Melee mode choices](images/melee-only-modes.png)
 
 These are captures of the running native game, not concept images:
 
@@ -39,11 +44,31 @@ This capture shows the final captain artwork in a real network battle:
 - A persistent Picture & sound panel, with a live Remastered / Classic HD
   artwork switch and launch-time soundtrack/volume preferences.
 
-The chosen battle soundtrack also applies to campaign battles because UQM uses
-the same `music.battle` resource. The new ship/background rendering and interface
-palette, captain and crew artwork are restricted to Melee. Existing projectiles,
-planets and voices remain their existing HD resources; campaign captain windows
-continue to use the original HD portraits.
+The Melee-only launch profile bypasses the original logo, opening movie and
+main menu in both engines. Campaign, load-game and the edition chooser are not
+accessible from this page. Exit fleet setup or finish a disconnected network
+session to return to the two mode choices; another match uses the same running
+engine. Fleets and preferences persist in browser storage. Picture changes apply
+live; soundtrack and volume changes apply after a page reload.
+
+The build still contains the shared UQM engine and content archive. The profile
+changes navigation, not combat rules or the contents of that upstream archive.
+Generic pages that do not opt into the profile retain their existing flow.
+
+## Melee-only navigation
+
+`hd/wasm/shell.html` opts into `Module.meleeOnly` before the engine starts.
+The C profile is reproducible through `hd/patches/0019-melee-only-profile.patch`;
+`rust/uqm-engine-hd/src/uqm/restart.rs` and `starcon.rs` implement the same flow.
+It initializes the normal game kernel, then runs native `Melee()` directly.
+On return it waits at `meleeMenu`, where the web page presents the two choices.
+The profile is latched once, so no in-session setting can expose Campaign.
+
+A local choice is consumed once through `takePendingLocalMelee()`. Network
+choices retain the established role/room handshake. Native Melee owns teardown,
+restores local controls after network sessions, and saves local fleet settings.
+`callMain` is invoked once per page load. The shared web controller, help and
+storage messages opt into this profile without changing Original edition pages.
 
 ## Gameplay preservation
 
@@ -74,6 +99,7 @@ python3 tests/remastered/captain-assets.py
 python3 tests/remastered/captain-renderer-contract.py
 bash tests/rust/test-melee-presentation.sh
 bash tests/c/test-melee-presentation.sh
+bash tests/c/test-melee-only-profile.sh
 HD_OFFLINE=1 UQM_CORE=rust HD_BUILD_OUTPUT=.tools/remastered-dist \
   bash scripts/build-hd-web.sh
 ```
@@ -88,14 +114,14 @@ Build an independent C engine, then run real two-browser differential tests:
 ```sh
 HD_OFFLINE=1 UQM_CORE=c HD_SOURCE_DIR=.tools/hd-c-source \
   HD_BUILD_OUTPUT=.tools/remastered-c-dist bash scripts/build-hd-web.sh
-UQM_EDITION=hd UQM_REMASTERED=1 UQM_RELAY=rust \
+UQM_MELEE_ONLY=1 UQM_EDITION=hd UQM_REMASTERED=1 UQM_RELAY=rust \
   UQM_DIST=.tools/remastered-dist UQM_PEER_DIST=.tools/remastered-c-dist \
   UQM_TEST_OUTPUT=test-results/remastered-netplay npm run test:browser
-UQM_EDITION=hd UQM_REMASTERED=1 UQM_RELAY=rust \
+UQM_MELEE_ONLY=1 UQM_EDITION=hd UQM_REMASTERED=1 UQM_RELAY=rust \
   UQM_DIST=.tools/remastered-dist UQM_PEER_DIST=.tools/remastered-c-dist \
   UQM_SHIP_SMOKE=all UQM_TEST_OUTPUT=test-results/remastered-all-ships \
   npm run test:browser
-UQM_EDITION=hd UQM_REMASTERED=1 UQM_CAPTAINS=1 UQM_RELAY=rust \
+UQM_MELEE_ONLY=1 UQM_EDITION=hd UQM_REMASTERED=1 UQM_CAPTAINS=1 UQM_RELAY=rust \
   UQM_DIST=.tools/remastered-dist UQM_PEER_DIST=.tools/remastered-c-dist \
   UQM_SHIP_SMOKE=all UQM_TEST_OUTPUT=test-results/remastered-captains \
   npm run test:browser
@@ -107,7 +133,7 @@ The tests verify the exact downloaded Wasm hashes and require different C and
 Rust binaries. For the five-minute native idle and battle stability check:
 
 ```sh
-UQM_REMASTERED=1 UQM_DIST=.tools/remastered-dist \
+UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/remastered-dist \
   UQM_TEST_OUTPUT=test-results/remastered-hd-stability npm run test:hd-stability
 ```
 
@@ -134,6 +160,39 @@ reference sheets and inventory from the pinned archive for future art edits.
 Music source, scores and objective audio validation are included alongside the
 Ogg files. Browser evidence is written under `test-results/` and is specific to
 the exact tested build, rather than being inferred from historical test runs.
+
+## Melee-only navigation validation, 22 October 2026
+
+The final C and Rust builds passed real-browser verification after the launch
+profile, help and native fleet guidance changes:
+
+- Direct local entry, combat, F10 confirmation back to fleet setup, EXIT to the
+  two choices, local replay, Network Melee lobby Back, reload and local relaunch.
+  Rust remained in fleet setup for 300 seconds; C for 30 seconds. Both then ran
+  more than 15 seconds of combat with motion in all 15 sampled comparisons and
+  waited 25 seconds at the returned mode choices. No runtime errors occurred.
+- Rust host / C guest completed normal and 30–120 ms delayed full fleet matches,
+  with 575 and 588 matching checksums per peer, respectively. Setup, selection
+  and battle disconnects returned to the mode choices. C host / Rust guest
+  also completed a full match with 574 matching checksums per peer.
+- Both host engines entered local fleet setup before networking, then played a
+  real local battle after the network session, without a peer. Ship selection
+  used the actual HD defaults: Enter for player one and Q for player two.
+  Native rendering advanced, real inputs moved the playfield, and local fleet
+  preferences survived network use and reload.
+- Every recorded native transition was `melee` or `meleeMenu`; no opening,
+  original main-menu or campaign route appeared. Web UI tests also checked
+  keyboard/mouse, Classic artwork and missing-art fallback at 1280×960 and
+  640×480, rejecting any drawing of the old title image.
+- All 231 JavaScript/server tests passed. The focused native profile cases,
+  reproducible patches and Lua propagation audit passed. CI now exercises this
+  profile while retaining the Original edition's existing checks.
+
+These network runs used independent Chromium processes on one computer through
+its real Rust relay. Exact final build and changed implementation hashes,
+screen histories and compact results are in the
+[navigation validation record](validation/melee-only-navigation.json).
+The tested build artifacts were rehashed after verification.
 
 ## Captain and combat-score validation, 22 October 2026
 

@@ -58,5 +58,17 @@
     "symbol": "uqm_em_asm_9",
     "bytes": 202,
     "sha256": "03c1ce9a7be03c68215a93ba0d73b285a1544c3ec31c20f28ed97fc0545abf98"
+  },
+  {
+    "source": "src/uqm/restart.rs",
+    "symbol": "uqm_em_asm_10",
+    "bytes": 46,
+    "sha256": "f03760efb782997b28963da06b5e740c805ab529c6ee1620e0f05c13db3d735e"
+  },
+  {
+    "source": "src/uqm/restart.rs",
+    "symbol": "uqm_em_asm_11",
+    "bytes": 134,
+    "sha256": "ad5ccadb4ac174783f452b5f13629f1a924a9dc12cef04ff7e90bffb794cffb9"
   }
 ]

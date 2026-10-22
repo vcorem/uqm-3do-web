@@ -1,0 +1,345 @@
+{
+  "schema": 1,
+  "date": "2026-10-22T16:49:36.287619+00:00",
+  "branch": "codex/melee-remastered",
+  "baseCommit": "2a96f3067b4deff55780395eb308fe00363881f6",
+  "scope": "Dedicated Melee and Network Melee entry, no original opening or campaign routes. Native battle, fleet editor and network protocol retained.",
+  "buildSha256": {
+    "rust": {
+      "COPYING.txt": "560aff43d87dd0a1c1281e48a72152d854001209f76962b2fbe47cc38b97c958",
+      "content-licenses.txt": "4fcd573490b0910bbf0ad85db71d9cdb2adacb91e22a05bffa5b854bbc87abc9",
+      "content-lock.json": "448de9057072798176c98a5f8ae1131dc3eed01482c10eaa57ffc4822eb67f4f",
+      "engine-language.json": "9d4496a92aca7e5a93c5ef35e55c0f42e4d96050917ef82acd035f7d8d498e31",
+      "engine-loader.js": "bcb19f8075a3782d0e2078057921819aec49397b66437c767c3da248f9fe5cdd",
+      "game-help.js": "57a337be9c99fcdeff494140aa274e4e0b68e3f9d64bcba28f82b6c996a4af76",
+      "index.html": "af07ba13b2c7311784fc9596e3b621c7ba62f518b32b513622a3674c86ce1e25",
+      "link-inputs.json": "106c247b695e108fae12fb354975583a2fafdf80aa0af5403d1d1901d0c6ba8f",
+      "melee-nebula.png": "4705f6dd521054088f36130d903cb8a71177adc3e07a00bf141ce6fb77b32ef6",
+      "melee-presentation.css": "013a9ea840317f94ce54d090f9eea8f457a234cedc1827d33a53653cad08c5c3",
+      "melee-presentation.js": "befa4dc0a84027cdf8a137f33d23c1f283e40445cc88e87f28986528407c9cdb",
+      "netplay-client.js": "9e5ca6dd2dbcc25717b99b5efbd622a171f1c2c445589d566f44e005d7273488",
+      "online-art.json": "7eecd4f5552b7ed53f17971792fd64aa5dc8d2b4c36efb76ceda5d8b6884f59c",
+      "online-art.png": "8d3afc8fb5c63af509d47e3dbd1af49818a9cb9326045c75d037ce174d86b63e",
+      "online-stars.png": "e98c687eb389ed7e094e7597e7c9d2cbf749a4ec9e249436148b7c29e47aac49",
+      "online-title.png": "0cda08f91d7d14b06646ebc429c729a9e7fc1edfb9941d16591f30973407fb36",
+      "online-ui.js": "2ac5ab1530fceb6bbbf128a95ef0fff9b3afccd51dcfb28d732865da78135516",
+      "toolchain-fixes.json": "b718d30ec495a2129e54da108b5e2f95e8f5a0840501bc8f4c1fd2cca37e425f",
+      "uqm-debug.data": "66daed444c48494bc204f5cfa5fd223b5c537983c18ed85ad0abd34ab3cd56b8",
+      "uqm-debug.html": "af07ba13b2c7311784fc9596e3b621c7ba62f518b32b513622a3674c86ce1e25",
+      "uqm-debug.js": "a9df32ea5cfc8355deb7682fc8ac10d2f2d2e687502a78359a9650a82cc7e518",
+      "uqm-debug.wasm": "75cd414e081b61defd4736d6b69ef80dbcf4b05206b625b5b3f4308ec1b87f2c",
+      "uqm-debug.worker.js": "48325b3061815c405968c59db7e737decc0b8f387e2352dbd2edae26f9a77ede"
+    },
+    "c": {
+      "COPYING.txt": "560aff43d87dd0a1c1281e48a72152d854001209f76962b2fbe47cc38b97c958",
+      "content-licenses.txt": "4fcd573490b0910bbf0ad85db71d9cdb2adacb91e22a05bffa5b854bbc87abc9",
+      "content-lock.json": "448de9057072798176c98a5f8ae1131dc3eed01482c10eaa57ffc4822eb67f4f",
+      "engine-language.json": "9d0b11fe57a90fa3b282d02d58ee6888c8daa9cfa0b497c9182f7ca53399fbe5",
+      "engine-loader.js": "bcb19f8075a3782d0e2078057921819aec49397b66437c767c3da248f9fe5cdd",
+      "game-help.js": "57a337be9c99fcdeff494140aa274e4e0b68e3f9d64bcba28f82b6c996a4af76",
+      "index.html": "af07ba13b2c7311784fc9596e3b621c7ba62f518b32b513622a3674c86ce1e25",
+      "melee-nebula.png": "4705f6dd521054088f36130d903cb8a71177adc3e07a00bf141ce6fb77b32ef6",
+      "melee-presentation.css": "013a9ea840317f94ce54d090f9eea8f457a234cedc1827d33a53653cad08c5c3",
+      "melee-presentation.js": "befa4dc0a84027cdf8a137f33d23c1f283e40445cc88e87f28986528407c9cdb",
+      "netplay-client.js": "9e5ca6dd2dbcc25717b99b5efbd622a171f1c2c445589d566f44e005d7273488",
+      "online-art.json": "7eecd4f5552b7ed53f17971792fd64aa5dc8d2b4c36efb76ceda5d8b6884f59c",
+      "online-art.png": "8d3afc8fb5c63af509d47e3dbd1af49818a9cb9326045c75d037ce174d86b63e",
+      "online-stars.png": "e98c687eb389ed7e094e7597e7c9d2cbf749a4ec9e249436148b7c29e47aac49",
+      "online-title.png": "0cda08f91d7d14b06646ebc429c729a9e7fc1edfb9941d16591f30973407fb36",
+      "online-ui.js": "2ac5ab1530fceb6bbbf128a95ef0fff9b3afccd51dcfb28d732865da78135516",
+      "toolchain-fixes.json": "b718d30ec495a2129e54da108b5e2f95e8f5a0840501bc8f4c1fd2cca37e425f",
+      "uqm-debug.data": "66daed444c48494bc204f5cfa5fd223b5c537983c18ed85ad0abd34ab3cd56b8",
+      "uqm-debug.js": "f6654ce14a1d84aba7b906b9acaa6165d1849d029182fa038d9f12427b275fd3",
+      "uqm-debug.wasm": "678c428865de0ec0eb2eaa75cb08690a5fcefef374ad14b2243500cca95cb290",
+      "uqm-debug.worker.js": "48325b3061815c405968c59db7e737decc0b8f387e2352dbd2edae26f9a77ede"
+    }
+  },
+  "implementationSha256": {
+    ".github/workflows/build.yml": "a9790f9328a712c3034492b22a4e2ba63eeff3b3013dfd5db79db8923cfac565",
+    ".github/workflows/deploy.yml": "743a95dc352d5d30e5b5de3098ca0271114426070d2847f6bb432a8d8bb37a7a",
+    "hd/patches/0019-melee-only-profile.patch": "9206c8510dcbe4b8d0c8597e439d0de87793c07d20cdd02e94b6c7f205082be5",
+    "hd/wasm/melee-presentation.js": "befa4dc0a84027cdf8a137f33d23c1f283e40445cc88e87f28986528407c9cdb",
+    "hd/wasm/pre.js": "39229972e5632de803a3c97f3b2518230f9746b4f976c727272cf054050da66c",
+    "hd/wasm/shell.html": "ac1edd796a0eb96889866794cb1885f89fd630cc67b56601965396b92ed0122b",
+    "rust/uqm-engine-hd/asm-const-report.json": "f0eba88cc30fe360c817984a9c38e2a955429df9d4f2ef2937e399ce8af81381",
+    "rust/uqm-engine-hd/lua-propagation-report.json": "d271da560d64cac89f1326fd94b2565e5ff02885adc6c610f6d6024a056c185d",
+    "rust/uqm-engine-hd/src/uqm/restart.rs": "9f00a5d864d5df585218c93ee2a5a0c7475288209b8fa85b8e4c50cfe5f72dd4",
+    "rust/uqm-engine-hd/src/uqm/starcon.rs": "cf66bee98c4bf8400572e5a16123d4972ccac7e84244d7e66860a2fb1a42ba69",
+    "rust/uqm-engine-hd/src/uqm/supermelee/melee.rs": "dbc3bbe887163389dfae9adb60b004e8d99fd712beb9198efd62da6f0014c242",
+    "rust/uqm-engine-hd/uqm_asm_consts.c": "d35dc96bc8b4e6e2a2320d2d5bfcf1342ddac6187e250d16805cca87fea643eb",
+    "tests/browser/fixtures/fake-engine.js": "541e1de2af30ff73434c432e36d2ca365693d663ec916d31a14ebec4f61a6004",
+    "tests/browser/hd-stability.mjs": "a69b68a31fd8287f3c311700f5afb1714cef208590fe0dbea368804e17975738",
+    "tests/browser/melee-navigation.mjs": "9447b79979c936f428c5ec0e9fc2ef3eac00f689565560a122b8dfd90ebf1f35",
+    "tests/browser/netplay.mjs": "6179426264d38f5290b5c5c865e5c1188d15b95c14ac3f34581c51e611810f91",
+    "tests/browser/online-ui.mjs": "1a6d03621f9b725003a31d664285533ec13d2214e32986fb1341448e9b7270c0",
+    "tests/c/melee-only-profile.c": "30354ddc22f6cc1408f5588d603ba18660bfc44e98a0995895f3c84c2d1c2dab",
+    "tests/c/test-melee-only-profile.sh": "2696d4b512842d6070a8b0213d5f4c37d5796a8826b42dd442ae3ad460f78bbf",
+    "tests/web/game-help.test.cjs": "d188d5d92f3f0a69499f4b13430f060f4ca3f87fff31da9a7ec9bb398f3ef0a8",
+    "tests/web/hd-storage.test.cjs": "5d2aedf617bd2fb4ecc7e068f6baef93505e991ff040d9128ffceda373589902",
+    "tests/web/melee-presentation.test.cjs": "29f7e3f3f2aab8a317585617b9ac33662181879e7c636d57624249631ff3d64b",
+    "tests/web/online-shell.test.cjs": "6fd43c090b2ce1b81ea941938fb09d50618c20e7d6ffb4d04b66faf7de35065a",
+    "tests/web/online-ui.test.cjs": "401e74d9a11e78218d157e4c9bc923a6895939759562219f9729a7a05fadeb21",
+    "tests/web/storage-navigation.test.cjs": "32ace415453e64d6c9dc0ea6c27e7544bde89b5212a165cdd93feab540166980",
+    "web/game-help/game-help.js": "57a337be9c99fcdeff494140aa274e4e0b68e3f9d64bcba28f82b6c996a4af76",
+    "web/online/online-ui.js": "2ac5ab1530fceb6bbbf128a95ef0fff9b3afccd51dcfb28d732865da78135516"
+  },
+  "javascriptAndRelayTests": {
+    "passed": 231,
+    "failed": 0
+  },
+  "nativeProfileTests": [
+    "ordinary edition opt-out",
+    "latched profile",
+    "first local launch",
+    "first network launch",
+    "one-shot choices",
+    "repeated network/local returns"
+  ],
+  "luaAudit": {
+    "checkedCalls": 13447,
+    "guardedDeclarations": 110
+  },
+  "patchSeries": "Verified with zero pending source updates",
+  "local": {
+    "rust": {
+      "browser": "151.0.7922.34",
+      "idleMs": 300000,
+      "returnHomeIdleMs": 25000,
+      "battleElapsedMs": 15497,
+      "passed": true,
+      "errors": [],
+      "screensBeforeReload": [
+        "melee",
+        "meleeMenu",
+        "melee",
+        "meleeMenu"
+      ],
+      "screensAfterReload": [
+        "melee",
+        "meleeMenu"
+      ],
+      "localReplayAndReload": true,
+      "battleSamples": 16,
+      "movingSamples": 15
+    },
+    "c": {
+      "browser": "151.0.7922.34",
+      "idleMs": 30000,
+      "returnHomeIdleMs": 25000,
+      "battleElapsedMs": 15582,
+      "passed": true,
+      "errors": [],
+      "screensBeforeReload": [
+        "melee",
+        "meleeMenu",
+        "melee",
+        "meleeMenu"
+      ],
+      "screensAfterReload": [
+        "melee",
+        "meleeMenu"
+      ],
+      "localReplayAndReload": true,
+      "battleSamples": 16,
+      "movingSamples": 15
+    }
+  },
+  "networkRustHost": [
+    {
+      "name": "normal",
+      "passed": true,
+      "latencyPatternMs": [
+        0
+      ],
+      "completedFleetMatch": true,
+      "returnedToModeChoices": true,
+      "screenHistory": [
+        "melee",
+        "meleeMenu",
+        "melee",
+        "meleeMenu",
+        "melee",
+        "meleeMenu"
+      ],
+      "guestScreenHistory": [
+        "melee"
+      ],
+      "localBeforeNetwork": [
+        "melee",
+        "meleeMenu"
+      ],
+      "localAfterNetwork": {
+        "before": {
+          "backgrounds": 591,
+          "draws": 1084,
+          "images": 631,
+          "screen": "melee",
+          "connected": false
+        },
+        "after": {
+          "backgrounds": 695,
+          "draws": 1312,
+          "images": 631,
+          "screen": "melee",
+          "connected": false
+        },
+        "selectionKeys": [
+          "Enter",
+          "q"
+        ],
+        "changedPixels": 505,
+        "playfieldDark": [
+          0.779189352692075,
+          0.7808227465214761
+        ]
+      },
+      "localFleetPreservedAfterReload": true,
+      "localAfterReload": true,
+      "screenHistoryAfterReload": [
+        "melee",
+        "meleeMenu"
+      ],
+      "checksumsPerPeer": [
+        575,
+        575
+      ]
+    },
+    {
+      "name": "jitter",
+      "passed": true,
+      "latencyPatternMs": [
+        80,
+        120,
+        30,
+        60
+      ],
+      "completedFleetMatch": true,
+      "returnedToModeChoices": true,
+      "screenHistory": [
+        "melee",
+        "meleeMenu"
+      ],
+      "guestScreenHistory": [
+        "melee"
+      ],
+      "localFleetPreservedAfterReload": true,
+      "screenHistoryAfterReload": [],
+      "checksumsPerPeer": [
+        588,
+        588
+      ]
+    },
+    {
+      "name": "setup",
+      "passed": true,
+      "latencyPatternMs": [
+        0
+      ],
+      "returnedToModeChoices": true,
+      "screenHistory": [
+        "melee",
+        "meleeMenu"
+      ],
+      "guestScreenHistory": [
+        "melee"
+      ],
+      "localFleetPreservedAfterReload": true,
+      "screenHistoryAfterReload": [],
+      "checksumsPerPeer": []
+    }
+  ],
+  "networkCHost": [
+    {
+      "name": "normal",
+      "passed": true,
+      "latencyPatternMs": [
+        0
+      ],
+      "completedFleetMatch": true,
+      "returnedToModeChoices": true,
+      "screenHistory": [
+        "melee",
+        "meleeMenu",
+        "melee",
+        "meleeMenu",
+        "melee",
+        "meleeMenu"
+      ],
+      "guestScreenHistory": [
+        "melee"
+      ],
+      "localBeforeNetwork": [
+        "melee",
+        "meleeMenu"
+      ],
+      "localAfterNetwork": {
+        "before": {
+          "backgrounds": 591,
+          "draws": 1082,
+          "images": 631,
+          "screen": "melee",
+          "connected": false
+        },
+        "after": {
+          "backgrounds": 685,
+          "draws": 1290,
+          "images": 631,
+          "screen": "melee",
+          "connected": false
+        },
+        "selectionKeys": [
+          "Enter",
+          "q"
+        ],
+        "changedPixels": 204,
+        "playfieldDark": [
+          0.784724742891712,
+          0.7849667271627344
+        ]
+      },
+      "localFleetPreservedAfterReload": true,
+      "localAfterReload": true,
+      "screenHistoryAfterReload": [
+        "melee",
+        "meleeMenu"
+      ],
+      "checksumsPerPeer": [
+        574,
+        574
+      ]
+    }
+  ],
+  "webUi": {
+    "viewports": [
+      [
+        1280,
+        960
+      ],
+      [
+        640,
+        480
+      ]
+    ],
+    "checks": [
+      "keyboard and mouse",
+      "repeat sessions",
+      "reload",
+      "download and invite lifecycle",
+      "Classic entry",
+      "missing-art fallback",
+      "old title image never drawn in profile"
+    ]
+  },
+  "evidenceFolders": [
+    "test-results/melee-only-release-stability",
+    "test-results/melee-only-release-c-stability",
+    "test-results/melee-only-release-netplay",
+    "test-results/melee-only-release-c-host",
+    "test-results/melee-only-ui-hd",
+    "test-results/melee-only-ui-fallback"
+  ],
+  "limits": [
+    "Network runs used independent Chromium processes on one computer through the real Rust relay, with emulated delay.",
+    "Shared upstream engine and content remain bundled; the profile removes campaign access from this edition."
+  ]
+}

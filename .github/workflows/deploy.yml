@@ -162,7 +162,7 @@ jobs:
       - name: Test Original C against Original Rust in real two-browser matches
         run: UQM_DIST=.tools/original-dist UQM_PEER_DIST=.tools/original-rust-dist UQM_TEST_OUTPUT=test-results/original-c-rust npm run test:browser
       - name: Test HD C against HD Rust in real two-browser matches
-        run: UQM_EDITION=hd UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-rust-dist UQM_TEST_OUTPUT=test-results/hd-c-rust npm run test:browser
+        run: UQM_EDITION=hd UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-rust-dist UQM_TEST_OUTPUT=test-results/hd-c-rust npm run test:browser
       - name: Split data files into Cloudflare asset parts
         run: python3 deploy/split-data.py --site .tools/release-web --output .tools/site --manifest deploy/data-parts.json
       - name: Test that return visits start from the game data kept in the browser

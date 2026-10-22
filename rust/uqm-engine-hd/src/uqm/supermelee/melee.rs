@@ -4570,8 +4570,11 @@ unsafe extern "C" fn MeleeOptionSelect(mut pMS: *mut MELEE_STATE) {
                 ), ());
             } else {
                 uqm_lua_checked!(DrawMeleeStatusMessage(
-                    b"For Online Melee, press O in the main menu.\0".as_ptr()
-                        as *const ::core::ffi::c_char,
+                    (if crate::src::uqm::restart::UQM_MeleeOnlyProfile().0 != 0 {
+                        b"Choose EXIT, then Network Melee.\0".as_ptr()
+                    } else {
+                        b"For Online Melee, press O in the main menu.\0".as_ptr()
+                    }) as *const ::core::ffi::c_char,
                 ), ());
             }
         }

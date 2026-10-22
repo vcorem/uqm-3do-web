@@ -12,7 +12,7 @@ test('download progress is shown in MB and percent from the Emscripten byte coun
     }
 });
 
-function page() {
+function page(options = {}) {
     const elements = new Map();
     const make = (tag, id) => {
         const handlers = {};
@@ -45,7 +45,7 @@ function page() {
     };
     const listeners = {};
     let started = false;
-    const api = help.init({ document, isStarted: () => started,
+    const api = help.init({ ...options, document, isStarted: () => started,
         eventTarget: { addEventListener(type, fn, capture) { assert.equal(capture, true); listeners[type] = fn; } } });
     const key = (key, extra = {}) => {
         const event = { key, target: canvas, prevented: false, stopped: false,
@@ -81,6 +81,54 @@ test('F1 pauses the game without the browser help page, only after launch', () =
     const event = key('F1');
     assert.equal(event.prevented, true);
     assert.equal(event.stopped, false, 'the game still receives F1');
+});
+
+test('Melee-only help replaces campaign guidance in both panels without changing generic help', () => {
+    const melee = page({ meleeOnly: true });
+    const pop = melee.elements.get('keys-pop');
+    for (const html of [melee.panel.innerHTML, pop.innerHTML]) {
+        assert.match(html, /Choose <b>Melee<\/b> for local battles/);
+        assert.match(html, /Network Melee.*create or join a room/);
+        assert.match(html, /BATTLE/);
+        assert.match(html, /Select <b>EXIT<\/b> to return to Melee \/ Network Melee/);
+        assert.match(html, /<kbd>F10<\/kbd> asks to quit combat and return to fleets/);
+        assert.match(html, /Right Ctrl/);
+        assert.match(html, /Right Shift/);
+        assert.match(html, /ESDF preset/);
+        assert.match(html, /<kbd>E<\/kbd> thrust.*<kbd>S F<\/kbd> turn/);
+        assert.match(html, /<kbd>Q<\/kbd> fire.*<kbd>A<\/kbd> special/);
+        assert.match(html, /<kbd>Q<\/kbd> selects this player's ship/);
+        assert.doesNotMatch(html, /WASD|<kbd>V<\/kbd>|<kbd>B<\/kbd>/);
+        assert.match(html, /configured player controls/);
+        assert.doesNotMatch(html, /campaign|new game|load|save|navigate|starmap|talking|starbase|intro|setup|in-game controls/i);
+    }
+    melee.elements.get('keys-button').click();
+    assert.equal(pop.hidden, false);
+    melee.start();
+    assert.ok(melee.key('?').stopped);
+    assert.equal(pop.hidden, true);
+    assert.ok(melee.canvas.focused);
+    assert.equal(melee.key('F1').stopped, false, 'native pause still receives F1');
+    for (const generic of [page(), page({ meleeOnly: false })]) {
+        assert.match(generic.panel.innerHTML, /Starmap.*Talking/);
+        assert.match(generic.panel.innerHTML, /Navigate/);
+        assert.match(generic.panel.innerHTML, /WASD/);
+        assert.match(generic.panel.innerHTML, /<kbd>V<\/kbd> fire.*<kbd>B<\/kbd> special/);
+        assert.doesNotMatch(generic.panel.innerHTML, /ESDF/);
+        assert.doesNotMatch(generic.panel.innerHTML, /Choose <b>Melee/);
+    }
+});
+
+test('Melee start guidance fits the game fonts and only describes local or network battles', () => {
+    assert.equal(help.MELEE_START_TEXT.length, 4);
+    for (const line of help.MELEE_START_TEXT) {
+        assert.ok(!/[<>&]/.test(line), line);
+        assert.ok(/^[\x20-\x7e]+$/.test(line), line);
+        assert.ok(line.length <= 60, line);
+    }
+    const text = help.MELEE_START_TEXT.join(' ');
+    assert.match(text, /MELEE.*BATTLE.*NETWORK MELEE.*create or join/);
+    assert.doesNotMatch(text, /campaign|new game|load|save|navigate|starmap|starbase|intro|setup/i);
 });
 
 test('the How to start lines for the start screen are plain text that fits the game fonts', () => {

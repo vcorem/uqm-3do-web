@@ -8,11 +8,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium, firefox, webkit } from 'playwright';
 import { createNetplayServer } from '../../server/netplay.mjs';
+import { recordMeleeScreens, assertMeleeScreens, assertMeleeChoices, launchLocalMelee, leaveLocalFleet, leaveLocalBattle } from './melee-navigation.mjs';
 
 const dist = path.resolve(process.env.UQM_DIST || '.tools/hd-dist');
 const out = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/hd-stability');
 const browserType = process.env.UQM_BROWSER || 'chromium';
 const remastered = process.env.UQM_REMASTERED === '1';
+const meleeOnly = process.env.UQM_MELEE_ONLY === '1';
 const browsers = { chromium, firefox, webkit };
 const idleMs = Number(process.env.UQM_IDLE_MS ?? 300000);
 assert.ok(browsers[browserType], 'Unsupported UQM_BROWSER');
@@ -22,7 +24,7 @@ assert.match(await readFile(path.join(dist, 'index.html'), 'utf8'), /edition: 'h
   'UQM_DIST must contain the standalone HD build, not the combined edition chooser');
 await mkdir(out, { recursive: true });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const report = { browserType, dist, idleMs, remastered, startedAt: new Date().toISOString(),
+const report = { browserType, dist, idleMs, remastered, meleeOnly, startedAt: new Date().toISOString(),
   stage: 'starting', passed: false, errors: [], console: [], battleFrames: [], buildHashes: {} };
 const server = createNetplayServer({ distDir: dist });
 let browser, page, monitor, monitoring = false;
@@ -122,7 +124,7 @@ function metrics(frame) {
 const isFleet = frame => remastered
   ? frame.pixels.titleLight > 0.04 && frame.pixels.panelNavy > 0.08 &&
     frame.nativeAfter.enabled === 1 && frame.nativeAfter.gameScreen === 'melee' &&
-    frame.nativeBefore.backgrounds === 0 && frame.nativeAfter.backgrounds === 0
+    frame.nativeBefore.backgrounds === frame.nativeAfter.backgrounds
   : frame.pixels.titleMagenta > 0.04;
 const isBattle = frame => remastered
   ? frame.pixels.panelNavy > 0.22 && frame.pixels.playfieldDark > 0.65 &&
@@ -202,18 +204,26 @@ try {
     assert.equal(ready.backgrounds, 0, 'No battle has begun during loading');
     report.presentationAtStart = ready;
   }
-  await guarded(page.getByRole('button', { name: 'Play', exact: true }).click());
-  report.stage = 'main-menu';
-  await waitForScreen('mainMenu');
+  if (meleeOnly) {
+    await recordMeleeScreens(page);
+    await assertMeleeChoices(page);
+    await launchLocalMelee(page);
+  } else {
+    await guarded(page.getByRole('button', { name: 'Play', exact: true }).click());
+    report.stage = 'main-menu';
+    await waitForScreen('mainMenu');
+  }
   report.canvas = await guarded(page.locator('#canvas').evaluate(canvas => ({
     width: canvas.width, height: canvas.height,
   })));
   assert.deepEqual(report.canvas, { width: 1280, height: 960 });
   await guarded(sleep(1500));
   await guarded(page.locator('#canvas').focus());
-  await key('ArrowDown');
-  await key('ArrowDown');
-  await key('Enter');
+  if (!meleeOnly) {
+    await key('ArrowDown');
+    await key('ArrowDown');
+    await key('Enter');
+  }
   report.stage = 'fleet-setup';
   await waitForScreen('melee');
   report.fleet = metrics(await waitForCanvas(isFleet, 'fleet-before-idle.png'));
@@ -269,6 +279,35 @@ try {
     report.presentationAtEnd = await readPresentation();
     assert.ok(report.presentationAtEnd.backgrounds > report.battleFrames[0].nativeAfter.backgrounds,
       'Native battle background drawing must continue during the control interval');
+  }
+  if (meleeOnly) {
+    report.stage = 'battle-exit';
+    await leaveLocalBattle(page, path.join(out, 'quit-confirmation.png'));
+    await page.screenshot({ path: path.join(out, 'two-modes-after-battle.png') });
+    report.returnHomeIdleMs = 25000;
+    await guarded(sleep(report.returnHomeIdleMs));
+    await assertMeleeChoices(page, true);
+    report.screensBeforeReload = await assertMeleeScreens(page);
+    assert.ok(report.screensBeforeReload.includes('meleeMenu'));
+    report.stage = 'local-replay';
+    await launchLocalMelee(page);
+    report.replayFleet = metrics(await waitForCanvas(isFleet, 'fleet-repeat.png'));
+    await leaveLocalFleet(page);
+    await page.getByRole('button', { name: 'Network Melee', exact: true }).click();
+    await page.waitForFunction(() => online.state.screen === 'lobby');
+    await page.keyboard.press('Escape');
+    await assertMeleeChoices(page, true);
+    report.screensBeforeReload = await assertMeleeScreens(page);
+    report.stage = 'reload';
+    await page.reload();
+    await page.waitForFunction(() => runtimeReady, null, { timeout: 240000 });
+    await recordMeleeScreens(page);
+    await assertMeleeChoices(page);
+    await launchLocalMelee(page);
+    report.reloadedFleet = metrics(await waitForCanvas(isFleet, 'fleet-after-reload.png'));
+    await leaveLocalFleet(page);
+    report.screensAfterReload = await assertMeleeScreens(page);
+    report.localReplayAndReload = true;
   }
   await checkHealth();
   assert.deepEqual(report.errors, []);

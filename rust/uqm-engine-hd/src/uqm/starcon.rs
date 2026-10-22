@@ -699,12 +699,16 @@ pub unsafe extern "C" fn Starcon2Main(
     );
     GlobData.Game_state.CurrentActivity = 0 as ACTIVITY;
     uqm_lua_checked!(luaUqm_initState(), 0);
-    if optSkipIntro.0 == 0 {
-        uqm_lua_checked!(Logo(), 0);
+    if crate::src::uqm::restart::UQM_MeleeOnlyProfile().0 != 0 {
+        uqm_lua_checked!(BackgroundInitKernel(0), 0);
+    } else {
+        if optSkipIntro.0 == 0 {
+            uqm_lua_checked!(Logo(), 0);
+        }
+        SetRandomMenuMusic();
+        uqm_lua_checked!(InitMenuMusic(), 0);
+        uqm_lua_checked!(SplashScreen(Some(BackgroundInitKernel as unsafe extern "C" fn(DWORD) -> ())), 0);
     }
-    SetRandomMenuMusic();
-    uqm_lua_checked!(InitMenuMusic(), 0);
-    uqm_lua_checked!(SplashScreen(Some(BackgroundInitKernel as unsafe extern "C" fn(DWORD) -> ())), 0);
     printf(b"Set Seed Type: %s\n\0".as_ptr() as *const ::core::ffi::c_char, SeedStr());
     printf(b"Set Seed: %d\n\0".as_ptr() as *const ::core::ffi::c_char, optCustomSeed);
     printf(

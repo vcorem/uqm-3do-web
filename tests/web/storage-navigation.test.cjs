@@ -46,7 +46,7 @@ function element() {
         setAttribute(name, value) { attrs[name] = value; },
         focus() {}, click() { let prevented = false; handlers.click?.({ preventDefault() { prevented = true; } }); return prevented; } };
 }
-for (const edition of ['original', 'hd']) {
+for (const edition of ['original']) {
     test(`${edition}: edition switch waits for all queued browser writes`, () => {
         const h = harness(edition);
         const link = h.elements.get('choose-edition');
@@ -84,4 +84,30 @@ test('standalone Original has no edition link and still saves normally', () => {
     h.write(); h.finish();
     assert.equal(h.context.Module.storageState, 'saved');
     assert.ok(!fs.readFileSync('sc2/wasm/shell.html', 'utf8').includes('<a id="choose-edition"'));
+});
+
+test('Melee-only HD has no edition navigation and serializes every queued fleet/preferences write', () => {
+    const h = harness('hd', false);
+    assert.equal(h.context.Module.meleeOnly, true);
+    assert.ok(!fs.readFileSync('hd/wasm/shell.html', 'utf8').includes('id="choose-edition"'));
+    assert.equal(h.context.Module.storageState, 'ready');
+    h.write(); h.write();
+    assert.equal(h.pending.length, 1);
+    assert.equal(h.context.Module.storageState, 'saving');
+    h.finish();
+    assert.equal(h.pending.length, 1, 'the second flush is required before reporting a saved fleet');
+    assert.equal(h.context.Module.storageState, 'saving');
+    h.finish();
+    assert.equal(h.context.Module.storageState, 'saved');
+});
+
+test('Melee-only HD persistence warning preserves an unfinished fleet/preferences save', async () => {
+    const h = harness('hd', false, false);
+    h.write();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.context.Module.storageState, 'saving');
+    assert.equal(h.pending.length, 1);
+    h.finish();
+    assert.equal(h.context.Module.storageState, 'saved');
+    assert.equal(h.elements.has('choose-edition'), false);
 });

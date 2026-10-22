@@ -35,13 +35,25 @@ const token = n => n.toString(16).padStart(2, '0').repeat(16);
 async function player(edition, viewport, query = '', hash = '') {
   const context = await browser.newContext({ viewport });
   await context.addInitScript({ path: shimPath });
+  await context.addInitScript(() => {
+    window.menuImageDraws = [];
+    const original = CanvasRenderingContext2D.prototype.drawImage;
+    CanvasRenderingContext2D.prototype.drawImage = function(image, ...args) {
+      if (image instanceof HTMLImageElement && /online-(title|stars)\.png/.test(image.src))
+        window.menuImageDraws.push(image.src.split('/').pop());
+      return original.call(this, image, ...args);
+    };
+  });
+  if (query.includes('classic=1')) await context.addInitScript(() =>
+    localStorage.setItem('uqm.hd.melee.presentation.v1', JSON.stringify({style:'classic',soundtrack:'classic',musicVolume:72})));
+  if (query.includes('noArt=1')) await context.route('**/online-art.json', route => route.fulfill({status:503,body:'art unavailable'}));
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.stack || error.message));
   page.on('console', message => { if (message.type() === 'error' && !/WebSocket|Failed to load resource/.test(message.text())) errors.push(message.text()); });
   await page.goto(`${origin}/${edition}/index.html?fakeLoadMs=1500${query}${hash}`);
   await page.waitForFunction(() => window.online && online.state && document.querySelector('.uqm-online-hit'), null, { timeout: 15000 });
-  return { context, page, errors, edition, viewport };
+  return { context, page, errors, edition, viewport, meleeOnly: await page.evaluate(() => !!Module.meleeOnly) };
 }
 const ui = p => p.page.evaluate(() => {
   const s = online.state;
@@ -70,10 +82,63 @@ async function shot(p, name) {
   results.push({ edition: p.edition, viewport: p.viewport, name, file, screen: state.screen });
 }
 async function noErrors(...players) {
-  for (const p of players) assert.deepEqual(p.errors, [], `${p.edition}: page errors`);
+  for (const p of players) {
+    assert.deepEqual(p.errors, [], `${p.edition}: page errors`);
+    if (p.meleeOnly) assert.equal(await p.page.evaluate(() => menuImageDraws.includes('online-title.png')), false,
+      'the profile must never draw the old title, including Classic and missing-art fallback');
+  }
 }
 async function press(p, ...keys) {
   for (const key of keys) { await p.page.keyboard.press(key); await sleep(60); }
+}
+
+async function assertModeChoices(p) {
+  const state = await until(p, s => s.screen === 'start', 'two-mode entry');
+  await p.page.getByRole('button', { name: 'Melee', exact: true }).waitFor();
+  await p.page.getByRole('button', { name: 'Network Melee', exact: true }).waitFor();
+  assert.deepEqual(state.items, ['play', 'online']);
+  assert.equal(state.corner, false, 'no shortcut to an old native menu');
+  const labels = await p.page.locator('.uqm-online-hit').evaluateAll(items =>
+    items.filter(item => !item.hidden).map(item => item.getAttribute('aria-label') || item.textContent.trim()));
+  assert.deepEqual(labels, ['Melee', 'Network Melee']);
+}
+
+async function localMeleeFlow(edition, viewport) {
+  const p = await player(edition, viewport, '&fakeLoadMs=2500');
+  if (!p.meleeOnly) { await p.context.close(); return; }
+  await assertModeChoices(p);
+  // Choosing during download queues exactly one initial launch.
+  await p.page.getByRole('button', { name: 'Melee', exact: true }).click();
+  await until(p, s => s.gameScreen === 'melee', 'local Melee starts directly');
+  assert.equal((await ui(p)).log.filter(item => item === 'callMain').length, 1);
+  for (let repeat = 0; repeat < 2; repeat++) {
+    await p.page.evaluate(() => fakeEngine.setScreen('meleeMenu'));
+    await assertModeChoices(p);
+    await shot(p, 'local-return-' + repeat);
+    await p.page.getByRole('button', { name: 'Melee', exact: true }).click();
+    await until(p, s => s.gameScreen === 'melee' && s.log.filter(item => item === 'local-hook').length === repeat + 1,
+      'repeated local native hook');
+  }
+  assert.equal((await ui(p)).log.filter(item => item === 'callMain').length, 1);
+  assert.ok(!(await ui(p)).log.includes('mainMenu'));
+  await p.page.reload();
+  await p.page.waitForFunction(() => window.online && online.state);
+  await assertModeChoices(p);
+  await p.page.getByRole('button', { name: 'Melee', exact: true }).click();
+  await until(p, s => s.gameScreen === 'melee', 'local play after reload');
+  await noErrors(p);
+  await p.context.close();
+  for (const query of ['&classic=1', '&classic=1&noArt=1']) {
+    const fallback = await player(edition, viewport, query);
+    await assertModeChoices(fallback);
+    await shot(fallback, query.includes('noArt') ? 'start-missing-art' : 'start-classic');
+    await fallback.page.getByRole('button', { name: 'Network Melee', exact: true }).click();
+    await screenIs(fallback, 'lobby');
+    await press(fallback, 'Escape');
+    await assertModeChoices(fallback);
+    await noErrors(fallback);
+    await fallback.context.close();
+  }
 }
 
 async function keyboardFlow(edition, viewport) {
@@ -81,6 +146,7 @@ async function keyboardFlow(edition, viewport) {
   let s = await ui(host);
   assert.equal(s.screen, 'start');
   assert.equal(s.focus, 'play');
+  if (host.meleeOnly) await assertModeChoices(host);
   await shot(host, 'start-loading');
   await press(host, 'ArrowDown');
   await shot(host, 'start-online');
@@ -153,10 +219,19 @@ async function keyboardFlow(edition, viewport) {
   await shot(host, 'match');
   // The guest leaves; the host's engine returns to its main menu and the lobby comes back.
   await guest.context.close();
-  s = await until(host, s => s.screen === 'lobby', 'lobby after the session', 20000);
+  s = await until(host, s => s.screen === (host.meleeOnly ? 'start' : 'lobby'), 'entry after the session', 20000);
   assert.equal(s.fullscreen, true, 'Still in full screen');
   assert.ok(s.notice, 'The reason is shown');
   await shot(host, 'after-session');
+  if (host.meleeOnly) {
+    await assertModeChoices(host);
+    await host.page.getByRole('button', { name: 'Network Melee', exact: true }).click();
+    await screenIs(host, 'lobby');
+    await press(host, 'Escape');
+    await assertModeChoices(host);
+    await press(host, 'Enter');
+    await screenIs(host, 'lobby');
+  } else {
   // Back to the game's main menu: the corner button and the O key.
   await press(host, 'Escape');
   s = await until(host, s => s.screen === 'hidden' && s.corner, 'corner button at the main menu');
@@ -176,6 +251,7 @@ async function keyboardFlow(edition, viewport) {
   await screenIs(host, 'lobby');
   await host.page.keyboard.up('ArrowUp');
   assert.deepEqual(await host.page.evaluate(() => [...fakeHeld]), [], 'the game saw the held key go up');
+  }
   // A second session from the main menu uses the engine hook.
   await press(host, 'ArrowRight', 'Enter');
   await screenIs(host, 'name');
@@ -190,7 +266,11 @@ async function keyboardFlow(edition, viewport) {
   assert.equal(s.overlay, false, 'nothing covers the match');
   await until(second, s => s.gameScreen === 'melee', 'second guest match starts', 20000);
   await second.context.close();
-  await until(host, s => s.screen === 'lobby', 'lobby after the second session', 20000);
+  await until(host, s => s.screen === (host.meleeOnly ? 'start' : 'lobby'), 'entry after the second session', 20000);
+  if (host.meleeOnly) {
+    await assertModeChoices(host);
+    assert.ok(!(await ui(host)).log.includes('mainMenu'), 'the HD profile never enters the original menu');
+  }
   await noErrors(host);
   await host.context.close();
 }
@@ -286,6 +366,7 @@ async function otherScreens(edition, viewport) {
   await noErrors(frozen);
   await frozen.context.close();
 
+  if (edition === 'original') {
   // An engine without the main-menu hook: the lobby offers a reload instead.
   const old = await player(edition, viewport, '&fakeHook=0');
   await until(old, s => s.status.includes('Ready') || s.screen === 'start', 'start');
@@ -300,6 +381,8 @@ async function otherScreens(edition, viewport) {
   await noErrors(old);
   await old.context.close();
 
+  }
+
   // The room list is down: the lobby says so and keeps trying.
   stub.setAvailable(false);
   const down = await player(edition, viewport);
@@ -312,6 +395,7 @@ async function otherScreens(edition, viewport) {
   await screenIs(down, 'message');
   await shot(down, 'failed');
   assert.match((await ui(down)).status, /^Unable to start/);
+  await noErrors(down);
   await down.context.close();
 }
 
@@ -321,6 +405,7 @@ try {
       await keyboardFlow(edition, viewport);
       console.log(`${edition} ${viewport.width}x${viewport.height}: keyboard flow passed`);
     }
+    await localMeleeFlow(edition, viewports[0]);
     await mouseFlow(edition, viewports[0]);
     console.log(`${edition}: mouse flow passed`);
     await otherScreens(edition, viewports[0]);

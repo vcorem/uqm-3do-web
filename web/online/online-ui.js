@@ -112,7 +112,7 @@
             notice: null, name: '', nameError: '',
             room: null, countdownEnd: 0, waitingForEngine: false,
             session: null, invite: null, engineScreen: undefined, asked: false, touched: false,
-            edition: env.edition, engine: env.engine,
+            edition: env.edition, engine: env.engine, meleeOnly: !!env.meleeOnly,
         };
         let watch = null, retryTimer = null, retries = 0, countdownTimer = null;
 
@@ -344,6 +344,7 @@
             state.session = null;
             const message = session.endMessage || (session.room.client && cleanMessage(session.room.client.message)) || 'The online match is over.';
             if (state.room === session.room) closeRoom();
+            if (env.meleeOnly) { notice(message, 'info'); show('start', 'online'); return; }
             // The engine marks the main-menu hook when it reaches its main menu;
             // after a first session that may be a moment after the screen changes.
             const deadline = now() + 2000;
@@ -359,8 +360,22 @@
         }
         function restart(reason, again) {
             state.message = { title: 'ONLINE MELEE', text: reason,
-                detail: (again ? 'To play online again, reload the game.' : 'Reload to open Online Melee.') + ' Saved games stay in this browser.' };
+                detail: (again ? 'To play online again, reload the game.' : 'Reload to open Online Melee.') + (env.meleeOnly ? ' Fleets and preferences stay in this browser.' : ' Saved games stay in this browser.') };
             show('restart', 'reload');
+        }
+
+        // The native Melee profile remains alive between matches; callMain runs once.
+        function beginLocal() {
+            state.pendingPlay = false;
+            notice(null);
+            show('hidden');
+            const result = env.meleeOnly && env.game.started()
+                ? (typeof env.game.local === 'function' && env.game.local())
+                : env.game.start(null);
+            if (result === false) {
+                notice('The game is not ready for another battle yet. Try again.', 'error');
+                show('start', 'play');
+            }
         }
 
         // -------------------------------------------------- choices
@@ -370,7 +385,7 @@
             if (!(how && how.escape)) gesture();
             if (id !== 'open' && id !== 'name') sound('success');
             if (id === 'play') {
-                if (state.ready || env.game.ready()) { state.pendingPlay = false; show('hidden'); env.game.start(null); }
+                if (isReady()) beginLocal();
                 else { state.pendingPlay = true; changed(); }
             } else if (id === 'online') {
                 state.pendingPlay = false;
@@ -417,7 +432,7 @@
                 if (env.clearInvite) env.clearInvite();
                 show('start', 'online');
             } else if (id === 'back') {
-                if (state.screen === 'restart' || env.game.started()) show('hidden');
+                if (!env.meleeOnly && (state.screen === 'restart' || env.game.started())) show('hidden');
                 else show('start', 'online');
             } else if (id === 'reload') {
                 env.reload(state.screen === 'restart');
@@ -498,7 +513,7 @@
             ready() {
                 state.ready = true;
                 state.loading = { label: 'Ready.', fraction: 1 };
-                if (state.pendingPlay && state.screen === 'start') { state.pendingPlay = false; show('hidden'); env.game.start(null); return; }
+                if (state.pendingPlay && state.screen === 'start') { beginLocal(); return; }
                 // A room chosen during the download opens now.
                 if (state.room && state.room.status === 'loading') openRoom(state.room);
                 if (state.screen === 'found' && state.waitingForEngine) { begin(); return; }
@@ -530,8 +545,11 @@
                 const session = state.session;
                 if (session) {
                     if (name === 'melee') session.sawMelee = true;
-                    else if (name === 'mainMenu' && session.sawMelee) { endSession(); return; }
-                } else if (was === 'mainMenu' && env.game.started() && OVER_MENU.includes(state.screen)) {
+                    else if ((env.meleeOnly ? name === 'meleeMenu' : name === 'mainMenu') && session.sawMelee) { endSession(); return; }
+                } else if (env.meleeOnly && name === 'meleeMenu') {
+                    show('start', 'play');
+                    return;
+                } else if (!env.meleeOnly && was === 'mainMenu' && env.game.started() && OVER_MENU.includes(state.screen)) {
                     // The game left its main menu under the menu (a key pressed while the
                     // main menu faded in): no lobby over another game screen.
                     closeRoom();
@@ -547,7 +565,7 @@
             },
             // Show the lobby from the game's main menu (corner button or the O key).
             fromMenu() {
-                if (state.screen !== 'hidden' || state.session) return;
+                if (env.meleeOnly || state.screen !== 'hidden' || state.session) return;
                 gesture();
                 notice(null);
                 openLobby();
@@ -830,7 +848,7 @@
         // The start screen's picture and shading do not change: draw them once.
         let startBackground = null, startBackgroundStyle = null;
         function drawStartBackground() {
-            if (remastered()) {
+            if (options.meleeOnly || remastered()) {
                 image(images.remastered ? 'remastered' : 'stars', 0, 0, W, H);
                 rect(0, 0, W, H, [4, 13, 20], 0.56);
                 gradientShade(60, 172, 0.82);
@@ -869,7 +887,7 @@
             if (startBackground) ctx.drawImage(startBackground, 0, 0);
             else drawStartBackground();
             const menu = remastered() ? { text:[140,180,195], hi:[210,241,245], glow:[141,225,223] } : MENU[edition];
-            const items = [['play', 'Play'], ['online', 'Online Melee']];
+            const items = options.meleeOnly ? [['play', 'Melee'], ['online', 'Network Melee']] : [['play', 'Play'], ['online', 'Online Melee']];
             const mh = lineHeight('menu');
             const step = edition === 'hd' ? mh - 1 : mh + 4;
             // Under the title logo (HD: under "HD MEGAMOD").
@@ -887,7 +905,15 @@
                 region(id, W / 2 - width / 2 - 6, y, width + 12, mh, label, { button: id === 'play' ? 'start' : undefined });
             });
             const infoY = top + items.length * step + (edition === 'hd' ? 6 : 4);
-            const info = state.focus === 'online' ? ONLINE_TEXT : remastered() ? [
+            const info = options.meleeOnly ? (state.focus === 'online' ? [
+                'NETWORK MELEE: battle another player online.',
+                'Create a room or join an open room.',
+                'Choose your fleets once your opponent joins.'
+            ] : (options.startSteps || [
+                'MELEE: local battles for one or two players.',
+                "Choose each side's controls and build your fleets.",
+                'Select BATTLE to fight. ? shows the keys.'
+            ])) : state.focus === 'online' ? ONLINE_TEXT : remastered() ? [
                 'LOCAL MELEE: choose SUPER-MELEE in the game menu.',
                 'Build two fleets, then select BATTLE.',
                 'ARROWS: steer and thrust. RIGHT CTRL: fire.',
@@ -996,7 +1022,7 @@
             region('create', colX, top, colW, 44, 'Create room');
             const backY = top + rows * (rowH + 2) - 15;
             button(colX + 4, backY, colW - 8, 13, 'Back', state.focus === 'back');
-            region('back', colX + 4, backY, colW - 8, 13, options.started() ? 'Back to the game' : 'Back');
+            region('back', colX + 4, backY, colW - 8, 13, !options.meleeOnly && options.started() ? 'Back to the game' : 'Back');
             const count = rooms.length;
             if (under) return;
             // With rooms on screen, a lost list is reported below it (the rooms may be out of date).
@@ -1171,7 +1197,7 @@
         }
         function drawMessage(state, buttons) {
             const message = state.message || { title: '', text: '' };
-            if (state.screen === 'message' && !options.started()) image('title', 0, 0, W, H); else lobbyFrame(state);
+            if (!options.meleeOnly && state.screen === 'message' && !options.started()) image('title', 0, 0, W, H); else lobbyFrame(state);
             dim();
             const x = 40, w = 240;
             const lines = wrap('body', message.text, w - 32);
@@ -1379,8 +1405,8 @@
         corner.className = 'uqm-online-corner' + (pixel ? ' pixel' : '');
         corner.id = 'online-corner';
         corner.hidden = true;
-        corner.setAttribute('aria-label', 'Online Melee (O)');
-        corner.title = 'Online Melee (O)';
+        corner.setAttribute('aria-label', options.meleeOnly ? 'Network Melee' : 'Online Melee (O)');
+        corner.title = options.meleeOnly ? 'Network Melee' : 'Online Melee (O)';
         const cornerCanvases = [false, true].map(hi => {
             const surface = document.createElement('canvas');
             surface.className = hi ? 'hi' : 'normal';
@@ -1410,7 +1436,7 @@
             } catch (_) { return Promise.resolve(false); }
         }
         const controller = createController({
-            edition, engine: options.engine === 'rust' ? 'rust' : 'c',
+            edition, engine: options.engine === 'rust' ? 'rust' : 'c', meleeOnly: !!options.meleeOnly,
             now: () => Date.now(), random: Math.random,
             setTimeout: (fn, ms) => win.setTimeout(fn, ms), clearTimeout: id => win.clearTimeout(id),
             storage, netplay: options.netplay, game: options.game,
@@ -1468,7 +1494,7 @@
             return ['start', 'lobby', 'name', 'waiting', 'joining', 'found'].includes(state.screen);
         }
         function announce() {
-            const titles = { start: 'The Ur-Quan Masters. Play or Online Melee.', lobby: 'Online Melee lobby.', name: 'Name your room.',
+            const titles = { start: options.meleeOnly ? 'The Ur-Quan Masters. Melee or Network Melee.' : 'The Ur-Quan Masters. Play or Online Melee.', lobby: options.meleeOnly ? 'Network Melee lobby.' : 'Online Melee lobby.', name: 'Name your room.',
                 waiting: 'Room open. Waiting for an opponent.', joining: 'Joining the room.', found: 'Opponent found. The battle begins soon.',
                 invite: 'You are invited to an online Super-Melee.', restart: 'Online Melee needs a reload.' };
             let textValue = titles[state.screen] || '';
@@ -1572,7 +1598,7 @@
             frame = 0;
             const visible = state.screen !== 'hidden';
             showOverlay(visible);
-            corner.hidden = visible || state.session !== null || state.engineScreen !== 'mainMenu' || !options.game.started();
+            corner.hidden = !!options.meleeOnly || visible || state.session !== null || state.engineScreen !== 'mainMenu' || !options.game.started();
             announce();
             if (!visible) return;
             if (!renderer) {
@@ -1616,7 +1642,7 @@
         loadArt(options.artBase || win.location.href).then(data => {
             sounds.load(data.art.sounds);
             renderer = createRenderer(canvas, data.art, data.images, {
-                edition, now: () => Date.now(), started: options.game.started, presentation: options.presentation,
+                edition, now: () => Date.now(), started: options.game.started, presentation: options.presentation, meleeOnly: !!options.meleeOnly,
                 startSteps: options.startSteps, zoom: edition === 'hd' ? { menu: 0.62 } : null,
                 caret: () => {
                     if (!input) return { start: Array.from(state.name).length };
@@ -1638,7 +1664,7 @@
                     const ctx = canvas.getContext('2d');
                     ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, canvas.width, canvas.height);
                     ctx.fillStyle = '#e1e6ee'; ctx.font = Math.round(canvas.width / 30) + 'px system-ui, sans-serif'; ctx.textAlign = 'center';
-                    const labels = { play: 'Play', online: 'Online Melee', create: 'Create room', back: 'Back', open: 'Open room', cancel: 'Cancel',
+                    const labels = { play: options.meleeOnly ? 'Melee' : 'Play', online: options.meleeOnly ? 'Network Melee' : 'Online Melee', create: 'Create room', back: 'Back', open: 'Open room', cancel: 'Cancel',
                         copy: 'Copy invite link', join: 'Join', dismiss: 'Not now', reload: 'Reload', name: 'Room name' };
                     const regions = [];
                     const head = s.message ? s.message.text : s.notice ? s.notice.text : s.screen === 'start' ? s.loading.label : 'Online Melee';
@@ -1688,7 +1714,7 @@
                 return;
             }
             // From the game's main menu, O opens the lobby (no menu uses O).
-            if ((event.key === 'o' || event.key === 'O') && !event.shiftKey && state.engineScreen === 'mainMenu' &&
+            if (!options.meleeOnly && (event.key === 'o' || event.key === 'O') && !event.shiftKey && state.engineScreen === 'mainMenu' &&
                     options.game.started() && !state.session && document.activeElement === gameCanvas) {
                 event.preventDefault();
                 event.stopPropagation();

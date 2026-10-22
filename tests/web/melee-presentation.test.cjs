@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const presentation = require('../../hd/wasm/melee-presentation.js');
 
-function harness(initial = null, blocked = false) {
+function harness(initial = null, blocked = false, moduleOptions = {}) {
     const entries = new Map([[presentation.STORAGE_KEY, initial]]);
     const getStorage = () => {
         if (blocked) throw new Error('storage disabled');
@@ -17,7 +17,7 @@ function harness(initial = null, blocked = false) {
         send(name, value) { this.listeners[name]({ target: { value }, stopPropagation() {}, preventDefault() {} }); }
     }]));
     const native = [];
-    const module = { _UQM_SetMeleeRemastered: value => native.push(value) };
+    const module = { ...moduleOptions, _UQM_SetMeleeRemastered: value => native.push(value) };
     const canvas = { focus() { this.focused = true; } };
     let started = false;
     const ui = presentation.init({ document: { getElementById: id => elements.get(id) }, module,
@@ -78,4 +78,30 @@ test('an older engine without presentation exports still starts and explains the
     assert.doesNotThrow(() => h.ui.runtimeReady());
     assert.match(h.elements.get('presentation-status').textContent, /does not include/);
     assert.deepEqual(h.ui.prepareLaunch(['--windowed']), ['--windowed', '--addon=remastered', '--musicvol=72']);
+});
+
+test('Melee-only audio changes explain reload without inaccessible Setup guidance', () => {
+    const h = harness(null, false, { meleeOnly: true });
+    const launch = h.ui.prepareLaunch(['--windowed']);
+    h.start();
+    h.elements.get('melee-music-volume').send('input', '45');
+    assert.match(h.elements.get('presentation-status').textContent, /Reload this page after your match/);
+    assert.doesNotMatch(h.elements.get('presentation-status').textContent, /Setup/);
+    assert.equal(launch.at(-1), '--musicvol=72', 'copy changes do not interrupt the active match');
+    h.elements.get('melee-music-volume').send('input', '72');
+    assert.doesNotMatch(h.elements.get('presentation-status').textContent, /Reload/);
+
+    const generic = harness();
+    generic.ui.prepareLaunch([]);
+    generic.elements.get('melee-soundtrack').send('change', 'classic');
+    assert.match(generic.elements.get('presentation-status').textContent, /Setup → Sound/);
+});
+
+test('Melee-only blocked preferences explain selecting sound again after reload', () => {
+    const h = harness(null, true, { meleeOnly: true });
+    h.ui.prepareLaunch([]);
+    h.elements.get('melee-soundtrack').send('change', 'classic');
+    assert.match(h.elements.get('presentation-status').textContent, /choose your sound preferences before starting again/);
+    assert.match(h.elements.get('presentation-status').textContent, /this tab only/);
+    assert.doesNotMatch(h.elements.get('presentation-status').textContent, /Setup|saved/);
 });

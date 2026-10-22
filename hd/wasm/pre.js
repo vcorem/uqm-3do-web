@@ -3,6 +3,7 @@ Module.preRun ||= [];
 Module.preRun.push(function () {
     // A packaged Rust page sets its own folder, so C and Rust saves never mix.
     const savePath = Module.uqmSavePath || "/home/web_user/.uqm-hd";
+    const meleeOnly = !!Module.meleeOnly;
     const reportedWarnings = new Set();
     let mounted = false;
     let storageReady = false;
@@ -50,7 +51,8 @@ Module.preRun.push(function () {
             }
         }).catch(error => {
             report("warning",
-                "Saves work, but the browser may remove them after inactivity.",
+                meleeOnly ? "The browser may remove your fleets and preferences after inactivity."
+                    : "Saves work, but the browser may remove them after inactivity.",
                 error, "persistence");
         });
     }
@@ -59,15 +61,18 @@ Module.preRun.push(function () {
         if (syncing || !pendingWrite || !storageReady) return;
         pendingWrite = false;
         syncing = true;
-        report("saving", "Saving games and preferences to this browser.");
+        report("saving", meleeOnly ? "Storing fleets and preferences in this browser."
+            : "Saving games and preferences to this browser.");
         function finish(error) {
             syncing = false;
             if (error) {
                 report("warning",
-                    "Saving to browser storage failed. Keep this tab open to retain the current session.",
+                    meleeOnly ? "Browser storage could not update. Keep this tab open to retain your fleets and preferences."
+                        : "Saving to browser storage failed. Keep this tab open to retain the current session.",
                     error, "save-failed");
             } else if (!pendingWrite) {
-                report("saved", "Games and preferences saved to this browser.");
+                report("saved", meleeOnly ? "Fleets and preferences stored in this browser."
+                    : "Games and preferences saved to this browser.");
             }
             // Changes made while a flush was running share one follow-up flush.
             flushWrites();
@@ -88,7 +93,8 @@ Module.preRun.push(function () {
     };
 
     addRunDependency("syncfs");
-    report("loading", "Loading saved games and preferences.");
+    report("loading", meleeOnly ? "Restoring fleets and preferences."
+        : "Loading saved games and preferences.");
     function finishLoading(error) {
         try {
             if (error) {
@@ -102,11 +108,13 @@ Module.preRun.push(function () {
                     }
                 }
                 report("memory",
-                    "Browser storage is unavailable. Games and preferences will last only while this tab stays open.",
+                    meleeOnly ? "Browser storage is unavailable. Fleets and preferences last only while this tab stays open."
+                        : "Browser storage is unavailable. Games and preferences will last only while this tab stays open.",
                     error, "load-failed");
             } else {
                 storageReady = true;
-                report("ready", "Saved games and preferences loaded.");
+                report("ready", meleeOnly ? "Fleets and preferences restored."
+                    : "Saved games and preferences loaded.");
             }
         } finally {
             // Edition selection means native HD every launch, even after an

@@ -1,6 +1,6 @@
 {
   "changed_files": 274,
-  "checked_calls": 13443,
+  "checked_calls": 13447,
   "files": [
     {
       "file": "src/libs/callback/alarm.rs",
@@ -10691,9 +10691,14 @@
           "function": "TryStartGame"
         },
         {
-          "checked_calls": 2,
+          "checked_calls": 3,
           "failure_return": "BOOLEAN(0)",
           "function": "StartGame"
+        },
+        {
+          "checked_calls": 2,
+          "failure_return": "BOOLEAN(0)",
+          "function": "runMeleeOnly"
         }
       ]
     },
@@ -12343,7 +12348,7 @@
           "function": "ProcessUtilityKeys"
         },
         {
-          "checked_calls": 34,
+          "checked_calls": 35,
           "failure_return": "0",
           "function": "Starcon2Main"
         }
@@ -16081,5 +16086,10 @@
     "zoqfot_distress_event",
     "zoqfotpik_intelligence",
     "zoqfotpik_postprocess"
-  ]
+  ],
+  "manual_melee_profile_addition": {
+    "patch": "0019-melee-only-profile.patch",
+    "checked_calls": 4,
+    "reason": "Direct kernel initialization and dedicated Melee-only event loop preserve checked Lua failure propagation; existing campaign path unchanged."
+  }
 }

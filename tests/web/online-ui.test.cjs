@@ -5,18 +5,19 @@ const online = require('../../web/online/online-ui.js');
 
 const TOKEN_A = 'a'.repeat(32), TOKEN_B = 'b'.repeat(32), TOKEN_C = 'c'.repeat(32);
 
-function harness({ started = false, ready = false, screen, hook = false, lobby = true, netplay = true, roomName = false, fullscreen = true } = {}) {
+function harness({ started = false, ready = false, screen, hook = false, lobby = true, netplay = true, roomName = false, fullscreen = true, meleeOnly = false } = {}) {
     let clock = 1000, nextId = 1;
     const timers = [];
     const calls = [];
     const clients = [];
     const watches = [];
     const game = {
-        isStarted: started, isReady: ready, current: screen, hasHook: hook, starts: [], queued: [],
+        isStarted: started, isReady: ready, current: screen, hasHook: hook, starts: [], queued: [], locals: 0,
         started() { return this.isStarted; }, ready() { return this.isReady; }, screen() { return this.current; },
         hook() { return this.hasHook; },
         start(role, client) { this.starts.push([role, client]); this.isStarted = true; },
         queue(role, client) { this.queued.push([role, client]); },
+        local() { this.locals++; return true; },
     };
     // The relay stream's rule: NFC, inner spaces collapsed, refused characters throw.
     const relayName = value => {
@@ -44,7 +45,7 @@ function harness({ started = false, ready = false, screen, hook = false, lobby =
     const store = new Map();
     const sounds = [];
     const env = {
-        edition: 'original', engine: 'rust', now: () => clock, random: () => 0.5,
+        edition: 'original', engine: 'rust', meleeOnly, now: () => clock, random: () => 0.5,
         setTimeout(fn, ms) { const id = nextId++; timers.push({ id, fn, at: clock + ms }); return id; },
         clearTimeout(id) { const timer = timers.find(t => t.id === id); if (timer) timer.cancelled = true; },
         storage: { get: key => store.get(key) ?? null, set: (key, value) => store.set(key, value) },
@@ -73,6 +74,58 @@ function harness({ started = false, ready = false, screen, hook = false, lobby =
     };
 }
 const room = (id, name = 'Room', created = 1000, engine = 'c') => ({ id, name, engine, created });
+
+test('Melee-only: loading, local return and repeated launch keep the two-mode entry', () => {
+    const h = harness({ meleeOnly: true, hook: true });
+    h.ui.activate('play');
+    assert.equal(h.state.pendingPlay, true);
+    h.ui.ready();
+    assert.deepEqual(h.game.starts, [[null, undefined]]);
+    assert.equal(h.state.screen, 'hidden');
+    h.game.current = 'melee'; h.ui.gameScreen('melee');
+    h.game.current = 'meleeMenu'; h.ui.gameScreen('meleeMenu');
+    assert.equal(h.state.screen, 'start');
+    assert.deepEqual(h.state.items, ['play', 'online']);
+    h.ui.activate('play');
+    assert.equal(h.state.screen, 'hidden');
+    assert.equal(h.game.locals, 1, 'a later local match uses the one-shot native hook');
+    assert.equal(h.game.starts.length, 1, 'the engine starts once per page');
+    h.game.current = 'melee'; h.ui.gameScreen('melee');
+    h.game.current = 'meleeMenu'; h.ui.gameScreen('meleeMenu');
+    h.ui.activate('online');
+    assert.equal(h.state.screen, 'lobby');
+    h.ui.key('Escape');
+    assert.equal(h.state.screen, 'start', 'Back from the lobby never reveals an old native menu');
+    assert.equal(h.state.focus, 'online');
+});
+
+test('Melee-only: network return closes the session and allows local or network replay', () => {
+    const h = harness({ meleeOnly: true, ready: true, hook: true });
+    h.ui.activate('online'); h.ui.activate('create'); h.ui.activate('open');
+    h.clients[0].status('ready', 'Opponent connected.'); h.advance(3000);
+    assert.deepEqual(h.game.starts, [['host', h.clients[0]]]);
+    h.game.current = 'melee'; h.ui.gameScreen('melee');
+    h.clients[0].status('closed', 'Your opponent left the room.');
+    assert.equal(h.state.screen, 'hidden', 'native cleanup finishes before the choice screen appears');
+    h.game.current = 'meleeMenu'; h.ui.gameScreen('meleeMenu');
+    assert.equal(h.state.screen, 'start');
+    assert.equal(h.state.session, null);
+    assert.match(h.state.notice.text, /opponent left/);
+    h.ui.activate('play');
+    assert.equal(h.game.locals, 1);
+    h.game.current = 'melee'; h.ui.gameScreen('melee');
+    h.game.current = 'meleeMenu'; h.ui.gameScreen('meleeMenu');
+    h.ui.activate('online'); h.ui.activate('create'); h.ui.activate('open');
+    h.clients[1].status('ready', 'Opponent connected.'); h.advance(3000);
+    assert.deepEqual(h.game.queued, [[0, h.clients[1]]]);
+    assert.equal(h.game.starts.length, 1);
+    h.ui.roleTaken();
+    h.ui.gameScreen('transition'); h.ui.gameScreen('meleeMenu');
+    assert.equal(h.state.screen, 'hidden', 'an intermediate wait screen cannot finish a new session');
+    h.ui.gameScreen('melee'); h.ui.gameScreen('meleeMenu');
+    assert.equal(h.state.screen, 'start');
+    assert.equal(h.clients[1].closed, true);
+});
 
 test('helpers: room names, waiting times, invites and room-client messages', () => {
     assert.deepEqual(online.cleanName('  Zelnick  '), { ok: true, name: 'Zelnick' });

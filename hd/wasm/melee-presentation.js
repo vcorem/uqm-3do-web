@@ -54,7 +54,9 @@
             const screen = document.getElementById('screen');
             if (screen) screen.setAttribute('data-presentation', settings.style);
             status.textContent = audioPending()
-                ? 'Sound preferences saved for your next launch. During play, adjust volume in Setup → Sound.'
+                ? module.meleeOnly
+                    ? 'Reload this page after your match to apply sound changes.'
+                    : 'Sound preferences saved for your next launch. During play, adjust volume in Setup → Sound.'
                 : 'Ship and crew artwork switches instantly. Sound preferences apply when the game starts.';
         }
         function applyStyle() {
@@ -70,7 +72,12 @@
             const saved = write(getStorage, settings);
             render();
             if (key === 'style') applyStyle();
-            if (!saved) status.textContent += ' Preferences last for this tab only.';
+            if (!saved) {
+                if (module.meleeOnly && audioPending()) {
+                    status.textContent = 'Sound changes need a new launch. Reload after your match, then choose your sound preferences before starting again.';
+                }
+                status.textContent += ' Preferences last for this tab only.';
+            }
         }
         function show(open) {
             panel.hidden = !open;

@@ -771,6 +771,61 @@ unsafe extern "C" fn setBrowserGameScreen(mut screen: *const ::core::ffi::c_char
         screen,
     );
 }
+// Opt-in web profile, latched before startup presentation begins.
+#[no_mangle]
+pub unsafe extern "C" fn UQM_MeleeOnlyProfile() -> BOOLEAN {
+    static mut PROFILE: ::core::ffi::c_int = -1;
+    if PROFILE < 0 {
+        PROFILE = readWebMeleeOnlyProfile();
+    }
+    BOOLEAN((PROFILE != 0) as ::core::ffi::c_uint)
+}
+
+unsafe fn readWebMeleeOnlyProfile() -> ::core::ffi::c_int {
+    let signature = [0 as ::core::ffi::c_char];
+    extern "C" { static uqm_em_asm_10: [::core::ffi::c_char; 46]; }
+    emscripten_asm_const_int_sync_on_main_thread(
+        &raw const uqm_em_asm_10 as *const ::core::ffi::c_char,
+        signature.as_ptr(),
+    )
+}
+
+unsafe fn pollWebLocalMelee() -> bool {
+    let signature = [0 as ::core::ffi::c_char];
+    extern "C" { static uqm_em_asm_11: [::core::ffi::c_char; 134]; }
+    emscripten_asm_const_int_sync_on_main_thread(
+        &raw const uqm_em_asm_11 as *const ::core::ffi::c_char,
+        signature.as_ptr(),
+    ) != 0
+}
+
+// Never enter RestartMenu or return a campaign from this opt-in profile.
+unsafe extern "C" fn runMeleeOnly() -> BOOLEAN {
+    let mut waiting = false;
+    announceWebNetplayHook();
+    loop {
+        if webNetplayRole < 0 && takeWebNetplayRole(pollWebNetplayPage()).0 == 0
+            && !pollWebLocalMelee() {
+            if !waiting {
+                setBrowserGameScreen(b"meleeMenu\0".as_ptr().cast());
+                waiting = true;
+            }
+            uqm_lua_checked!(SleepThread(840 / 30), BOOLEAN(0));
+            continue;
+        }
+        waiting = false;
+        LastActivity = 0;
+        NextActivity = 0;
+        GlobData.Game_state.CurrentActivity = 0;
+        ReinitQueue((&raw mut race_q as *mut QUEUE).offset(0));
+        ReinitQueue((&raw mut race_q as *mut QUEUE).offset(1));
+        SetDefaultMenuRepeatDelay();
+        FlushInput();
+        if webNetplayRole < 0 { SeedRandomNumbers(); }
+        uqm_lua_checked!(playWebMelee(), BOOLEAN(0));
+    }
+}
+
 unsafe extern "C" fn announceWebNetplayHook() {
     let mut c2rust_lvalue: [::core::ffi::c_char; 1] = ['\0' as ::core::ffi::c_char];
     emscripten_asm_const_int_sync_on_main_thread(
@@ -1845,6 +1900,9 @@ unsafe extern "C" fn TryStartGame() -> BOOLEAN {
 }
 #[no_mangle]
 pub unsafe extern "C" fn StartGame() -> BOOLEAN {
+    if UQM_MeleeOnlyProfile().0 != 0 {
+        return uqm_lua_checked!(runMeleeOnly(), BOOLEAN(0));
+    }
     loop {
         while uqm_lua_checked!(TryStartGame(), BOOLEAN(0)).0 == 0 {
             if GlobData.Game_state.CurrentActivity as ::core::ffi::c_int

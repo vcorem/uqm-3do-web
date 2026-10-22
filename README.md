@@ -2,13 +2,21 @@
 
 ## Melee Remastered branch
 
-`codex/melee-remastered` adds new painted artwork for all 25 HD Melee ships,
-their alternate forms, fleet icons and explosions, a dark nebula arena,
-navy/cyan interface panels and two original electronic music tracks.
-Use **Picture & sound** to choose Remastered or Classic HD artwork and music.
-Artwork can change during a battle; sound preferences apply at the next launch.
-The existing simulation, ship balance, collision images and netplay stay in use.
+`codex/melee-remastered` makes the HD page a dedicated battle edition with
+exactly two choices: **Melee** and **Network Melee**. Both enter native fleet
+setup directly, without the original logo, intro or campaign menu. Select
+**EXIT** in fleet setup to return to the two choices and play again.
+
+It includes painted artwork for all 25 ships and crews, their original reaction
+animations, alternate ship forms, fleet icons, explosions, a dark nebula arena,
+navy/cyan panels and two original combat scores. **Picture & sound** switches
+between Remastered and Classic HD artwork live; sound changes apply after a
+page reload. Combat rules, ship balance, collision images and netplay stay native.
 See [features, build instructions and validation](docs/melee-remastered.md).
+
+The shared repository and deployment documentation below also describes the
+Original edition and the existing combined site. Campaign access described
+there does not apply to this branch's dedicated HD page.
 
 ## Three games on one site
 

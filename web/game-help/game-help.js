@@ -27,6 +27,23 @@
         'Hold Up to fly, Left and Right to turn. Esc: ship menu.',
         'First stop: the starbase at Earth, the third planet.',
     ];
+    // Opt-in help for the dedicated Melee page. Local control preferences can
+    // differ from the presets; network play assigns the primary arrows preset
+    // to the local player on both computers.
+    const MELEE_KEYS = [
+        ['Start', ['Choose <b>Melee</b> for local battles.', 'Choose <b>Network Melee</b> to create or join a room.']],
+        ['Fleets', [k('↑ ↓ ← →') + ' move · ' + k('Enter') + ' select', 'Choose ships for each fleet, then select <b>BATTLE</b>.', 'Select <b>EXIT</b> to return to Melee / Network Melee.', k('Esc') + ' or ' + k('Space') + ' back']],
+        ['Combat · arrows', [k('↑') + ' thrust · ' + k('← →') + ' turn', k('Right Ctrl') + ' or ' + k('Enter') + ' fire', k('Right Shift') + ' special']],
+        ['Local combat · ESDF preset', [k('E') + ' thrust · ' + k('S F') + ' turn', k('Q') + ' fire · ' + k('A') + ' special', k('Q') + ' selects this player\'s ship.', 'Local battles use your configured player controls.']],
+        ['Network Melee', ['Each player uses the arrows combat keys.', 'Choose your fleet, then select <b>BATTLE</b> when ready.']],
+        ['Game', [k('F10') + ' asks to quit combat and return to fleets.', k('F1') + ' pause · ' + k('?') + ' show these keys', k('Shift + Tab') + ', then release Shift, for page controls']],
+    ];
+    const MELEE_START_TEXT = [
+        'MELEE: build two fleets, then select BATTLE.',
+        'NETWORK MELEE: create or join a room.',
+        'ARROWS: thrust and turn. RIGHT CTRL or ENTER: fire.',
+        'RIGHT SHIFT: special. F1: pause. ? shows all keys.',
+    ];
     const STYLE = [
         '.stage { display: grid; gap: 20px; align-items: start; }',
         '@media (min-width: 1100px) { .stage { grid-template-columns: minmax(0, 1fr) 250px; } }',
@@ -51,18 +68,19 @@
         return { done, total, label: 'Downloading game data: ' + mb(done) + ' / ' + mb(total) + ' MB (' + Math.floor(done * 100 / total) + '%)' };
     }
 
-    function keysHtml(heading) {
-        return heading + KEYS.map(([title, lines]) => '<div><h3>' + title + '</h3><p>' + lines.join('<br>') + '</p></div>').join('');
+    function keysHtml(heading, keys) {
+        return heading + keys.map(([title, lines]) => '<div><h3>' + title + '</h3><p>' + lines.join('<br>') + '</p></div>').join('');
     }
 
-    function init({ document, isStarted, eventTarget }) {
+    function init({ document, isStarted, eventTarget, meleeOnly = false }) {
+        const keys = meleeOnly ? MELEE_KEYS : KEYS;
         const byId = id => document.getElementById(id);
         const style = document.createElement('style');
         style.textContent = STYLE;
         document.head.appendChild(style);
 
         const panel = byId('keys-panel');
-        if (panel) panel.innerHTML = keysHtml('<h2>Keys</h2>');
+        if (panel) panel.innerHTML = keysHtml('<h2>Keys</h2>', keys);
 
         const screen = byId('screen');
         const pop = document.createElement('div');
@@ -71,7 +89,7 @@
         pop.hidden = true;
         pop.setAttribute('role', 'dialog');
         pop.setAttribute('aria-label', 'Keys');
-        pop.innerHTML = keysHtml('<header><strong>Keys</strong><button type="button" id="keys-close">Close</button></header>');
+        pop.innerHTML = keysHtml('<header><strong>Keys</strong><button type="button" id="keys-close">Close</button></header>', keys);
         screen.appendChild(pop);
 
         const button = document.createElement('button');
@@ -108,5 +126,5 @@
         return { toggle };
     }
 
-    return { KEYS, START_TEXT, formatProgress, init };
+    return { KEYS, START_TEXT, MELEE_KEYS, MELEE_START_TEXT, formatProgress, init };
 });

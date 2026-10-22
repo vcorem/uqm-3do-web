@@ -1,0 +1,148 @@
+--- a/src/uqm/restart.c
++++ b/src/uqm/restart.c
+@@ -68,6 +68,21 @@
+ #endif
+ }
+ 
++/* The web page opts in before callMain. Latch the profile once so it cannot
++ * accidentally fall back to the campaign menu during a running session. */
++BOOLEAN
++UQM_MeleeOnlyProfile (void)
++{
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++	static int profile = -1;
++	if (profile < 0)
++		profile = MAIN_THREAD_EM_ASM_INT({ return Module.meleeOnly === true ? 1 : 0; });
++	return profile != 0;
++#else
++	return FALSE;
++#endif
++}
++
+ #if defined(__EMSCRIPTEN__) && defined(NETPLAY)
+ // The page can start an online Super Melee while the main menu is shown.
+ // Module.takePendingNetplayRole() returns 0 (host), 1 (guest) or -1
+@@ -137,6 +152,49 @@
+ 	Melee ();
+ 	webNetplayRole = -1;
+ 	GLOBAL (CurrentActivity) = 0;
++}
++
++static BOOLEAN
++pollWebLocalMelee (void)
++{
++	return MAIN_THREAD_EM_ASM_INT({
++		var take = Module.takePendingLocalMelee;
++		try { return typeof take === 'function' && take() ? 1 : 0; }
++		catch (error) { return 0; }
++	});
++}
++
++/* This profile never enters RestartMenu or returns a campaign to StartGame.
++ * Melee itself still owns battle setup, netplay, teardown and saved fleets. */
++static BOOLEAN
++runMeleeOnly (void)
++{
++	BOOLEAN waiting = FALSE;
++	announceWebNetplayHook ();
++	for (;;)
++	{
++		if (webNetplayRole < 0 && !takeWebNetplayRole (pollWebNetplayPage ())
++				&& !pollWebLocalMelee ())
++		{
++			if (!waiting)
++			{
++				setBrowserGameScreen ("meleeMenu");
++				waiting = TRUE;
++			}
++			SleepThread (ONE_SECOND / 30);
++			continue;
++		}
++		waiting = FALSE;
++		LastActivity = NextActivity = 0;
++		GLOBAL (CurrentActivity) = 0;
++		ReinitQueue (&race_q[0]);
++		ReinitQueue (&race_q[1]);
++		SetDefaultMenuRepeatDelay ();
++		FlushInput ();
++		if (webNetplayRole < 0)
++			SeedRandomNumbers ();
++		playWebMelee ();
++	}
+ }
+ #endif
+ 
+@@ -958,6 +1016,10 @@
+ BOOLEAN
+ StartGame (void)
+ {
++#if defined(__EMSCRIPTEN__) && defined(NETPLAY)
++	if (UQM_MeleeOnlyProfile ())
++		return runMeleeOnly ();
++#endif
+ 	do
+ 	{
+ 		while (!TryStartGame ())
+--- a/src/uqm/restart.h
++++ b/src/uqm/restart.h
+@@ -25,6 +25,7 @@
+ 
+ 
+ extern BOOLEAN StartGame (void);
++extern BOOLEAN UQM_MeleeOnlyProfile (void);
+ 
+ #if defined(__cplusplus)
+ }
+--- a/src/uqm/starcon.c
++++ b/src/uqm/starcon.c
+@@ -263,14 +263,21 @@
+ 
+ 	GLOBAL (CurrentActivity) = 0;
+ 	luaUqm_initState ();
+-	// show logo then splash and init the kernel in the meantime
+-	if(!optSkipIntro)
+-		Logo ();
+-
+-	SetRandomMenuMusic ();
+-	InitMenuMusic ();
+-
+-	SplashScreen (BackgroundInitKernel);
++	if (UQM_MeleeOnlyProfile ())
++	{
++		/* Initialise the same kernel without opening/title screens or menu music. */
++		BackgroundInitKernel (0);
++	}
++	else
++	{
++		// show logo then splash and init the kernel in the meantime
++		if(!optSkipIntro)
++			Logo ();
++
++		SetRandomMenuMusic ();
++		InitMenuMusic ();
++		SplashScreen (BackgroundInitKernel);
++	}
+ 
+ #ifdef DEBUG
+ 	printf ("Set Seed Type: %s\n", SeedStr ());
+--- a/src/uqm/supermelee/melee.c
++++ b/src/uqm/supermelee/melee.c
+@@ -46,6 +46,7 @@
+ 		// for MeleeConnectDialog()
+ #endif  /* defined (NETPLAY) */
+ #include "../resinst.h"
++#include "../restart.h"
+ #include "../settings.h"
+ #include "../setup.h"
+ #include "../sounds.h"
+@@ -2665,7 +2666,9 @@
+ 			if (webNetplayRole >= 0)
+ 				DrawMeleeStatusMessage ("Player sides are assigned by the online room.");
+ 			else
+-				DrawMeleeStatusMessage ("For Online Melee, press O in the main menu.");
++				DrawMeleeStatusMessage (UQM_MeleeOnlyProfile ()
++						? "Choose EXIT, then Network Melee."
++						: "For Online Melee, press O in the main menu.");
+ 			break;
+ #endif
+ 			which_side = pMS->MeleeOption == NET_TOP ? 1 : 0;

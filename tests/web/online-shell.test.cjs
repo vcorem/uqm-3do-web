@@ -30,7 +30,8 @@ function shell(edition = 'original', variant = null) {
         navigator: {}, crossOriginIsolated: true, localStorage: {},
         setTimeout() { return 1; }, clearTimeout() {}, setInterval() { return 2; }, clearInterval() {},
         addEventListener() {},
-        UQMHelp: { formatProgress: help.formatProgress, START_TEXT: help.START_TEXT, init() {} },
+        UQMHelp: { formatProgress: help.formatProgress, START_TEXT: help.START_TEXT,
+            MELEE_START_TEXT: help.MELEE_START_TEXT, init() {} },
         UQMOnline: { init(given) {
             options = given;
             return { overlay: { hidden: false }, controller: {
@@ -57,7 +58,9 @@ for (const edition of ['original', 'hd']) {
         assert.equal(h.options.netplay, h.context.UQMNetplay, 'the real room client');
         assert.equal(h.options.screen, h.elements.get('screen'));
         assert.equal(h.options.canvas, h.elements.get('canvas'));
-        assert.equal(h.options.startSteps, help.START_TEXT, 'the How to start lines');
+        assert.equal(h.options.startSteps, edition === 'hd' ? help.MELEE_START_TEXT : help.START_TEXT, 'edition-specific How to start lines');
+        assert.equal(!!h.options.meleeOnly, edition === 'hd');
+        assert.equal(!!h.Module.meleeOnly, edition === 'hd');
         assert.equal(shell(edition, { engine: 'rust', label: 'Rust engine (port)', saveDir: '/home/web_user/.uqm-x' }).options.engine, 'rust');
         assert.equal(h.options.game.started(), false);
         assert.equal(h.options.game.ready(), false);
@@ -111,9 +114,10 @@ for (const edition of ['original', 'hd']) {
         assert.equal(h.Module.takePendingNetplayRole(), -1);
         assert.equal(h.options.game.hook(), false);
         h.Module.supportsNetplayHook = true;
-        h.Module.gameScreen = 'mainMenu';
+        const menuScreen = edition === 'hd' ? 'meleeMenu' : 'mainMenu';
+        h.Module.gameScreen = menuScreen;
         assert.equal(h.options.game.hook(), true);
-        assert.equal(h.options.game.screen(), 'mainMenu');
+        assert.equal(h.options.game.screen(), menuScreen);
         const room = { state: 'ready' };
         h.options.game.queue(1, room);
         assert.equal(h.Module.webNet, room, 'the room is set before the role is returned');
@@ -141,10 +145,11 @@ for (const edition of ['original', 'hd']) {
         const seen = [];
         h.options.game.watchScreen(name => seen.push(name));
         // The engine sets the screen in quick steps; each one is reported.
-        for (const name of ['transition', 'melee', 'mainMenu']) h.Module.gameScreen = name;
-        assert.deepEqual(seen, ['transition', 'melee', 'mainMenu']);
-        assert.equal(h.Module.gameScreen, 'mainMenu');
-        assert.equal(h.options.game.screen(), 'mainMenu');
+        const menuScreen = edition === 'hd' ? 'meleeMenu' : 'mainMenu';
+        for (const name of ['transition', 'melee', menuScreen]) h.Module.gameScreen = name;
+        assert.deepEqual(seen, ['transition', 'melee', menuScreen]);
+        assert.equal(h.Module.gameScreen, menuScreen);
+        assert.equal(h.options.game.screen(), menuScreen);
         // A failing report never reaches the engine.
         h.options.game.watchScreen(() => { throw new Error('menu broke'); });
         h.Module.gameScreen = 'melee';
@@ -166,4 +171,23 @@ test('without the menu script the shell still starts the game when it is ready',
     const html = fs.readFileSync(path.join(root, 'sc2/wasm/shell.html'), 'utf8');
     assert.ok(html.includes('if (window.UQMOnline) online = UQMOnline.init('));
     assert.ok(html.includes('else launchGame(null);'));
+});
+
+test('HD local requests are one-shot, survive initial startup and never restart the engine', () => {
+    const h = shell('hd');
+    assert.equal(h.Module.takePendingLocalMelee(), false);
+    h.ready();
+    h.options.game.start(null);
+    assert.equal(h.Module.takePendingLocalMelee(), true);
+    assert.equal(h.Module.takePendingLocalMelee(), false);
+    h.Module.supportsNetplayHook = true;
+    h.Module.gameScreen = 'meleeMenu';
+    h.options.game.local();
+    assert.equal(h.Module.takePendingLocalMelee(), true);
+    assert.equal(h.Module.takePendingLocalMelee(), false);
+    assert.equal(h.calls.length, 1);
+    const network = shell('hd');
+    network.ready();
+    network.options.game.start('host', { state: 'ready' });
+    assert.equal(network.Module.takePendingLocalMelee(), false, 'an online launch cannot also queue local play');
 });
