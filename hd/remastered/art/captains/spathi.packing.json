@@ -1,0 +1,71 @@
+{
+  "grid_bounds": [
+    0,
+    0,
+    1962,
+    801
+  ],
+  "cell_bounds": {
+    "0": [
+      0,
+      0,
+      491,
+      267
+    ],
+    "1": [
+      491,
+      0,
+      982,
+      267
+    ],
+    "2": [
+      982,
+      0,
+      1472,
+      267
+    ],
+    "3": [
+      1472,
+      0,
+      1962,
+      267
+    ],
+    "4": [
+      0,
+      267,
+      491,
+      534
+    ],
+    "5": [
+      491,
+      267,
+      982,
+      534
+    ],
+    "6": [
+      982,
+      267,
+      1472,
+      534
+    ],
+    "7": [
+      1472,
+      267,
+      1962,
+      534
+    ],
+    "8": [
+      0,
+      534,
+      491,
+      801
+    ],
+    "9": [
+      491,
+      534,
+      982,
+      801
+    ]
+  },
+  "packing_notes": "Measured source atlas cell boundaries; excludes generated bottom margins and adjacent cells. Native output geometry and alpha remain unchanged."
+}

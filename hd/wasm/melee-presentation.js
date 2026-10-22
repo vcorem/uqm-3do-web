@@ -55,7 +55,7 @@
             if (screen) screen.setAttribute('data-presentation', settings.style);
             status.textContent = audioPending()
                 ? 'Sound preferences saved for your next launch. During play, adjust volume in Setup → Sound.'
-                : 'Ship artwork switches instantly. Sound preferences apply when the game starts.';
+                : 'Ship and crew artwork switches instantly. Sound preferences apply when the game starts.';
         }
         function applyStyle() {
             if (!ready) return;

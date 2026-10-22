@@ -1,0 +1,111 @@
+{
+  "atlas": "druuge-registered.png",
+  "inset": 1,
+  "grid_bounds": [
+    0,
+    0,
+    1962,
+    779
+  ],
+  "cell_bounds": {
+    "0": [
+      0,
+      0,
+      495,
+      255
+    ],
+    "1": [
+      499,
+      0,
+      995,
+      255
+    ],
+    "2": [
+      999,
+      0,
+      1494,
+      255
+    ],
+    "3": [
+      1498,
+      0,
+      1960,
+      255
+    ],
+    "4": [
+      0,
+      259,
+      495,
+      512
+    ],
+    "5": [
+      499,
+      259,
+      995,
+      512
+    ],
+    "6": [
+      999,
+      259,
+      1494,
+      512
+    ],
+    "7": [
+      0,
+      0,
+      1698,
+      926
+    ],
+    "8": [
+      0,
+      516,
+      495,
+      777
+    ],
+    "9": [
+      499,
+      516,
+      995,
+      777
+    ]
+  },
+  "packing_notes": "Measured atlas cell boundaries. The base selects the corrected authored head and right-leg regions; narrow 2/3px boundary blends join their existing RGB artwork. Other original authored base pixels remain unchanged. Cell7 uses the matching red-eye scene. Native geometry and output alpha are unchanged.",
+  "cell_sources": {
+    "7": "druuge-weapon-correction.png"
+  },
+  "base_regions": [
+    {
+      "source": "druuge-base-correction.png",
+      "source_bounds": [
+        0,
+        0,
+        1698,
+        926
+      ],
+      "destination": [
+        118,
+        5,
+        163,
+        43
+      ],
+      "feather": 2
+    },
+    {
+      "source": "druuge-leg-correction.png",
+      "source_bounds": [
+        0,
+        0,
+        948,
+        1660
+      ],
+      "source_layout": "region",
+      "destination": [
+        144,
+        50,
+        186,
+        120
+      ],
+      "feather": 3
+    }
+  ]
+}

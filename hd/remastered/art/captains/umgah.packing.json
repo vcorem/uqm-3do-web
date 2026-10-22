@@ -1,0 +1,14 @@
+{
+  "cell_sources": {
+    "0": "umgah-base-correction.png"
+  },
+  "cell_bounds": {
+    "0": [
+      0,
+      0,
+      1698,
+      926
+    ]
+  },
+  "packing_notes": " Single-scene ImageGen correction selected per cell; native output geometry and alpha unchanged."
+}

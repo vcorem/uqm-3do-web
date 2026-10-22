@@ -1,0 +1,23 @@
+{
+  "race": "spathi",
+  "tool": "image_gen.imagegen",
+  "mode": "reference edit / style-transfer",
+  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-3e489021-9cf8-4af0-9d0f-002b50d8e1e3.png",
+  "output_path": "hd/remastered/art/captains/spathi.png",
+  "references": [
+    ".tools/captain-reference/sheets/spathi-unique-composited.png",
+    "hd/remastered/art/ships-2.png"
+  ],
+  "prompt_path": "hd/remastered/art/captains/spathi.prompt.txt",
+  "qa_status": "Reviewed generated atlas and packed native masked layers; precise source cell bounds recorded in spathi.packing.json. Native geometry/alpha unchanged.",
+  "qa_notes": [
+    "Original species identity, crew count and broad native composition retained.",
+    "Four-column ten-state atlas with two black unused cells; measured per-cell boundaries verified in packed native animation layers.",
+    "No added text or UI; small action changes preserved in corresponding cells."
+  ],
+  "output_sha256": "657340b35abe13dd8be12e476778239da0ec9fb5922707f3f115c2c255cda0a0",
+  "output_size": [
+    1962,
+    801
+  ]
+}

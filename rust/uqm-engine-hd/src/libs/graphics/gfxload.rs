@@ -372,6 +372,7 @@ unsafe extern "C" fn process_image(
     mut img: *mut TFB_Canvas,
     mut ani: *mut AniData,
     mut cel_ct: ::core::ffi::c_int,
+    presentation_drawable: u32,
 ) {
     let mut tfbimg: *mut TFB_Image = ::core::ptr::null_mut::<TFB_Image>();
     let mut hx: ::core::ffi::c_int = 0;
@@ -418,7 +419,7 @@ unsafe extern "C" fn process_image(
     (*FramePtr).Bounds.height = (*tfbimg).extent.height;
     crate::uqm_melee_presentation::UQM_MeleePresentationRegister(
         tfbimg.cast(), (*ani.offset(cel_ct as isize)).render_source.as_ptr(),
-        _cur_resfile_name, hx as COORD, hy as COORD,
+        _cur_resfile_name, hx as COORD, hy as COORD, presentation_drawable, cel_ct as usize,
     );
 }
 unsafe extern "C" fn processFontChar(
@@ -680,6 +681,7 @@ pub unsafe extern "C" fn _GetCelData(
             Drawable = ::core::ptr::null_mut::<DRAWABLE_DESC>();
         } else {
             let mut FramePtr: FRAME = ::core::ptr::null_mut::<FRAME_DESC>();
+            let presentation_drawable = crate::uqm_melee_presentation::UQM_MeleePresentationNextDrawable();
             (*Drawable).Flags = ((1 as ::core::ffi::c_int) << 1 as ::core::ffi::c_int)
                 as CREATE_FLAGS;
             (*Drawable).MaxIndex = (cel_index - 1 as ::core::ffi::c_int) as UWORD;
@@ -691,8 +693,11 @@ pub unsafe extern "C" fn _GetCelData(
                 if c2rust_fresh1 == 0 {
                     break;
                 }
-                process_image(FramePtr, img, ani, cel_index);
+                process_image(FramePtr, img, ani, cel_index, presentation_drawable);
             }
+            crate::uqm_melee_presentation::UQM_MeleePresentationFinalizeCaptain(
+                presentation_drawable, (*Drawable).MaxIndex as usize + 1,
+            );
         }
     }
     if Drawable.is_null() {

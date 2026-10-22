@@ -1,0 +1,23 @@
+{
+  "race": "thraddash",
+  "tool": "image_gen.imagegen",
+  "mode": "reference edit / style-transfer",
+  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-74b5e3e9-aa1d-43d0-9e4e-497152d872ec.png",
+  "output_path": "hd/remastered/art/captains/thraddash.png",
+  "references": [
+    ".tools/captain-reference/sheets/thraddash-unique-composited.png",
+    "hd/remastered/art/ships-2.png"
+  ],
+  "prompt_path": "hd/remastered/art/captains/thraddash.prompt.txt",
+  "qa_status": "Reviewed generated atlas and packed native masked layers; precise source cell bounds recorded in thraddash.packing.json. Native geometry/alpha unchanged.",
+  "qa_notes": [
+    "Original species identity, crew count and broad native composition retained.",
+    "Four-column ten-state atlas with two black unused cells; measured per-cell boundaries verified in packed native animation layers.",
+    "No added text or UI; small action changes preserved in corresponding cells."
+  ],
+  "output_sha256": "42c32b4538e2cf59549beffb87a19f4a970c52a49b7b4fa31c295d71c4c51581",
+  "output_size": [
+    1855,
+    848
+  ]
+}

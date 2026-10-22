@@ -1,0 +1,386 @@
+--- a/src/libs/graphics/melee_presentation.c
++++ b/src/libs/graphics/melee_presentation.c
+@@ -2,6 +2,7 @@
+ /* Separate Melee draw images. Original FRAME geometry and image pixels remain
+  * authoritative for collision. No simulation elements or random calls here. */
+ #include <stdatomic.h>
++#include <stdint.h>
+ #include <stdio.h>
+ #include <string.h>
+ #include "melee_presentation.h"
+@@ -13,6 +14,9 @@
+ typedef struct RenderImage {
+     TFB_Image *original, *rendered;
+     BOOLEAN avenger, meleeUI;
++    int captainRace;
++    unsigned captainRow, drawable;
++    BOOLEAN captainReady;
+     struct RenderImage *next;
+ } RenderImage;
+ static RenderImage *images;
+@@ -22,6 +26,19 @@
+ static atomic_uint imageCount, drawCount, backgroundCount;
+ static BOOLEAN backgroundAttempted;
+ static TFB_Image *backgroundImage;
++static atomic_uint nextDrawable = 1;
++/* 0: outside a portrait batch; 1: original; 2: enhanced. */
++static atomic_uint captainMode;
++static atomic_uintptr_t captainLastImage[2];
++static atomic_uint captainLastMode[2];
++static atomic_uint captainDraws[25][20], captainSeen[25];
++/* Native MeleeShip order, not SPECIES_ID order. */
++static const char *captainRaces[25] = {
++    "androsynth", "arilou", "chenjesu", "chmmr", "druuge", "human", "ilwrath",
++    "kohrah", "melnorme", "mmrnmhrm", "mycon", "orz", "pkunk", "shofixti",
++    "slylandro", "spathi", "supox", "syreen", "thraddash", "umgah", "urquan",
++    "utwig", "vux", "yehat", "zoqfotpik"
++};
+ 
+ static void lockRegistry (void)
+ {
+@@ -31,7 +48,7 @@
+ {
+     atomic_flag_clear_explicit (&registryLock, memory_order_release);
+ }
+-static TFB_Image *lookup (TFB_Image *original, BOOLEAN *avenger, BOOLEAN *meleeUI)
++static TFB_Image *lookup (TFB_Image *original, BOOLEAN *avenger, BOOLEAN *meleeUI, RenderImage *details)
+ {
+     RenderImage *entry;
+     TFB_Image *result = NULL;
+@@ -41,6 +58,7 @@
+             result = entry->rendered;
+             if (avenger) *avenger = entry->avenger;
+             if (meleeUI) *meleeUI = entry->meleeUI;
++            if (details) *details = *entry;
+             break;
+         }
+     unlockRegistry ();
+@@ -57,6 +75,89 @@
+ unsigned UQM_GetMeleeRemasteredImageCount (void) { return atomic_load (&imageCount); }
+ unsigned UQM_GetMeleeRemasteredDrawCount (void) { return atomic_load (&drawCount); }
+ unsigned UQM_GetMeleeRemasteredBackgroundCount (void) { return atomic_load (&backgroundCount); }
++unsigned UQM_GetMeleeRemasteredCaptainImageCount (int race)
++{
++    RenderImage *entry;
++    unsigned count = 0;
++    if (race < 0 || race >= 25) return 0;
++    lockRegistry ();
++    for (entry = images; entry; entry = entry->next)
++        if (entry->captainRace == race && entry->captainReady) ++count;
++    unlockRegistry ();
++    return count;
++}
++unsigned UQM_GetMeleeRemasteredCaptainDrawCount (int race, int row)
++{
++    unsigned count = 0;
++    int i;
++    if (race < 0 || race >= 25 || row < -1 || row >= 20) return 0;
++    if (row >= 0) return atomic_load (&captainDraws[race][row]);
++    for (i = 0; i < 20; ++i) count += atomic_load (&captainDraws[race][i]);
++    return count;
++}
++unsigned UQM_GetMeleeRemasteredCaptainSeenMask (int race)
++{
++    return race >= 0 && race < 25 ? atomic_load (&captainSeen[race]) : 0;
++}
++unsigned UQM_MeleePresentationCaptainBegin (void)
++{
++    unsigned previous = atomic_load (&captainMode);
++    if (!previous)
++        atomic_store (&captainMode, UQM_GetMeleeRemastered () &&
++            LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE ? 2 : 1);
++    return previous;
++}
++void UQM_MeleePresentationCaptainEnd (unsigned previous)
++{
++    atomic_store (&captainMode, previous);
++}
++/* Keep a final partial death patch in the style of its existing portrait.
++ * The requested setting is unchanged; only this draw scope inherits the pose. */
++unsigned UQM_MeleePresentationCaptainBeginFinalFrame (int player, const void *portrait)
++{
++    unsigned previous = UQM_MeleePresentationCaptainBegin ();
++    if (!previous && player >= 0 && player < 2 && portrait &&
++            LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE &&
++            atomic_load (&captainLastImage[player]) == (uintptr_t) portrait) {
++        unsigned mode = atomic_load (&captainLastMode[player]);
++        if (mode) atomic_store (&captainMode, mode);
++    }
++    return previous;
++}
++BOOLEAN UQM_MeleePresentationCaptainNeedsRefresh (int player, const void *portrait)
++{
++    uintptr_t previousImage;
++    unsigned mode, previousMode;
++    if (player < 0 || player >= 2 || !portrait ||
++            LOBYTE (GLOBAL (CurrentActivity)) != SUPER_MELEE) return FALSE;
++    mode = atomic_load (&captainMode);
++    if (!mode) return FALSE;
++    previousImage = atomic_exchange (&captainLastImage[player], (uintptr_t) portrait);
++    previousMode = atomic_exchange (&captainLastMode[player], mode);
++    return previousImage != (uintptr_t) portrait || previousMode != mode;
++}
++unsigned UQM_MeleePresentationNextDrawable (void)
++{
++    return atomic_fetch_add (&nextDrawable, 1);
++}
++void UQM_MeleePresentationFinalizeCaptain (unsigned drawable, unsigned frameCount)
++{
++    RenderImage *entry;
++    unsigned count = 0, seen = 0;
++    BOOLEAN ready = frameCount > 0 && frameCount <= 20;
++    lockRegistry ();
++    for (entry = images; entry; entry = entry->next)
++        if (entry->captainRace >= 0 && entry->drawable == drawable) {
++            ++count;
++            seen |= 1u << entry->captainRow;
++            if (!entry->rendered) ready = FALSE;
++        }
++    ready = ready && count == frameCount && seen == (1u << frameCount) - 1;
++    for (entry = images; entry; entry = entry->next)
++        if (entry->captainRace >= 0 && entry->drawable == drawable)
++            entry->captainReady = ready;
++    unlockRegistry ();
++}
+ void UQM_MeleePresentationBegin (BOOLEAN isMelee)
+ {
+     atomic_store (&drawActive, isMelee && UQM_GetMeleeRemastered ());
+@@ -73,7 +174,7 @@
+     return canvas ? TFB_DrawImage_New (canvas) : NULL;
+ }
+ void UQM_MeleePresentationRegister (TFB_Image *original, const char *source, const char *resource,
+-        COORD hotx, COORD hoty)
++        COORD hotx, COORD hoty, unsigned drawable, unsigned row)
+ {
+     const char *relative;
+     char path[4096];
+@@ -81,6 +182,7 @@
+     RenderImage *entry;
+     size_t length;
+     BOOLEAN avenger, meleeUI;
++    int captainRace = -1, i;
+     if (!original || !source) return;
+     relative = strstr (source, "/ships/");
+     if (!relative) relative = strstr (source, "/battle/");
+@@ -92,6 +194,14 @@
+     avenger = !strncmp (relative, "ships/ilwrath/avenger-", 22);
+     /* Icon ANIs also contain ordinary small-facing PNGs for fleet previews. */
+     meleeUI = resource && (strstr (resource, "-icons.ani") || strstr (resource, "-meleeicons.ani"));
++    if (resource && strlen (resource) >= 8 &&
++            !strcmp (resource + strlen (resource) - 8, "-cap.ani") &&
++            !strncmp (relative, "ships/", 6) && row < 20)
++        for (i = 0; i < 25; ++i) {
++            size_t raceLength = strlen (captainRaces[i]);
++            if (!strncmp (relative + 6, captainRaces[i], raceLength) &&
++                    relative[6 + raceLength] == '/') { captainRace = i; break; }
++        }
+     rendered = loadOptional (path);
+     if (rendered && (rendered->extent.width != original->extent.width ||
+             rendered->extent.height != original->extent.height)) {
+@@ -103,12 +213,16 @@
+         rendered->NormalHs.y = hoty;
+     }
+     /* Keep cloak identity even when optional art is missing or malformed. */
+-    if (!rendered && !avenger) return;
++    if (!rendered && !avenger && captainRace < 0) return;
+     entry = HMalloc (sizeof *entry);
+     entry->original = original;
+     entry->rendered = rendered;
+     entry->avenger = avenger;
+     entry->meleeUI = meleeUI;
++    entry->captainRace = captainRace;
++    entry->captainRow = row;
++    entry->drawable = drawable;
++    entry->captainReady = FALSE;
+     lockRegistry ();
+     entry->next = images;
+     images = entry;
+@@ -119,8 +233,16 @@
+ {
+     TFB_Image *rendered;
+     BOOLEAN meleeUI = FALSE;
+-    rendered = lookup (original, NULL, &meleeUI);
++    RenderImage entry;
++    rendered = lookup (original, NULL, &meleeUI, &entry);
+     if (!rendered) return original;
++    if (entry.captainRace >= 0) {
++        if (!entry.captainReady || atomic_load (&captainMode) != 2) return original;
++        atomic_fetch_add (&captainDraws[entry.captainRace][entry.captainRow], 1);
++        atomic_fetch_or (&captainSeen[entry.captainRace], 1u << entry.captainRow);
++        atomic_fetch_add (&drawCount, 1);
++        return rendered;
++    }
+     if (!atomic_load (&drawActive) && !(meleeUI && UQM_GetMeleeRemastered () &&
+             LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE)) return original;
+     atomic_fetch_add (&drawCount, 1);
+@@ -130,14 +252,14 @@
+ {
+     BOOLEAN avenger = FALSE;
+     if (!atomic_load (&drawActive) || color.r || color.g || color.b) return FALSE;
+-    lookup (original, &avenger, NULL);
++    lookup (original, &avenger, NULL, NULL);
+     return avenger;
+ }
+ void UQM_MeleePresentationMipmap (TFB_Image *original, TFB_Image *mipmap,
+         int hotx, int hoty)
+ {
+-    TFB_Image *rendered = lookup (original, NULL, NULL);
+-    TFB_Image *renderedMipmap = lookup (mipmap, NULL, NULL);
++    TFB_Image *rendered = lookup (original, NULL, NULL, NULL);
++    TFB_Image *renderedMipmap = lookup (mipmap, NULL, NULL, NULL);
+     if (rendered && renderedMipmap)
+         TFB_DrawScreen_SetMipmap (rendered, renderedMipmap, hotx, hoty);
+ }
+--- a/src/libs/graphics/melee_presentation.h
++++ b/src/libs/graphics/melee_presentation.h
+@@ -8,11 +8,20 @@
+ unsigned UQM_GetMeleeRemasteredImageCount (void);
+ unsigned UQM_GetMeleeRemasteredDrawCount (void);
+ unsigned UQM_GetMeleeRemasteredBackgroundCount (void);
++unsigned UQM_GetMeleeRemasteredCaptainImageCount (int race);
++unsigned UQM_GetMeleeRemasteredCaptainDrawCount (int race, int row);
++unsigned UQM_GetMeleeRemasteredCaptainSeenMask (int race);
++unsigned UQM_MeleePresentationCaptainBegin (void);
++void UQM_MeleePresentationCaptainEnd (unsigned previous);
++unsigned UQM_MeleePresentationCaptainBeginFinalFrame (int player, const void *portrait);
++BOOLEAN UQM_MeleePresentationCaptainNeedsRefresh (int player, const void *portrait);
++unsigned UQM_MeleePresentationNextDrawable (void);
++void UQM_MeleePresentationFinalizeCaptain (unsigned drawable, unsigned frameCount);
+ void UQM_MeleePresentationBegin (BOOLEAN isMelee);
+ void UQM_MeleePresentationEnd (void);
+ void UQM_MeleePresentationBackground (void);
+ void UQM_MeleePresentationRegister (TFB_Image *original, const char *source, const char *resource,
+-        COORD hotx, COORD hoty);
++        COORD hotx, COORD hoty, unsigned drawable, unsigned row);
+ TFB_Image *UQM_MeleePresentationImage (TFB_Image *original);
+ BOOLEAN UQM_MeleePresentationHiddenCloak (TFB_Image *original, Color color);
+ void UQM_MeleePresentationMipmap (TFB_Image *original, TFB_Image *mipmap,
+--- a/src/libs/graphics/gfxload.c
++++ b/src/libs/graphics/gfxload.c
+@@ -45,7 +45,8 @@
+ static uio_AutoMount *autoMount[] = { NULL };
+ 
+ static void
+-process_image (FRAME FramePtr, TFB_Canvas img[], AniData *ani, int cel_ct)
++process_image (FRAME FramePtr, TFB_Canvas img[], AniData *ani, int cel_ct,
++        unsigned presentationDrawable)
+ {
+ 	TFB_Image *tfbimg;
+ 	int hx, hy;
+@@ -87,7 +88,8 @@
+ 	
+ 	FramePtr->HotSpot = MAKE_HOT_SPOT (hx, hy);
+ 	SetFrameBounds (FramePtr, tfbimg->extent.width, tfbimg->extent.height);
+-	UQM_MeleePresentationRegister (tfbimg, ani[cel_ct].render_source, _cur_resfile_name, hx, hy);
++	UQM_MeleePresentationRegister (tfbimg, ani[cel_ct].render_source, _cur_resfile_name,
++            hx, hy, presentationDrawable, cel_ct);
+ 
+ #ifdef CLIPDEBUG
+ 	{
+@@ -288,13 +290,15 @@
+ 		else
+ 		{
+ 			FRAME FramePtr;
++			unsigned presentationDrawable = UQM_MeleePresentationNextDrawable ();
+ 
+ 			Drawable->Flags = WANT_PIXMAP;
+ 			Drawable->MaxIndex = cel_index - 1;
+ 
+ 			FramePtr = &Drawable->Frame[cel_index];
+ 			while (--FramePtr, cel_index--)
+-				process_image (FramePtr, img, ani, cel_index);
++				process_image (FramePtr, img, ani, cel_index, presentationDrawable);
++			UQM_MeleePresentationFinalizeCaptain (presentationDrawable, Drawable->MaxIndex + 1);
+ 		}
+ 	}
+ 
+--- a/src/uqm/status.c
++++ b/src/uqm/status.c
+@@ -28,6 +28,7 @@
+ #include "menustat.h"
+ #include "util.h"
+ #include "intel.h"
++#include "libs/graphics/melee_presentation.h"
+ 
+ #include <stdio.h>
+ #include <string.h>
+@@ -197,6 +198,7 @@
+ DrawCaptainWindowFrame (FRAME fr, COORD y)
+ {
+ 	STAMP Stamp;
++	unsigned presentation = UQM_MeleePresentationCaptainBegin ();
+ 
+ 	Stamp.origin.x = CAPTAIN_XOFFS;
+ 	Stamp.origin.y = y + CAPTAIN_YOFFS;
+@@ -204,6 +206,7 @@
+ 	Stamp.frame = fr;
+ 
+ 	DrawStamp (&Stamp);
++	UQM_MeleePresentationCaptainEnd (presentation);
+ }
+ 
+ /*static void
+@@ -329,6 +332,7 @@
+ 	STAMP s;
+ 	FRAME Frame;
+ 	RACE_DESC *RDPtr;
++	unsigned presentation = UQM_MeleePresentationCaptainBegin ();
+ 
+ 	RDPtr = StarShipPtr->RaceDescPtr;
+ 	Frame = RDPtr->ship_data.captain_control.background;
+@@ -465,6 +469,7 @@
+ 	}
+ 
+ 	UnbatchGraphics ();
++	UQM_MeleePresentationCaptainEnd (presentation);
+ }
+ 
+ BOOLEAN
+@@ -557,6 +562,7 @@
+ PreProcessStatus (ELEMENT *ShipPtr)
+ {
+ 	STARSHIP *StarShipPtr;
++	unsigned presentation = UQM_MeleePresentationCaptainBegin ();
+ 
+ 	GetElementStarShip (ShipPtr, &StarShipPtr);
+ 	if (StarShipPtr->captains_name_index
+@@ -580,7 +586,24 @@
+ 			if (redraw_flags)
+ 				DrawCaptainWindowAnimation (CSPtr, status_y_offsets[StarShipPtr->playerNr], redraw_flags);
+ 		}
+-	}
++		/* Repaint only the live portrait after a style change, using the current
++		 * native offsets. Never reset or advance the animation state here. */
++		if (ShipPtr->crew_level && CSPtr->background &&
++				UQM_MeleePresentationCaptainNeedsRefresh (StarShipPtr->playerNr,
++						CSPtr->background))
++		{
++			COORD y = status_y_offsets[StarShipPtr->playerNr];
++			/* The fresh background already contains neutral layers. Repainting
++			 * them can erase overlapping active patches (for example Mycon). */
++			BYTE layers = (CSPtr->tr_offset ? RIGHT : CSPtr->tl_offset ? LEFT : 0)
++					| (CSPtr->thrust_offset ? THRUST : 0)
++					| (CSPtr->weapon_offset ? WEAPON : 0)
++					| (CSPtr->special_offset ? SPECIAL : 0);
++			DrawCaptainWindowFrame (CSPtr->background, y);
++			DrawCaptainWindowAnimation (CSPtr, y, layers);
++		}
++	}
++	UQM_MeleePresentationCaptainEnd (presentation);
+ }
+ 
+ void
+@@ -621,10 +644,13 @@
+ 				{// Special case: Instead of first orange rectangle we will draw the last
+ 				 // frame from captain avatars (used for shofixti glory device)
+ 					CAPTAIN_STUFF *CSPtr;
++					unsigned presentation;
+ 					CSPtr = &StarShipPtr->RaceDescPtr->ship_data.captain_control;
+ 
+ 					cur_status_flags &= ~SHOFIXTI_EXPLOSION;
++					presentation = UQM_MeleePresentationCaptainBeginFinalFrame (StarShipPtr->playerNr, CSPtr->background);
+ 					DrawCaptainWindowFrame (DecFrameIndex (CSPtr->background), y);
++					UQM_MeleePresentationCaptainEnd (presentation);
+ 				}
+ 				else
+ 				{

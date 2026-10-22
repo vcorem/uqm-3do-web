@@ -8,6 +8,7 @@ import { chromium, firefox, webkit } from 'playwright';
 import { createGameBackend } from '../helpers/game-backend.mjs';
 import { createLobbyStub } from '../helpers/online-lobby.mjs';
 import { shimPath } from './online-harness.mjs';
+import { verifyCaptainReactions } from './captain-reactions.mjs';
 
 const browserEngines = { chromium, firefox, webkit };
 const selectedEngines = [
@@ -36,7 +37,10 @@ const output = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/browser
 // and ship indexes. Every peer in a test plays the selected edition.
 const edition = process.env.UQM_EDITION || 'original';
 const remastered = process.env.UQM_REMASTERED === '1';
+const captains = process.env.UQM_CAPTAINS === '1';
 assert.ok(!remastered || edition === 'hd', 'Remastered presentation is an HD feature');
+assert.ok(!captains || (remastered && process.env.UQM_SHIP_SMOKE),
+  'UQM_CAPTAINS=1 requires UQM_REMASTERED=1 and UQM_SHIP_SMOKE');
 assert.ok(['original', 'hd'].includes(edition), 'UQM_EDITION must be original or hd');
 const meleeConfig = `/home/web_user/${edition === 'hd' ? '.uqm-hd' : '.uqm'}/melee.cfg`;
 await mkdir(output, { recursive: true });
@@ -197,7 +201,9 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       const browser = await browserEngines[engine].launch(browserLaunchOptions(engine));
       browsers.push(browser);
       entry.browsers[i].version = browser.version();
-      const context = await browser.newContext({ viewport: { width: 1100, height: 1100 } });
+      const context = await browser.newContext({ viewport: { width: 1100, height: 1100 },
+        ...(captains && i === 0 && process.env.UQM_CAPTAIN_VIDEO === '1'
+          ? { recordVideo: { dir: path.join(output, 'captain-videos'), size: { width: 1100, height: 1100 } } } : {}) });
       await context.addInitScript({ path: shimPath });
       if (remastered && i === 1) {
         await context.addInitScript(() => localStorage.setItem('uqm.hd.melee.presentation.v1',
@@ -224,6 +230,7 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
         await context.addCookies([{ name: 'uqm_test_peer', value: '1', url: origin }]);
       }
       const page = await context.newPage();
+      if (page.video()) entry.captainVideo = await page.video().path();
       page.setDefaultTimeout(30000);
       page.on('websocket', socket => { if (!/\/netplay\/lobby/.test(socket.url())) roomSockets[i].push(socket.url()); });
       page.on('pageerror', error => failures.push(`${i}: ${error.stack || error.message}`));
@@ -350,6 +357,16 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       if (smokeShip !== null) {
         entry.shipIndex = smokeShip;
         entry.smokeFleet = { hostShip: fleet.hostShip, guestShip: smokeShip, shipCount: fleet.shipCount };
+        if (captains) {
+          await verifyCaptainReactions({ pages, shipIndex: smokeShip, output, name, entry,
+            setPresentation, waitState: state => waitState(pages, state),
+            resumeBattle: phase => resumeSmokeBattle(pages, entry, phase),
+            checkSynchronization: async additional => {
+              const before = await resumeSmokeBattle(pages, entry, 'captain checksum continuation');
+              return checkSmokeSynchronization(pages, entry,
+                Math.max(...before.map(state => state.checksumsVerified || 0)) + additional);
+            } });
+        }
         const before = await resumeSmokeBattle(pages, entry, 'before weapon input');
         let requiredChecksums = Math.max(...before.map(state => state.checksumsVerified || 0)) + 90;
         try {

@@ -1,0 +1,21 @@
+{
+  "generator": "built-in image_gen",
+  "mode": "edit",
+  "output_path": "hd/remastered/art/captains/pkunk-weapon-correction.png",
+  "output_sha256": "102f0459c1bc4df125c28b2b5d616c63185977d3b70d3501de550f5432fa193f",
+  "source": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-12917e79-5ab1-402c-b5c3-0020feb62e3d.png",
+  "prompt": "hd/remastered/art/captains/pkunk-weapon-correction.prompt.txt",
+  "references": [
+    ".tools/captain-reference/singles/pkunk-authored-base.png",
+    ".tools/captain-reference/singles/pkunk-native-action.png"
+  ],
+  "used_cells": [
+    7
+  ],
+  "dimensions": [
+    1698,
+    926
+  ],
+  "qa": "Final packed cell7 has compact round antenna-tip light; the previous rectangular blue glow boundary is absent.",
+  "qa_limits": "Static packed composition inspection only; no runtime behavior claim."
+}

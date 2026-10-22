@@ -1,0 +1,25 @@
+{
+  "race": "arilou",
+  "tool": "image_gen.imagegen",
+  "mode": "reference edit / style-transfer",
+  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-ff4cdf07-0a4c-4ea4-b75a-9f60661fddc0.png",
+  "output_path": "hd/remastered/art/captains/arilou.png",
+  "output_sha256": "95b8c00d8d97b86ab256226c014f92ffb146daf9c44b672798a7149fdce8a76a",
+  "output_size": [
+    2014,
+    781
+  ],
+  "references": [
+    ".tools/captain-reference/sheets/arilou-unique-composited.png",
+    "hd/remastered/art/ships-2.png"
+  ],
+  "prompt_path": "hd/remastered/art/captains/arilou.prompt.txt",
+  "qa_status": "atlas and compiled native masked compositions visually inspected",
+  "qa_notes": [
+    "One green alien; seated crosslegged posture, palms, color ring and native identity preserved.",
+    "Turn foot positions differ in correct cells; thrust extends viewer-right arm, weapon viewer-left, special has head ripples.",
+    "No invented crew,text,UI or watermark. Four-by-three atlas grid preserved.",
+    "Inspected every packed unique cell at native220\u00d7120; correct native action regions and identity, no split faces or missing effects. Small art boundary shifts can remain; live action/release validation is separate."
+  ],
+  "compiled_qa_path": ".tools/captain-qa-audit/arilou-packed.png"
+}

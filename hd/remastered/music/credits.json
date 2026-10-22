@@ -1,19 +1,16 @@
 {
   "collection": "Impulse original Melee score",
+  "version": "martial-space-2",
   "tracks": [
-    {
-      "file": "fleet-menu.ogg",
-      "title": "Constellation Assembly"
-    },
-    {
-      "file": "battle.ogg",
-      "title": "Redshift Intercept"
-    }
+    {"file": "fleet-menu.ogg", "title": "Fleet Mobilization", "tempo_bpm": 150},
+    {"file": "battle.ogg", "title": "Hostile Vector", "tempo_bpm": 168}
   ],
-  "creation": "Original note sequences, arrangement, synthesis and percussion authored for this project with Codex assistance.",
+  "creation": "Original Phrygian riff sequences, alarm motifs, martial drum arrangement and synthesis authored for this project with Codex assistance.",
   "source": "render.py and per-track score JSON files",
+  "production": "Oversampled saturated string and bass voices, modeled kick/snare/tom bodies, filtered noise and FM metal, short circular room effects, kick attenuation of tonal buses and global mastering gain.",
   "third_party_audio": [],
   "upstream_soundtrack_reuse": false,
-  "tools": "Python, NumPy and ffmpeg; no soundfont or external audio samples.",
-  "attribution_label": "Impulse original score"
+  "tools": "Python, NumPy and ffmpeg. No music generation service, external recording, soundfont or audio sample library.",
+  "attribution_label": "Impulse original score",
+  "subjective_agent_audition": false
 }

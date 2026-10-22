@@ -1,0 +1,25 @@
+{
+  "race": "urquan",
+  "tool": "image_gen.imagegen",
+  "mode": "reference edit / style-transfer",
+  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-f5db2bfc-4b5d-4715-a154-3c9b6841dfe3.png",
+  "output_path": "hd/remastered/art/captains/urquan.png",
+  "output_sha256": "bdb1cc57ed106633f3d9b3c1b6d18305fae280780768d69af31bc4ed0bd2fd2f",
+  "output_size": [
+    1961,
+    802
+  ],
+  "references": [
+    ".tools/captain-reference/sheets/urquan-unique-composited.png",
+    "hd/remastered/art/ships-2.png"
+  ],
+  "prompt_path": "hd/remastered/art/captains/urquan.prompt.txt",
+  "qa_status": "atlas and compiled native masked compositions visually inspected",
+  "qa_notes": [
+    "4 columns,3 rows;10 occupied panels and2 black panels preserved.",
+    "One green Ur-Quan with six purple eye lenses, red cuffs and dark articulated limbs; identity and count preserved.",
+    "Right/left turn arm movements, upper-right thrust, lower-left weapon and mouth-tentacle special changes occur in correct cells and sides.",
+    "Inspected every packed unique cell at native220\u00d7120; correct native action regions and identity, no split faces or missing effects. Small art boundary shifts can remain; live action/release validation is separate."
+  ],
+  "compiled_qa_path": ".tools/captain-qa-audit/urquan-packed.png"
+}

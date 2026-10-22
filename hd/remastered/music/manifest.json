@@ -1,280 +1,992 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "collection": "Impulse original Melee score",
-  "provenance": "New original compositions and deterministic additive/subtractive-style synthesis. No sampled audio, soundfont, upstream music or third-party melody is used.",
-  "render_command": "python3 hd/remastered/music/render.py",
+  "version": "martial-space-2",
+  "provenance": "Original authored Phrygian riffs, alarm motifs and martial drum arrangements; deterministic oversampled synthesis and modeled percussion. No upstream music, sampled audio, soundfont or third-party melody.",
+  "render_command": "python3 hd/remastered/music/render.py --keep-wav",
   "dependencies": [
-    "Python 3",
+    "Python3",
     "NumPy",
-    "ffmpeg with a Vorbis encoder (libvorbis preferred; native vorbis supported)"
+    "ffmpeg with Vorbis encoder"
   ],
-  "loop_method": "64 whole bars; note releases, stereo echoes and room reflections wrap at exact PCM loop length. Playback is gapless through native looping music resources.",
-  "seed": 1431130450,
+  "loop_method": "64 whole bars; note releases, short room reflections and signal echoes wrap modulo exact PCM sample count. No track-boundary fade or inserted silence.",
+  "seed": 1431130451,
+  "source_sha256": "8b4a283953b4dcf058ca267ceee54ec4cc2ff6d9d6bb9a78f8f5aff3550284ae",
+  "render_toolchain": {
+    "python": "3.9.6",
+    "numpy": "2.0.2",
+    "ffmpeg": "ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers"
+  },
   "tracks": [
     {
       "file": "fleet-menu.ogg",
-      "title": "Constellation Assembly",
-      "bpm": 144,
-      "encoder": "vorbis",
-      "key": "E minor",
+      "title": "Fleet Mobilization",
+      "version": "martial-space-2",
+      "bpm": 150,
+      "key": "D Phrygian / D pedal",
       "bars": 64,
       "beats_per_bar": 4,
       "sample_rate": 44100,
       "channels": 2,
-      "samples": 4704000,
-      "seconds": 106.66666666666667,
+      "samples": 4515840,
+      "seconds": 102.4,
+      "encoder": "vorbis",
       "sections": [
         {
           "first_bar": 1,
           "bars": 8,
-          "name": "Assembly"
+          "name": "Launch orders",
+          "rms_dbfs": -15.773
         },
         {
           "first_bar": 9,
           "bars": 8,
-          "name": "Main theme"
+          "name": "War engines",
+          "rms_dbfs": -15.026
         },
         {
           "first_bar": 17,
           "bars": 8,
-          "name": "Open orbit"
+          "name": "Outer perimeter",
+          "rms_dbfs": -15.184
         },
         {
           "first_bar": 25,
           "bars": 8,
-          "name": "Main theme + octave"
+          "name": "Fleet formation",
+          "rms_dbfs": -14.586
         },
         {
           "first_bar": 33,
           "bars": 8,
-          "name": "Signal break"
+          "name": "Tactical silence",
+          "rms_dbfs": -19.113
         },
         {
           "first_bar": 41,
           "bars": 8,
-          "name": "Ignition"
+          "name": "Reactor charge",
+          "rms_dbfs": -16.218
         },
         {
           "first_bar": 49,
           "bars": 8,
-          "name": "Full fleet"
+          "name": "Launch corridor",
+          "rms_dbfs": -14.587
         },
         {
           "first_bar": 57,
           "bars": 8,
-          "name": "Return vector"
+          "name": "Weapons ready",
+          "rms_dbfs": -15.012
         }
       ],
-      "chords": [
-        "Em",
-        "C",
-        "G",
-        "D",
-        "C",
-        "G",
-        "D",
-        "B",
-        "Em",
-        "C",
-        "G",
-        "D",
-        "C",
-        "G",
-        "D",
-        "B",
-        "C",
-        "Am",
-        "G",
-        "D",
-        "C",
-        "Am",
-        "B",
-        "B",
-        "Em",
-        "C",
-        "G",
-        "D",
-        "C",
-        "G",
-        "D",
-        "B",
-        "C",
-        "Am",
-        "G",
-        "D",
-        "C",
-        "Am",
-        "B",
-        "B",
-        "Em",
-        "C",
-        "G",
-        "D",
-        "C",
-        "G",
-        "D",
-        "B",
-        "Em",
-        "C",
-        "G",
-        "D",
-        "C",
-        "G",
-        "D",
-        "B",
-        "Em",
-        "C",
-        "G",
-        "D",
-        "C",
-        "G",
-        "D",
-        "B"
+      "harmonic_plan": [
+        {
+          "bar": 1,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 2,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 3,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 4,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 5,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 6,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 7,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 8,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 9,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 10,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 11,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 12,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 13,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 14,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 15,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 16,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 17,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 18,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 19,
+          "pedal_midi": 39,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 20,
+          "pedal_midi": 39,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 21,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 22,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 23,
+          "pedal_midi": 39,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 24,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 25,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 26,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 27,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 28,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 29,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 30,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 31,
+          "pedal_midi": 36,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 32,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 33,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 34,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 35,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 36,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 37,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 38,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 39,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 40,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 41,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 42,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 43,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 44,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 45,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 46,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 47,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 48,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 49,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 50,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 51,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 52,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 53,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 54,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 55,
+          "pedal_midi": 36,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 56,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 57,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 58,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 59,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 60,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 61,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 62,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 63,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 64,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 3
+        }
       ],
-      "event_count": 3238,
-      "peak_dbfs": -1.4,
-      "rms_dbfs": -17.061,
-      "seam_step": 0.008838392794132233,
-      "pcm_s16le_sha256": "54e450dcebf42e4aaa586520cf232344641226d218e9f0053794e732754bf3b1",
-      "sha256": "cc49c183e2042fcfa02a8b7e6afbd9ccf9f3a7ea60f6cf6816f8abe669c9e2df",
-      "bytes": 1834500,
+      "event_count": 3000,
+      "instrument_event_counts": {
+        "alarm": 108,
+        "brass": 66,
+        "chug": 962,
+        "crash": 8,
+        "hat": 474,
+        "impact": 8,
+        "kick": 241,
+        "metal": 16,
+        "open": 95,
+        "reese": 458,
+        "ride": 14,
+        "riser": 8,
+        "snare": 229,
+        "space": 32,
+        "tom-high": 72,
+        "tom-low": 134,
+        "tom-mid": 75
+      },
+      "bus_rms_dbfs_before_master": {
+        "drums": -16.525,
+        "bass": -20.171,
+        "riff": -20.959,
+        "signal": -28.314,
+        "space": -42.565
+      },
+      "peak_dbfs": -1.801,
+      "rms_dbfs": -15.5,
+      "seam_step": 0.015228040516376495,
+      "pcm_s16le_sha256": "55b559c1920e6c0acbe70c08462afae253847da780fd264258ce066d5b5d21b1",
+      "sha256": "4d8cce6bb061bac8edc1341155c6ab6a2935c31d035206c0fa8dff1f8afa1165",
+      "bytes": 1700777,
       "resource": "music.meleemenu",
       "resource_value": "MUSICRES:addons/remastered/music/fleet-menu.ogg"
     },
     {
       "file": "battle.ogg",
-      "title": "Redshift Intercept",
-      "bpm": 160,
-      "encoder": "vorbis",
-      "key": "D minor",
+      "title": "Hostile Vector",
+      "version": "martial-space-2",
+      "bpm": 168,
+      "key": "E Phrygian / E pedal",
       "bars": 64,
       "beats_per_bar": 4,
       "sample_rate": 44100,
       "channels": 2,
-      "samples": 4233600,
-      "seconds": 96.0,
+      "samples": 4032000,
+      "seconds": 91.42857142857143,
+      "encoder": "vorbis",
       "sections": [
         {
           "first_bar": 1,
           "bars": 8,
-          "name": "Intercept"
+          "name": "Contact hostile",
+          "rms_dbfs": -14.546
         },
         {
           "first_bar": 9,
           "bars": 8,
-          "name": "Engage"
+          "name": "Weapons free",
+          "rms_dbfs": -14.307
         },
         {
           "first_bar": 17,
           "bars": 8,
-          "name": "Counterattack"
+          "name": "Flanking fire",
+          "rms_dbfs": -14.431
         },
         {
           "first_bar": 25,
           "bars": 8,
-          "name": "Afterburner"
+          "name": "Hull breach",
+          "rms_dbfs": -14.207
         },
         {
           "first_bar": 33,
           "bars": 8,
-          "name": "Gravity well"
+          "name": "Gravity trap",
+          "rms_dbfs": -19.001
         },
         {
           "first_bar": 41,
           "bars": 8,
-          "name": "Weapons armed"
+          "name": "Target acquisition",
+          "rms_dbfs": -15.499
         },
         {
           "first_bar": 49,
           "bars": 8,
-          "name": "All engines"
+          "name": "Full assault",
+          "rms_dbfs": -14.208
         },
         {
           "first_bar": 57,
           "bars": 8,
-          "name": "Pursuit"
+          "name": "No retreat",
+          "rms_dbfs": -14.296
         }
       ],
-      "chords": [
-        "Dm",
-        "Bb",
-        "F",
-        "C",
-        "Dm",
-        "Bb",
-        "Gm",
-        "A",
-        "Dm",
-        "Bb",
-        "F",
-        "C",
-        "Dm",
-        "Bb",
-        "Gm",
-        "A",
-        "Dm",
-        "Bb",
-        "F",
-        "C",
-        "Dm",
-        "Bb",
-        "Gm",
-        "A",
-        "Dm",
-        "Bb",
-        "F",
-        "C",
-        "Dm",
-        "Bb",
-        "Gm",
-        "A",
-        "Dm",
-        "Bb",
-        "F",
-        "C",
-        "Dm",
-        "Bb",
-        "Gm",
-        "A",
-        "Dm",
-        "Bb",
-        "F",
-        "C",
-        "Dm",
-        "Bb",
-        "Gm",
-        "A",
-        "Dm",
-        "Bb",
-        "F",
-        "C",
-        "Dm",
-        "Bb",
-        "Gm",
-        "A",
-        "Dm",
-        "Bb",
-        "F",
-        "C",
-        "Dm",
-        "Bb",
-        "Gm",
-        "A"
+      "harmonic_plan": [
+        {
+          "bar": 1,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 2,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 3,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 4,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 5,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 6,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 7,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 8,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 9,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 10,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 11,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 12,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 13,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 14,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 15,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 16,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 17,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 18,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 19,
+          "pedal_midi": 41,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 20,
+          "pedal_midi": 41,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 21,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 22,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 23,
+          "pedal_midi": 41,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 24,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 25,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 26,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 27,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 28,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 29,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 30,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 31,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 32,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 33,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 34,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 35,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 36,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 37,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 38,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 39,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 40,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 41,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 42,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 43,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 44,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 45,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 46,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 47,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 48,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 49,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 50,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 51,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 52,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 53,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 54,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 55,
+          "pedal_midi": 38,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 56,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 57,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 58,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 59,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 60,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        },
+        {
+          "bar": 61,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 0
+        },
+        {
+          "bar": 62,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 1
+        },
+        {
+          "bar": 63,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 2
+        },
+        {
+          "bar": 64,
+          "pedal_midi": 40,
+          "mode": "Phrygian",
+          "riff": 3
+        }
       ],
-      "event_count": 3727,
-      "peak_dbfs": -1.4,
-      "rms_dbfs": -14.3,
-      "seam_step": 0.0037096738815307617,
-      "pcm_s16le_sha256": "888ff137ecf91fb8ec1116d66ee866625025287e2ead0e9814caaa4a9659a932",
-      "sha256": "347b9f60d8490d88c03a758ce65a5b71b64284f8ff72680e47ad7322aae8f56a",
-      "bytes": 1734132,
+      "event_count": 3088,
+      "instrument_event_counts": {
+        "alarm": 108,
+        "brass": 66,
+        "chug": 1082,
+        "crash": 8,
+        "hat": 538,
+        "impact": 8,
+        "kick": 311,
+        "metal": 16,
+        "open": 95,
+        "reese": 516,
+        "ride": 14,
+        "riser": 8,
+        "snare": 229,
+        "space": 32,
+        "tom-high": 16,
+        "tom-low": 22,
+        "tom-mid": 19
+      },
+      "bus_rms_dbfs_before_master": {
+        "drums": -14.982,
+        "bass": -19.645,
+        "riff": -19.527,
+        "signal": -27.312,
+        "space": -42.454
+      },
+      "peak_dbfs": -1.8,
+      "rms_dbfs": -14.846,
+      "seam_step": 0.01483137346804142,
+      "pcm_s16le_sha256": "a86e4e5ac4352ca2a0fa77981d9ef0307b5486d2e82715e6d68a67fdce2b9479",
+      "sha256": "7cfdd1988a610815afdea66f03a03987563ff32653cf4fc3a2d0dec717f2a7d2",
+      "bytes": 1541237,
       "resource": "music.battle",
       "resource_value": "MUSICRES:addons/remastered/music/battle.ogg"
     }
-  ],
-  "render_toolchain": {
-    "python": "3.9.6",
-    "numpy": "2.0.2",
-    "ffmpeg": "ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers"
-  }
+  ]
 }

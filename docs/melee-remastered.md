@@ -11,24 +11,39 @@ These are captures of the running native game, not concept images:
 
 ![Native Melee battle](images/melee-remastered-battle.png)
 
+The captain extension adds these 25 crew portraits. This sheet shows the actual
+compiled neutral frames; live reaction evidence is recorded separately below.
+
+![All 25 remastered captain and crew portraits](images/melee-remastered-captains.png)
+
+This capture shows the final captain artwork in a real network battle:
+
+![Native battle with remastered Earthling and Ur-Quan crews](images/melee-remastered-captains-battle.png)
+
 ## Included
 
 - New ship art for all 25 playable races, plus the Mmrnmhrm Y-Wing, Androsynth
   Blazer and Orz turret: 28 forms, 16 facings and three zoom levels each.
 - 1,470 compiled presentation frames: 1,344 hull facings, 75 fleet/HUD icons
   and 51 explosion frames, all fitted to the existing native geometry.
+- Redrawn captain and crew portraits for all 25 races: 253 native image
+  layers covering all 380 animation slots, including Shofixti's glory device.
+  Original identities, control reactions, frame aliases, timing and layer
+  ordering remain native. Damage flashes and the death collapse remain native.
 - Separate ship and explosion presentation textures, and an authored dark nebula.
 - Native fleet/interface/HUD palette and panels with the existing geometry,
   controls, fonts, crew colors and energy colors.
-- Two original arranged electronic scores: *Constellation Assembly* (fleet
-  setup, 144 BPM) and *Redshift Intercept* (battle, 160 BPM).
+- Two original space-combat scores: *Fleet Mobilization* (fleet setup, 150 BPM)
+  and *Hostile Vector* (battle, 168 BPM), with distorted low riffs, driving bass,
+  layered war drums, alarm motifs and short tension/rebuild sections.
 - A persistent Picture & sound panel, with a live Remastered / Classic HD
   artwork switch and launch-time soundtrack/volume preferences.
 
 The chosen battle soundtrack also applies to campaign battles because UQM uses
 the same `music.battle` resource. The new ship/background rendering and interface
-palette are restricted to Melee. Existing projectiles, planets, voices and
-captain portraits remain their existing HD resources.
+palette, captain and crew artwork are restricted to Melee. Existing projectiles,
+planets and voices remain their existing HD resources; campaign captain windows
+continue to use the original HD portraits.
 
 ## Gameplay preservation
 
@@ -54,7 +69,11 @@ archives are never modified.
 ```sh
 python3 scripts/compile-melee-art.py
 python3 scripts/verify-melee-art.py
+python3 scripts/compile-melee-captains.py
+python3 tests/remastered/captain-assets.py
+python3 tests/remastered/captain-renderer-contract.py
 bash tests/rust/test-melee-presentation.sh
+bash tests/c/test-melee-presentation.sh
 HD_OFFLINE=1 UQM_CORE=rust HD_BUILD_OUTPUT=.tools/remastered-dist \
   bash scripts/build-hd-web.sh
 ```
@@ -76,6 +95,10 @@ UQM_EDITION=hd UQM_REMASTERED=1 UQM_RELAY=rust \
   UQM_DIST=.tools/remastered-dist UQM_PEER_DIST=.tools/remastered-c-dist \
   UQM_SHIP_SMOKE=all UQM_TEST_OUTPUT=test-results/remastered-all-ships \
   npm run test:browser
+UQM_EDITION=hd UQM_REMASTERED=1 UQM_CAPTAINS=1 UQM_RELAY=rust \
+  UQM_DIST=.tools/remastered-dist UQM_PEER_DIST=.tools/remastered-c-dist \
+  UQM_SHIP_SMOKE=all UQM_TEST_OUTPUT=test-results/remastered-captains \
+  npm run test:browser
 ```
 
 The separate C source checkout must first be populated online by omitting
@@ -95,11 +118,66 @@ No simulation state or combat outcomes are injected.
 
 Generation provenance is in `hd/remastered/art/provenance.json`; source and
 compiled image hashes/geometry are in `hd/remastered/render/manifest.json`.
+Captain prompts and provenance are in `hd/remastered/art/captains/`; the
+independently audited native inventory lists all original image hashes,
+aliases and offsets. `hd/remastered/render/captains-manifest.json` records
+every compiled captain layer and its authored source. The compiler crops the
+new drawings to native action bounds, preserves original per-pixel alpha,
+and shares neutral restoration pixels so incremental animation leaves no trails.
+If any layer is missing or malformed, its whole captain window falls back to
+Classic HD. A live style change repaints the entire current pose without
+advancing or resetting its native animation state. Shofixti's final partial
+death frame retains the style of its already displayed portrait, even if a
+style change arrives during the detonation frame.
+`scripts/prepare-melee-captain-references.py` can reproduce the original
+reference sheets and inventory from the pinned archive for future art edits.
 Music source, scores and objective audio validation are included alongside the
 Ogg files. Browser evidence is written under `test-results/` and is specific to
 the exact tested build, rather than being inferred from historical test runs.
 
-## Validation of the final build, 22 October 2026
+## Captain and combat-score validation, 22 October 2026
+
+- All 25 crew portraits passed independent image and live-capture review.
+  The 253 compiled PNGs preserve original dimensions, per-pixel alpha, source
+  hashes and all 380 ANI slots/aliases. Incremental press/release and current-pose
+  refresh checks passed. The existing 1,470 ship frames remain valid.
+- Real keyboard tests exercised 157 native action phases across all 25 races.
+  They rendered 251 reachable unique captain PNGs, with zero residual pixels
+  after release and zero pose changes after a held-input style round trip.
+  The two remaining PNGs are original dormant states: Druuge's held-special
+  frame and Shofixti's safe-lever restoration frame. Both were checked statically.
+  Rust/Remastered and C/Classic verified 12,541 and 12,530 checksums respectively
+  through the Node relay, without a mismatch.
+- That full-25 run used the frozen captain-art build. After the isolated
+  Shofixti final-death style guard and soundtrack revision, final release builds
+  repeated Human, Mycon and Shofixti in Rust, and Shofixti in C, over the Rust
+  relay. Native death row 19, next-ship selection and all tested toggles passed.
+  The final-death toggle race also has focused C and Rust unit coverage.
+- Final release netplay passed normal play, variable 30–120 ms delay, and setup
+  departure through the Rust relay. The first two completed full fleet matches
+  and entered rematches, verifying 575 and 592 checksums per peer. Setup,
+  selection and battle disconnect recovery and saved fleets after reload passed.
+  The final Rust runtime survived 300,000 ms idle and 15.540 seconds of combat,
+  with 16 battle captures, motion in all 15 comparisons, and no runtime errors.
+- Both new scores decoded and played through native game audio. Exact loop
+  samples, true peaks, silence/DC, stereo width and section dynamics passed.
+  Battle measures -14.3 LUFS and the fleet menu -15.1 LUFS, both at -1.5 dBTP.
+  An independent full render reproduced both PCM hashes and complete Ogg bytes.
+- The 222 JavaScript/server tests passed; the four presentation-control tests
+  passed again after the final label changes. Both production captain registries
+  passed their ownership, fallback, alias, scope and refresh cases. C/Rust builds,
+  the all-25 resource-path contract, reproducible patches, and the Lua audit
+  (13,443 guarded calls, 110 declarations) passed.
+
+The [captain/release validation record](validation/melee-remastered-captains.json)
+separates the full-25 coverage build from the final release builds and records
+their exact hashes. Every tested build was rehashed after its tests. The
+[art review](validation/captain-art-review.json) and
+[audio validation](../hd/remastered/music/validation.json) record their own
+scope and limits. Music previews permit human audition; signal tests do not
+establish musical taste.
+
+## Ship-remaster baseline validation, 22 October 2026
 
 - All 222 existing and new JavaScript/server tests passed.
 - The native registry test passed collision-data isolation, ownership,

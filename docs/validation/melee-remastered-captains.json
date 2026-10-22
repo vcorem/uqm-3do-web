@@ -1,0 +1,1257 @@
+{
+  "schema": 1,
+  "date": "2026-10-22T15:22:31.488181+00:00",
+  "branch": "codex/melee-remastered",
+  "passed": true,
+  "scope": "All25 captain art/normal animation coverage on the frozen pre-final-death-guard build; affected captain cases, full netplay and stability rerun on the final death-guard and martial-music release builds.",
+  "release_build_sha256": {
+    "rust": {
+      "index.html": "bc68e49ea2a1a22c9012336e7877d935b4a2b6531978215caefaa67414546cbd",
+      "uqm-debug.wasm": "a5553ae9ee4abd1139f1582689b24696a3eb2a7b5683a7c4863a0888ca40b038",
+      "uqm-debug.js": "f0b464d1b4c26ea9bdd4a9cf5993d187be2c26088bd4e0532370dc00419dd4e6",
+      "uqm-debug.worker.js": "48325b3061815c405968c59db7e737decc0b8f387e2352dbd2edae26f9a77ede",
+      "uqm-debug.data": "66daed444c48494bc204f5cfa5fd223b5c537983c18ed85ad0abd34ab3cd56b8",
+      "netplay-client.js": "9e5ca6dd2dbcc25717b99b5efbd622a171f1c2c445589d566f44e005d7273488"
+    },
+    "c": {
+      "index.html": "bc68e49ea2a1a22c9012336e7877d935b4a2b6531978215caefaa67414546cbd",
+      "uqm-debug.wasm": "e1c01cfbe5797d2c707fc54f2f9be67ace0d11181a99b8fafb5747a215f67cde",
+      "uqm-debug.js": "07958d726aa52a740af3992dadee7ab58ab887cddb6ff170a8d8c010700eadfd",
+      "uqm-debug.worker.js": "48325b3061815c405968c59db7e737decc0b8f387e2352dbd2edae26f9a77ede",
+      "uqm-debug.data": "66daed444c48494bc204f5cfa5fd223b5c537983c18ed85ad0abd34ab3cd56b8",
+      "netplay-client.js": "9e5ca6dd2dbcc25717b99b5efbd622a171f1c2c445589d566f44e005d7273488"
+    }
+  },
+  "all25_coverage_build_sha256": {
+    "rust": {
+      "index.html": "f9afe62d1e9a6146b1baeb031451dbf5fc5edf5e865de4895a0a3cec200e89dc",
+      "uqm-debug.wasm": "0fee731444f726a97f6e864858d42b02e094eb786e59171c2b8d158fd86dd831",
+      "uqm-debug.js": "8067fd5380b90d1c60542d0f1c70d8695642dc1a771b056edc361b611021394b",
+      "uqm-debug.worker.js": "48325b3061815c405968c59db7e737decc0b8f387e2352dbd2edae26f9a77ede",
+      "uqm-debug.data": "bae7e3e259e36d4d366223663a1e05450aff5bdbd1d0d85ac302e7911df83acb",
+      "netplay-client.js": "9e5ca6dd2dbcc25717b99b5efbd622a171f1c2c445589d566f44e005d7273488"
+    },
+    "c": {
+      "index.html": "f9afe62d1e9a6146b1baeb031451dbf5fc5edf5e865de4895a0a3cec200e89dc",
+      "uqm-debug.wasm": "de936a7f7b3beb56e931e748af0b79e468f65f5603e2d76f8497a06d2501a13d",
+      "uqm-debug.js": "15f6181730c8dd57c45ce9c830b04ad6d4938b044c4315b0caa70f76aecf133c",
+      "uqm-debug.worker.js": "48325b3061815c405968c59db7e737decc0b8f387e2352dbd2edae26f9a77ede",
+      "uqm-debug.data": "bae7e3e259e36d4d366223663a1e05450aff5bdbd1d0d85ac302e7911df83acb",
+      "netplay-client.js": "9e5ca6dd2dbcc25717b99b5efbd622a171f1c2c445589d566f44e005d7273488"
+    }
+  },
+  "all_builds_rehashed_after_tests": true,
+  "source_sha256": {
+    "rust/uqm-engine-hd/uqm_melee_presentation.rs": "3f77ad48a388cbb636f2ef10f25e3437fe64a04038f14162b2843ad4021d4fae",
+    "rust/uqm-engine-hd/src/uqm/status.rs": "c87b074b89ff2d29ac1d9390c623687067629f9261d1ddc324805790b212ada0",
+    "hd/patches/0017-captain-presentation.patch": "b8ce64933d5008c9eff6549c378917b99f1c176e98a168fc8339c13a0e26a7cf",
+    "hd/patches/0018-captain-diagnostic-exports.patch": "dbd9df7eeb4623efab98f025e444b6748b6f9ece7b60a291dee7e6eff20510d7",
+    "scripts/compile-melee-captains.py": "d48f27931084416ee46f76997fb64fc1f9356b4d03b019103f133cdfe015ddd7",
+    "hd/remastered/render/captains-manifest.json": "29bf195b42dc7f64dc00de9493390f4ca3cf4e86e9ea8d7ba4a6f1be42908311",
+    "hd/remastered/music/render.py": "8b4a283953b4dcf058ca267ceee54ec4cc2ff6d9d6bb9a78f8f5aff3550284ae",
+    "hd/remastered/music/manifest.json": "61494ee7e9b1f738edfa11a7f9dcfd68ef7d5be3c863132893a5da72da5a95bf"
+  },
+  "unit_tests": {
+    "javascript_server": {
+      "passed": 222,
+      "failed": 0
+    },
+    "presentation_controls_after_final_label_edit": {
+      "passed": 4,
+      "subset_of_suite": true
+    },
+    "rust_registry": "2 passed, including both final-death-frame toggle directions",
+    "c_registry": "passed: production module, atomic portrait/fallback/alias/ownership/lifecycle and final-death-frame scope",
+    "lua_audit": {
+      "checked_calls": 13443,
+      "guarded_declarations": 110
+    },
+    "all25_resource_path_contract": "passed",
+    "patch_forward_reverse_and_series_idempotency": "passed"
+  },
+  "captain_art": {
+    "totals": {
+      "ships": 25,
+      "ani_frames": 380,
+      "unique_pngs": 253
+    },
+    "all_native_geometry_alpha_source_hashes_and_aliases_preserved": true,
+    "static_incremental_release_and_refresh_replay": "passed",
+    "visual_review": "captain-art-review.json",
+    "runtime_png_bytes": 4687602
+  },
+  "all25_native_captains": {
+    "relay": "node",
+    "engines": [
+      "rust/remastered",
+      "c/classic"
+    ],
+    "live_unique_pngs": 251,
+    "static_only_unique_pngs": 2,
+    "checksums_verified": [
+      12541,
+      12530
+    ],
+    "races": [
+      {
+        "race": "androsynth",
+        "melee_index": 0,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special-latched-blazer"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          646,
+          645
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.731292724609375,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "arilou",
+        "melee_index": 1,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          485,
+          485
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "chenjesu",
+        "melee_index": 2,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          485,
+          482
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "chmmr",
+        "melee_index": 3,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 12,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special",
+          "combined-special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          501,
+          502
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "druuge",
+        "melee_index": 4,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 9,
+        "static_only": [
+          {
+            "filename": "mauler-cap-009.png",
+            "rows": [
+              14
+            ],
+            "seenRows": [],
+            "staticOnly": "Native Druuge one-tick SPECIAL/cooldown cannot advance its captain offset to2; asset is verified by captain-assets.py"
+          }
+        ],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special-native-pulse"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          488,
+          488
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "human",
+        "melee_index": 5,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special",
+          "combined-special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          501,
+          502
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "ilwrath",
+        "melee_index": 6,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          473,
+          474
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "kohrah",
+        "melee_index": 7,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          473,
+          473
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "melnorme",
+        "melee_index": 8,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          471,
+          469
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "mmrnmhrm",
+        "melee_index": 9,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          471,
+          469
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "mycon",
+        "melee_index": 10,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          475,
+          475
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.493865966796875,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "orz",
+        "melee_index": 11,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          477,
+          475
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "pkunk",
+        "melee_index": 12,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          476,
+          475
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "shofixti",
+        "melee_index": 13,
+        "passed": true,
+        "native_rows": 20,
+        "live_pngs": 11,
+        "static_only": [
+          {
+            "filename": "scout-cap-008.png",
+            "rows": [
+              12
+            ],
+            "seenRows": [],
+            "staticOnly": "Native Shofixti safe lever is already in the background; shofixti_preprocess latches forward on release and never returns to offset0; asset is verified by captain-assets.py"
+          }
+        ],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "glory-device-1",
+          "glory-device-2",
+          "glory-device-3"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          764,
+          764
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "slylandro",
+        "melee_index": 14,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          475,
+          474
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "spathi",
+        "melee_index": 15,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          475,
+          473
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "supox",
+        "melee_index": 16,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special",
+          "combined-special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          505,
+          504
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "syreen",
+        "melee_index": 17,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          484,
+          486
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "thraddash",
+        "melee_index": 18,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          481,
+          479
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "umgah",
+        "melee_index": 19,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          486,
+          488
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "urquan",
+        "melee_index": 20,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special",
+          "combined-special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          507,
+          507
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "utwig",
+        "melee_index": 21,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          471,
+          472
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "vux",
+        "melee_index": 22,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 9,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          485,
+          484
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "yehat",
+        "melee_index": 23,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special",
+          "combined-special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          507,
+          508
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "zoqfotpik",
+        "melee_index": 24,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          479,
+          477
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      }
+    ],
+    "evidence": "test-results/captains-all-final"
+  },
+  "reverse_c_before_final_guard": {
+    "relay": "node",
+    "races": [
+      {
+        "race": "human",
+        "melee_index": 5,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special",
+          "combined-special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          538,
+          538
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.731292724609375,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "mycon",
+        "melee_index": 10,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          485,
+          488
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.63739013671875,
+          "samples": 6144,
+          "score": true
+        }
+      },
+      {
+        "race": "shofixti",
+        "melee_index": 13,
+        "passed": true,
+        "native_rows": 20,
+        "live_pngs": 11,
+        "static_only": [
+          {
+            "filename": "scout-cap-008.png",
+            "rows": [
+              12
+            ],
+            "seenRows": [],
+            "staticOnly": "Native Shofixti safe lever is already in the background; shofixti_preprocess latches forward on release and never returns to offset0; asset is verified by captain-assets.py"
+          }
+        ],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "glory-device-1",
+          "glory-device-2",
+          "glory-device-3"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          784,
+          785
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.56622314453125,
+          "samples": 5120,
+          "score": true
+        }
+      }
+    ],
+    "evidence": "test-results/captains-c-final"
+  },
+  "release_captain_smoke": {
+    "relay": "rust",
+    "rust_remastered": [
+      {
+        "race": "human",
+        "melee_index": 5,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special",
+          "combined-special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          498,
+          497
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.485809326171875,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "mycon",
+        "melee_index": 10,
+        "passed": true,
+        "native_rows": 15,
+        "live_pngs": 10,
+        "static_only": [],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "special"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          471,
+          472
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.556365966796875,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "race": "shofixti",
+        "melee_index": 13,
+        "passed": true,
+        "native_rows": 20,
+        "live_pngs": 11,
+        "static_only": [
+          {
+            "filename": "scout-cap-008.png",
+            "rows": [
+              12
+            ],
+            "seenRows": [],
+            "staticOnly": "Native Shofixti safe lever is already in the background; shofixti_preprocess latches forward on release and never returns to offset0; asset is verified by captain-assets.py"
+          }
+        ],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "glory-device-1",
+          "glory-device-2",
+          "glory-device-3"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          767,
+          767
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.556365966796875,
+          "samples": 5120,
+          "score": true
+        }
+      }
+    ],
+    "c_remastered": [
+      {
+        "race": "shofixti",
+        "melee_index": 13,
+        "passed": true,
+        "native_rows": 20,
+        "live_pngs": 11,
+        "static_only": [
+          {
+            "filename": "scout-cap-008.png",
+            "rows": [
+              12
+            ],
+            "seenRows": [],
+            "staticOnly": "Native Shofixti safe lever is already in the background; shofixti_preprocess latches forward on release and never returns to offset0; asset is verified by captain-assets.py"
+          }
+        ],
+        "actions": [
+          "left",
+          "right",
+          "thrust",
+          "weapon",
+          "combined",
+          "glory-device-1",
+          "glory-device-2",
+          "glory-device-3"
+        ],
+        "max_release_residue_pixels": 0,
+        "max_held_toggle_change_pixels": 0,
+        "checksums_verified": [
+          767,
+          767
+        ],
+        "audio": {
+          "state": "running",
+          "peak": 0.556365966796875,
+          "samples": 5120,
+          "score": true
+        }
+      }
+    ],
+    "evidence": [
+      "test-results/captains-smoke-release",
+      "test-results/captains-c-release"
+    ]
+  },
+  "release_netplay": {
+    "relay": "rust",
+    "scenarios": [
+      {
+        "name": "normal",
+        "passed": true,
+        "latency_pattern_ms": [
+          0
+        ],
+        "full_fleet_match": true,
+        "checksums_at_match_end": [
+          575,
+          575
+        ],
+        "returned_to_menu": true,
+        "saved_fleet_preserved_after_reload": true,
+        "audio": {
+          "state": "running",
+          "peak": 0.43701171875,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "name": "jitter",
+        "passed": true,
+        "latency_pattern_ms": [
+          80,
+          120,
+          30,
+          60
+        ],
+        "full_fleet_match": true,
+        "checksums_at_match_end": [
+          592,
+          592
+        ],
+        "returned_to_menu": true,
+        "saved_fleet_preserved_after_reload": true,
+        "audio": {
+          "state": "running",
+          "peak": 0.543121337890625,
+          "samples": 5120,
+          "score": true
+        }
+      },
+      {
+        "name": "setup",
+        "passed": true,
+        "latency_pattern_ms": [
+          0
+        ],
+        "full_fleet_match": false,
+        "checksums_at_match_end": [],
+        "returned_to_menu": true,
+        "saved_fleet_preserved_after_reload": true,
+        "audio": null
+      }
+    ],
+    "evidence": "test-results/captains-netplay-release"
+  },
+  "release_stability": {
+    "passed": true,
+    "browserType": "chromium",
+    "idleMs": 300000,
+    "battleElapsedMs": 15540,
+    "errors": [],
+    "presentationAtEnd": {
+      "enabled": 1,
+      "images": 560,
+      "draws": 1313,
+      "backgrounds": 348,
+      "gameScreen": "melee"
+    }
+  },
+  "music": {
+    "validation": "../../hd/remastered/music/validation.json",
+    "tracks": [
+      {
+        "file": "fleet-menu.ogg",
+        "sha256": "4d8cce6bb061bac8edc1341155c6ab6a2935c31d035206c0fa8dff1f8afa1165",
+        "decoded_samples": 4515840,
+        "seconds": 102.4,
+        "tempo_bpm": 150,
+        "sample_peak_dbfs": -1.561,
+        "true_peak_dbtp": -1.5,
+        "integrated_lufs": -15.1,
+        "loudness_range_lu": 4.3,
+        "average_rms_dbfs": -15.495,
+        "crest_db": 13.933,
+        "dc_offset": 4.301592707633972e-05,
+        "quietest_100ms_dbfs": -42.78,
+        "loop_seam_step": 0.026463612914085388,
+        "normal_99_9_percent_step": 0.1951080560684204,
+        "stereo_side_to_mid_ratio": 0.218,
+        "section_rms_dbfs": [
+          -15.77,
+          -15.022,
+          -15.174,
+          -14.581,
+          -19.104,
+          -16.209,
+          -14.583,
+          -15.009
+        ],
+        "section_range_db": 4.523,
+        "unique_bar_rhythm_signatures": 30,
+        "event_count": 3000,
+        "spectral_power_fractions": {
+          "0-30Hz": 0.01847,
+          "30-80Hz": 0.55204,
+          "80-250Hz": 0.33377,
+          "250-2000Hz": 0.08074,
+          "2000-8000Hz": 0.01046,
+          "8000-18000Hz": 0.00452,
+          "18000-22050Hz": 0.0
+        }
+      },
+      {
+        "file": "battle.ogg",
+        "sha256": "7cfdd1988a610815afdea66f03a03987563ff32653cf4fc3a2d0dec717f2a7d2",
+        "decoded_samples": 4032000,
+        "seconds": 91.42857142857143,
+        "tempo_bpm": 168,
+        "sample_peak_dbfs": -1.489,
+        "true_peak_dbtp": -1.5,
+        "integrated_lufs": -14.3,
+        "loudness_range_lu": 4.7,
+        "average_rms_dbfs": -14.84,
+        "crest_db": 13.352,
+        "dc_offset": 0.00038111716276034713,
+        "quietest_100ms_dbfs": -38.09,
+        "loop_seam_step": 0.006682537496089935,
+        "normal_99_9_percent_step": 0.19065997004508972,
+        "stereo_side_to_mid_ratio": 0.208,
+        "section_rms_dbfs": [
+          -14.544,
+          -14.303,
+          -14.426,
+          -14.199,
+          -18.988,
+          -15.486,
+          -14.206,
+          -14.292
+        ],
+        "section_range_db": 4.788,
+        "unique_bar_rhythm_signatures": 30,
+        "event_count": 3088,
+        "spectral_power_fractions": {
+          "0-30Hz": 0.00687,
+          "30-80Hz": 0.53561,
+          "80-250Hz": 0.36432,
+          "250-2000Hz": 0.0795,
+          "2000-8000Hz": 0.00955,
+          "8000-18000Hz": 0.00416,
+          "18000-22050Hz": 0.0
+        }
+      }
+    ],
+    "reproducibility": {
+      "passed": true,
+      "method": "Independent full rerender in .tools/music-repro-final with recorded toolchain; compared both PCM hashes and complete Ogg bytes.",
+      "tracks": [
+        {
+          "file": "fleet-menu.ogg",
+          "pcm_s16le_sha256": "55b559c1920e6c0acbe70c08462afae253847da780fd264258ce066d5b5d21b1",
+          "ogg_sha256": "4d8cce6bb061bac8edc1341155c6ab6a2935c31d035206c0fa8dff1f8afa1165",
+          "pcm_and_encoded_bytes_identical": true
+        },
+        {
+          "file": "battle.ogg",
+          "pcm_s16le_sha256": "a86e4e5ac4352ca2a0fa77981d9ef0307b5486d2e82715e6d68a67fdce2b9479",
+          "ogg_sha256": "7cfdd1988a610815afdea66f03a03987563ff32653cf4fc3a2d0dec717f2a7d2",
+          "pcm_and_encoded_bytes_identical": true
+        }
+      ]
+    },
+    "subjective_audition": false
+  },
+  "limitations": [
+    "Browser tests used separate Chromium processes on one computer, not a two-computer WAN session or every browser/device.",
+    "All25 live-art coverage preceded only the isolated Shofixti final-death style guard and soundtrack revision; final-build targeted tests and full regressions are recorded separately.",
+    "Druuge held-special PNG and Shofixti safe-lever PNG are native dormant states and were statically validated, not falsely counted as live coverage.",
+    "Musical taste and commercial art quality are human judgments; audio checks measure signal properties and native playback."
+  ]
+}

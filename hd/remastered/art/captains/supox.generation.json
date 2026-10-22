@@ -1,0 +1,23 @@
+{
+  "race": "supox",
+  "tool": "image_gen.imagegen",
+  "mode": "reference edit / style-transfer",
+  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-7a3281b2-1cd0-4585-bb5b-2b38a30f1b45.png",
+  "output_path": "hd/remastered/art/captains/supox.png",
+  "references": [
+    ".tools/captain-reference/sheets/supox-unique-composited.png",
+    "hd/remastered/art/ships-2.png"
+  ],
+  "prompt_path": "hd/remastered/art/captains/supox.prompt.txt",
+  "qa_status": "Reviewed generated atlas and packed native masked layers; precise source cell bounds recorded in supox.packing.json. Native geometry/alpha unchanged.",
+  "qa_notes": [
+    "Original species identity, crew count and broad native composition retained.",
+    "Four-column ten-state atlas with two black unused cells; measured per-cell boundaries verified in packed native animation layers.",
+    "No added text or UI; small action changes preserved in corresponding cells."
+  ],
+  "output_sha256": "bd61bb36a28410e1dec790843cba6c0b9e1b948fea9ed01eea64e082abc8cf36",
+  "output_size": [
+    1962,
+    801
+  ]
+}

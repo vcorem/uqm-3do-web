@@ -803,6 +803,7 @@ unsafe extern "C" fn DrawCaptainWindowAnimation(
     }
 }
 unsafe extern "C" fn DrawCaptainWindowFrame(mut fr: FRAME, mut y: COORD) {
+    let _presentation = crate::uqm_melee_presentation::UQM_MeleePresentationCaptainBegin();
     let mut Stamp: STAMP = STAMP {
         origin: POINT { x: 0, y: 0 },
         frame: ::core::ptr::null_mut::<FRAME_DESC>(),
@@ -893,6 +894,7 @@ pub unsafe extern "C" fn DrawBattleCrewAmount(
 }
 #[no_mangle]
 pub unsafe extern "C" fn DrawCaptainsWindow(mut StarShipPtr: *mut STARSHIP) {
+    let _presentation = crate::uqm_melee_presentation::UQM_MeleePresentationCaptainBegin();
     let mut y: COORD = 0;
     let mut y_offs: COORD = 0;
     let mut r: RECT = RECT {
@@ -1295,6 +1297,7 @@ pub unsafe extern "C" fn DeltaCrew(
 }
 #[no_mangle]
 pub unsafe extern "C" fn PreProcessStatus(mut ShipPtr: *mut ELEMENT) {
+    let _presentation = crate::uqm_melee_presentation::UQM_MeleePresentationCaptainBegin();
     let mut StarShipPtr: *mut STARSHIP = ::core::ptr::null_mut::<STARSHIP>();
     StarShipPtr = (*ShipPtr).pParent as *mut STARSHIP;
     if (*StarShipPtr).captains_name_index as ::core::ffi::c_int != 0
@@ -1342,6 +1345,24 @@ pub unsafe extern "C" fn PreProcessStatus(mut ShipPtr: *mut ELEMENT) {
                     redraw_flags,
                 ), ());
             }
+        }
+        // Repaint a live composited portrait after a style change. Read the
+        // current native offsets; never reset or advance their animation state.
+        if (*ShipPtr).c2rust_unnamed_0.crew_level != 0 && !(*CSPtr).background.is_null()
+            && crate::uqm_melee_presentation::UQM_MeleePresentationCaptainNeedsRefresh(
+                (*StarShipPtr).playerNr as ::core::ffi::c_int, (*CSPtr).background.cast(),
+            )
+        {
+            let y = status_y_offsets[(*StarShipPtr).playerNr as usize];
+            // The background already contains neutral layers; drawing those
+            // again can erase overlapping active patches (for example Mycon).
+            let layers: BYTE = (if (*CSPtr).tr_offset != 0 { 2 }
+                else if (*CSPtr).tl_offset != 0 { 1 } else { 0 })
+                | (if (*CSPtr).thrust_offset != 0 { 4 } else { 0 })
+                | (if (*CSPtr).weapon_offset != 0 { 8 } else { 0 })
+                | (if (*CSPtr).special_offset != 0 { 16 } else { 0 });
+            uqm_lua_checked!(DrawCaptainWindowFrame((*CSPtr).background, y), ());
+            uqm_lua_checked!(DrawCaptainWindowAnimation(CSPtr, y, layers), ());
         }
     }
 }
@@ -1408,6 +1429,9 @@ pub unsafe extern "C" fn PostProcessStatus(mut ShipPtr: *mut ELEMENT) {
                     cur_status_flags = (cur_status_flags as ::core::ffi::c_int
                         & !((1 as ::core::ffi::c_int) << 10 as ::core::ffi::c_int))
                         as STATUS_FLAGS;
+                    let _final_presentation = crate::uqm_melee_presentation::UQM_MeleePresentationCaptainBeginFinalFrame(
+                        (*StarShipPtr).playerNr as ::core::ffi::c_int, (*CSPtr).background.cast(),
+                    );
                     uqm_lua_checked!(DrawCaptainWindowFrame(DecFrameIndex((*CSPtr).background), y), ());
                 } else {
                     if i as ::core::ffi::c_int <= 4 as ::core::ffi::c_int {

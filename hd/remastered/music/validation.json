@@ -1,59 +1,106 @@
 {
   "passed": true,
+  "version": "martial-space-2",
+  "subjective_audition": false,
+  "listening_limit": "No model audio input was available. This report establishes measured signal properties, not musical taste or in-game masking.",
   "tracks": [
     {
       "file": "fleet-menu.ogg",
-      "decoded_samples": 4704000,
-      "seconds": 106.66666666666667,
-      "peak_dbfs": -2.032,
-      "dc_offset": 4.581799657898955e-05,
-      "quietest_100ms_dbfs": -40.342,
-      "loop_seam_step": 0.009138770401477814,
-      "normal_99_9_percent_step": 0.276014119386673,
-      "stereo_side_to_mid_ratio": 0.115,
-      "section_rms": [
-        0.13122950494289398,
-        0.14588052034378052,
-        0.13651448488235474,
-        0.16320757567882538,
-        0.0834212377667427,
-        0.1327357143163681,
-        0.16333156824111938,
-        0.1450469046831131
+      "sha256": "4d8cce6bb061bac8edc1341155c6ab6a2935c31d035206c0fa8dff1f8afa1165",
+      "decoded_samples": 4515840,
+      "seconds": 102.4,
+      "tempo_bpm": 150,
+      "sample_peak_dbfs": -1.561,
+      "true_peak_dbtp": -1.5,
+      "integrated_lufs": -15.1,
+      "loudness_range_lu": 4.3,
+      "average_rms_dbfs": -15.495,
+      "crest_db": 13.933,
+      "dc_offset": 4.301592707633972e-05,
+      "quietest_100ms_dbfs": -42.78,
+      "loop_seam_step": 0.026463612914085388,
+      "normal_99_9_percent_step": 0.1951080560684204,
+      "stereo_side_to_mid_ratio": 0.218,
+      "section_rms_dbfs": [
+        -15.77,
+        -15.022,
+        -15.174,
+        -14.581,
+        -19.104,
+        -16.209,
+        -14.583,
+        -15.009
       ],
-      "integrated_lufs": -16.3,
-      "loudness_range_lu": 5.9,
-      "true_peak_dbfs": -1.7
+      "section_range_db": 4.523,
+      "unique_bar_rhythm_signatures": 30,
+      "event_count": 3000,
+      "spectral_power_fractions": {
+        "0-30Hz": 0.01847,
+        "30-80Hz": 0.55204,
+        "80-250Hz": 0.33377,
+        "250-2000Hz": 0.08074,
+        "2000-8000Hz": 0.01046,
+        "8000-18000Hz": 0.00452,
+        "18000-22050Hz": 0.0
+      }
     },
     {
       "file": "battle.ogg",
-      "decoded_samples": 4233600,
-      "seconds": 96.0,
-      "peak_dbfs": -0.341,
-      "dc_offset": 6.173281144583598e-05,
-      "quietest_100ms_dbfs": -33.298,
-      "loop_seam_step": 0.015956759452819824,
-      "normal_99_9_percent_step": 0.37061843276023865,
-      "stereo_side_to_mid_ratio": 0.138,
-      "section_rms": [
-        0.19529475271701813,
-        0.2052326500415802,
-        0.19610704481601715,
-        0.20578289031982422,
-        0.11798858642578125,
-        0.18775303661823273,
-        0.2045549601316452,
-        0.20514971017837524
+      "sha256": "7cfdd1988a610815afdea66f03a03987563ff32653cf4fc3a2d0dec717f2a7d2",
+      "decoded_samples": 4032000,
+      "seconds": 91.42857142857143,
+      "tempo_bpm": 168,
+      "sample_peak_dbfs": -1.489,
+      "true_peak_dbtp": -1.5,
+      "integrated_lufs": -14.3,
+      "loudness_range_lu": 4.7,
+      "average_rms_dbfs": -14.84,
+      "crest_db": 13.352,
+      "dc_offset": 0.00038111716276034713,
+      "quietest_100ms_dbfs": -38.09,
+      "loop_seam_step": 0.006682537496089935,
+      "normal_99_9_percent_step": 0.19065997004508972,
+      "stereo_side_to_mid_ratio": 0.208,
+      "section_rms_dbfs": [
+        -14.544,
+        -14.303,
+        -14.426,
+        -14.199,
+        -18.988,
+        -15.486,
+        -14.206,
+        -14.292
       ],
-      "integrated_lufs": -13.5,
-      "loudness_range_lu": 5.0,
-      "true_peak_dbfs": -0.4
+      "section_range_db": 4.788,
+      "unique_bar_rhythm_signatures": 30,
+      "event_count": 3088,
+      "spectral_power_fractions": {
+        "0-30Hz": 0.00687,
+        "30-80Hz": 0.53561,
+        "80-250Hz": 0.36432,
+        "250-2000Hz": 0.0795,
+        "2000-8000Hz": 0.00955,
+        "8000-18000Hz": 0.00416,
+        "18000-22050Hz": 0.0
+      }
     }
   ],
   "reproducibility": {
-    "track": "fleet-menu.ogg",
-    "pcm_exact_match": true,
-    "encoded_bytes_exact_match": true,
-    "independent_output": "separate temporary directory"
+    "passed": true,
+    "method": "Independent full rerender in .tools/music-repro-final with recorded toolchain; compared both PCM hashes and complete Ogg bytes.",
+    "tracks": [
+      {
+        "file": "fleet-menu.ogg",
+        "pcm_s16le_sha256": "55b559c1920e6c0acbe70c08462afae253847da780fd264258ce066d5b5d21b1",
+        "ogg_sha256": "4d8cce6bb061bac8edc1341155c6ab6a2935c31d035206c0fa8dff1f8afa1165",
+        "pcm_and_encoded_bytes_identical": true
+      },
+      {
+        "file": "battle.ogg",
+        "pcm_s16le_sha256": "a86e4e5ac4352ca2a0fa77981d9ef0307b5486d2e82715e6d68a67fdce2b9479",
+        "ogg_sha256": "7cfdd1988a610815afdea66f03a03987563ff32653cf4fc3a2d0dec717f2a7d2",
+        "pcm_and_encoded_bytes_identical": true
+      }
+    ]
   }
 }

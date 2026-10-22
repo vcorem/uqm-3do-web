@@ -1,0 +1,21 @@
+{
+  "generator": "built-in image_gen",
+  "mode": "edit",
+  "output_path": "hd/remastered/art/captains/umgah-base-correction.png",
+  "output_sha256": "ea04b1db53809a628dd2a25b69860e530a1760f8e254afd156265c290ab27d05",
+  "source": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-47134bd9-9b9e-4d28-be67-b99990aaede2.png",
+  "prompt": "hd/remastered/art/captains/umgah-base-correction.prompt.txt",
+  "references": [
+    ".tools/captain-reference/singles/umgah-authored-base.png",
+    ".tools/captain-reference/singles/umgah-native-base.png"
+  ],
+  "used_cells": [
+    0
+  ],
+  "dimensions": [
+    1698,
+    926
+  ],
+  "qa": "Final packed left/right antenna poses have no detached old tip. All ten unique composed cells inspected after this base correction.",
+  "qa_limits": "Static packed composition inspection only; no runtime behavior claim."
+}

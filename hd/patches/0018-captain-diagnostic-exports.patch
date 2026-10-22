@@ -1,0 +1,12 @@
+diff --git a/build/unix/build.config b/build/unix/build.config
+--- a/build/unix/build.config
++++ b/build/unix/build.config
+@@ -79,7 +79,7 @@
+ 	if [ "$HOST_SYSTEM" = Emscripten ]; then
+ 		LDFLAGS="$LDFLAGS -g2 -s ASSERTIONS=1 -s STACK_OVERFLOW_CHECK=2 -s ASYNCIFY -pthread"
+ 		LDFLAGS_FINAL="$LDFLAGS_FINAL wasm/compat/emscripten-proxying.o --preload-file=content@/content -lidbfs.js --pre-js wasm/pre.js"
+-		LDFLAGS_FINAL="$LDFLAGS_FINAL --shell-file wasm/shell.html -s EXPORTED_RUNTIME_METHODS=callMain -s EXPORTED_FUNCTIONS=_main,_UQM_SetMeleeRemastered,_UQM_GetMeleeRemastered,_UQM_GetMeleeRemasteredImageCount,_UQM_GetMeleeRemasteredDrawCount,_UQM_GetMeleeRemasteredBackgroundCount -s EXIT_RUNTIME=1"
++		LDFLAGS_FINAL="$LDFLAGS_FINAL --shell-file wasm/shell.html -s EXPORTED_RUNTIME_METHODS=callMain -s EXPORTED_FUNCTIONS=_main,_UQM_SetMeleeRemastered,_UQM_GetMeleeRemastered,_UQM_GetMeleeRemasteredImageCount,_UQM_GetMeleeRemasteredDrawCount,_UQM_GetMeleeRemasteredBackgroundCount,_UQM_GetMeleeRemasteredCaptainImageCount,_UQM_GetMeleeRemasteredCaptainDrawCount,_UQM_GetMeleeRemasteredCaptainSeenMask -s EXIT_RUNTIME=1"
+ 		LDFLAGS_FINAL="$LDFLAGS_FINAL -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH=1 -s MAXIMUM_MEMORY=1073741824"
+ 		LDFLAGS_FINAL="$LDFLAGS_FINAL -s STACK_SIZE=1048576 -s DEFAULT_PTHREAD_STACK_SIZE=1048576 -s ASYNCIFY_STACK_SIZE=65536"
+ 		CCOMMONFLAGS="$CCOMMONFLAGS -s ASYNCIFY -pthread"

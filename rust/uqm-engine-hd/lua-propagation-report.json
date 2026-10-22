@@ -1,6 +1,6 @@
 {
   "changed_files": 274,
-  "checked_calls": 13441,
+  "checked_calls": 13443,
   "files": [
     {
       "file": "src/libs/callback/alarm.rs",
@@ -12393,9 +12393,16 @@
           "function": "DeltaCrew"
         },
         {
-          "checked_calls": 1,
+          "checked_calls": 3,
           "failure_return": "()",
-          "function": "PreProcessStatus"
+          "function": "PreProcessStatus",
+          "manual_presentation_addition": {
+            "callee": "DrawCaptainWindowFrame, DrawCaptainWindowAnimation",
+            "checked_calls_added": 2,
+            "date": "2026-10-22",
+            "reason": "Refresh the composited captain background and current action layers on a presentation change. Native offsets and timing are read only; both extra graphics calls preserve unit-return Lua failure propagation.",
+            "source_patch": "hd/patches/0017-captain-presentation.patch"
+          }
         },
         {
           "checked_calls": 7,

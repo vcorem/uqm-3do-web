@@ -1,0 +1,23 @@
+{
+  "race": "yehat",
+  "tool": "image_gen.imagegen",
+  "mode": "reference edit / style-transfer",
+  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-3efffdad-038c-4725-ac79-b513b78de90c.png",
+  "output_path": "hd/remastered/art/captains/yehat.png",
+  "references": [
+    ".tools/captain-reference/sheets/yehat-unique-composited.png",
+    "hd/remastered/art/ships-2.png"
+  ],
+  "prompt_path": "hd/remastered/art/captains/yehat.prompt.txt",
+  "qa_status": "Reviewed generated atlas and packed native masked layers; precise source cell bounds recorded in yehat.packing.json. Native geometry/alpha unchanged.",
+  "qa_notes": [
+    "Original species identity, crew count and broad native composition retained.",
+    "Four-column ten-state atlas with two black unused cells; measured per-cell boundaries verified in packed native animation layers.",
+    "No added text or UI; small action changes preserved in corresponding cells."
+  ],
+  "output_sha256": "f2509db66a252ece1fce5f05c5f6b42f525da7fbf1820cf6cd259b258f50ecc0",
+  "output_size": [
+    2014,
+    781
+  ]
+}

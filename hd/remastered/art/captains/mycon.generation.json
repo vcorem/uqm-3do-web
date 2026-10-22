@@ -1,0 +1,25 @@
+{
+  "race": "mycon",
+  "tool": "image_gen.imagegen",
+  "mode": "reference edit / style-transfer",
+  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-a1023cd7-cbcf-4396-94a0-b546001204ee.png",
+  "output_path": "hd/remastered/art/captains/mycon.png",
+  "output_sha256": "117fe3a7d5d1704d6d1d58c4242b169735848226dda91a335f956bdc9c3d4df1",
+  "output_size": [
+    1859,
+    846
+  ],
+  "references": [
+    ".tools/captain-reference/sheets/mycon-unique-composited.png",
+    "hd/remastered/art/ships-2.png"
+  ],
+  "prompt_path": "hd/remastered/art/captains/mycon.prompt.txt",
+  "qa_status": "atlas and compiled native masked compositions visually inspected",
+  "qa_notes": [
+    "Native violet fungal crown, cyan energy plume and lava scene preserved; no invented face.",
+    "Turn tendrils, thrust crown effect, weapon backdrop flares and cyan lower-groove special in correct cells.",
+    "No text,UI or watermark. Four-by-three grid with ten occupied and two black cells preserved.",
+    "Inspected every packed unique cell at native220\u00d7120; correct native action regions and identity, no split faces or missing effects. Small art boundary shifts can remain; live action/release validation is separate."
+  ],
+  "compiled_qa_path": ".tools/captain-qa-audit/mycon-packed.png"
+}

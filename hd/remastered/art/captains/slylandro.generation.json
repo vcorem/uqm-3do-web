@@ -1,0 +1,25 @@
+{
+  "race": "slylandro",
+  "tool": "image_gen.imagegen",
+  "mode": "reference edit / style-transfer",
+  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-de7294ab-5b59-4b40-9e01-8c57bfea06b4.png",
+  "output_path": "hd/remastered/art/captains/slylandro.png",
+  "output_sha256": "37260dcee9014de24c927624294f8937d073c84869e9e60c3c52f829e8d595d3",
+  "output_size": [
+    1962,
+    801
+  ],
+  "references": [
+    ".tools/captain-reference/sheets/slylandro-unique-composited.png",
+    "hd/remastered/art/ships-2.png"
+  ],
+  "prompt_path": "hd/remastered/art/captains/slylandro.prompt.txt",
+  "qa_status": "atlas and compiled native masked compositions visually inspected",
+  "qa_notes": [
+    "Three ruby crystals retain center-large/side-small arrangement and silver pedestals.",
+    "Turn sparks above respective side crystal; thrust charge below central crystal; weapon arc across upper-middle; special arcs around lower sides.",
+    "No text,UI or watermark. Four-by-three grid with ten occupied and two black cells preserved.",
+    "Inspected every packed unique cell at native220\u00d7120; correct native action regions and identity, no split faces or missing effects. Small art boundary shifts can remain; live action/release validation is separate."
+  ],
+  "compiled_qa_path": ".tools/captain-qa-audit/slylandro-packed.png"
+}

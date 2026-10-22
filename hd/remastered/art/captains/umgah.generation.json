@@ -1,0 +1,25 @@
+{
+  "race": "umgah",
+  "tool": "image_gen.imagegen",
+  "mode": "reference edit / style-transfer",
+  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-cfbf6bfd-c7fe-47e9-9ba3-d4e6d97a26fb.png",
+  "output_path": "hd/remastered/art/captains/umgah.png",
+  "output_sha256": "a385f4f92adc17043b51e5c2bfccf79f9d5aac8e0a4951d21ab44ade3ef3745e",
+  "output_size": [
+    2014,
+    781
+  ],
+  "references": [
+    ".tools/captain-reference/sheets/umgah-unique-composited.png",
+    "hd/remastered/art/ships-2.png"
+  ],
+  "prompt_path": "hd/remastered/art/captains/umgah.prompt.txt",
+  "qa_status": "atlas and compiled native masked compositions visually inspected",
+  "qa_notes": [
+    "Single pink blob with native asymmetrical eyes, orange knob, three appendages and organic tunnel preserved.",
+    "Upper-left directional tentacle poses, lower-left knob motion, right weapon reach and puckered-mouth special present.",
+    "No text,UI or watermark. Four-by-three grid with ten occupied and two black cells preserved.",
+    "Inspected every packed unique cell at native220\u00d7120; correct native action regions and identity, no split faces or missing effects. Small art boundary shifts can remain; live action/release validation is separate."
+  ],
+  "compiled_qa_path": ".tools/captain-qa-audit/umgah-packed.png"
+}

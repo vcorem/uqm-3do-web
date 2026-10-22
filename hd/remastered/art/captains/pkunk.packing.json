@@ -1,0 +1,74 @@
+{
+  "grid_bounds": [
+    0,
+    0,
+    1855,
+    765
+  ],
+  "cell_bounds": {
+    "0": [
+      0,
+      0,
+      464,
+      254
+    ],
+    "1": [
+      464,
+      0,
+      928,
+      254
+    ],
+    "2": [
+      928,
+      0,
+      1391,
+      254
+    ],
+    "3": [
+      1391,
+      0,
+      1855,
+      254
+    ],
+    "4": [
+      0,
+      254,
+      464,
+      508
+    ],
+    "5": [
+      464,
+      254,
+      928,
+      508
+    ],
+    "6": [
+      928,
+      254,
+      1391,
+      508
+    ],
+    "7": [
+      0,
+      0,
+      1698,
+      926
+    ],
+    "8": [
+      0,
+      508,
+      464,
+      765
+    ],
+    "9": [
+      464,
+      508,
+      928,
+      765
+    ]
+  },
+  "packing_notes": "Measured source atlas cell boundaries; excludes generated bottom margins and adjacent cells. Native output geometry and alpha remain unchanged. Single-scene ImageGen correction selected per cell; native output geometry and alpha unchanged.",
+  "cell_sources": {
+    "7": "pkunk-weapon-correction.png"
+  }
+}

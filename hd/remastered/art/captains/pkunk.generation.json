@@ -1,0 +1,23 @@
+{
+  "race": "pkunk",
+  "tool": "image_gen.imagegen",
+  "mode": "reference edit / style-transfer",
+  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-d33a4226-e8e6-4fe0-b016-dbf98b34ab2f.png",
+  "output_path": "hd/remastered/art/captains/pkunk.png",
+  "references": [
+    ".tools/captain-reference/sheets/pkunk-unique-composited.png",
+    "hd/remastered/art/ships-2.png"
+  ],
+  "prompt_path": "hd/remastered/art/captains/pkunk.prompt.txt",
+  "qa_status": "Reviewed generated atlas and packed native masked layers; precise source cell bounds recorded in pkunk.packing.json. Native geometry/alpha unchanged.",
+  "qa_notes": [
+    "Original species identity, crew count and broad native composition retained.",
+    "Four-column ten-state atlas with two black unused cells; measured per-cell boundaries verified in packed native animation layers.",
+    "No added text or UI; small action changes preserved in corresponding cells."
+  ],
+  "output_sha256": "c3f07494ad882376e1221d56c108c349b10453b1e3d6acda9377a92757224c55",
+  "output_size": [
+    1855,
+    848
+  ]
+}

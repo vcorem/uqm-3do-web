@@ -1,0 +1,609 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-10-22T14:47:04.278019+00:00",
+  "reviewer": "melee_assets_audit",
+  "scope": "Independent static visual review of all final native-mask composited captain contact sheets; source provenance and packing invariant checks.",
+  "status": "passed",
+  "totals": {
+    "ships": 25,
+    "ani_frames": 380,
+    "unique_pngs": 253
+  },
+  "manifest": "hd/remastered/render/captains-manifest.json",
+  "manifest_sha256": "29bf195b42dc7f64dc00de9493390f4ca3cf4e86e9ea8d7ba4a6f1be42908311",
+  "compiler_sha256": "d48f27931084416ee46f76997fb64fc1f9356b4d03b019103f133cdfe015ddd7",
+  "races": [
+    {
+      "race": "androsynth",
+      "melee_index": 0,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/androsynth-packed.png",
+      "evidence_sha256": "b7ab1141ed4a8228e4fa2e76a4ba132b2ab35d6e3b483053164e59dd153a3cf0",
+      "result": "no blocking visual defect found",
+      "notes": "Four crew members retained; action cells use the intended actor regions."
+    },
+    {
+      "race": "arilou",
+      "melee_index": 1,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/arilou-packed.png",
+      "evidence_sha256": "bd05db817f67578270b057a7b7136e7610d596ada9599e7d342e3f133bbf6bbd",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "chenjesu",
+      "melee_index": 2,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/chenjesu-packed.png",
+      "evidence_sha256": "2b41216be25aa878357a65fc6b4175572ad2c2eaebd56fd04230590227a218c2",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "chmmr",
+      "melee_index": 3,
+      "reviewed": true,
+      "unique_composed_panels": 12,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/chmmr-packed.png",
+      "evidence_sha256": "72d214021b80ef0e8407cbcb9ce4b284c5e662c0cf821eecc7b5477cebf4641b",
+      "result": "no blocking visual defect found",
+      "notes": "All12 unique stages reviewed, including crystal colors and electrical effects."
+    },
+    {
+      "race": "druuge",
+      "melee_index": 4,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/druuge-packed.png",
+      "evidence_sha256": "8e2af7cef22dbe7dfdb4157f5cf4511be15130e9aaae3c720df0b509d7fefddb",
+      "result": "no blocking visual defect found",
+      "notes": "Registered head and eye glows align. Right-leg base registration removes duplicated leg in left-turn pose. Both turn poses, hand reaction and furnace reaction checked after packing. The narrow source-region background blend is visible only as a shading transition, not a detached limb or hard rectangular cut."
+    },
+    {
+      "race": "human",
+      "melee_index": 5,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/human-packed.png",
+      "evidence_sha256": "6cdb0ebbe61f45b6659be7b1a01e4ee3a512c23edca6e9ce2b124ad5ea9a1166",
+      "result": "no blocking visual defect found",
+      "notes": "Two crew members retained; weapon reaction is on the original left-side monitor."
+    },
+    {
+      "race": "ilwrath",
+      "melee_index": 6,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/ilwrath-packed.png",
+      "evidence_sha256": "5163c08ecc0d37fd55d584bf246c749c67dc3f1932a60921fc35728ea5c8e0d8",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "kohrah",
+      "melee_index": 7,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/kohrah-packed.png",
+      "evidence_sha256": "e17129f14f201c87730d87195997965b7410728fcf5691eb028216f924af2350",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "melnorme",
+      "melee_index": 8,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/melnorme-packed.png",
+      "evidence_sha256": "bb10ba07d2cac2dff2e2cacb48847bc2591f067cfc455603b75c541dd3a096f8",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "mmrnmhrm",
+      "melee_index": 9,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/mmrnmhrm-packed.png",
+      "evidence_sha256": "0a25299a55f5d2ce679546cb2109a7a7a432b6ff38e80f48760979cfc30b0178",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "mycon",
+      "melee_index": 10,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/mycon-packed.png",
+      "evidence_sha256": "7ab9dee3ad08331e80a45a849c04f4aefe3d3d8585a381bf826dff4bd9d5a5a5",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "orz",
+      "melee_index": 11,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/orz-packed.png",
+      "evidence_sha256": "e53c08afea1d43fdbc820eb8ad1f7437f17a53ca23369020011035b01175cc8f",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "pkunk",
+      "melee_index": 12,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/pkunk-packed.png",
+      "evidence_sha256": "e4b296a12480f5955a65dec04bb1ab45d57c97de9d58e416cd0ba9cc0fabb267",
+      "result": "no blocking visual defect found",
+      "notes": "Corrected weapon tip has a compact round light without the prior rectangular blue halo boundary."
+    },
+    {
+      "race": "shofixti",
+      "melee_index": 13,
+      "reviewed": true,
+      "unique_composed_panels": 12,
+      "ani_rows": 20,
+      "evidence": ".tools/captain-qa/shofixti-packed.png",
+      "evidence_sha256": "a96c25ace3828a088cd40d6eae6db2c4dfed17b2c3ea98e83ad6abc9a62b3178",
+      "result": "no blocking visual defect found",
+      "notes": "All12 unique images reviewed, including extended lever stages; static review does not establish their live reachability or timing."
+    },
+    {
+      "race": "slylandro",
+      "melee_index": 14,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/slylandro-packed.png",
+      "evidence_sha256": "649ef2a18559f1864fc3d85883f484e07d6b2011be88fbaef7b2445b320813e9",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "spathi",
+      "melee_index": 15,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/spathi-packed.png",
+      "evidence_sha256": "cf297b367d966bac8c93908aa6ff4fdbc0b14f0946a13f09b62a1cab9edbee0b",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "supox",
+      "melee_index": 16,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/supox-packed.png",
+      "evidence_sha256": "d1ad6b2998889fe8aa6cd04d846611962ea5520cd7624f1f69a60fdc64dabda5",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "syreen",
+      "melee_index": 17,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/syreen-packed.png",
+      "evidence_sha256": "43b2e353bbe3117d6a0c26a2d529d44af8ce269451e6c7e28fcea7f2deea5ed7",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "thraddash",
+      "melee_index": 18,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/thraddash-packed.png",
+      "evidence_sha256": "4d5b34208dc866cfc8c9c235e4fd9905e9cba04aa0049e1da9d7f1730c261954",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "umgah",
+      "melee_index": 19,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/umgah-packed.png",
+      "evidence_sha256": "3fdd78ce18d18b256d1a3088d2606e157a495e91e690f53375dcd5b8a0cad84e",
+      "result": "no blocking visual defect found",
+      "notes": "Corrected base antenna fits the native action support; left/right poses have no detached old tip. Eye, mouth and tentacle reactions remain present."
+    },
+    {
+      "race": "urquan",
+      "melee_index": 20,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/urquan-packed.png",
+      "evidence_sha256": "a20d27cb293b0d387b28e961c513f184f59ada7ad81ca2623449a67d0d0d58ee",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "utwig",
+      "melee_index": 21,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/utwig-packed.png",
+      "evidence_sha256": "398deede21d487c7ea52f5c07c30dd12f1314877cbf7b1aace8e6a187672b488",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "vux",
+      "melee_index": 22,
+      "reviewed": true,
+      "unique_composed_panels": 9,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/vux-packed.png",
+      "evidence_sha256": "86fabc1badc4adc377ca7b169cec440d47600d5fdda35125b756176711c08a6c",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "yehat",
+      "melee_index": 23,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/yehat-packed.png",
+      "evidence_sha256": "6ec4f35b9801beffb11680dd85c82ef2228fdb77cfc52d4de20ad1245b5278e3",
+      "result": "no blocking visual defect found",
+      "notes": "Inspected every unique composed panel for missing crew, wrong actor, split faces, clipped poses and misplaced reaction regions; none found."
+    },
+    {
+      "race": "zoqfotpik",
+      "melee_index": 24,
+      "reviewed": true,
+      "unique_composed_panels": 10,
+      "ani_rows": 15,
+      "evidence": ".tools/captain-qa/zoqfotpik-packed.png",
+      "evidence_sha256": "7a5b0764665c491efec31f2495c3002d8c4a6a16c196db3dd0d05b20aafb3eba",
+      "result": "no blocking visual defect found",
+      "notes": "Three distinct crew retained; green-head lift and compressed blue character stages checked after their targeted corrections."
+    }
+  ],
+  "resolved_findings": [
+    {
+      "race": "druuge",
+      "issue": "Weapon eye glow outside face; overlapping viewer-right leg in the left-turn pose discovered during correction.",
+      "resolution": "Selected registered generated head/right-leg regions into authored base; exact native alpha and ANI geometry unchanged; matching eye state selected for cell7."
+    },
+    {
+      "race": "pkunk",
+      "issue": "Rectangular boundary around weapon antenna light.",
+      "resolution": "ImageGen single-scene correction selected only for weapon cell7."
+    },
+    {
+      "race": "umgah",
+      "issue": "Detached old antenna tip outside immutable native action support.",
+      "resolution": "ImageGen base tip registration correction; all native action patches retained and rechecked."
+    }
+  ],
+  "provenance": {
+    "passed": true,
+    "used_art_files": 34,
+    "all_consumed_art_and_prompt_paths_inside_repository": true,
+    "all_used_art_has_generation_metadata": true,
+    "all_manifest_art_and_output_hashes_match": true,
+    "art": {
+      "hd/remastered/art/captains/androsynth-registered.png": {
+        "sha256": "96865b816325f1e5413f9feca1fa3738ee00470a024b252369fe46b52db84c23",
+        "prompt": "hd/remastered/art/captains/androsynth-registered.prompt.txt",
+        "prompt_sha256": "8100b422c7d3bcbf86cba03b67f52cdbdd090adb59ae595570b20ba6ade1e52b",
+        "generation_metadata": [
+          "hd/remastered/art/captains/androsynth-registered.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/arilou.png": {
+        "sha256": "95b8c00d8d97b86ab256226c014f92ffb146daf9c44b672798a7149fdce8a76a",
+        "prompt": "hd/remastered/art/captains/arilou.prompt.txt",
+        "prompt_sha256": "7f267c8f7d42583166287703d1af6547e70366ce1510b25522163ce89b8be21f",
+        "generation_metadata": [
+          "hd/remastered/art/captains/arilou.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/chenjesu.png": {
+        "sha256": "e599f0ce9ef49b0d3dd40410876f96768f71837a0ba401dea20085c3da19fca2",
+        "prompt": "hd/remastered/art/captains/chenjesu.prompt.txt",
+        "prompt_sha256": "99d548edab48ba64d4c79ea7f43632b105abee7b3b1721ed5308b152c0a29311",
+        "generation_metadata": [
+          "hd/remastered/art/captains/chenjesu.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/chmmr.png": {
+        "sha256": "bb098ca7ee5b0812d8376a42769a1d8a5c29789679266150c1dbd146d6b92fd2",
+        "prompt": "hd/remastered/art/captains/chmmr.prompt.txt",
+        "prompt_sha256": "27b8f31c218ee9e5b82c6ea96dc7aefe990808591530d3e7f068d05be7f48971",
+        "generation_metadata": [
+          "hd/remastered/art/captains/chmmr.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/druuge-registered.png": {
+        "sha256": "1dd2956e6bbb1448cba6c1bbf3eb20fe06ca62a35abd985568f15968d969e11e",
+        "prompt": "hd/remastered/art/captains/druuge-registered.prompt.txt",
+        "prompt_sha256": "806b08193c22a4c03858747fe23dbf76d428b71428f56c00eae64b45477ae222",
+        "generation_metadata": [
+          "hd/remastered/art/captains/druuge-registered.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/druuge-base-correction.png": {
+        "sha256": "bbcc19e8658b2d2f8c8adb1052d1581447ed02b2826f46782ee1aa2df3ffb91e",
+        "prompt": "hd/remastered/art/captains/druuge-base-correction.prompt.txt",
+        "prompt_sha256": "ad39ca97e4a0d49c737e39c6ef5ddd286faae5b02a5b15c960c7476346964615",
+        "generation_metadata": [
+          "hd/remastered/art/captains/druuge-base-correction.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/druuge-leg-correction.png": {
+        "sha256": "f7e7a7514cc0f2acecdf58bda4692b45280a36a6875b2a1144c49350403a4555",
+        "prompt": "hd/remastered/art/captains/druuge-leg-correction.prompt.txt",
+        "prompt_sha256": "6fab3a60028a52bd13c23b8bf753d6b1f1ff2c06894425a074e16058dadcf8a8",
+        "generation_metadata": [
+          "hd/remastered/art/captains/druuge-leg-correction.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/druuge-weapon-correction.png": {
+        "sha256": "05d565b6673eb188bf56d539833efcc7945ef7bd50972e3613c4ac1a68e2c06c",
+        "prompt": "hd/remastered/art/captains/druuge-weapon-correction.prompt.txt",
+        "prompt_sha256": "47a1abac42672fe35a8c1b436c5cb98a88a14cfa4601573186f272ea052a730c",
+        "generation_metadata": [
+          "hd/remastered/art/captains/druuge-weapon-correction.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/human.png": {
+        "sha256": "22c1aa63cbaa0d8687f4ca9ff024d6223a68bf374213a5c43aeba4992883858d",
+        "prompt": "hd/remastered/art/captains/human.prompt.txt",
+        "prompt_sha256": "892cd96751aff4d2d34441b4bceb4ba7eb8bf0698fb97026fcfedf676e5d6ec3",
+        "generation_metadata": [
+          "hd/remastered/art/captains/human.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/human-weapon-correction.png": {
+        "sha256": "a30d199711110dbf3cbc37177e19ae949628d9ac25e1f9da1dca33c3cc7f9f31",
+        "prompt": "hd/remastered/art/captains/human-weapon-correction.prompt.txt",
+        "prompt_sha256": "387b05d311abacb19002c5c7a14d7cc7b9ebb6acffd73a790513d1ac4c76031a",
+        "generation_metadata": [
+          "hd/remastered/art/captains/human.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/ilwrath.png": {
+        "sha256": "5a575ecd787f288c168afd7d2c3a4c6a84408f3c329cf9d9dbbd5aa9fd3e3ed9",
+        "prompt": "hd/remastered/art/captains/ilwrath.prompt.txt",
+        "prompt_sha256": "c9651b02b2caf7de34007e6c134eb923da145a1adb08ff56f30d60516ddbdceb",
+        "generation_metadata": [
+          "hd/remastered/art/captains/ilwrath.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/kohrah.png": {
+        "sha256": "975d434881e950fc24009241babc5e7ab90c1d3653073b4c39e3ebd3cca5f1a6",
+        "prompt": "hd/remastered/art/captains/kohrah.prompt.txt",
+        "prompt_sha256": "0c396d5a1c3a954c6c05ba6b7ea4985715f99b284ac19af1b18901768a1c07d1",
+        "generation_metadata": [
+          "hd/remastered/art/captains/kohrah.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/melnorme.png": {
+        "sha256": "d0c10446263fb8160389badba8ef868011212dfe510ded4cc58db028a5599177",
+        "prompt": "hd/remastered/art/captains/melnorme.prompt.txt",
+        "prompt_sha256": "43c77c366ead9a1b6d5b89245a34f7b0a5dcc3096a8bf772f5e2e8b2de33f7e0",
+        "generation_metadata": [
+          "hd/remastered/art/captains/melnorme.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/mmrnmhrm.png": {
+        "sha256": "d1e2d5040444528d6d2693c6d5db95fe119954faef4619ed4c16478f6a4e84a7",
+        "prompt": "hd/remastered/art/captains/mmrnmhrm.prompt.txt",
+        "prompt_sha256": "306813a705fb512d1c361fd459dfe35f728391b035bc2452a6fa81794638e54c",
+        "generation_metadata": [
+          "hd/remastered/art/captains/mmrnmhrm.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/mycon.png": {
+        "sha256": "117fe3a7d5d1704d6d1d58c4242b169735848226dda91a335f956bdc9c3d4df1",
+        "prompt": "hd/remastered/art/captains/mycon.prompt.txt",
+        "prompt_sha256": "4497bff26a965cfe1049e0185fcd0f0f2b0a889de22192501e1b2d602f1399e8",
+        "generation_metadata": [
+          "hd/remastered/art/captains/mycon.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/orz.png": {
+        "sha256": "6b29a7afcc4f0bd19a2cc5b1f36c73e3e2fb510646cf5745af71c2fc02283243",
+        "prompt": "hd/remastered/art/captains/orz.prompt.txt",
+        "prompt_sha256": "36648e42d8cff16a38c4ef9e056aeb5b7fd2183e72e4b3c67b250687ec31d860",
+        "generation_metadata": [
+          "hd/remastered/art/captains/orz.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/pkunk.png": {
+        "sha256": "c3f07494ad882376e1221d56c108c349b10453b1e3d6acda9377a92757224c55",
+        "prompt": "hd/remastered/art/captains/pkunk.prompt.txt",
+        "prompt_sha256": "03bd905fe03424033f49d16178250af1e2bbe30ff657f3a665b533de346f6305",
+        "generation_metadata": [
+          "hd/remastered/art/captains/pkunk.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/pkunk-weapon-correction.png": {
+        "sha256": "102f0459c1bc4df125c28b2b5d616c63185977d3b70d3501de550f5432fa193f",
+        "prompt": "hd/remastered/art/captains/pkunk-weapon-correction.prompt.txt",
+        "prompt_sha256": "a8b6fa1fb2ecc198388d4f5887c533ea3f2e639615b494ef609ef5c72ee571fa",
+        "generation_metadata": [
+          "hd/remastered/art/captains/pkunk-weapon-correction.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/shofixti.png": {
+        "sha256": "429b512cd7a75a1b8d3361efd85322ad48fe8bdad4478cb57523a4d5f18592fc",
+        "prompt": "hd/remastered/art/captains/shofixti.prompt.txt",
+        "prompt_sha256": "a66223d04c8bf6577eb6a5e4cd6a6203bbea32cee9edb8e1dc81b27b84e4e0f6",
+        "generation_metadata": [
+          "hd/remastered/art/captains/shofixti.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/shofixti-final.png": {
+        "sha256": "4b9289a66a55efcd68f6a89c67f47e587ca6a3f31c7ff7dc76b3c44b05070fdf",
+        "prompt": "hd/remastered/art/captains/shofixti-final.prompt.txt",
+        "prompt_sha256": "b610e140da677e7e4a3c3a4da75a21d127b2ec3f8e42f7f36244695bccbdf8e1",
+        "generation_metadata": [
+          "hd/remastered/art/captains/shofixti-final.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/slylandro.png": {
+        "sha256": "37260dcee9014de24c927624294f8937d073c84869e9e60c3c52f829e8d595d3",
+        "prompt": "hd/remastered/art/captains/slylandro.prompt.txt",
+        "prompt_sha256": "c3ecba8e81b8f0930bf66482977fbe7caff08ddc4dcaf4f7dd3d26be8aa1d2e4",
+        "generation_metadata": [
+          "hd/remastered/art/captains/slylandro.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/spathi.png": {
+        "sha256": "657340b35abe13dd8be12e476778239da0ec9fb5922707f3f115c2c255cda0a0",
+        "prompt": "hd/remastered/art/captains/spathi.prompt.txt",
+        "prompt_sha256": "1f631204bb6f94cc3d4a3b2b93970de8fc4c6b45c3d70b7095694d23f3deeb0b",
+        "generation_metadata": [
+          "hd/remastered/art/captains/spathi.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/supox.png": {
+        "sha256": "bd61bb36a28410e1dec790843cba6c0b9e1b948fea9ed01eea64e082abc8cf36",
+        "prompt": "hd/remastered/art/captains/supox.prompt.txt",
+        "prompt_sha256": "38c6230262f19151121d065c795ec943a64acd4e89276200459b0dc2cd38df4b",
+        "generation_metadata": [
+          "hd/remastered/art/captains/supox.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/syreen.png": {
+        "sha256": "f8bae447e520351dc6b6c70485720ece7925463707cb0da66412c9a2a50331d6",
+        "prompt": "hd/remastered/art/captains/syreen.prompt.txt",
+        "prompt_sha256": "05f15f9eef0874bea4ddf166472d2eea82f23a998ca6ffdac94ca74c1b3e3c56",
+        "generation_metadata": [
+          "hd/remastered/art/captains/syreen.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/thraddash.png": {
+        "sha256": "42c32b4538e2cf59549beffb87a19f4a970c52a49b7b4fa31c295d71c4c51581",
+        "prompt": "hd/remastered/art/captains/thraddash.prompt.txt",
+        "prompt_sha256": "5d0ebc9b3db78fadcfe4be066bffdf662c97662b11185dd2a6e729983e9c17b3",
+        "generation_metadata": [
+          "hd/remastered/art/captains/thraddash.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/umgah-base-correction.png": {
+        "sha256": "ea04b1db53809a628dd2a25b69860e530a1760f8e254afd156265c290ab27d05",
+        "prompt": "hd/remastered/art/captains/umgah-base-correction.prompt.txt",
+        "prompt_sha256": "0b2d8685d669b6e55aebebffa7f5478ffb75dc1f0125215b975425f2b9ccfc1f",
+        "generation_metadata": [
+          "hd/remastered/art/captains/umgah-base-correction.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/umgah.png": {
+        "sha256": "a385f4f92adc17043b51e5c2bfccf79f9d5aac8e0a4951d21ab44ade3ef3745e",
+        "prompt": "hd/remastered/art/captains/umgah.prompt.txt",
+        "prompt_sha256": "4bd4157e31bcce7252156d863b390a3081d95ef3bf09e030181c252cff96a238",
+        "generation_metadata": [
+          "hd/remastered/art/captains/umgah.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/urquan.png": {
+        "sha256": "bdb1cc57ed106633f3d9b3c1b6d18305fae280780768d69af31bc4ed0bd2fd2f",
+        "prompt": "hd/remastered/art/captains/urquan.prompt.txt",
+        "prompt_sha256": "9da4c595d2377cf24c0b3c900b60fa951778b5b43b6480a076ffe77f0252aa65",
+        "generation_metadata": [
+          "hd/remastered/art/captains/urquan.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/utwig.png": {
+        "sha256": "4397d9833266eebfa50b4dbdfc0f15ef2f42142811ad87737e4d4807f60a8e1c",
+        "prompt": "hd/remastered/art/captains/utwig.prompt.txt",
+        "prompt_sha256": "2a6e00b3ef532f74e961f04762587b22e7f580af1dde04069a1cee1e6cec732d",
+        "generation_metadata": [
+          "hd/remastered/art/captains/utwig.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/vux.png": {
+        "sha256": "9a12609a8d6c24e3effcb97d95a30dbddba3fff3844f7d2c87ade68ca5a220f6",
+        "prompt": "hd/remastered/art/captains/vux.prompt.txt",
+        "prompt_sha256": "c72412f706b3fd11c3aa49f6183784ef6869ef77f49510ae5acf9fcd6f63e785",
+        "generation_metadata": [
+          "hd/remastered/art/captains/vux.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/yehat.png": {
+        "sha256": "f2509db66a252ece1fce5f05c5f6b42f525da7fbf1820cf6cd259b258f50ecc0",
+        "prompt": "hd/remastered/art/captains/yehat.prompt.txt",
+        "prompt_sha256": "345d6eeef1349166bc6134cf69ff42dd03a15bb309e53e237f2bbef265fd0eb1",
+        "generation_metadata": [
+          "hd/remastered/art/captains/yehat.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/zoqfotpik-correction.png": {
+        "sha256": "a56a1b5b2de26653428f2a3f58b5db6676f5259b4bb16a320a42a7291a349753",
+        "prompt": "hd/remastered/art/captains/zoqfotpik-correction.prompt.txt",
+        "prompt_sha256": "71581e89790696e7e6c368773f24ff3c963e4634b67ac738f2355ae9c3a9d333",
+        "generation_metadata": [
+          "hd/remastered/art/captains/zoqfotpik.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/zoqfotpik.png": {
+        "sha256": "6f75db35e32fe6f37645dcd3dfee06f94a16d2f75f541101301ecba8bd5b11f1",
+        "prompt": "hd/remastered/art/captains/zoqfotpik.prompt.txt",
+        "prompt_sha256": "8674f09834f8cff99e6ff84ef9a3d164229a2f39dd61b47d271ee58b1a8944a0",
+        "generation_metadata": [
+          "hd/remastered/art/captains/zoqfotpik.generation.json"
+        ]
+      },
+      "hd/remastered/art/captains/zoqfotpik-thrust-correction.png": {
+        "sha256": "227953b695b8ad037c4cb35e4e3198f887bdd9e060e97903fb3f0c680ff152e0",
+        "prompt": "hd/remastered/art/captains/zoqfotpik-thrust-correction.prompt.txt",
+        "prompt_sha256": "fc65177b0d8f75fb04b707bf3d0ec6cb68be3afa1868830c8ba90915a93b528e",
+        "generation_metadata": [
+          "hd/remastered/art/captains/zoqfotpik.generation.json"
+        ]
+      }
+    }
+  },
+  "regional_packing_checks": {
+    "unchanged_pixels_outside_selected_regions": 21750,
+    "interior_pixels_exactly_match_authored_source": 3698,
+    "maximum_feather_native_pixels": 3,
+    "native_output_alpha": "Verified bit-identical to pinned original archive by captain-assets.py"
+  },
+  "static_validation": {
+    "result": "passed",
+    "path": "test-results/captain-assets-final-art/results.json",
+    "sha256": "b0b620d7daeebe3aeb32c8350c94c95774a9603f4f73743eb48f2cbf71b535e1",
+    "checks": "Independent archive ANI parsing;253 replacement PNG dimensions/alpha/source hashes;380slot aliases;incremental held/release/refresh compositing against native control."
+  },
+  "limitations": [
+    "This report records static image inspection, not browser/runtime validation or animation timing.",
+    "All253 unique composites were reviewed;380 ANI aliases are validated structurally and do not represent380 independently drawn images.",
+    "No claim that every ANI row is naturally reachable: native Druuge special pulse, Androsynth transformation and Shofixti lever/death behavior have separate runtime constraints.",
+    "Small stylistic edge/shading differences can remain at exact original masks. This review targets broken faces, missing crew, wrong actors, detached remnants and clipped action poses.",
+    "Generated-image origin paths in metadata are provenance only. All art and prompt files consumed by packing are stored in this repository."
+  ]
+}
