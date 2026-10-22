@@ -340,6 +340,8 @@ pub struct anidata {
     pub colormap_index: ::core::ffi::c_int,
     pub hotspot_x: ::core::ffi::c_int,
     pub hotspot_y: ::core::ffi::c_int,
+    // Original resolved PNG path; never substituted in the collision drawable.
+    pub render_source: [::core::ffi::c_char; 4096],
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -414,6 +416,10 @@ unsafe extern "C" fn process_image(
     (*FramePtr).HotSpot = MAKE_HOT_SPOT(hx as COORD, hy as COORD);
     (*FramePtr).Bounds.width = (*tfbimg).extent.width;
     (*FramePtr).Bounds.height = (*tfbimg).extent.height;
+    crate::uqm_melee_presentation::UQM_MeleePresentationRegister(
+        tfbimg.cast(), (*ani.offset(cel_ct as isize)).render_source.as_ptr(),
+        _cur_resfile_name, hx as COORD, hy as COORD,
+    );
 }
 unsafe extern "C" fn processFontChar(
     mut CharPtr: *mut TFB_Char,
@@ -619,6 +625,11 @@ pub unsafe extern "C" fn _GetCelData(
         {
             break;
         }
+        strncpy(
+            (*ani.offset(cel_index as isize)).render_source.as_mut_ptr(),
+            filename.as_ptr(), 4095,
+        );
+        (*ani.offset(cel_index as isize)).render_source[4095] = 0;
         *img.offset(cel_index as isize) = uqm_lua_checked!(TFB_DrawCanvas_LoadFromFile(
             aniDir as *mut ::core::ffi::c_void,
             &raw mut filename as *mut ::core::ffi::c_char,

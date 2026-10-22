@@ -1,0 +1,53 @@
+diff --git a/src/uqm/shipstat.c b/src/uqm/shipstat.c
+--- a/src/uqm/shipstat.c
++++ b/src/uqm/shipstat.c
+@@ -59,6 +59,7 @@
+     case 0x424242: c.r=38; c.g=60; c.b=73; break;
+     case 0x575757: c.r=26; c.g=42; c.b=54; break;
+     case 0x555555: c.r=26; c.g=42; c.b=54; break;
++    case 0x525252: c.r=20; c.g=34; c.b=45; break;
+     case 0x848484: c.r=74; c.g=107; c.b=123; break;
+     case 0x747474: c.r=166; c.g=191; c.b=204; break;
+     case 0x8a8a8a: c.r=175; c.g=201; c.b=215; break;
+diff --git a/src/uqm/supermelee/melee.c b/src/uqm/supermelee/melee.c
+--- a/src/uqm/supermelee/melee.c
++++ b/src/uqm/supermelee/melee.c
+@@ -98,6 +98,7 @@
+     case 0x424242: c.r=38; c.g=60; c.b=73; break;
+     case 0x575757: c.r=26; c.g=42; c.b=54; break;
+     case 0x555555: c.r=26; c.g=42; c.b=54; break;
++    case 0x525252: c.r=20; c.g=34; c.b=45; break;
+     case 0x848484: c.r=74; c.g=107; c.b=123; break;
+     case 0x747474: c.r=166; c.g=191; c.b=204; break;
+     case 0x8a8a8a: c.r=175; c.g=201; c.b=215; break;
+diff --git a/src/uqm/util.c b/src/uqm/util.c
+--- a/src/uqm/util.c
++++ b/src/uqm/util.c
+@@ -35,6 +35,8 @@
+ // JSD added to reference plot_map for SOL.
+ #include "starmap.h"
+ 
++extern int UQM_GetMeleeRemastered (void);
++
+ void
+ DrawStarConBox (RECT *pRect, SIZE BorderWidth, Color TopLeftColor,
+ 		Color BottomRightColor, BOOLEAN FillInterior, Color InteriorColor,
+@@ -161,6 +163,18 @@
+ 
+ 	if (!r->extent.width || !r->extent.height)
+ 		return;
++
++	/* HD's stock chrome is stamped bitmap bevels, outside the usual palette.
++	 * Draw the Melee HUD's border in its existing rectangle instead. */
++	if (IS_HD && !custom && UQM_GetMeleeRemastered ()
++			&& LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE
++			&& (type == THIN_INNER_BEVEL || type == THICK_OUTER_BEVEL))
++	{
++		DrawStarConBox (r, 1, BUILD_COLOR_RGB (69, 106, 123),
++				BUILD_COLOR_RGB (29, 49, 62), filled, fill_color,
++				FALSE, TRANSPARENT);
++		return;
++	}
+ 
+ 	BatchGraphics ();
+ 

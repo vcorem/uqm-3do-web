@@ -1,6 +1,6 @@
 {
   "changed_files": 274,
-  "checked_calls": 13437,
+  "checked_calls": 13441,
   "files": [
     {
       "file": "src/libs/callback/alarm.rs",
@@ -11841,9 +11841,16 @@
       "file": "src/uqm/shipstat.rs",
       "functions": [
         {
-          "checked_calls": 4,
+          "checked_calls": 6,
           "failure_return": "()",
-          "function": "DrawCrewFuelString"
+          "function": "DrawCrewFuelString",
+          "manual_presentation_addition": {
+            "callee": "DrawFilledStamp",
+            "checked_calls_added": 2,
+            "date": "2026-10-22",
+            "reason": "Remastered crew and battery labels use their existing alpha masks with brighter presentation colors. Both new calls retain the unit-return Lua failure propagation of the original DrawStamp path; actual gauge cells are unchanged.",
+            "source_patch": "hd/patches/0016-melee-gauge-label-contrast.patch"
+          }
         },
         {
           "checked_calls": 2,
@@ -12531,9 +12538,16 @@
           "function": "DrawTeamPickerText"
         },
         {
-          "checked_calls": 5,
+          "checked_calls": 6,
           "failure_return": "()",
-          "function": "DrawMeleeIcon"
+          "function": "DrawMeleeIcon",
+          "manual_presentation_addition": {
+            "callee": "DrawStarConBox",
+            "checked_calls_added": 1,
+            "date": "2026-10-22",
+            "reason": "Remastered Melee panels use the native DrawStarConBox path. The new call retains the same unit-return Lua failure propagation as DrawStamp and the existing panel text calls.",
+            "source_patch": "hd/patches/0014-melee-interface-panels.patch"
+          }
         },
         {
           "checked_calls": 4,
@@ -13601,9 +13615,16 @@
           "function": "DrawStarConBox"
         },
         {
-          "checked_calls": 9,
+          "checked_calls": 10,
           "failure_return": "()",
-          "function": "DrawRenderedBox"
+          "function": "DrawRenderedBox",
+          "manual_presentation_addition": {
+            "callee": "DrawStarConBox",
+            "checked_calls_added": 1,
+            "date": "2026-10-22",
+            "reason": "The optional Melee HUD replaces bitmap bevels with native rectangle chrome. The new call retains the existing unit-return Lua failure propagation.",
+            "source_patch": "hd/patches/0015-melee-hud-chrome.patch"
+          }
         },
         {
           "checked_calls": 4,

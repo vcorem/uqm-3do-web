@@ -1,0 +1,140 @@
+diff --git a/src/uqm/supermelee/melee.c b/src/uqm/supermelee/melee.c
+--- a/src/uqm/supermelee/melee.c
++++ b/src/uqm/supermelee/melee.c
+@@ -63,6 +63,56 @@
+ 
+ #include <assert.h>
+ #include <string.h>
++
++/* Remastered interface palette: presentation only, original geometry and
++ * health/energy colors retained. The classic switch leaves all colors intact. */
++extern int UQM_GetMeleeRemastered (void);
++static int
++MeleeUiActive (void)
++{
++    return UQM_GetMeleeRemastered () && LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE;
++}
++static Color
++MeleeUiColor (Color c)
++{
++    if (!MeleeUiActive () || c.a != 255) return c;
++    switch (((unsigned)c.r << 16) | ((unsigned)c.g << 8) | c.b)
++    {
++    case 0x00004a: c.r=38; c.g=62; c.b=77; break;
++    case 0x000073: c.r=49; c.g=79; c.b=96; break;
++    case 0x000063: c.r=20; c.g=37; c.b=47; break;
++    case 0x390063: c.r=141; c.g=225; c.b=223; break;
++    case 0x6300a5: c.r=71; c.g=125; c.b=136; break;
++    case 0x52008c: c.r=28; c.g=57; c.b=73; break;
++    case 0x0000a5: c.r=18; c.g=35; c.b=45; break;
++    case 0x0052a5: c.r=87; c.g=123; c.b=140; break;
++    case 0xa500a5: c.r=33; c.g=63; c.b=80; break;
++    case 0x02043e: c.r=18; c.g=38; c.b=49; break;
++    case 0x04087c: c.r=30; c.g=65; c.b=83; break;
++    case 0x238cd2: c.r=157; c.g=189; c.b=207; break;
++    case 0x28a0f0: c.r=201; c.g=242; c.b=245; break;
++    case 0x28287c: c.r=25; c.g=48; c.b=59; break;
++    case 0x3c3cba: c.r=49; c.g=89; c.b=103; break;
++    case 0x1f001f: c.r=18; c.g=35; c.b=45; break;
++    case 0x3e003e: c.r=49; c.g=89; c.b=103; break;
++    case 0x424242: c.r=38; c.g=60; c.b=73; break;
++    case 0x575757: c.r=26; c.g=42; c.b=54; break;
++    case 0x555555: c.r=26; c.g=42; c.b=54; break;
++    case 0x848484: c.r=74; c.g=107; c.b=123; break;
++    case 0x747474: c.r=166; c.g=191; c.b=204; break;
++    case 0x8a8a8a: c.r=175; c.g=201; c.b=215; break;
++    case 0x454545: c.r=35; c.g=59; c.b=73; break;
++    case 0xf8e000: c.r=167; c.g=240; c.b=227; break;
++    case 0x7b84de: c.r=155; c.g=182; c.b=200; break;
++    case 0xbdc6ef: c.r=222; c.g=240; c.b=246; break;
++    case 0x32329b: c.r=135; c.g=182; c.b=200; break;
++    default: break;
++    }
++    return c;
++}
++/* These local wrappers affect drawing colors in this translation unit only. */
++#define colorFromRgb15(r,g,b) MeleeUiColor(colorFromRgb15((r),(g),(b)))
++#define buildColorRgba(r,g,b,a) MeleeUiColor(buildColorRgba((r),(g),(b),(a)))
+ 
+ 
+ static void StartMelee (MELEE_STATE *pMS);
+@@ -750,8 +800,8 @@
+ 	GetShipBox (&r, side, row, col);
+ 
+ 	BatchGraphics ();
+-	if (IS_HD)
+-	{	// Draw prerendered rectangles in HD
++	if (IS_HD && !MeleeUiActive ())
++	{	// Draw prerendered rectangles in classic HD
+ 		STAMP s;
+ #define HD_SHIPBOX_START_INDEX (GetFrameCount (MeleeFrame) - 4)
+ 
+diff --git a/src/uqm/shipstat.c b/src/uqm/shipstat.c
+--- a/src/uqm/shipstat.c
++++ b/src/uqm/shipstat.c
+@@ -25,6 +25,56 @@
+ #include "menustat.h"
+ #include "util.h"
+ 
++/* Remastered interface palette: presentation only, original geometry and
++ * health/energy colors retained. The classic switch leaves all colors intact. */
++extern int UQM_GetMeleeRemastered (void);
++static int
++MeleeUiActive (void)
++{
++    return UQM_GetMeleeRemastered () && LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE;
++}
++static Color
++MeleeUiColor (Color c)
++{
++    if (!MeleeUiActive () || c.a != 255) return c;
++    switch (((unsigned)c.r << 16) | ((unsigned)c.g << 8) | c.b)
++    {
++    case 0x00004a: c.r=38; c.g=62; c.b=77; break;
++    case 0x000073: c.r=49; c.g=79; c.b=96; break;
++    case 0x000063: c.r=20; c.g=37; c.b=47; break;
++    case 0x390063: c.r=141; c.g=225; c.b=223; break;
++    case 0x6300a5: c.r=71; c.g=125; c.b=136; break;
++    case 0x52008c: c.r=28; c.g=57; c.b=73; break;
++    case 0x0000a5: c.r=18; c.g=35; c.b=45; break;
++    case 0x0052a5: c.r=87; c.g=123; c.b=140; break;
++    case 0xa500a5: c.r=33; c.g=63; c.b=80; break;
++    case 0x02043e: c.r=18; c.g=38; c.b=49; break;
++    case 0x04087c: c.r=30; c.g=65; c.b=83; break;
++    case 0x238cd2: c.r=157; c.g=189; c.b=207; break;
++    case 0x28a0f0: c.r=201; c.g=242; c.b=245; break;
++    case 0x28287c: c.r=25; c.g=48; c.b=59; break;
++    case 0x3c3cba: c.r=49; c.g=89; c.b=103; break;
++    case 0x1f001f: c.r=18; c.g=35; c.b=45; break;
++    case 0x3e003e: c.r=49; c.g=89; c.b=103; break;
++    case 0x424242: c.r=38; c.g=60; c.b=73; break;
++    case 0x575757: c.r=26; c.g=42; c.b=54; break;
++    case 0x555555: c.r=26; c.g=42; c.b=54; break;
++    case 0x848484: c.r=74; c.g=107; c.b=123; break;
++    case 0x747474: c.r=166; c.g=191; c.b=204; break;
++    case 0x8a8a8a: c.r=175; c.g=201; c.b=215; break;
++    case 0x454545: c.r=35; c.g=59; c.b=73; break;
++    case 0xf8e000: c.r=167; c.g=240; c.b=227; break;
++    case 0x7b84de: c.r=155; c.g=182; c.b=200; break;
++    case 0xbdc6ef: c.r=222; c.g=240; c.b=246; break;
++    case 0x32329b: c.r=135; c.g=182; c.b=200; break;
++    default: break;
++    }
++    return c;
++}
++/* These local wrappers affect drawing colors in this translation unit only. */
++#define colorFromRgb15(r,g,b) MeleeUiColor(colorFromRgb15((r),(g),(b)))
++#define buildColorRgba(r,g,b,a) MeleeUiColor(buildColorRgba((r),(g),(b),(a)))
++
+ void
+ DrawCrewFuelString (COORD y, SIZE state)
+ {
+@@ -88,7 +138,7 @@
+ 			BUILD_COLOR (MAKE_RGB15 (0x10, 0x10, 0x10), 0x19));
+ 	font_DrawText (&Text);
+ 	Text.baseline.y -= RES_SCALE (1);
+-	SetContextForeGroundColor (BLACK_COLOR);
++	SetContextForeGroundColor (MeleeUiActive () ? BUILD_COLOR_RGB (214, 232, 240) : BLACK_COLOR);
+ 	font_DrawText (&Text);
+ 
+ 	SetContextFont (OldFont);

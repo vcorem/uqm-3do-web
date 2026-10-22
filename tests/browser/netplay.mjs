@@ -35,6 +35,8 @@ const output = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/browser
 // The HD engine has independent settings, but uses the same saved-fleet format
 // and ship indexes. Every peer in a test plays the selected edition.
 const edition = process.env.UQM_EDITION || 'original';
+const remastered = process.env.UQM_REMASTERED === '1';
+assert.ok(!remastered || edition === 'hd', 'Remastered presentation is an HD feature');
 assert.ok(['original', 'hd'].includes(edition), 'UQM_EDITION must be original or hd');
 const meleeConfig = `/home/web_user/${edition === 'hd' ? '.uqm-hd' : '.uqm'}/melee.cfg`;
 await mkdir(output, { recursive: true });
@@ -73,6 +75,11 @@ async function waitState(pages, state, timeout = 45000) {
 async function key(pages, name, delay = 150) {
   await Promise.all(pages.map(page => page.keyboard.press(name, { delay })));
 }
+async function setPresentation(page, style) {
+  await page.locator('#presentation-toggle').click();
+  await page.locator('#melee-style').selectOption(style);
+  await page.locator('#presentation-close').click();
+}
 async function enterUntil(pages, state) {
   const deadline = Date.now() + 30000;
   while (Date.now() < deadline) {
@@ -97,16 +104,67 @@ async function checkSynchronization(pages, minimum) {
   return states;
 }
 
+async function releaseSmokeKeys(pages) {
+  await Promise.all(pages.flatMap(page => ['ArrowUp', 'ArrowLeft', 'ControlRight', 'ShiftRight']
+    .map(name => page.keyboard.up(name))));
+}
+
+function assertSmokeConnection(states) {
+  for (const state of states) {
+    assert.equal(state.checksumMismatches || 0, 0, JSON.stringify(state));
+    assert.equal(state.connection, 'ready', JSON.stringify(state));
+    assert.ok(state.receivedFrames > 0 && state.sentFrames > 0, JSON.stringify(state));
+    assert.notEqual(state.engineState, 'inSetup', 'The smoke fleet must not be exhausted');
+  }
+}
+
+async function resumeSmokeBattle(pages, entry, phase) {
+  let states = await Promise.all(pages.map(readState));
+  assertSmokeConnection(states);
+  if (states.every(state => state.engineState === 'inBattle')) return states;
+  await releaseSmokeKeys(pages);
+  const transition = { phase, before: states };
+  (entry.nativeSelections ||= []).push(transition);
+  // Deaths (including the Shofixti special) are part of the real game. Select
+  // another copy of the same hull with ordinary keyboard input and continue.
+  await enterUntil(pages, 'inBattle');
+  states = await Promise.all(pages.map(readState));
+  assertSmokeConnection(states);
+  transition.resumed = states;
+  return states;
+}
+
+async function checkSmokeSynchronization(pages, entry, minimum) {
+  const deadline = Date.now() + 60000;
+  while (Date.now() < deadline) {
+    const states = await Promise.all(pages.map(readState));
+    assertSmokeConnection(states);
+    if (states.some(state => state.engineState !== 'inBattle')) {
+      const resumed = await resumeSmokeBattle(pages, entry, 'checksum continuation');
+      // Verify additional simulation after selecting the next ship as well as
+      // retaining the original post-input checksum requirement.
+      minimum = Math.max(minimum, ...resumed.map(state => (state.checksumsVerified || 0) + 30));
+    } else if (states.every(state => (state.checksumsVerified || 0) >= minimum)) {
+      entry.requiredAbilityChecksums = minimum;
+      return states;
+    }
+    await sleep(100);
+  }
+  throw new Error(`Smoke checksums did not reach ${minimum}: ${JSON.stringify(await Promise.all(pages.map(readState)))}`);
+}
+
 // A normal saved Melee configuration: two Earthlings at top, two Shofixti
 // at bottom. Shofixti's original special lets us finish a fleet deterministically
 // using keyboard input, without cheating or waiting for an AI combat outcome.
-function seedFleet({ file, guestShip }) {
+// Hull smoke tests instead use full fleets and a durable, unarmed Ur-Quan
+// opponent, so a fragile opponent's natural death cannot end their coverage.
+function seedFleet({ file, guestShip, hostShip = 13, shipCount = 2 }) {
   const bytes = new Uint8Array(140);
   for (let side = 0; side < 2; side++) {
     const offset = side * 70;
     bytes[offset] = 17; // HUMAN_CONTROL | STANDARD_RATING
     bytes.fill(255, offset + 1, offset + 15);
-    bytes[offset + 1] = bytes[offset + 2] = side === 1 ? 13 : guestShip;
+    bytes.fill(side === 1 ? hostShip : guestShip, offset + 1, offset + 1 + shipCount);
     bytes.set(new TextEncoder().encode(side ? 'Test host' : 'Test guest'), offset + 15);
   }
   FS.writeFile(file, bytes);
@@ -141,6 +199,10 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       entry.browsers[i].version = browser.version();
       const context = await browser.newContext({ viewport: { width: 1100, height: 1100 } });
       await context.addInitScript({ path: shimPath });
+      if (remastered && i === 1) {
+        await context.addInitScript(() => localStorage.setItem('uqm.hd.melee.presentation.v1',
+          JSON.stringify({style:'classic',soundtrack:'classic',musicVolume:72})));
+      }
       // HD's large media response can evict Wasm from the browser inspector's
       // response cache. Hash the exact server response before forwarding those
       // unchanged bytes to the browser; this also works outside Chromium.
@@ -184,7 +246,8 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       const expected = i === 1 && peerDist ? peerBuildHashes : buildHashes;
       for (const hash of entry.fetchedWasmHashes[i]) assert.equal(hash, expected['uqm-debug.wasm']);
     }
-    const fleet = { file: meleeConfig, guestShip: smokeShip ?? 5 };
+    const fleet = { file: meleeConfig, guestShip: smokeShip ?? 5,
+      ...(smokeShip === null ? {} : { hostShip: 20, shipCount: 14 }) };
     const expectedFleet = await pages[0].evaluate(seedFleet, fleet);
     await pages[1].evaluate(seedFleet, fleet);
     // Persist the baseline before launching so reload can detect accidental
@@ -224,24 +287,97 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       assert.equal(url.searchParams.get('role'), i === 0 ? 'host' : 'guest');
     }
     console.log(`${name}: both players in fleet setup`);
+    if (remastered) {
+      // Both clients run the real simulation. Their art settings deliberately
+      // differ, and the native network checksums must continue to agree.
+      await setPresentation(pages[1], 'classic');
+      assert.equal(await pages[0].evaluate(() => Module._UQM_GetMeleeRemastered()), 1);
+      assert.equal(await pages[1].evaluate(() => Module._UQM_GetMeleeRemastered()), 0);
+    }
     await Promise.all(pages.map(page => page.locator('#canvas').click()));
     if (disconnectAt !== 'setup') {
       await enterUntil(pages, 'selectShip');
       await enterUntil(pages, 'inBattle');
       await checkSynchronization(pages, 60);
+      if (remastered) {
+        const presentation = page => page.evaluate(() => ({
+          images: Module._UQM_GetMeleeRemasteredImageCount(),
+          draws: Module._UQM_GetMeleeRemasteredDrawCount(),
+          backgrounds: Module._UQM_GetMeleeRemasteredBackgroundCount(),
+          enabled: Module._UQM_GetMeleeRemastered(),
+        }));
+        const active = await presentation(pages[0]);
+        assert.ok(active.images >= 48, 'Both hulls must load real presentation frames: ' + JSON.stringify(active));
+        assert.ok(active.draws > 0 && active.backgrounds > 0, 'Native remastered drawing was not exercised');
+        const classic = await presentation(pages[1]);
+        assert.equal(classic.draws, 0, 'Classic peer must render original artwork');
+        assert.equal(classic.backgrounds, 0);
+        const sampledAt = Date.now();
+        await sleep(1200);
+        const measured = await presentation(pages[0]);
+        entry.renderFramesPerSecond = (measured.backgrounds - active.backgrounds) * 1000 / (Date.now() - sampledAt);
+        assert.ok(measured.backgrounds > active.backgrounds, 'Battle presentation stopped advancing');
+        entry.audio = await pages[0].evaluate(() => {
+          const ctx = typeof AL === 'object' ? AL.currentCtx : null;
+          let peak = 0, samples = 0;
+          for (const source of Object.values(ctx?.sources || {})) {
+            if (source.state !== 4114) continue;
+            for (const item of source.audioQueue || []) {
+              const data = item.buffer?.getChannelData(0);
+              if (data) for (const value of data) { peak = Math.max(peak, Math.abs(value)); samples++; }
+            }
+          }
+          return {state:ctx?.audioCtx.state, peak, samples,
+            score:FS.analyzePath('/content/addons/remastered/music/battle.ogg').exists};
+        });
+        assert.equal(entry.audio.state, 'running', 'Audio did not unlock');
+        assert.ok(entry.audio.score && entry.audio.samples > 0 && entry.audio.peak > 0.001,
+          'The native game must decode and play non-silent audio: ' + JSON.stringify(entry.audio));
+        await pages[0].locator('#canvas').screenshot({path:path.join(output, `${name}-remastered.png`)});
+        await setPresentation(pages[0], 'classic');
+        // A setting takes effect on the next complete rendered frame.
+        await sleep(150);
+        const disabled = await presentation(pages[0]);
+        await sleep(350);
+        assert.deepEqual(await presentation(pages[0]), disabled, 'Disabled presentation must issue no draw calls');
+        await pages[0].locator('#canvas').screenshot({path:path.join(output, `${name}-classic.png`)});
+        await setPresentation(pages[0], 'remastered');
+        await pages[0].waitForFunction(previous => Module._UQM_GetMeleeRemasteredDrawCount() > previous,
+          disabled.draws, {timeout:5000});
+        await pages[0].locator('#canvas').click();
+        entry.presentation = {active, classicPeer:classic, resumed:await presentation(pages[0])};
+      }
       if (smokeShip !== null) {
         entry.shipIndex = smokeShip;
-        const before = await Promise.all(pages.map(readState));
-        await Promise.all([pages[0].keyboard.down('ArrowUp'), pages[1].keyboard.down('ArrowUp'),
-          pages[1].keyboard.down('ArrowLeft'), pages[1].keyboard.down('ControlRight')]);
-        await sleep(2500);
-        await pages[1].keyboard.up('ControlRight');
-        await pages[1].keyboard.down('ShiftRight');
-        await sleep(2500);
-        await Promise.all([pages[0].keyboard.up('ArrowUp'), pages[1].keyboard.up('ArrowUp'),
-          pages[1].keyboard.up('ArrowLeft'), pages[1].keyboard.up('ShiftRight')]);
-        entry.statsAfterAbilities = await checkSynchronization(pages,
-          Math.max(...before.map(state => state.checksumsVerified || 0)) + 90);
+        entry.smokeFleet = { hostShip: fleet.hostShip, guestShip: smokeShip, shipCount: fleet.shipCount };
+        const before = await resumeSmokeBattle(pages, entry, 'before weapon input');
+        let requiredChecksums = Math.max(...before.map(state => state.checksumsVerified || 0)) + 90;
+        try {
+          await Promise.all([pages[0].keyboard.down('ArrowUp'), pages[1].keyboard.down('ArrowUp'),
+            pages[1].keyboard.down('ArrowLeft'), pages[1].keyboard.down('ControlRight')]);
+          await sleep(2500);
+        } finally { await releaseSmokeKeys(pages); }
+        await resumeSmokeBattle(pages, entry, 'before special input');
+        if (smokeShip === 13) {
+          // The Shofixti requires three separate switch presses, not a held
+          // special key. Its destruction must reach the native selection screen.
+          for (let n = 0; n < 3; n++) {
+            await key([pages[1]], 'ShiftRight', 300);
+            await sleep(300);
+          }
+          await waitState(pages, 'selectShip');
+          entry.shofixtiDetonation = await Promise.all(pages.map(readState));
+          const resumed = await resumeSmokeBattle(pages, entry, 'after Shofixti detonation');
+          requiredChecksums = Math.max(requiredChecksums,
+            ...resumed.map(state => (state.checksumsVerified || 0) + 30));
+        } else {
+          try {
+            await Promise.all([pages[1].keyboard.down('ArrowUp'), pages[1].keyboard.down('ArrowLeft'),
+              pages[1].keyboard.down('ShiftRight')]);
+            await sleep(2500);
+          } finally { await releaseSmokeKeys(pages); }
+        }
+        entry.statsAfterAbilities = await checkSmokeSynchronization(pages, entry, requiredChecksums);
         await pages[0].screenshot({ path: path.join(output, `${name}-abilities.png`) });
         assert.deepEqual(failures, []);
         entry.passed = true;

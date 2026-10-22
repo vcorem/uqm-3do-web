@@ -20,6 +20,7 @@ extern crate uqm_core;
 extern crate alloc;
 mod uqm_allocator;
 mod uqm_engine_init;
+mod uqm_melee_presentation;
 
 #[macro_use]
 #[path = "../uqm-lua/guard.rs"]

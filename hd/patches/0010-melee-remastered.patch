@@ -1,0 +1,339 @@
+--- a/src/libs/graphics/Makeinfo
++++ b/src/libs/graphics/Makeinfo
+@@ -1,7 +1,7 @@
+ uqm_SUBDIRS="sdl"
+ 
+ uqm_CFILES="boxint.c clipline.c cmap.c context.c drawable.c filegfx.c
+-		bbox.c dcqueue.c gfxload.c
++		bbox.c dcqueue.c gfxload.c melee_presentation.c
+ 		font.c frame.c gfx_common.c intersec.c loaddisp.c
+ 		pixmap.c resgfx.c tfb_draw.c tfb_prim.c widgets.c"
+ if [ "${UQM_RUST_CORE:-0}" = 1 ]; then
+@@ -16,5 +16,5 @@
+ fi
+ 
+ uqm_HFILES="bbox.h cmap.h context.h dcqueue.h drawable.h drawcmd.h font.h
+-		gfx_common.h gfxintrn.h prim.h tfb_draw.h tfb_prim.h widgets.h"
++		gfx_common.h gfxintrn.h melee_presentation.h prim.h tfb_draw.h tfb_prim.h widgets.h"
+ 
+--- a/src/libs/graphics/gfxload.c
++++ b/src/libs/graphics/gfxload.c
+@@ -28,6 +28,7 @@
+ #include "libs/log.h"
+ #include "libs/memlib.h"
+ #include "libs/graphics/tfb_draw.h"
++#include "melee_presentation.h"
+ #include "libs/graphics/drawable.h"
+ #include "libs/graphics/font.h"
+ 
+@@ -37,6 +38,7 @@
+ 	int colormap_index;
+ 	int hotspot_x;
+ 	int hotspot_y;
++	char render_source[4096];
+ } AniData;
+ 
+ extern uio_Repository *repository;
+@@ -85,6 +87,7 @@
+ 	
+ 	FramePtr->HotSpot = MAKE_HOT_SPOT (hx, hy);
+ 	SetFrameBounds (FramePtr, tfbimg->extent.width, tfbimg->extent.height);
++	UQM_MeleePresentationRegister (tfbimg, ani[cel_ct].render_source, _cur_resfile_name, hx, hy);
+ 
+ #ifdef CLIPDEBUG
+ 	{
+@@ -250,6 +253,8 @@
+ 				&ani[cel_index].hotspot_x, &ani[cel_index].hotspot_y) != 5)
+ 			break;
+ 	
++		strncpy (ani[cel_index].render_source, filename, sizeof ani[cel_index].render_source - 1);
++		ani[cel_index].render_source[sizeof ani[cel_index].render_source - 1] = 0;
+ 		img[cel_index] = TFB_DrawCanvas_LoadFromFile (aniDir, filename);
+ 		if (img[cel_index] == NULL)
+ 		{
+--- /dev/null
++++ b/src/libs/graphics/melee_presentation.c
+@@ -0,0 +1,176 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/* Separate Melee draw images. Original FRAME geometry and image pixels remain
++ * authoritative for collision. No simulation elements or random calls here. */
++#include <stdatomic.h>
++#include <stdio.h>
++#include <string.h>
++#include "melee_presentation.h"
++#include "libs/memlib.h"
++#include "libs/uio.h"
++#include "uqm/globdata.h"
++
++extern uio_DirHandle *contentDir;
++typedef struct RenderImage {
++    TFB_Image *original, *rendered;
++    BOOLEAN avenger, meleeUI;
++    struct RenderImage *next;
++} RenderImage;
++static RenderImage *images;
++static atomic_flag registryLock = ATOMIC_FLAG_INIT;
++static atomic_int enabled = 1;
++static atomic_int drawActive;
++static atomic_uint imageCount, drawCount, backgroundCount;
++static BOOLEAN backgroundAttempted;
++static TFB_Image *backgroundImage;
++
++static void lockRegistry (void)
++{
++    while (atomic_flag_test_and_set_explicit (&registryLock, memory_order_acquire)) {}
++}
++static void unlockRegistry (void)
++{
++    atomic_flag_clear_explicit (&registryLock, memory_order_release);
++}
++static TFB_Image *lookup (TFB_Image *original, BOOLEAN *avenger, BOOLEAN *meleeUI)
++{
++    RenderImage *entry;
++    TFB_Image *result = NULL;
++    lockRegistry ();
++    for (entry = images; entry; entry = entry->next)
++        if (entry->original == original) {
++            result = entry->rendered;
++            if (avenger) *avenger = entry->avenger;
++            if (meleeUI) *meleeUI = entry->meleeUI;
++            break;
++        }
++    unlockRegistry ();
++    return result;
++}
++void UQM_SetMeleeRemastered (int value)
++{
++    atomic_store_explicit (&enabled, value != 0, memory_order_release);
++}
++int UQM_GetMeleeRemastered (void)
++{
++    return atomic_load_explicit (&enabled, memory_order_acquire);
++}
++unsigned UQM_GetMeleeRemasteredImageCount (void) { return atomic_load (&imageCount); }
++unsigned UQM_GetMeleeRemasteredDrawCount (void) { return atomic_load (&drawCount); }
++unsigned UQM_GetMeleeRemasteredBackgroundCount (void) { return atomic_load (&backgroundCount); }
++void UQM_MeleePresentationBegin (BOOLEAN isMelee)
++{
++    atomic_store (&drawActive, isMelee && UQM_GetMeleeRemastered ());
++}
++void UQM_MeleePresentationEnd (void) { atomic_store (&drawActive, 0); }
++
++static TFB_Image *loadOptional (const char *path)
++{
++    TFB_Canvas canvas;
++    uio_Stream *file = uio_fopen (contentDir, path, "rb");
++    if (!file) return NULL;
++    uio_fclose (file);
++    canvas = TFB_DrawCanvas_LoadFromFile (contentDir, path);
++    return canvas ? TFB_DrawImage_New (canvas) : NULL;
++}
++void UQM_MeleePresentationRegister (TFB_Image *original, const char *source, const char *resource,
++        COORD hotx, COORD hoty)
++{
++    const char *relative;
++    char path[4096];
++    TFB_Image *rendered;
++    RenderImage *entry;
++    size_t length;
++    BOOLEAN avenger, meleeUI;
++    if (!original || !source) return;
++    relative = strstr (source, "/ships/");
++    if (!relative) relative = strstr (source, "/battle/");
++    if (!relative) return;
++    ++relative;
++    length = strlen (relative);
++    if (length < 4 || strcmp (relative + length - 4, ".png") || strstr (relative, "..")) return;
++    if (snprintf (path, sizeof path, "remastered/render/%s", relative) >= (int) sizeof path) return;
++    avenger = !strncmp (relative, "ships/ilwrath/avenger-", 22);
++    /* Icon ANIs also contain ordinary small-facing PNGs for fleet previews. */
++    meleeUI = resource && (strstr (resource, "-icons.ani") || strstr (resource, "-meleeicons.ani"));
++    rendered = loadOptional (path);
++    if (rendered && (rendered->extent.width != original->extent.width ||
++            rendered->extent.height != original->extent.height)) {
++        TFB_DrawImage_Delete (rendered);
++        rendered = NULL;
++    }
++    if (rendered) {
++        rendered->NormalHs.x = hotx;
++        rendered->NormalHs.y = hoty;
++    }
++    /* Keep cloak identity even when optional art is missing or malformed. */
++    if (!rendered && !avenger) return;
++    entry = HMalloc (sizeof *entry);
++    entry->original = original;
++    entry->rendered = rendered;
++    entry->avenger = avenger;
++    entry->meleeUI = meleeUI;
++    lockRegistry ();
++    entry->next = images;
++    images = entry;
++    if (rendered) atomic_fetch_add (&imageCount, 1);
++    unlockRegistry ();
++}
++TFB_Image *UQM_MeleePresentationImage (TFB_Image *original)
++{
++    TFB_Image *rendered;
++    BOOLEAN meleeUI = FALSE;
++    rendered = lookup (original, NULL, &meleeUI);
++    if (!rendered) return original;
++    if (!atomic_load (&drawActive) && !(meleeUI && UQM_GetMeleeRemastered () &&
++            LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE)) return original;
++    atomic_fetch_add (&drawCount, 1);
++    return rendered;
++}
++BOOLEAN UQM_MeleePresentationHiddenCloak (TFB_Image *original, Color color)
++{
++    BOOLEAN avenger = FALSE;
++    if (!atomic_load (&drawActive) || color.r || color.g || color.b) return FALSE;
++    lookup (original, &avenger, NULL);
++    return avenger;
++}
++void UQM_MeleePresentationMipmap (TFB_Image *original, TFB_Image *mipmap,
++        int hotx, int hoty)
++{
++    TFB_Image *rendered = lookup (original, NULL, NULL);
++    TFB_Image *renderedMipmap = lookup (mipmap, NULL, NULL);
++    if (rendered && renderedMipmap)
++        TFB_DrawScreen_SetMipmap (rendered, renderedMipmap, hotx, hoty);
++}
++void UQM_MeleePresentationForget (TFB_Image *original)
++{
++    RenderImage **cursor, *entry = NULL;
++    lockRegistry ();
++    for (cursor = &images; *cursor; cursor = &(*cursor)->next)
++        if ((*cursor)->original == original) {
++            entry = *cursor;
++            *cursor = entry->next;
++            if (entry->rendered) atomic_fetch_sub (&imageCount, 1);
++            break;
++        }
++    unlockRegistry ();
++    if (entry) {
++        /* Runs with the original image's deferred deletion, after queued draws. */
++        if (entry->rendered) TFB_DrawImage_Delete (entry->rendered);
++        HFree (entry);
++    }
++}
++void UQM_MeleePresentationBackground (void)
++{
++    DrawMode mode;
++    if (!atomic_load (&drawActive)) return;
++    if (!backgroundAttempted) {
++        backgroundAttempted = TRUE;
++        backgroundImage = loadOptional ("remastered/render/background.png");
++    }
++    if (!backgroundImage) return;
++    atomic_fetch_add (&backgroundCount, 1);
++    mode.kind = 0;
++    mode.factor = 0;
++    /* Draw-command clipping is inherited from SpaceContext, preserving the HUD. */
++    TFB_DrawScreen_Image (backgroundImage, 0, 0, 256, 0, NULL, mode, TFB_SCREEN_MAIN);
++}
+--- /dev/null
++++ b/src/libs/graphics/melee_presentation.h
+@@ -0,0 +1,21 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++#ifndef UQM_MELEE_PRESENTATION_H
++#define UQM_MELEE_PRESENTATION_H
++#include "tfb_draw.h"
++
++void UQM_SetMeleeRemastered (int enabled);
++int UQM_GetMeleeRemastered (void);
++unsigned UQM_GetMeleeRemasteredImageCount (void);
++unsigned UQM_GetMeleeRemasteredDrawCount (void);
++unsigned UQM_GetMeleeRemasteredBackgroundCount (void);
++void UQM_MeleePresentationBegin (BOOLEAN isMelee);
++void UQM_MeleePresentationEnd (void);
++void UQM_MeleePresentationBackground (void);
++void UQM_MeleePresentationRegister (TFB_Image *original, const char *source, const char *resource,
++        COORD hotx, COORD hoty);
++TFB_Image *UQM_MeleePresentationImage (TFB_Image *original);
++BOOLEAN UQM_MeleePresentationHiddenCloak (TFB_Image *original, Color color);
++void UQM_MeleePresentationMipmap (TFB_Image *original, TFB_Image *mipmap,
++        int hotx, int hoty);
++void UQM_MeleePresentationForget (TFB_Image *original);
++#endif
+--- a/src/libs/graphics/tfb_draw.c
++++ b/src/libs/graphics/tfb_draw.c
+@@ -16,6 +16,7 @@
+ 
+ #include "gfx_common.h"
+ #include "tfb_draw.h"
++#include "melee_presentation.h"
+ #include "drawcmd.h"
+ #include "libs/log.h"
+ #include "libs/memlib.h"
+@@ -167,6 +168,7 @@
+ 	DC.data.setmipmap.hoty = hoty;
+ 
+ 	TFB_EnqueueDrawCommand (&DC);
++	UQM_MeleePresentationMipmap (img, mmimg, hotx, hoty);
+ }
+ 
+ void
+@@ -421,6 +423,7 @@
+ 		/* Should we die here? */
+ 		return;
+ 	}
++	UQM_MeleePresentationForget (image);
+ 	LockMutex (image->mutex);
+ 
+ 	TFB_DrawCanvas_Delete (image->NormalImg);
+--- a/src/libs/graphics/tfb_prim.c
++++ b/src/libs/graphics/tfb_prim.c
+@@ -24,6 +24,7 @@
+ #include "gfxintrn.h"
+ #include "gfx_common.h"
+ #include "tfb_draw.h"
++#include "melee_presentation.h"
+ #include "tfb_prim.h"
+ #include "cmap.h"
+ #include "libs/log.h"
+@@ -138,7 +139,7 @@
+ 				" (Stamp address = %p)", (void *) stmp);
+ 		return;
+ 	}
+-	img = SrcFramePtr->image;
++	img = UQM_MeleePresentationImage (SrcFramePtr->image);
+ 	
+ 	if (!img)
+ 	{
+@@ -194,6 +195,7 @@
+ 		return;
+ 	}
+ 	img = SrcFramePtr->image;
++	if (UQM_MeleePresentationHiddenCloak (img, color)) return;
+ 
+ 	if (!img)
+ 	{
+--- a/src/uqm/process.c
++++ b/src/uqm/process.c
+@@ -31,6 +31,7 @@
+ #include "libs/graphics/drawable.h"
+ #include "libs/graphics/drawcmd.h"
+ #include "libs/graphics/gfx_common.h"
++#include "libs/graphics/melee_presentation.h"
+ #include "libs/log.h"
+ #include "libs/misc.h"
+ #include "intel.h"
+@@ -1029,9 +1030,11 @@
+ 			&& (skip_frames == 0 || (--nth_frame & 0x00FF) == 0))
+ 		{
+ 			nth_frame += skip_frames;
++			UQM_MeleePresentationBegin (LOBYTE (GLOBAL (CurrentActivity)) == SUPER_MELEE);
+ 			if (clear)
+ 				ClearDrawable (); // this is for BATCH_BUILD_PAGE effect, but not scaled by SetGraphicScale
+ 
++			UQM_MeleePresentationBackground ();
+ 			if (optMeleeScale != TFB_SCALE_STEP)
+ 			{
+ 				COUNT index, scale;
+@@ -1042,6 +1045,7 @@
+ 
+ 			DrawBatch (DisplayArray, DisplayLinks, 0);//BATCH_BUILD_PAGE);
+ 			SetGraphicScale (0);
++			UQM_MeleePresentationEnd ();
+ 		}
+ 
+ 		FlushSounds ();

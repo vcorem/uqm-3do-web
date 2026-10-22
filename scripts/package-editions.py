@@ -83,6 +83,11 @@ def package(builds, output, cosmoclash=None):
             path = source / name
             if not path.is_file() or not path.stat().st_size:
                 raise ValueError('Missing build artifact: ' + str(path))
+    for source, edition, _, _ in builds:
+        if edition == 'hd' and 'melee-presentation.js' in (source / 'index.html').read_text():
+            for name in ('melee-presentation.js', 'melee-presentation.css'):
+                if not (source / name).is_file():
+                    raise ValueError('Missing Melee presentation file: ' + str(source / name))
     root = Path(__file__).resolve().parent.parent
     output.mkdir(parents=True, exist_ok=True)
     for source, edition, folder, variant in builds:
@@ -96,6 +101,13 @@ def package(builds, output, cosmoclash=None):
                 shutil.copy2(metadata, destination / name)
             else:
                 (destination / name).unlink(missing_ok=True)
+        if edition == 'hd':
+            for name in ('melee-presentation.js', 'melee-presentation.css', 'melee-nebula.png'):
+                presentation = source / name
+                if presentation.is_file():
+                    shutil.copy2(presentation, destination / name)
+                else:
+                    (destination / name).unlink(missing_ok=True)
         page = destination / 'index.html'
         html = page.read_text()
         if edition == 'original':

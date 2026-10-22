@@ -437,7 +437,7 @@ pub unsafe extern "C" fn TFB_Prim_Stamp(
         );
         return;
     }
-    img = (*SrcFramePtr).image;
+    img = crate::uqm_melee_presentation::UQM_MeleePresentationImage((*SrcFramePtr).image.cast()).cast();
     if img.is_null() {
         log_add(
             log_Level::log_Warning,
@@ -509,6 +509,9 @@ pub unsafe extern "C" fn TFB_Prim_StampFill(
         return;
     }
     img = (*SrcFramePtr).image;
+    if crate::uqm_melee_presentation::UQM_MeleePresentationHiddenCloak(img.cast(), color.r, color.g, color.b) {
+        return;
+    }
     if img.is_null() {
         log_add(
             log_Level::log_Warning,

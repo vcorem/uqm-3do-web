@@ -1,0 +1,59 @@
+{
+  "passed": true,
+  "tracks": [
+    {
+      "file": "fleet-menu.ogg",
+      "decoded_samples": 4704000,
+      "seconds": 106.66666666666667,
+      "peak_dbfs": -2.032,
+      "dc_offset": 4.581799657898955e-05,
+      "quietest_100ms_dbfs": -40.342,
+      "loop_seam_step": 0.009138770401477814,
+      "normal_99_9_percent_step": 0.276014119386673,
+      "stereo_side_to_mid_ratio": 0.115,
+      "section_rms": [
+        0.13122950494289398,
+        0.14588052034378052,
+        0.13651448488235474,
+        0.16320757567882538,
+        0.0834212377667427,
+        0.1327357143163681,
+        0.16333156824111938,
+        0.1450469046831131
+      ],
+      "integrated_lufs": -16.3,
+      "loudness_range_lu": 5.9,
+      "true_peak_dbfs": -1.7
+    },
+    {
+      "file": "battle.ogg",
+      "decoded_samples": 4233600,
+      "seconds": 96.0,
+      "peak_dbfs": -0.341,
+      "dc_offset": 6.173281144583598e-05,
+      "quietest_100ms_dbfs": -33.298,
+      "loop_seam_step": 0.015956759452819824,
+      "normal_99_9_percent_step": 0.37061843276023865,
+      "stereo_side_to_mid_ratio": 0.138,
+      "section_rms": [
+        0.19529475271701813,
+        0.2052326500415802,
+        0.19610704481601715,
+        0.20578289031982422,
+        0.11798858642578125,
+        0.18775303661823273,
+        0.2045549601316452,
+        0.20514971017837524
+      ],
+      "integrated_lufs": -13.5,
+      "loudness_range_lu": 5.0,
+      "true_peak_dbfs": -0.4
+    }
+  ],
+  "reproducibility": {
+    "track": "fleet-menu.ogg",
+    "pcm_exact_match": true,
+    "encoded_bytes_exact_match": true,
+    "independent_output": "separate temporary directory"
+  }
+}

@@ -1,0 +1,23 @@
+/* A small, keyboard-accessible control panel; the battle canvas stays intact. */
+:root { --melee-accent:#8de1df; }
+body { background:radial-gradient(ellipse at 50% -10%,#19384755,transparent 62%),#080b12; }
+header h1 { letter-spacing:-.035em; }
+.edition { color:#9bc9d1; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+.screen { border-color:#476169; box-shadow:0 20px 90px #000a,0 0 0 4px #0c151b; }
+.presentation-toggle { position:absolute; top:10px; right:10px; z-index:50; border:1px solid #59728199; background:#0a151ce8; color:#e8f3f6; padding:8px 11px; font-size:11px; font-weight:550; letter-spacing:.025em; border-radius:4px; opacity:.72; box-shadow:0 2px 14px #0006; }
+.presentation-toggle:hover,.presentation-toggle:focus-visible { opacity:1; border-color:var(--melee-accent); }
+.presentation-toggle[aria-expanded="true"] { opacity:1; color:var(--melee-accent); }
+.presentation-panel { position:absolute; z-index:55; top:50px; right:10px; width:min(330px,calc(100% - 20px)); padding:22px; background:#0c1821f5; border:1px solid #547482; border-radius:6px; box-shadow:0 16px 65px #000b; font-size:13px; backdrop-filter:blur(16px); }
+.presentation-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:20px; }
+.presentation-heading h2 { margin:0; font-size:16px; font-weight:550; letter-spacing:-.025em; }
+.presentation-close { padding:3px 7px; border:0; color:#b8c9d5; background:transparent; font-size:22px; line-height:1; }
+.presentation-field { display:grid; gap:8px; margin-bottom:18px; }
+.presentation-field>span { display:flex; justify-content:space-between; align-items:center; color:#aec3d0; font-size:11px; letter-spacing:.025em; }
+.presentation-field select { width:100%; min-height:39px; padding:8px 10px; background:#172833; color:#f1f6f8; border:1px solid #365360; border-radius:3px; font:inherit; }
+.presentation-field input[type="range"] { width:100%; margin:4px 0; accent-color:var(--melee-accent); cursor:pointer; }
+.presentation-note { margin:4px 0 0; color:#819aa9; font-size:11px; line-height:1.6; }
+.presentation-panel :focus-visible { outline:2px solid var(--melee-accent); outline-offset:3px; }
+.screen:fullscreen .presentation-toggle { position:fixed; top:12px; right:12px; }
+.screen:fullscreen .presentation-panel { position:fixed; top:54px; right:12px; }
+@media(max-width:640px) { .presentation-toggle { top:5px; right:5px; padding:7px 9px; font-size:10px; } .presentation-panel { top:40px; right:5px; padding:18px; } }
+@media(prefers-reduced-transparency:reduce) { .presentation-panel { background:#0c1821; backdrop-filter:none; } }

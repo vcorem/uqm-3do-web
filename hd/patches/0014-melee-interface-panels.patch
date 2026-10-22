@@ -1,0 +1,55 @@
+diff --git a/src/uqm/supermelee/melee.c b/src/uqm/supermelee/melee.c
+--- a/src/uqm/supermelee/melee.c
++++ b/src/uqm/supermelee/melee.c
+@@ -728,7 +728,20 @@
+ 	s.origin.x = 0;
+ 	s.origin.y = 0;
+ 	s.frame = SetAbsFrameIndex (MeleeFrame, which_icon);
+-	DrawStamp (&s);
++	if (IS_HD && MeleeUiActive () && which_text > 0 && which_text < 4)
++	{
++		RECT panel;
++		GetFrameRect (s.frame, &panel);
++		panel.corner.x += s.origin.x;
++		panel.corner.y += s.origin.y;
++		DrawStarConBox (&panel, 1,
++				HiLite ? BUILD_COLOR_RGB (141, 225, 223) : BUILD_COLOR_RGB (49, 79, 96),
++				BUILD_COLOR_RGB (28, 48, 61), TRUE,
++				HiLite ? BUILD_COLOR_RGB (28, 57, 73) : BUILD_COLOR_RGB (20, 37, 47),
++				FALSE, TRANSPARENT);
++	}
++	else
++		DrawStamp (&s);
+ 
+ 	if (!which_text)
+ 		return;
+@@ -958,6 +971,8 @@
+ {
+ 	TEXT t;
+ 	FONT OldFont;
++	Color OldColor;
++	BOOLEAN remastered = MeleeUiActive ();
+ 	FRAME OldFontEffect;
+ 	UNICODE *buf = GAME_STRING (MELEE_STRING_BASE + 9);
+ 
+@@ -965,8 +980,10 @@
+ 		return;
+ 
+ 	OldFont = SetContextFont (LoadFont (MELEE_TITLE_FONT));
+-	OldFontEffect = SetContextFontEffect (
++	OldFontEffect = SetContextFontEffect (remastered ? 0 :
+ 			SetAbsFrameIndex (FontGradFrame, 7));
++	if (remastered)
++		OldColor = SetContextForeGroundColor (BUILD_COLOR_RGB (214, 232, 240));
+ 
+ 	t.baseline.x = (SCREEN_WIDTH >> 1) - (SAFE_NEG (1));
+ 	t.baseline.y = RES_SCALE (4);
+@@ -978,6 +995,8 @@
+ 
+ 	SetContextFont (OldFont);
+ 	SetContextFontEffect (OldFontEffect);
++	if (remastered)
++		SetContextForeGroundColor (OldColor);
+ }
+ 
+ #ifdef NETPLAY

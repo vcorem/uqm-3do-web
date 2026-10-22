@@ -31,6 +31,11 @@ export async function buildHarness(output, editions = ['original', 'hd']) {
     await copyFile(path.join(root, 'web/engine-loader/engine-loader.js'), path.join(dir, 'engine-loader.js'));
     await copyFile(path.join(root, 'web/online/online-ui.js'), path.join(dir, 'online-ui.js'));
     await copyFile(path.join(root, 'sc2/wasm/netplay-client.js'), path.join(dir, 'netplay-client.js'));
+    if (edition === 'hd') {
+      for (const name of ['melee-presentation.js', 'melee-presentation.css']) {
+        await copyFile(path.join(root, 'hd/wasm', name), path.join(dir, name));
+      }
+    }
     built.push(edition);
   }
   return built;

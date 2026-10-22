@@ -573,7 +573,7 @@
     // ------------------------------------------------------------ drawing
 
     // Colours of the Super-Melee screen (melee.c, util.c, colors.h).
-    const RGB = {
+    const CLASSIC_RGB = {
         teamName: [123, 132, 222], teamNameHi: [189, 198, 239], editRect: [165, 0, 165], cursor: [255, 255, 255],
         status: [0, 165, 0], notice: [248, 224, 0], error: [255, 84, 64], hint: [116, 116, 116],
         boxTL: [0, 0, 74], boxBR: [0, 0, 115], boxFill: [0, 0, 99],
@@ -591,6 +591,17 @@
 
     function createRenderer(canvas, art, images, options) {
         const edition = options.edition;
+        const remastered = () => edition === 'hd' && options.presentation && options.presentation() === 'remastered';
+        const modernColors = Object.assign({}, CLASSIC_RGB, {
+            teamName:[155,182,200], teamNameHi:[222,240,246], editRect:[33,63,80],
+            status:[141,225,223], notice:[219,192,139], hint:[132,161,178],
+            boxTL:[38,62,77], boxBR:[49,79,96], boxFill:[20,37,47],
+            boxTLHi:[141,225,223], boxBRHi:[71,125,136], boxFillHi:[28,57,73],
+            btnTL:[38,60,73], btnBR:[74,107,123], btnFill:[26,42,54], btnText:[175,201,215], btnTextHi:[167,240,227],
+            ctrlFill:[18,38,49], ctrlFillHi:[30,65,83], ctrlBevel:[74,107,123], ctrlText:[157,189,207], ctrlTextHi:[201,242,245],
+            popup:[27,43,55], popupText:[222,240,246], popupDark:[18,32,42], popupMedium:[75,108,124],
+        });
+        let RGB = remastered() ? modernColors : CLASSIC_RGB;
         const W = 320, H = 240;
         const k = canvas.width / W;              // device pixels per logical pixel
         const a = art.scale;                     // art pixels per logical pixel
@@ -760,6 +771,15 @@
             return { w: sw / a, h: sh / a };
         }
         function title(y) {
+            if (remastered()) {
+                ctx.save();
+                ctx.font = '600 ' + Math.round(15 * k) + 'px system-ui, sans-serif';
+                ctx.fillStyle = '#d7eef2';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+                ctx.fillText('ONLINE MELEE', W * k / 2, (y + 1) * k);
+                ctx.restore();
+                return;
+            }
             const place = art.sprites.title;
             sprite('title', Math.round((W - place[2] / a) / 2), y);
         }
@@ -808,8 +828,26 @@
         const ONLINE_TEXT = ['ONLINE MELEE: fight another player over the internet.',
             'Pick an open room, or create your own and wait.', 'The battle starts by itself when you are both ready.'];
         // The start screen's picture and shading do not change: draw them once.
-        let startBackground = null;
+        let startBackground = null, startBackgroundStyle = null;
         function drawStartBackground() {
+            if (remastered()) {
+                image(images.remastered ? 'remastered' : 'stars', 0, 0, W, H);
+                rect(0, 0, W, H, [4, 13, 20], 0.56);
+                gradientShade(60, 172, 0.82);
+                ctx.save();
+                ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+                ctx.font = '500 ' + Math.round(7 * k) + 'px system-ui, sans-serif';
+                ctx.fillStyle = '#8de1df';
+                ctx.fillText('THE UR-QUAN MASTERS', W * k / 2, 55 * k);
+                ctx.font = '600 ' + Math.round(28 * k) + 'px system-ui, sans-serif';
+                ctx.fillStyle = '#e3f1f5';
+                ctx.fillText('SUPER-MELEE', W * k / 2, 70 * k);
+                ctx.font = '400 ' + Math.round(7 * k) + 'px system-ui, sans-serif';
+                ctx.fillStyle = '#9dbdca';
+                ctx.fillText('REMASTERED', W * k / 2, 105 * k);
+                ctx.restore();
+                return;
+            }
             image('title', 0, 0, W, H);
             // HD: the panel starts lower, clear of the second menu item (it ends near 172).
             const panel = edition === 'hd' ? 176 : 172;
@@ -817,6 +855,8 @@
             rect(0, panel, W, H - panel, [0, 0, 0], 0.85);
         }
         function drawStart(state, t) {
+            const style = remastered();
+            if (startBackgroundStyle !== style) { startBackground = null; startBackgroundStyle = style; }
             if (!startBackground && root.document && images.title) {
                 startBackground = root.document.createElement('canvas');
                 startBackground.width = canvas.width; startBackground.height = canvas.height;
@@ -828,7 +868,7 @@
             }
             if (startBackground) ctx.drawImage(startBackground, 0, 0);
             else drawStartBackground();
-            const menu = MENU[edition];
+            const menu = remastered() ? { text:[140,180,195], hi:[210,241,245], glow:[141,225,223] } : MENU[edition];
             const items = [['play', 'Play'], ['online', 'Online Melee']];
             const mh = lineHeight('menu');
             const step = edition === 'hd' ? mh - 1 : mh + 4;
@@ -847,7 +887,12 @@
                 region(id, W / 2 - width / 2 - 6, y, width + 12, mh, label, { button: id === 'play' ? 'start' : undefined });
             });
             const infoY = top + items.length * step + (edition === 'hd' ? 6 : 4);
-            const info = state.focus === 'online' ? ONLINE_TEXT : (options.startSteps || ['The campaign and local Super-Melee.']);
+            const info = state.focus === 'online' ? ONLINE_TEXT : remastered() ? [
+                'LOCAL MELEE: choose SUPER-MELEE in the game menu.',
+                'Build two fleets, then select BATTLE.',
+                'ARROWS: steer and thrust. RIGHT CTRL: fire.',
+                'RIGHT SHIFT: special. F1: pause. ? shows all keys.'
+            ] : (options.startSteps || ['The campaign and local Super-Melee.']);
             const sh = lineHeight('small') + 1;
             info.forEach((line, i) => text('small', line, W / 2, infoY + i * sh, i === 0 ? RGB.teamNameHi : RGB.teamName, 'center', W - 16));
             // Loading progress in the game's own palette.
@@ -863,7 +908,8 @@
             }
         }
         function lobbyFrame(state) {
-            image('stars', 0, 0, W, H);
+            image(remastered() && images.remastered ? 'remastered' : 'stars', 0, 0, W, H);
+            if (remastered()) rect(0, 0, W, H, [4, 13, 20], 0.65);
             title(4);
         }
         // An info notice (why a session ended, "link copied") gives way to the screen's
@@ -1138,7 +1184,7 @@
             ty += lineHeight('label') + 6;
             lines.forEach(line => { text('body', line, W / 2, ty, RGB.popupText, 'center'); ty += lineHeight('body'); });
             if (detail.length) ty += 6;
-            detail.forEach(line => { text('body', line, W / 2, ty, [70, 70, 70], 'center'); ty += lineHeight('body'); });
+            detail.forEach(line => { text('body', line, W / 2, ty, remastered() ? RGB.hint : [70, 70, 70], 'center'); ty += lineHeight('body'); });
             const by = y + h - 19;
             const bw = 96;
             buttons.forEach(([id, label, aria], i) => {
@@ -1150,6 +1196,7 @@
 
         return {
             draw(state, t) {
+                RGB = remastered() ? modernColors : CLASSIC_RGB;
                 regions.length = 0;
                 const now = options.now();
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1285,10 +1332,11 @@
         return root.fetch(url('online-art.json')).then(response => {
             if (!response.ok) throw new Error('Could not load the online art');
             return response.json();
-        }).then(art => Promise.all(['atlas', 'stars', 'title'].map(name => loadImage(url(art.images[name])).catch(() => null)))
-            .then(([atlas, stars, title]) => {
+        }).then(art => Promise.all(['atlas', 'stars', 'title', 'remastered'].map(name =>
+            art.images[name] ? loadImage(url(art.images[name])).catch(() => null) : null))
+            .then(([atlas, stars, title, remastered]) => {
                 if (!atlas) throw new Error('Could not load the online art');
-                return { art, images: { atlas, stars, title } };
+                return { art, images: { atlas, stars, title, remastered } };
             }));
     }
 
@@ -1568,7 +1616,7 @@
         loadArt(options.artBase || win.location.href).then(data => {
             sounds.load(data.art.sounds);
             renderer = createRenderer(canvas, data.art, data.images, {
-                edition, now: () => Date.now(), started: options.game.started,
+                edition, now: () => Date.now(), started: options.game.started, presentation: options.presentation,
                 startSteps: options.startSteps, zoom: edition === 'hd' ? { menu: 0.62 } : null,
                 caret: () => {
                     if (!input) return { start: Array.from(state.name).length };
@@ -1695,5 +1743,5 @@
     }
 
     return { createController, createRenderer, init, cleanName, defaultName, waitingTime, clock, cleanMessage, readInvite,
-        NAME_KEY, NAME_MAX, COUNTDOWN_MS, RGB };
+        NAME_KEY, NAME_MAX, COUNTDOWN_MS, RGB: CLASSIC_RGB };
 });

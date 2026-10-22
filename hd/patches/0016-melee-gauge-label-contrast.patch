@@ -1,0 +1,41 @@
+diff --git a/src/uqm/shipstat.c b/src/uqm/shipstat.c
+--- a/src/uqm/shipstat.c
++++ b/src/uqm/shipstat.c
+@@ -89,7 +89,14 @@
+ 			Stamp.frame = SetAbsFrameIndex (StatusFrame, 4);
+ 		else
+ 			Stamp.frame = SetAbsFrameIndex (StatusFrame, 0);
+-		DrawStamp (&Stamp);
++		if (MeleeUiActive ())
++		{
++			Color oldColor = SetContextForeGroundColor (BUILD_COLOR_RGB (94, 214, 153));
++			DrawFilledStamp (&Stamp);
++			SetContextForeGroundColor (oldColor);
++		}
++		else
++			DrawStamp (&Stamp);
+ 	}
+ 
+ 	Stamp.origin.x = ENERGY_XOFFS + RES_SCALE (RES_DESCALE (STAT_WIDTH) >> 1) - RES_SCALE (4);
+@@ -110,12 +117,19 @@
+ 			DrawFilledRectangle (&r);
+ 		}
+ 
+-		DrawStamp (&Stamp);
++		if (MeleeUiActive ())
++		{
++			Color oldColor = SetContextForeGroundColor (BUILD_COLOR_RGB (235, 113, 105));
++			DrawFilledStamp (&Stamp);
++			SetContextForeGroundColor (oldColor);
++		}
++		else
++			DrawStamp (&Stamp);
+ 	}
+ 	else
+ 	{
+ #define LOW_FUEL_COLOR BUILD_COLOR (MAKE_RGB15 (0x1F, 0x1F, 0x0A), 0x0E)
+-		SetContextForeGroundColor (LOW_FUEL_COLOR);
++		SetContextForeGroundColor (MeleeUiActive () ? BUILD_COLOR_RGB (255, 224, 107) : LOW_FUEL_COLOR);
+ 		DrawFilledStamp (&Stamp);
+ 	}
+ }

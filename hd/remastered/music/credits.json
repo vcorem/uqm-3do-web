@@ -1,0 +1,19 @@
+{
+  "collection": "Impulse original Melee score",
+  "tracks": [
+    {
+      "file": "fleet-menu.ogg",
+      "title": "Constellation Assembly"
+    },
+    {
+      "file": "battle.ogg",
+      "title": "Redshift Intercept"
+    }
+  ],
+  "creation": "Original note sequences, arrangement, synthesis and percussion authored for this project with Codex assistance.",
+  "source": "render.py and per-track score JSON files",
+  "third_party_audio": [],
+  "upstream_soundtrack_reuse": false,
+  "tools": "Python, NumPy and ffmpeg; no soundfont or external audio samples.",
+  "attribution_label": "Impulse original score"
+}

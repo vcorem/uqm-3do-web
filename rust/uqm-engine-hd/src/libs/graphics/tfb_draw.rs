@@ -745,6 +745,7 @@ pub unsafe extern "C" fn TFB_DrawScreen_SetMipmap(
     DC.data.setmipmap.hotx = hotx;
     DC.data.setmipmap.hoty = hoty;
     TFB_EnqueueDrawCommand(&raw mut DC);
+    crate::uqm_melee_presentation::UQM_MeleePresentationMipmap(img.cast(), mmimg.cast(), hotx, hoty);
 }
 #[no_mangle]
 pub unsafe extern "C" fn TFB_DrawScreen_DeleteImage(mut img: *mut TFB_Image) {
@@ -1096,6 +1097,7 @@ pub unsafe extern "C" fn TFB_DrawImage_Delete(mut image: *mut TFB_Image) {
         );
         return;
     }
+    crate::uqm_melee_presentation::UQM_MeleePresentationForget(image.cast());
     LockMutex((*image).mutex);
     TFB_DrawCanvas_Delete((*image).NormalImg);
     if !(*image).ScaledImg.is_null() {

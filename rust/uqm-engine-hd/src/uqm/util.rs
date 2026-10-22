@@ -815,6 +815,17 @@ pub unsafe extern "C" fn DrawRenderedBox(
     if (*r).extent.width == 0 || (*r).extent.height == 0 {
         return;
     }
+    // Stock HD bevels are bitmap stamps; keep their rectangle but draw new chrome.
+    extern "C" { fn UQM_GetMeleeRemastered() -> ::core::ffi::c_int; }
+    if resolutionFactor == 2 && custom == 0 && UQM_GetMeleeRemastered() != 0
+        && GlobData.Game_state.CurrentActivity & 0xff == 0
+        && (r#type == C2Rust_Unnamed_1::THIN_INNER_BEVEL.0 as ::core::ffi::c_int
+            || r#type == C2Rust_Unnamed_1::THICK_OUTER_BEVEL.0 as ::core::ffi::c_int) {
+        uqm_lua_checked!(DrawStarConBox(r, 1, Color { r:69,g:106,b:123,a:255 },
+            Color { r:29,g:49,b:62,a:255 }, filled, fill_color, BOOLEAN::FALSE,
+            Color { r:80,g:80,b:80,a:0 }), ());
+        return;
+    }
     BatchGraphics();
     if filled.0 != 0 {
         let mut OldColor: Color = SetContextForeGroundColor(fill_color);

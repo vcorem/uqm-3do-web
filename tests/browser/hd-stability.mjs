@@ -1,4 +1,5 @@
-// Real standalone HD runtime: no response rewriting, engine hooks, or state patches.
+// Real standalone HD runtime: no response rewriting or simulation state patches.
+// UQM_REMASTERED=1 adds the new palette and read-only native presentation diagnostics.
 // UQM_IDLE_MS defaults to 300000. Set 0 only for a navigation smoke check.
 import assert from 'node:assert/strict';
 import { createReadStream } from 'node:fs';
@@ -11,6 +12,7 @@ import { createNetplayServer } from '../../server/netplay.mjs';
 const dist = path.resolve(process.env.UQM_DIST || '.tools/hd-dist');
 const out = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/hd-stability');
 const browserType = process.env.UQM_BROWSER || 'chromium';
+const remastered = process.env.UQM_REMASTERED === '1';
 const browsers = { chromium, firefox, webkit };
 const idleMs = Number(process.env.UQM_IDLE_MS ?? 300000);
 assert.ok(browsers[browserType], 'Unsupported UQM_BROWSER');
@@ -20,7 +22,7 @@ assert.match(await readFile(path.join(dist, 'index.html'), 'utf8'), /edition: 'h
   'UQM_DIST must contain the standalone HD build, not the combined edition chooser');
 await mkdir(out, { recursive: true });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const report = { browserType, dist, idleMs, startedAt: new Date().toISOString(),
+const report = { browserType, dist, idleMs, remastered, startedAt: new Date().toISOString(),
   stage: 'starting', passed: false, errors: [], console: [], battleFrames: [], buildHashes: {} };
 const server = createNetplayServer({ distDir: dist });
 let browser, page, monitor, monitoring = false;
@@ -59,7 +61,18 @@ async function key(value) {
   // UQM polls input; release long enough to distinguish adjacent equal presses.
   await guarded(sleep(750));
 }
+async function readPresentation() {
+  if (!remastered) return null;
+  return guarded(page.evaluate(() => ({
+    enabled: Module._UQM_GetMeleeRemastered(),
+    images: Module._UQM_GetMeleeRemasteredImageCount(),
+    draws: Module._UQM_GetMeleeRemasteredDrawCount(),
+    backgrounds: Module._UQM_GetMeleeRemasteredBackgroundCount(),
+    gameScreen: Module.gameScreen,
+  })));
+}
 async function capture() {
+  const nativeBefore = await readPresentation();
   const png = await guarded(page.locator('#canvas').screenshot());
   const pixels = await guarded(page.evaluate(async encoded => {
     const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
@@ -69,7 +82,7 @@ async function capture() {
     const context = copy.getContext('2d');
     context.drawImage(bitmap, 0, 0); bitmap.close();
     const { data, width, height } = context.getImageData(0, 0, copy.width, copy.height);
-    let title = 0, titleCount = 0, gray = 0, panelCount = 0;
+    let title = 0, titleLight = 0, titleCount = 0, gray = 0, navy = 0, panelCount = 0;
     let dark = 0, playCount = 0, blue = 0, pickCount = 0;
     const playfield = [];
     for (let y = 0; y < height; y += 8) for (let x = 0; x < width; x += 8) {
@@ -79,10 +92,12 @@ async function capture() {
       if (nx > 0.15 && nx < 0.8 && ny > 0.065 && ny < 0.15) {
         titleCount++;
         if (r > 80 && b > 80 && g < Math.min(r, b) / 2) title++;
+        if (r > 150 && g > 165 && b > 175 && Math.max(r,g,b) - Math.min(r,g,b) < 70) titleLight++;
       }
       if (nx > 0.76 && nx < 0.96 && ny > 0.08 && ny < 0.94) {
         panelCount++;
         if (r > 35 && r < 220 && Math.abs(r - g) < 8 && Math.abs(r - b) < 8) gray++;
+        if (r >= 10 && r <= 48 && g >= r + 8 && g <= 78 && b >= g + 5 && b <= 98) navy++;
       }
       if (nx > 0.02 && nx < 0.74 && ny > 0.06 && ny < 0.94) {
         playCount++;
@@ -94,19 +109,29 @@ async function capture() {
         if (b > 65 && b > r * 2 && b > g * 2) blue++;
       }
     }
-    return { width, height, titleMagenta: title / titleCount,
-      panelGray: gray / panelCount, playfieldDark: dark / playCount,
+    return { width, height, titleMagenta: title / titleCount, titleLight: titleLight / titleCount,
+      panelNavy: navy / panelCount, panelGray: gray / panelCount, playfieldDark: dark / playCount,
       pickerBlue: blue / pickCount, playfield };
   }, png.toString('base64')));
-  return { png, pixels };
+  return { png, pixels, nativeBefore, nativeAfter: await readPresentation() };
 }
 function metrics(frame) {
   const { playfield, ...result } = frame.pixels;
-  return result;
+  return { ...result, ...(remastered ? { nativeBefore: frame.nativeBefore, nativeAfter: frame.nativeAfter } : {}) };
 }
-const isFleet = frame => frame.pixels.titleMagenta > 0.04;
-const isBattle = frame => frame.pixels.panelGray > 0.22 &&
-  frame.pixels.playfieldDark > 0.65 && frame.pixels.titleMagenta < 0.02;
+const isFleet = frame => remastered
+  ? frame.pixels.titleLight > 0.04 && frame.pixels.panelNavy > 0.08 &&
+    frame.nativeAfter.enabled === 1 && frame.nativeAfter.gameScreen === 'melee' &&
+    frame.nativeBefore.backgrounds === 0 && frame.nativeAfter.backgrounds === 0
+  : frame.pixels.titleMagenta > 0.04;
+const isBattle = frame => remastered
+  ? frame.pixels.panelNavy > 0.22 && frame.pixels.playfieldDark > 0.65 &&
+    frame.pixels.titleLight < 0.02 && frame.nativeAfter.enabled === 1 &&
+    frame.nativeAfter.gameScreen === 'melee' && frame.nativeAfter.images >= 48 &&
+    frame.nativeAfter.backgrounds > frame.nativeBefore.backgrounds &&
+    frame.nativeAfter.draws > frame.nativeBefore.draws
+  : frame.pixels.panelGray > 0.22 &&
+    frame.pixels.playfieldDark > 0.65 && frame.pixels.titleMagenta < 0.02;
 const isPicker = frame => !isFleet(frame) && !isBattle(frame) && frame.pixels.pickerBlue > 0.3;
 async function waitForCanvas(predicate, file, timeout = 90000) {
   const until = Date.now() + timeout;
@@ -164,6 +189,19 @@ try {
   })().catch(error => { if (monitoring) fail(error); });
   await guarded(page.waitForFunction(() => typeof runtimeReady !== 'undefined' && runtimeReady,
     null, { timeout: 240000 }));
+  if (await page.locator('#melee-style').count()) {
+    // Use the real preference UI, just as a player would. Fresh tabs otherwise
+    // default to Remastered, even when this run is checking Classic HD.
+    await guarded(page.getByRole('button', { name: 'Picture & sound', exact: true }).click());
+    await guarded(page.locator('#melee-style').selectOption(remastered ? 'remastered' : 'classic'));
+    await guarded(page.getByRole('button', { name: 'Close picture and sound', exact: true }).click());
+  }
+  if (remastered) {
+    const ready = await readPresentation();
+    assert.equal(ready.enabled, 1, 'Remastered mode must use the actual native renderer');
+    assert.equal(ready.backgrounds, 0, 'No battle has begun during loading');
+    report.presentationAtStart = ready;
+  }
   await guarded(page.getByRole('button', { name: 'Play', exact: true }).click());
   report.stage = 'main-menu';
   await waitForScreen('mainMenu');
@@ -225,6 +263,13 @@ try {
   await writeFile(path.join(out, 'after-controls.png'), (await capture()).png);
   assert.ok(report.battleFrames.filter(frame => frame.changedPixels >= 4).length >= 2,
     'Did not observe multiple changing frames in an actual battle playfield');
+  if (remastered) {
+    assert.ok(report.battleFrames.some(frame => frame.elapsedMs >= 14000),
+      'The remastered renderer must still be drawing a real battle near the end of the 15-second control interval');
+    report.presentationAtEnd = await readPresentation();
+    assert.ok(report.presentationAtEnd.backgrounds > report.battleFrames[0].nativeAfter.backgrounds,
+      'Native battle background drawing must continue during the control interval');
+  }
   await checkHealth();
   assert.deepEqual(report.errors, []);
   report.stage = 'complete';

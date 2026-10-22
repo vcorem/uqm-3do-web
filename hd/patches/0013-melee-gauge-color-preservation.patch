@@ -1,0 +1,23 @@
+diff --git a/src/uqm/shipstat.c b/src/uqm/shipstat.c
+--- a/src/uqm/shipstat.c
++++ b/src/uqm/shipstat.c
+@@ -386,7 +386,7 @@
+ 			Text.baseline.y = y + GAUGE_YOFFS + RES_SCALE (3)
+ 					+ RES_SCALE (MENU_BOOL (6, 0));
+ 
+-			SetContextForeGroundColor (BLACK_COLOR);
++			SetContextForeGroundColor (MeleeUiActive () ? BUILD_COLOR_RGB (214, 232, 240) : BLACK_COLOR);
+ 			font_DrawText (&Text);
+ 
+ 			SetContextFont (OldFont);
+@@ -419,6 +419,10 @@
+ 
+ 	SetContext (OldContext);
+ }
++
++// Keep every gauge color, including robot crew and player markers, original.
++#undef colorFromRgb15
++#undef buildColorRgba
+ 
+ // Pre: -crew_delta <= ShipInfoPtr->crew_level
+ //      crew_delta <= ShipInfoPtr->max_crew - ShipInfoPtr->crew_level

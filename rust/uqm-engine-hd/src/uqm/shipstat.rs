@@ -580,6 +580,50 @@ impl SPECIES_ID {
     pub const UR_QUAN_PROBE_ID: Self = Self(28);
     pub const NUM_SPECIES_ID: Self = Self(29);
 }
+// Presentation palette only. Keep collision, control and gauge semantics intact.
+unsafe fn melee_ui_active() -> bool {
+    extern "C" { fn UQM_GetMeleeRemastered() -> ::core::ffi::c_int; }
+    UQM_GetMeleeRemastered() != 0 &&
+        crate::src::uqm::globdata::GlobData.Game_state.CurrentActivity & 0xff == 0
+}
+unsafe fn melee_ui_color(mut c: Color) -> Color {
+    if !melee_ui_active() || c.a != 255 { return c; }
+    let next = match (c.r, c.g, c.b) {
+        (0, 0, 74) => (38, 62, 77),
+        (0, 0, 115) => (49, 79, 96),
+        (0, 0, 99) => (20, 37, 47),
+        (57, 0, 99) => (141, 225, 223),
+        (99, 0, 165) => (71, 125, 136),
+        (82, 0, 140) => (28, 57, 73),
+        (0, 0, 165) => (18, 35, 45),
+        (0, 82, 165) => (87, 123, 140),
+        (165, 0, 165) => (33, 63, 80),
+        (2, 4, 62) => (18, 38, 49),
+        (4, 8, 124) => (30, 65, 83),
+        (35, 140, 210) => (157, 189, 207),
+        (40, 160, 240) => (201, 242, 245),
+        (40, 40, 124) => (25, 48, 59),
+        (60, 60, 186) => (49, 89, 103),
+        (31, 0, 31) => (18, 35, 45),
+        (62, 0, 62) => (49, 89, 103),
+        (66, 66, 66) => (38, 60, 73),
+        (87, 87, 87) => (26, 42, 54),
+        (85, 85, 85) => (26, 42, 54),
+        (82, 82, 82) => (20, 34, 45),
+        (132, 132, 132) => (74, 107, 123),
+        (116, 116, 116) => (166, 191, 204),
+        (138, 138, 138) => (175, 201, 215),
+        (69, 69, 69) => (35, 59, 73),
+        (248, 224, 0) => (167, 240, 227),
+        (123, 132, 222) => (155, 182, 200),
+        (189, 198, 239) => (222, 240, 246),
+        (50, 50, 155) => (135, 182, 200),
+        _ => return c,
+    };
+    c.r=next.0; c.g=next.1; c.b=next.2;
+    c
+}
+
 #[inline]
 unsafe extern "C" fn colorFromRgb15(mut r: BYTE, mut g: BYTE, mut b: BYTE) -> Color {
     let mut c: Color = Color { r: 0, g: 0, b: 0, a: 0 };
@@ -590,8 +634,13 @@ unsafe extern "C" fn colorFromRgb15(mut r: BYTE, mut g: BYTE, mut b: BYTE) -> Co
     c.b = ((b as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
         | b as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE;
     c.a = 0xff as BYTE;
-    return c;
+    return melee_ui_color(c);
 }
+// Gauges keep the exact original color semantics, including robot crew.
+unsafe fn raw_color_from_rgb15(r: BYTE, g: BYTE, b: BYTE) -> Color {
+    Color { r: (r << 3) | (r >> 2), g: (g << 3) | (g >> 2), b: (b << 3) | (b >> 2), a: 255 }
+}
+
 #[inline]
 unsafe extern "C" fn MAKE_POINT(mut x: COORD, mut y: COORD) -> POINT {
     let mut pt: POINT = point { x: x, y: y };
@@ -618,7 +667,13 @@ pub unsafe extern "C" fn DrawCrewFuelString(mut y: COORD, mut state: SIZE) {
         } else {
             Stamp.frame = SetAbsFrameIndex(StatusFrame, 0 as COUNT);
         }
-        uqm_lua_checked!(DrawStamp(&raw mut Stamp), ());
+        if melee_ui_active() {
+            let old_color = SetContextForeGroundColor(Color { r:94, g:214, b:153, a:255 });
+            uqm_lua_checked!(DrawFilledStamp(&raw mut Stamp), ());
+            SetContextForeGroundColor(old_color);
+        } else {
+            uqm_lua_checked!(DrawStamp(&raw mut Stamp), ());
+        }
     }
     Stamp.origin.x = (((52 as ::core::ffi::c_int) << resolutionFactor)
         + ((((2 as ::core::ffi::c_int) << resolutionFactor) * 2 as ::core::ffi::c_int
@@ -651,10 +706,17 @@ pub unsafe extern "C" fn DrawCrewFuelString(mut y: COORD, mut state: SIZE) {
             );
             uqm_lua_checked!(DrawFilledRectangle(&raw mut r), ());
         }
-        uqm_lua_checked!(DrawStamp(&raw mut Stamp), ());
+        if melee_ui_active() {
+            let old_color = SetContextForeGroundColor(Color { r:235, g:113, b:105, a:255 });
+            uqm_lua_checked!(DrawFilledStamp(&raw mut Stamp), ());
+            SetContextForeGroundColor(old_color);
+        } else {
+            uqm_lua_checked!(DrawStamp(&raw mut Stamp), ());
+        }
     } else {
         SetContextForeGroundColor(
-            colorFromRgb15(0x1f as BYTE, 0x1f as BYTE, 0xa as BYTE),
+            if melee_ui_active() { Color { r:255, g:224, b:107, a:255 } }
+            else { colorFromRgb15(0x1f as BYTE, 0x1f as BYTE, 0xa as BYTE) },
         );
         uqm_lua_checked!(DrawFilledStamp(&raw mut Stamp), ());
     };
@@ -684,7 +746,7 @@ unsafe extern "C" fn DrawShipNameString(
     uqm_lua_checked!(font_DrawText(&raw mut Text), ());
     Text.baseline.y = (Text.baseline.y as ::core::ffi::c_int
         - ((1 as ::core::ffi::c_int) << resolutionFactor)) as COORD;
-    SetContextForeGroundColor(colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE));
+    SetContextForeGroundColor(if melee_ui_active() { Color { r:214, g:232, b:240, a:255 } } else { colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE) });
     uqm_lua_checked!(font_DrawText(&raw mut Text), ());
     SetContextFont(OldFont);
 }
@@ -1052,7 +1114,7 @@ pub unsafe extern "C" fn InitShipStatus(
             } else {
                 6 as ::core::ffi::c_int
             } << resolutionFactor)) as COORD;
-        SetContextForeGroundColor(colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE));
+        SetContextForeGroundColor(if melee_ui_active() { Color { r:214, g:232, b:240, a:255 } } else { colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE) });
         uqm_lua_checked!(font_DrawText(&raw mut Text), ());
         SetContextFont(OldFont);
     } else if (*StarShipPtr).playerNr as ::core::ffi::c_int == 0 as ::core::ffi::c_int {
@@ -1132,9 +1194,9 @@ pub unsafe extern "C" fn DeltaStatistics(
                 if (*ShipInfoPtr).ship_flags as ::core::ffi::c_int
                     & (1 as ::core::ffi::c_int) << 6 as ::core::ffi::c_int != 0
                 {
-                    colorFromRgb15(0xa as BYTE, 0xa as BYTE, 0xa as BYTE)
+                    raw_color_from_rgb15(0xa as BYTE, 0xa as BYTE, 0xa as BYTE)
                 } else {
-                    colorFromRgb15(0 as BYTE, 0x14 as BYTE, 0 as BYTE)
+                    raw_color_from_rgb15(0 as BYTE, 0x14 as BYTE, 0 as BYTE)
                 },
             );
             blockI = oldNumBlocks;
@@ -1154,7 +1216,7 @@ pub unsafe extern "C" fn DeltaStatistics(
                 blockI = blockI.wrapping_add(1);
             }
         } else {
-            SetContextForeGroundColor(colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE));
+            SetContextForeGroundColor(raw_color_from_rgb15(0 as BYTE, 0 as BYTE, 0 as BYTE));
             r.corner.y = (y as ::core::ffi::c_int
                 + ((1 as ::core::ffi::c_int) << resolutionFactor)
                 - (oldNumBlocks as ::core::ffi::c_int + 2 as ::core::ffi::c_int
@@ -1193,9 +1255,9 @@ pub unsafe extern "C" fn DeltaStatistics(
             {
                 SetContextForeGroundColor(
                     if newCrewLevel as ::core::ffi::c_int > 42 as ::core::ffi::c_int {
-                        colorFromRgb15(0 as BYTE, 0x14 as BYTE, 0 as BYTE)
+                        raw_color_from_rgb15(0 as BYTE, 0x14 as BYTE, 0 as BYTE)
                     } else {
-                        colorFromRgb15(0xa as BYTE, 0xa as BYTE, 0x1f as BYTE)
+                        raw_color_from_rgb15(0xa as BYTE, 0xa as BYTE, 0x1f as BYTE)
                     },
                 );
                 r.corner.x = (x as ::core::ffi::c_int
@@ -1230,7 +1292,7 @@ pub unsafe extern "C" fn DeltaStatistics(
     if energy_delta as ::core::ffi::c_int != 0 as ::core::ffi::c_int {
         if energy_delta as ::core::ffi::c_int > 0 as ::core::ffi::c_int {
             SetContextForeGroundColor(
-                colorFromRgb15(0x14 as BYTE, 0 as BYTE, 0 as BYTE),
+                raw_color_from_rgb15(0x14 as BYTE, 0 as BYTE, 0 as BYTE),
             );
             r.corner.y = (y as ::core::ffi::c_int
                 + ((1 as ::core::ffi::c_int) << resolutionFactor)
@@ -1262,7 +1324,7 @@ pub unsafe extern "C" fn DeltaStatistics(
                 }
             }
         } else {
-            SetContextForeGroundColor(colorFromRgb15(0 as BYTE, 0 as BYTE, 0 as BYTE));
+            SetContextForeGroundColor(raw_color_from_rgb15(0 as BYTE, 0 as BYTE, 0 as BYTE));
             r.corner.y = (y as ::core::ffi::c_int
                 + ((1 as ::core::ffi::c_int) << resolutionFactor)
                 - ((*ShipInfoPtr).energy_level as ::core::ffi::c_int

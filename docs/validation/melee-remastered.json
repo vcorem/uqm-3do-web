@@ -1,0 +1,523 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "branch": "codex/melee-remastered",
+  "passed": true,
+  "build_sha256": {
+    "rust": {
+      "index.html": "7790d7f990205c7c5765665933ff33d7fefb9aa3f95dcd9afc53ba403e3344f1",
+      "uqm-debug.wasm": "aec58d9a464bcf8297d14d7d4d80245e3e105ab6ed14823930dc6807ee96bb93",
+      "uqm-debug.js": "af924186a191e3a77cc0f870d140af2ed24b0c2a460c91b18c9482c1a366b130",
+      "uqm-debug.worker.js": "48325b3061815c405968c59db7e737decc0b8f387e2352dbd2edae26f9a77ede",
+      "uqm-debug.data": "9a0072f3043ca2660e156272b39cc23c6eceb3299c199ebd219977c2276d8fd7",
+      "netplay-client.js": "9e5ca6dd2dbcc25717b99b5efbd622a171f1c2c445589d566f44e005d7273488"
+    },
+    "c": {
+      "index.html": "7790d7f990205c7c5765665933ff33d7fefb9aa3f95dcd9afc53ba403e3344f1",
+      "uqm-debug.wasm": "251c737917373ebddbcdeb9efd34bd2021566212bc4e6589b3271163d05cad81",
+      "uqm-debug.js": "80942f40eb5a987282656098c21d8d45691ddd105687a14db0619421dc1c7414",
+      "uqm-debug.worker.js": "48325b3061815c405968c59db7e737decc0b8f387e2352dbd2edae26f9a77ede",
+      "uqm-debug.data": "9a0072f3043ca2660e156272b39cc23c6eceb3299c199ebd219977c2276d8fd7",
+      "netplay-client.js": "9e5ca6dd2dbcc25717b99b5efbd622a171f1c2c445589d566f44e005d7273488"
+    }
+  },
+  "environment": [
+    {
+      "role": "host",
+      "engine": "chromium",
+      "version": "151.0.7922.34"
+    },
+    {
+      "role": "guest",
+      "engine": "chromium",
+      "version": "151.0.7922.34"
+    }
+  ],
+  "relay": "rust",
+  "host_art": "remastered",
+  "guest_art": "classic",
+  "unit_tests": {
+    "passed": 222,
+    "failed": 0
+  },
+  "native_registry_test": "passed: collision isolation, ownership, mipmaps, toggle, scope and cloak fallbacks",
+  "lua_audit": {
+    "checked_calls": 13441,
+    "guarded_declarations": 110
+  },
+  "art_verification": {
+    "forms": 28,
+    "frames": 1470,
+    "all_facings_and_zoom_levels": true,
+    "original_archive_unchanged": true
+  },
+  "native_stability": {
+    "idleMs": 300000,
+    "battleElapsedMs": 15574,
+    "errors": [],
+    "presentationAtEnd": {
+      "enabled": 1,
+      "images": 612,
+      "draws": 742,
+      "backgrounds": 363,
+      "gameScreen": "melee"
+    }
+  },
+  "netplay": [
+    {
+      "name": "normal",
+      "passed": true,
+      "latency_pattern_ms": [
+        0
+      ],
+      "full_fleet_match": true,
+      "returned_to_main_menu": true,
+      "fleet_preserved_after_reload": true,
+      "verified_at_match_end": [
+        578,
+        578
+      ]
+    },
+    {
+      "name": "jitter",
+      "passed": true,
+      "latency_pattern_ms": [
+        80,
+        120,
+        30,
+        60
+      ],
+      "full_fleet_match": true,
+      "returned_to_main_menu": true,
+      "fleet_preserved_after_reload": true,
+      "verified_at_match_end": [
+        589,
+        589
+      ]
+    },
+    {
+      "name": "setup",
+      "passed": true,
+      "latency_pattern_ms": [
+        0
+      ],
+      "full_fleet_match": false,
+      "returned_to_main_menu": true,
+      "fleet_preserved_after_reload": true,
+      "verified_at_match_end": []
+    }
+  ],
+  "all_25_hulls": [
+    {
+      "ship_index": 0,
+      "passed": true,
+      "verified_checksums": [
+        210,
+        211
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.93
+    },
+    {
+      "ship_index": 1,
+      "passed": true,
+      "verified_checksums": [
+        208,
+        208
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.83
+    },
+    {
+      "ship_index": 2,
+      "passed": true,
+      "verified_checksums": [
+        209,
+        210
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.78
+    },
+    {
+      "ship_index": 3,
+      "passed": true,
+      "verified_checksums": [
+        210,
+        208
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.82
+    },
+    {
+      "ship_index": 4,
+      "passed": true,
+      "verified_checksums": [
+        211,
+        208
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.8
+    },
+    {
+      "ship_index": 5,
+      "passed": true,
+      "verified_checksums": [
+        210,
+        211
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.97
+    },
+    {
+      "ship_index": 6,
+      "passed": true,
+      "verified_checksums": [
+        209,
+        210
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.82
+    },
+    {
+      "ship_index": 7,
+      "passed": true,
+      "verified_checksums": [
+        206,
+        208
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.82
+    },
+    {
+      "ship_index": 8,
+      "passed": true,
+      "verified_checksums": [
+        210,
+        209
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.82
+    },
+    {
+      "ship_index": 9,
+      "passed": true,
+      "verified_checksums": [
+        209,
+        209
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.78
+    },
+    {
+      "ship_index": 10,
+      "passed": true,
+      "verified_checksums": [
+        211,
+        211
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.97
+    },
+    {
+      "ship_index": 11,
+      "passed": true,
+      "verified_checksums": [
+        211,
+        210
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.8
+    },
+    {
+      "ship_index": 12,
+      "passed": true,
+      "verified_checksums": [
+        210,
+        210
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.98
+    },
+    {
+      "ship_index": 13,
+      "passed": true,
+      "verified_checksums": [
+        356,
+        356
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 1,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.78
+    },
+    {
+      "ship_index": 14,
+      "passed": true,
+      "verified_checksums": [
+        209,
+        208
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20
+    },
+    {
+      "ship_index": 15,
+      "passed": true,
+      "verified_checksums": [
+        210,
+        211
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.76
+    },
+    {
+      "ship_index": 16,
+      "passed": true,
+      "verified_checksums": [
+        211,
+        211
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.8
+    },
+    {
+      "ship_index": 17,
+      "passed": true,
+      "verified_checksums": [
+        211,
+        212
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.97
+    },
+    {
+      "ship_index": 18,
+      "passed": true,
+      "verified_checksums": [
+        208,
+        209
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.98
+    },
+    {
+      "ship_index": 19,
+      "passed": true,
+      "verified_checksums": [
+        209,
+        209
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.92
+    },
+    {
+      "ship_index": 20,
+      "passed": true,
+      "verified_checksums": [
+        210,
+        208
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 20.82
+    },
+    {
+      "ship_index": 21,
+      "passed": true,
+      "verified_checksums": [
+        207,
+        207
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.95
+    },
+    {
+      "ship_index": 22,
+      "passed": true,
+      "verified_checksums": [
+        208,
+        208
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.95
+    },
+    {
+      "ship_index": 23,
+      "passed": true,
+      "verified_checksums": [
+        209,
+        210
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.95
+    },
+    {
+      "ship_index": 24,
+      "passed": true,
+      "verified_checksums": [
+        209,
+        211
+      ],
+      "checksum_mismatches": [
+        0,
+        0
+      ],
+      "native_selection_transitions": 0,
+      "classic_peer_draws": 0,
+      "native_audio_non_silent": true,
+      "sampled_render_fps": 19.98
+    }
+  ],
+  "render_fps_note": "Short samples during concurrent automated browser runs, not a controlled performance benchmark.",
+  "evidence_directories": [
+    "test-results/remastered-all-ships-final",
+    "test-results/remastered-netplay-final",
+    "test-results/remastered-hd-stability-final"
+  ],
+  "scope_limits": [
+    "Independent local Chromium processes; no two-computer internet session in this validation.",
+    "Music decoded and objectively checked; subjective listening not performed.",
+    "Individual post-input stills do not capture every transient special-effect frame."
+  ]
+}

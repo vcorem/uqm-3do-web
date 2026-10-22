@@ -2945,9 +2945,14 @@ pub unsafe extern "C" fn RedrawQueue(mut clear: BOOLEAN) {
         {
             nth_frame = (nth_frame as ::core::ffi::c_int
                 + skip_frames as ::core::ffi::c_int) as UWORD;
+            let _presentation_scope = crate::uqm_melee_presentation::UQM_MeleePresentationBegin(
+                GlobData.Game_state.CurrentActivity as BYTE as ::core::ffi::c_int
+                    == C2Rust_Unnamed_5::SUPER_MELEE.0 as ::core::ffi::c_int,
+            );
             if clear.0 != 0 {
                 uqm_lua_checked!(ClearDrawable(), ());
             }
+            crate::uqm_melee_presentation::UQM_MeleePresentationBackground();
             if optMeleeScale != C2Rust_Unnamed_6::TFB_SCALE_STEP.0 as ::core::ffi::c_int
             {
                 let mut index: COUNT = 0;
@@ -2961,6 +2966,7 @@ pub unsafe extern "C" fn RedrawQueue(mut clear: BOOLEAN) {
                 0 as BATCH_FLAGS,
             ), ());
             SetGraphicScale(0 as ::core::ffi::c_int);
+            crate::uqm_melee_presentation::UQM_MeleePresentationEnd();
         }
         uqm_lua_checked!(FlushSounds(), ());
     } else {

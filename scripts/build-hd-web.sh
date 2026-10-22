@@ -67,6 +67,7 @@ esac
 fetch_args=(--output "$source_dir/content")
 if [[ "${HD_OFFLINE:-0}" = 1 ]]; then fetch_args+=(--offline); fi
 python3 "$root/scripts/fetch-hd-content.py" "${fetch_args[@]}"
+python3 "$root/scripts/stage-melee-remastered.py" --content "$source_dir/content"
 
 cd "$source_dir"
 python3 "$root/scripts/prepare-emscripten-proxy.py" wasm/compat
@@ -121,6 +122,7 @@ cp "$root/web/engine-loader/engine-loader.js" "$output/engine-loader.js"
 cp "$root/web/online/online-ui.js" "$output/online-ui.js"
 python3 "$root/web/online/build-art.py" --edition hd --content "$source_dir/content" --output "$output"
 cp "$root/sc2/wasm/netplay-client.js" "$output/netplay-client.js"
+python3 "$root/scripts/stage-melee-remastered.py" --output "$output"
 python3 - "$output/engine-language.json" "${UQM_CORE:-rust}" <<'PY'
 import json, sys
 with open(sys.argv[1], 'w') as stream:

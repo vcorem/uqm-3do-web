@@ -1,0 +1,14 @@
+{
+  "generation": "Built-in image_gen",
+  "date": "2026-10-22",
+  "reference": "https://store.steampowered.com/app/2853290/Free_Stars_Children_of_Infinity/",
+  "purpose": "Visual direction only. No Free Stars assets are copied.",
+  "shipPrompt": "Use case: style-transfer. Asset type: production 2x2 transparent sprite atlas for a modern top-down space combat game, NOT a poster. Redraw the four ships in the reference as beautiful high-end hand-painted 2.5D game art: clean sculpted volumes, sophisticated metallic or alien material shading, luminous inset engines and cockpits, tiny readable panels, crisp anti-aliased edges, balanced cool key light and warm rim light. Preserve each ship's recognizable outer silhouette, proportions, appendage count, color identity, orientation and relative shape exactly; improve interior drawing and materials dramatically. Strict orthographic directly top down, EVERY ship points NORTH as in reference, no perspective, no angled/isometric view. Four isolated separate complete ships centered in four equal square quadrants: centers at (25%,25%), (75%,25%), (25%,75%), (75%,75%). Each fits entirely within its quadrant with at least 15% transparent margin, no overlap, no cropping. Transparent background, including between ships; no stars, no shadows on ground, no text, no labels, no borders or grid. Remove reference labels and dark background. Export large square atlas ideally 2048x2048. Avoid cartoon outlines, plastic toy texture, fuzzy halos, bloom obscuring details. This will be scaled into actual moving combat sprites.",
+  "packingRevision": "Atlas 4 regenerated with 70% ship scale and transparent gutters; explosion atlas regenerated with 60% effects scale to prevent cell overlap.",
+  "packingNotes": [
+    "Optional source_rect entries in ships-manifest.json use cell-relative [left, top, right, bottom] pixel bounds, with right/bottom exclusive, before the existing alpha tight crop.",
+    "Atlas 6 uses 627x627 cells. Umgah [144,118,477,544] and VUX [90,18,530,542] retain the complete hulls with antialias/glow padding while excluding isolated specks below them. This is deterministic packing of the existing artwork; source atlases are untouched and no connected-component removal is applied."
+  ],
+  "sources": "Pinned UQM MegaMod HD facing-0 sprites, assembled only as reference sheets. Source archive and existing attribution retained.",
+  "processing": "compile-melee-art.py packs/resamples separate presentation frames; original collision frames are untouched."
+}

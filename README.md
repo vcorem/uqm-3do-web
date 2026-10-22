@@ -1,5 +1,15 @@
 # The Ur-Quan Masters — 3DO Web Edition
 
+## Melee Remastered branch
+
+`codex/melee-remastered` adds new painted artwork for all 25 HD Melee ships,
+their alternate forms, fleet icons and explosions, a dark nebula arena,
+navy/cyan interface panels and two original electronic music tracks.
+Use **Picture & sound** to choose Remastered or Classic HD artwork and music.
+Artwork can change during a battle; sound preferences apply at the next launch.
+The existing simulation, ship balance, collision images and netplay stay in use.
+See [features, build instructions and validation](docs/melee-remastered.md).
+
 ## Three games on one site
 
 [urquanmasters.org](https://urquanmasters.org/) opens a picker with three cards:
@@ -40,7 +50,7 @@ checksums and no observed mismatch. Two separate computers over the internet
 and the complete 3DO fidelity checklist are still unverified. No public
 release or deployment of this Rust branch has been made.
 
-The original ships, physics and artwork remain in place. On this branch,
+The original ships, physics and collision artwork remain in place. On this branch,
 the game implementations compile from Rust to WebAssembly.
 The browser launcher selects 3DO menus, fonts, scan icons, shields, scrolling
 and melee zoom. The checkout includes 3DO music and speech. Original 3DO

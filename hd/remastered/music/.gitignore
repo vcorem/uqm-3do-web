@@ -1,0 +1,3 @@
+# Optional lossless working renders. The Ogg shipment assets are tracked.
+*.wav
+__pycache__/

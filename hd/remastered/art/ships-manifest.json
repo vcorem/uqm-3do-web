@@ -1,0 +1,235 @@
+[
+  {
+    "group": 1,
+    "entries": [
+      {
+        "race": "human",
+        "stem": "cruiser",
+        "slot": 0,
+        "ani": "mm-hd/ships/human/cruiser-big.ani",
+        "png": "mm-hd/ships/human/cruiser-big-000.png"
+      },
+      {
+        "race": "urquan",
+        "stem": "dreadnought",
+        "slot": 1,
+        "ani": "mm-hd/ships/urquan/dreadnought-big.ani",
+        "png": "mm-hd/ships/urquan/dreadnought-big-000.png"
+      },
+      {
+        "race": "kohrah",
+        "stem": "marauder",
+        "slot": 2,
+        "ani": "mm-hd/ships/kohrah/marauder-big.ani",
+        "png": "mm-hd/ships/kohrah/marauder-big-000.png"
+      },
+      {
+        "race": "chmmr",
+        "stem": "avatar",
+        "slot": 3,
+        "ani": "mm-hd/ships/chmmr/avatar-big.ani",
+        "png": "mm-hd/ships/chmmr/avatar-big-000.png"
+      }
+    ]
+  },
+  {
+    "group": 2,
+    "entries": [
+      {
+        "race": "arilou",
+        "stem": "skiff",
+        "slot": 0,
+        "ani": "mm-hd/ships/arilou/skiff-big.ani",
+        "png": "mm-hd/ships/arilou/skiff-big-000.png"
+      },
+      {
+        "race": "androsynth",
+        "stem": "guardian",
+        "slot": 1,
+        "ani": "mm-hd/ships/androsynth/guardian-big.ani",
+        "png": "mm-hd/ships/androsynth/guardian-big-000.png"
+      },
+      {
+        "race": "chenjesu",
+        "stem": "broodhome",
+        "slot": 2,
+        "ani": "mm-hd/ships/chenjesu/broodhome-big.ani",
+        "png": "mm-hd/ships/chenjesu/broodhome-big-000.png"
+      },
+      {
+        "race": "druuge",
+        "stem": "mauler",
+        "slot": 3,
+        "ani": "mm-hd/ships/druuge/mauler-big.ani",
+        "png": "mm-hd/ships/druuge/mauler-big-000.png"
+      }
+    ]
+  },
+  {
+    "group": 3,
+    "entries": [
+      {
+        "race": "ilwrath",
+        "stem": "avenger",
+        "slot": 0,
+        "ani": "mm-hd/ships/ilwrath/avenger-big.ani",
+        "png": "mm-hd/ships/ilwrath/avenger-big-000.png"
+      },
+      {
+        "race": "melnorme",
+        "stem": "trader",
+        "slot": 1,
+        "ani": "mm-hd/ships/melnorme/trader-big.ani",
+        "png": "mm-hd/ships/melnorme/trader-big-000.png"
+      },
+      {
+        "race": "mmrnmhrm",
+        "stem": "xform",
+        "slot": 2,
+        "ani": "mm-hd/ships/mmrnmhrm/xform-big.ani",
+        "png": "mm-hd/ships/mmrnmhrm/xform-big-000.png"
+      },
+      {
+        "race": "mmrnmhrm",
+        "stem": "ywing",
+        "slot": 3,
+        "ani": "mm-hd/ships/mmrnmhrm/ywing-big.ani",
+        "png": "mm-hd/ships/mmrnmhrm/ywing-big-000.png"
+      }
+    ]
+  },
+  {
+    "group": 4,
+    "entries": [
+      {
+        "race": "mycon",
+        "stem": "podship",
+        "slot": 0,
+        "ani": "mm-hd/ships/mycon/podship-big.ani",
+        "png": "mm-hd/ships/mycon/podship-big-000.png"
+      },
+      {
+        "race": "orz",
+        "stem": "nemesis",
+        "slot": 1,
+        "ani": "mm-hd/ships/orz/nemesis-big.ani",
+        "png": "mm-hd/ships/orz/nemesis-big-000.png"
+      },
+      {
+        "race": "pkunk",
+        "stem": "fury",
+        "slot": 2,
+        "ani": "mm-hd/ships/pkunk/fury-big.ani",
+        "png": "mm-hd/ships/pkunk/fury-big-000.png"
+      },
+      {
+        "race": "shofixti",
+        "stem": "scout",
+        "slot": 3,
+        "ani": "mm-hd/ships/shofixti/scout-big.ani",
+        "png": "mm-hd/ships/shofixti/scout-big-000.png"
+      }
+    ]
+  },
+  {
+    "group": 5,
+    "entries": [
+      {
+        "race": "slylandro",
+        "stem": "probe",
+        "slot": 0,
+        "ani": "mm-hd/ships/slylandro/probe-big.ani",
+        "png": "mm-hd/ships/slylandro/probe-big-000.png"
+      },
+      {
+        "race": "spathi",
+        "stem": "eluder",
+        "slot": 1,
+        "ani": "mm-hd/ships/spathi/eluder-big.ani",
+        "png": "mm-hd/ships/spathi/eluder-big-000.png"
+      },
+      {
+        "race": "supox",
+        "stem": "blade",
+        "slot": 2,
+        "ani": "mm-hd/ships/supox/blade-big.ani",
+        "png": "mm-hd/ships/supox/blade-big-000.png"
+      },
+      {
+        "race": "syreen",
+        "stem": "penetrator",
+        "slot": 3,
+        "ani": "mm-hd/ships/syreen/penetrator-big.ani",
+        "png": "mm-hd/ships/syreen/penetrator-big-000.png"
+      }
+    ]
+  },
+  {
+    "group": 6,
+    "entries": [
+      {
+        "race": "thraddash",
+        "stem": "torch",
+        "slot": 0,
+        "ani": "mm-hd/ships/thraddash/torch-big.ani",
+        "png": "mm-hd/ships/thraddash/torch-big-000.png"
+      },
+      {
+        "race": "umgah",
+        "stem": "drone",
+        "slot": 1,
+        "source_rect": [144, 118, 477, 544],
+        "ani": "mm-hd/ships/umgah/drone-big.ani",
+        "png": "mm-hd/ships/umgah/drone-big-000.png"
+      },
+      {
+        "race": "utwig",
+        "stem": "jugger",
+        "slot": 2,
+        "ani": "mm-hd/ships/utwig/jugger-big.ani",
+        "png": "mm-hd/ships/utwig/jugger-big-000.png"
+      },
+      {
+        "race": "vux",
+        "stem": "intruder",
+        "slot": 3,
+        "source_rect": [90, 18, 530, 542],
+        "ani": "mm-hd/ships/vux/intruder-big.ani",
+        "png": "mm-hd/ships/vux/intruder-big-000.png"
+      }
+    ]
+  },
+  {
+    "group": 7,
+    "entries": [
+      {
+        "race": "yehat",
+        "stem": "terminator",
+        "slot": 0,
+        "ani": "mm-hd/ships/yehat/terminator-big.ani",
+        "png": "mm-hd/ships/yehat/terminator-big-000.png"
+      },
+      {
+        "race": "zoqfotpik",
+        "stem": "stinger",
+        "slot": 1,
+        "ani": "mm-hd/ships/zoqfotpik/stinger-big.ani",
+        "png": "mm-hd/ships/zoqfotpik/stinger-big-000.png"
+      },
+      {
+        "race": "androsynth",
+        "stem": "blazer",
+        "slot": 2,
+        "ani": "mm-hd/ships/androsynth/blazer-big.ani",
+        "png": "mm-hd/ships/androsynth/blazer-big-000.png"
+      },
+      {
+        "race": "orz",
+        "stem": "turret",
+        "slot": 3,
+        "ani": "mm-hd/ships/orz/turret-big.ani",
+        "png": "mm-hd/ships/orz/turret-big-000.png"
+      }
+    ]
+  }
+]

@@ -1307,6 +1307,50 @@ impl C2Rust_Unnamed_10 {
     pub const EDIT_MELEE: Self = Self(9);
     pub const BUILD_PICK: Self = Self(10);
 }
+// Presentation palette only. Keep collision, control and gauge semantics intact.
+unsafe fn melee_ui_active() -> bool {
+    extern "C" { fn UQM_GetMeleeRemastered() -> ::core::ffi::c_int; }
+    UQM_GetMeleeRemastered() != 0 &&
+        crate::src::uqm::globdata::GlobData.Game_state.CurrentActivity & 0xff == 0
+}
+unsafe fn melee_ui_color(mut c: Color) -> Color {
+    if !melee_ui_active() || c.a != 255 { return c; }
+    let next = match (c.r, c.g, c.b) {
+        (0, 0, 74) => (38, 62, 77),
+        (0, 0, 115) => (49, 79, 96),
+        (0, 0, 99) => (20, 37, 47),
+        (57, 0, 99) => (141, 225, 223),
+        (99, 0, 165) => (71, 125, 136),
+        (82, 0, 140) => (28, 57, 73),
+        (0, 0, 165) => (18, 35, 45),
+        (0, 82, 165) => (87, 123, 140),
+        (165, 0, 165) => (33, 63, 80),
+        (2, 4, 62) => (18, 38, 49),
+        (4, 8, 124) => (30, 65, 83),
+        (35, 140, 210) => (157, 189, 207),
+        (40, 160, 240) => (201, 242, 245),
+        (40, 40, 124) => (25, 48, 59),
+        (60, 60, 186) => (49, 89, 103),
+        (31, 0, 31) => (18, 35, 45),
+        (62, 0, 62) => (49, 89, 103),
+        (66, 66, 66) => (38, 60, 73),
+        (87, 87, 87) => (26, 42, 54),
+        (85, 85, 85) => (26, 42, 54),
+        (82, 82, 82) => (20, 34, 45),
+        (132, 132, 132) => (74, 107, 123),
+        (116, 116, 116) => (166, 191, 204),
+        (138, 138, 138) => (175, 201, 215),
+        (69, 69, 69) => (35, 59, 73),
+        (248, 224, 0) => (167, 240, 227),
+        (123, 132, 222) => (155, 182, 200),
+        (189, 198, 239) => (222, 240, 246),
+        (50, 50, 155) => (135, 182, 200),
+        _ => return c,
+    };
+    c.r=next.0; c.g=next.1; c.b=next.2;
+    c
+}
+
 #[inline]
 unsafe extern "C" fn colorFromRgb15(mut r: BYTE, mut g: BYTE, mut b: BYTE) -> Color {
     let mut c: Color = Color { r: 0, g: 0, b: 0, a: 0 };
@@ -1317,7 +1361,7 @@ unsafe extern "C" fn colorFromRgb15(mut r: BYTE, mut g: BYTE, mut b: BYTE) -> Co
     c.b = ((b as ::core::ffi::c_int) << 3 as ::core::ffi::c_int
         | b as ::core::ffi::c_int >> 2 as ::core::ffi::c_int) as BYTE;
     c.a = 0xff as BYTE;
-    return c;
+    return melee_ui_color(c);
 }
 #[inline]
 unsafe extern "C" fn buildColorRgba(
@@ -1331,7 +1375,7 @@ unsafe extern "C" fn buildColorRgba(
     c.g = g;
     c.b = b;
     c.a = a;
-    return c;
+    return melee_ui_color(c);
 }
 #[inline]
 unsafe extern "C" fn MAKE_POINT(mut x: COORD, mut y: COORD) -> POINT {
@@ -1902,7 +1946,19 @@ pub unsafe extern "C" fn DrawMeleeIcon(mut which_icon: COUNT, mut HiLite: BOOLEA
     s.origin.x = 0 as COORD;
     s.origin.y = 0 as COORD;
     s.frame = SetAbsFrameIndex(MeleeFrame, which_icon);
-    uqm_lua_checked!(DrawStamp(&raw mut s), ());
+    if resolutionFactor == 2 && melee_ui_active() && which_text > 0 && which_text < 4 {
+        let mut panel: RECT = RECT { corner: POINT { x:0, y:0 }, extent: EXTENT { width:0, height:0 } };
+        GetFrameRect(s.frame, &raw mut panel);
+        panel.corner.x += s.origin.x;
+        panel.corner.y += s.origin.y;
+        uqm_lua_checked!(DrawStarConBox(&raw mut panel, 1,
+            if HiLite.0 != 0 { Color { r:141,g:225,b:223,a:255 } } else { Color { r:49,g:79,b:96,a:255 } },
+            Color { r:28,g:48,b:61,a:255 }, BOOLEAN::TRUE,
+            if HiLite.0 != 0 { Color { r:28,g:57,b:73,a:255 } } else { Color { r:20,g:37,b:47,a:255 } },
+            BOOLEAN::FALSE, Color { r:80,g:80,b:80,a:0 }), ());
+    } else {
+        uqm_lua_checked!(DrawStamp(&raw mut s), ());
+    }
     if which_text == 0 {
         return;
     }
@@ -2038,7 +2094,7 @@ unsafe extern "C" fn DrawShipBox(
         BOOLEAN::FALSE.0 as ::core::ffi::c_int
     } else {
         BOOLEAN::TRUE.0 as ::core::ffi::c_int
-    } != 0
+    } != 0 && !melee_ui_active()
     {
         let mut s: STAMP = STAMP {
             origin: POINT { x: 0, y: 0 },
@@ -2275,7 +2331,9 @@ unsafe extern "C" fn DrawSuperMeleeTitle() {
     OldFont = SetContextFont(
         uqm_lua_checked!(LoadGraphicInstance(b"font.melee.title\0".as_ptr() as RESOURCE), ()) as FONT,
     );
-    OldFontEffect = SetContextFontEffect(SetAbsFrameIndex(FontGradFrame, 7 as COUNT));
+    let remastered = melee_ui_active();
+    OldFontEffect = SetContextFontEffect(if remastered { ::core::ptr::null_mut() } else { SetAbsFrameIndex(FontGradFrame, 7 as COUNT) });
+    let old_text_color = if remastered { Some(SetContextForeGroundColor(Color { r:214,g:232,b:240,a:255 })) } else { None };
     t.baseline.x = ((CanvasWidth >> 1 as ::core::ffi::c_int)
         - if if optWindowType == 1 as DWORD {
             BOOLEAN::TRUE.0 as ::core::ffi::c_int
@@ -2303,6 +2361,7 @@ unsafe extern "C" fn DrawSuperMeleeTitle() {
     uqm_lua_checked!(font_DrawText(&raw mut t), ());
     SetContextFont(OldFont);
     SetContextFontEffect(OldFontEffect);
+    if let Some(color) = old_text_color { SetContextForeGroundColor(color); }
 }
 unsafe extern "C" fn RepairMeleeArea(mut pRect: *const RECT) {
     let mut r: RECT = RECT {

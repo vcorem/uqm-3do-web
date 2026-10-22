@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#080b12">
-<title>The Ur-Quan Masters — Redrawn HD</title>
+<title>The Ur-Quan Masters — Melee Remastered</title>
+<link rel="stylesheet" href="melee-presentation.css">
 <style>
 :root { color-scheme:dark; font-family:system-ui,sans-serif; background:#080b12; color:#e1e6ee; }
 * { box-sizing:border-box; } body { margin:0; }
@@ -32,10 +33,18 @@ details { margin-top:18px; font-size:12px; color:#778396; } pre { white-space:pr
 </head>
 <body>
 <main>
-<header><h1>The Ur-Quan Masters</h1><span class="edition">Redrawn HD · 1280 × 960</span><a id="choose-edition" href="../index.html">Choose edition</a></header>
+<header><h1>The Ur-Quan Masters</h1><span class="edition">Melee Remastered · 1280 × 960</span><a id="choose-edition" href="../index.html">Choose edition</a></header>
 <div class="stage">
 <div class="screen" id="screen">
 <canvas id="canvas" width="1280" height="960" tabindex="0" aria-label="The Ur-Quan Masters HD game. Press ? to show the keys." oncontextmenu="event.preventDefault()"></canvas>
+<button type="button" id="presentation-toggle" class="presentation-toggle" aria-expanded="false" aria-controls="presentation-panel">Picture &amp; sound</button>
+<section id="presentation-panel" class="presentation-panel" aria-labelledby="presentation-heading" hidden>
+<div class="presentation-heading"><h2 id="presentation-heading">Your Melee experience</h2><button id="presentation-close" class="presentation-close" type="button" aria-label="Close picture and sound">×</button></div>
+<label class="presentation-field"><span>Ship artwork</span><select id="melee-style"><option value="remastered">Remastered</option><option value="classic">Classic HD</option></select></label>
+<label class="presentation-field"><span>Soundtrack</span><select id="melee-soundtrack"><option value="remastered">Remastered · electronic</option><option value="classic">Classic 3DO</option></select></label>
+<label class="presentation-field"><span>Music volume <output id="melee-volume-value" for="melee-music-volume">72%</output></span><input id="melee-music-volume" type="range" min="0" max="100" step="1" value="72"></label>
+<p id="presentation-status" class="presentation-note" role="status"></p>
+</section>
 </div>
 <aside class="keys-panel" id="keys-panel" aria-label="Keys"></aside>
 </div>
@@ -48,13 +57,14 @@ Saves stay in this browser; clearing site data removes them. <a href="COPYING.tx
 </footer>
 <details><summary>Diagnostics</summary><pre id="net-stats">Online session: inactive</pre><pre id="log"></pre></details>
 </main>
+<script src="melee-presentation.js"></script>
 <script src="game-help.js"></script>
 <script src="netplay-client.js"></script>
 <script src="online-ui.js"></script>
 <script>
 var canvas = document.getElementById('canvas');
 var runtimeReady = false, started = false, logLines = [];
-var online = null;
+var online = null, presentation = null;
 var pendingNetplayRole = -1;
 function log(message) {
   logLines.push(String(message)); if (logLines.length > 160) logLines.shift();
@@ -111,6 +121,7 @@ var Module = {
     if(!window.crossOriginIsolated) return fail('Use the included preview server to run the game.');
     if(Module.hdConfigError) return fail('Could not prepare HD settings: '+Module.hdConfigError);
     runtimeReady=true;
+    if(presentation) presentation.runtimeReady();
     if(online) online.controller.ready();
     else launchGame(null);
   },
@@ -138,7 +149,7 @@ if (window.UQM_VARIANT) {
 // role: null for the campaign and local Melee, or 'host' / 'guest' with that room's connection.
 function launchGame(role, room) {
   if (started || !runtimeReady) return false;
-  var args = Module.arguments.slice();
+  var args = presentation ? presentation.prepareLaunch(Module.arguments) : Module.arguments.slice();
   if (role) {
     Module.webNet = room;
     args.push('--web-netplay=' + role);
@@ -148,9 +159,14 @@ function launchGame(role, room) {
   try { Module.callMain(args); } catch (error) { fail(String(error)); }
   return true;
 }
+if (window.UQMMeleePresentation) presentation = UQMMeleePresentation.init({
+  document: document, module: Module, getStorage: function () { return localStorage; },
+  isStarted: function () { return started; }, canvas: canvas
+});
 // Without the menu script the game still starts (as soon as it has loaded).
 if (window.UQMOnline) online = UQMOnline.init({
   document: document, window: window, screen: document.getElementById('screen'), canvas: canvas,
+  presentation: function () { return presentation ? presentation.settings.style : 'classic'; },
   edition: 'hd', engine: window.UQM_VARIANT && UQM_VARIANT.engine === 'rust' ? 'rust' : 'c',
   netplay: window.UQMNetplay, storage: function () { return localStorage; }, onLog: log,
   startSteps: window.UQMHelp && UQMHelp.START_TEXT,
