@@ -77,6 +77,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid #fff; outline-offset:
 [hidden] { display: none !important; }
 footer { border-top: 1px solid #d4e4f113; padding-top: 22px; color: #718094; }
 footer p { font-size: 11px; line-height: 1.7; margin: 0 0 5px; }
+footer a.source-link { color: #c9b07f; }
 @media (max-width: 700px) { .launcher { padding: 25px 22px; } .platform { display: none; } .intro { padding: 44px 0 34px; } .editions { gap: 14px; } .card-content { padding: 23px 20px; } .edition-card input { top: 25px; right: 20px; } .card-topline { gap: 8px; } .card-title { margin-top: 28px; } .card-description { min-height: 94px; } .launch-row { gap: 16px; } button { min-width: 198px; gap: 18px; } .edition-melee .card-body, .edition-cosmo .card-body { gap: 20px; } .edition-melee .card-description, .edition-cosmo .card-description { min-height: 0; } }
 @media (max-width: 520px) { .editions { grid-template-columns: 1fr; } .card-title { margin-top: 22px; font-size: 32px; } .card-description { min-height: 0; max-width: none; } .card-rule { margin: 20px 0 18px; } .features { gap: 9px; } .launch-row { flex-direction: column; align-items: stretch; margin-top: 21px; padding-bottom: 27px; } button { justify-content: center; min-height: 54px; } .intro-copy { font-size: 14px; } .edition-melee .card-body, .edition-cosmo .card-body { grid-template-columns: 1fr; margin-top: 20px; } .card-art { order: -1; min-height: 0; aspect-ratio: 5 / 3; } }
 @media (prefers-reduced-motion: reduce) { .card-content, .card-art img { transition: none; } }

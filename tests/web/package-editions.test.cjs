@@ -100,6 +100,11 @@ test('Melee Remastered publishes the HD builds again with the Melee page and its
     assert.deepEqual(variant(path.join(site, 'melee-rust/index.html')),
         { engine: 'rust', label: 'Rust engine (port)', saveDir: '/home/web_user/.uqm-melee-rust', meleeOnly: true });
     assert.deepEqual(fs.readFileSync(path.join(site, 'melee-card.jpg')), fs.readFileSync(path.join(root, 'web/editions/melee-card.jpg')));
+    // The third-party notices: at the site root and next to every UQM game page, which links it.
+    const notices = fs.readFileSync(path.join(root, 'web/editions/THIRD-PARTY-NOTICES.txt'));
+    for (const folder of ['', 'original', 'hd', 'original-rust', 'hd-rust', 'melee', 'melee-rust']) {
+        assert.deepEqual(fs.readFileSync(path.join(site, folder, 'THIRD-PARTY-NOTICES.txt')), notices, folder || 'site root');
+    }
     assert.match(fs.readFileSync(path.join(site, 'index.html'), 'utf8'), /data-engines="c,rust"/);
     // Without the HD Rust build there is no Rust Melee page either.
     const plain = path.join(dir, 'plain');

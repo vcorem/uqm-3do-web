@@ -38,6 +38,9 @@ MELEE_VARIANT = {
     'rust': {'engine': 'rust', 'label': 'Rust engine (port)', 'saveDir': '/home/web_user/.uqm-melee-rust', 'meleeOnly': True},
 }
 MELEE_CARD_IMAGE = 'melee-card.jpg'
+# The libraries in the builds (scripts/make-third-party-notices.py): at the site root and
+# next to every UQM game page, which links it.
+NOTICES = 'THIRD-PARTY-NOTICES.txt'
 COSMO_FOLDER = 'cosmoclash'
 COSMO_BASE = '/' + COSMO_FOLDER + '/'
 COSMO_REQUIRED = ('index.html', 'cosmoclash.wasm')
@@ -104,6 +107,7 @@ def package(builds, output, cosmoclash=None):
         destination.mkdir(exist_ok=True)
         for name in ENGINE + EXTRA[edition]:
             shutil.copy2(source / name, destination / name)
+        shutil.copy2(root / 'web' / 'editions' / NOTICES, destination / NOTICES)
         for name in ('engine-language.json', 'link-inputs.json'):
             metadata = source / name
             if metadata.is_file():
@@ -119,7 +123,7 @@ def package(builds, output, cosmoclash=None):
                 raise ValueError('Cannot mark the page: expected one <head> in ' + str(page))
             html = html.replace('<head>', '<head>\n<script>window.UQM_VARIANT = ' + json.dumps(variant) + ';</script>', 1)
         page.write_text(html)
-    for name in ('index.html', 'editions.css', 'editions.js', MELEE_CARD_IMAGE):
+    for name in ('index.html', 'editions.css', 'editions.js', MELEE_CARD_IMAGE, NOTICES):
         shutil.copy2(root / 'web' / 'editions' / name, output / name)
     picker = output / 'index.html'
     html = picker.read_text()
