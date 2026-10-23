@@ -202,13 +202,12 @@ Clash. The HD builds serve both games:
   IndexedDB files.
 - The picker art (`web/editions/melee-card.jpg`) and the start-screen
   background are made from the art of this edition (`make-melee-page-art.py`).
-- CI runs the tests of both pages (`build.yml`), the developer's art and
-  registry tests, and one mixed room (HD host, Melee guest). The deploy gate
+- CI runs the tests of both pages (`build.yml`), the art and registry tests,
+  and one mixed room (HD host, Melee guest). The deploy gate
   runs a Melee match and checks that the Melee pages start from the stored
   HD data.
 
-Validation on one computer (Chromium, real C and Rust builds of this branch,
-Rust relay):
+Validation on one computer (Chromium, real C and Rust builds, Rust relay):
 
 - 243 JavaScript and server tests; the Worker site test; the native C/Rust
   comparisons of the HD job (patch upgrade, netplay units, exports, Rust core,
@@ -338,8 +337,9 @@ Exact build hashes and per-scenario results are in
 directories were rehashed after the full run and matched its starting bytes.
 
 These browser runs use two independent Chromium processes on one computer.
-They do not establish performance on every device or validate a two-computer
-internet session. Audio validation is technical; subjective listening and
+They do not establish performance on every device. HD rooms passed matches
+between two networks on the site (19 and 20 October 2026); the Melee page was
+not part of that test. Audio validation is technical; subjective listening and
 commercial-art quality comparisons remain human judgments.
 At the furthest native zoom, VUX's dark blue hull can blend into blue nebula
 clouds; it is present and intact, but this remains a visual-legibility note

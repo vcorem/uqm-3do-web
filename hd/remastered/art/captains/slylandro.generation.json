@@ -2,7 +2,7 @@
   "race": "slylandro",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-de7294ab-5b59-4b40-9e01-8c57bfea06b4.png",
+  "source_generated_path": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-de7294ab-5b59-4b40-9e01-8c57bfea06b4.png",
   "output_path": "hd/remastered/art/captains/slylandro.png",
   "output_sha256": "37260dcee9014de24c927624294f8937d073c84869e9e60c3c52f829e8d595d3",
   "output_size": [

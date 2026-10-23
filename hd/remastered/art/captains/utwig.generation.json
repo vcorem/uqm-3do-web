@@ -2,7 +2,7 @@
   "race": "utwig",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-3ea8b2b5-c047-491f-b839-4cb3a3eb8b82.png",
+  "source_generated_path": "generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-3ea8b2b5-c047-491f-b839-4cb3a3eb8b82.png",
   "output_path": "hd/remastered/art/captains/utwig.png",
   "references": [
     ".tools/captain-reference/sheets/utwig-unique-composited.png",

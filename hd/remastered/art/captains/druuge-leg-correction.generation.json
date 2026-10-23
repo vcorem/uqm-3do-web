@@ -1,7 +1,7 @@
 {
   "generator": "built-in image_gen",
   "mode": "edit",
-  "source": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-7d350b52-94eb-46bc-ae82-fd3b5d3c10aa.png",
+  "source": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-7d350b52-94eb-46bc-ae82-fd3b5d3c10aa.png",
   "output_path": "hd/remastered/art/captains/druuge-leg-correction.png",
   "output_sha256": "f7e7a7514cc0f2acecdf58bda4692b45280a36a6875b2a1144c49350403a4555",
   "prompt": "hd/remastered/art/captains/druuge-leg-correction.prompt.txt",

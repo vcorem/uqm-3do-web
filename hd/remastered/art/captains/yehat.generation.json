@@ -2,7 +2,7 @@
   "race": "yehat",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-3efffdad-038c-4725-ac79-b513b78de90c.png",
+  "source_generated_path": "generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-3efffdad-038c-4725-ac79-b513b78de90c.png",
   "output_path": "hd/remastered/art/captains/yehat.png",
   "references": [
     ".tools/captain-reference/sheets/yehat-unique-composited.png",

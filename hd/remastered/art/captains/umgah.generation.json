@@ -2,7 +2,7 @@
   "race": "umgah",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-cfbf6bfd-c7fe-47e9-9ba3-d4e6d97a26fb.png",
+  "source_generated_path": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-cfbf6bfd-c7fe-47e9-9ba3-d4e6d97a26fb.png",
   "output_path": "hd/remastered/art/captains/umgah.png",
   "output_sha256": "a385f4f92adc17043b51e5c2bfccf79f9d5aac8e0a4951d21ab44ade3ef3745e",
   "output_size": [

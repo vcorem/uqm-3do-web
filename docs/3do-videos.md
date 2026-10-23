@@ -12,8 +12,8 @@ an incomplete installation is listed under Diagnostics.
 The repository content includes the original intro, ending and 25 ship
 presentations from the 3DO Videos package listed on the
 [MegaMod download page](https://uqm-mods.sourceforge.net/Download), downloaded
-on 2026-10-18 at the user's request for local play. The archive is retained in
-`.tools/media/uqm-0.8.0-3dovideo.uqm`, with tracked source details in [3do-video-source.json](3do-video-source.json).
+on 2026-10-18. The tracked source details are in [3do-video-source.json](3do-video-source.json);
+a local copy of the archive can be kept in `.tools/media/` (ignored by Git).
 The package metadata attributes these video resources to Crystal Dynamics.
 
 - Download size: 135,563,859 bytes.
@@ -24,9 +24,10 @@ The package metadata attributes these video resources to Crystal Dynamics.
 - Extra MegaMod logo/drumall presentations are retained in the download archive
   but are not used by this UQM build.
 
-The 134 installed media files are included in Git. The download cache and
-generated builds remain ignored. The package contains no separate license
-file; its original attribution is retained in the provenance record.
+The 134 installed media files are included in Git, and the site serves them
+in the Original edition. The download cache and generated builds remain
+ignored. The package contains no separate license file; its original
+attribution is retained in the provenance record. See [Licenses](licenses.md).
 
 ## Media layout
 

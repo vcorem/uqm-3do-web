@@ -3,7 +3,7 @@
   "mode": "edit",
   "output_path": "hd/remastered/art/captains/druuge-weapon-correction.png",
   "output_sha256": "05d565b6673eb188bf56d539833efcc7945ef7bd50972e3613c4ac1a68e2c06c",
-  "source": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-a828d26c-8218-4ea0-852d-2ca4abfef62d.png",
+  "source": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-a828d26c-8218-4ea0-852d-2ca4abfef62d.png",
   "prompt": "hd/remastered/art/captains/druuge-weapon-correction.prompt.txt",
   "references": [
     "hd/remastered/art/captains/druuge-base-correction.png",

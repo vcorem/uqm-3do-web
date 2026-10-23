@@ -1,7 +1,7 @@
 # Cosmo Clash — Rust WebAssembly and Online Melee
 
-A separate game inside the UQM repository: the third game of the site, at
-`urquanmasters.org/cosmoclash/`. The original Cosmo Clash models, textures,
+A separate game inside the UQM repository: the last card of the site's
+picker, at `urquanmasters.org/cosmoclash/`. The original Cosmo Clash models, textures,
 sounds, three ships, AI difficulties and local gauntlet are retained. Online
 fleet battles use the site's relay with a separate room namespace and room list.
 
@@ -110,7 +110,7 @@ On macOS the browser runner defaults to installed Google Chrome; set `CHROME_BIN
 to select another executable. Linux uses Playwright Chromium.
 
 Raw reports and screenshots are written under `test-results/` and ignored by Git.
-See [the port and hosting handover](../docs/cosmoclash-port.md) for verified scope,
+See [the port and hosting notes](../docs/cosmoclash-port.md) for verified scope,
 network requirements, and remaining validation.
 
 ## Upstream and attribution
@@ -118,12 +118,16 @@ network requirements, and remaining validation.
 Imported from [ohanegby/cosmoclash-web](https://github.com/ohanegby/cosmoclash-web),
 commit `966ad7b7ac90c44d3751dc014fbdc1ae03359e07`.
 Original game: **Ori Hanegby, Guy Corem, and Orr Kowarsky**.
-The upstream package declares **ISC**. Existing UQM code and its relay retain
-their own licenses; this import does not change them.
+The upstream package declares **ISC** for the code. The models, textures,
+sounds and music come from the authors' original game; no separate license is
+granted for them. Existing UQM code and its relay retain their own licenses;
+this import does not change them. See [Licenses](../docs/licenses.md).
 
 The original [README](reference/UPSTREAM-README.md), entry point, and a SHA-256
 manifest of every imported source and asset are preserved in `reference/`.
-`CLAUDE.md` and `docs/` (except `docs/online.md`) are historical upstream
-documentation and can describe its previous TypeScript implementation. The
+`CLAUDE.md` and `docs/` (except `docs/online.md`) come from upstream (this
+repository adds to `CLAUDE.md`) and can describe its previous TypeScript
+implementation; the upstream planning notes in `docs/plans/` name the authors'
+local folders. The
 executable source and comparison tests, rather than older prose values, define
 the behavior of this port.

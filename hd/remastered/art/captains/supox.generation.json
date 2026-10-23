@@ -2,7 +2,7 @@
   "race": "supox",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-7a3281b2-1cd0-4585-bb5b-2b38a30f1b45.png",
+  "source_generated_path": "generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-7a3281b2-1cd0-4585-bb5b-2b38a30f1b45.png",
   "output_path": "hd/remastered/art/captains/supox.png",
   "references": [
     ".tools/captain-reference/sheets/supox-unique-composited.png",

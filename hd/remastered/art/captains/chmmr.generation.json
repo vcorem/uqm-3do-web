@@ -2,7 +2,7 @@
   "race": "chmmr",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-8efd1070-3555-435f-bcc6-815c26716686.png",
+  "source_generated_path": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-8efd1070-3555-435f-bcc6-815c26716686.png",
   "output_path": "hd/remastered/art/captains/chmmr.png",
   "output_sha256": "bb098ca7ee5b0812d8376a42769a1d8a5c29789679266150c1dbd146d6b92fd2",
   "output_size": [

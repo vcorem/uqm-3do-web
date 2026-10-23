@@ -2,7 +2,7 @@
   "race": "pkunk",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-d33a4226-e8e6-4fe0-b016-dbf98b34ab2f.png",
+  "source_generated_path": "generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-d33a4226-e8e6-4fe0-b016-dbf98b34ab2f.png",
   "output_path": "hd/remastered/art/captains/pkunk.png",
   "references": [
     ".tools/captain-reference/sheets/pkunk-unique-composited.png",

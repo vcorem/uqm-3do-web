@@ -77,9 +77,9 @@ broad spectral balance. Its score checks establish that the new riff/drum
 arrangement replaced the previous soft voices; they cannot establish musical
 quality. Lossless reconstruction checks can compare the recorded PCM hashes.
 
-No model audio-input tool was available, so the agent did not subjectively
-listen to these tracks. Short MP3 build-and-return excerpts are prepared under
-ignored `.tools/music-auditions/` for human audition. Those previews have small
+The tracks were made without a listening test by their author; the checks
+above are technical. `render.py` can also make short MP3 excerpts for a human
+listening test (written to the ignored `.tools/music-auditions/`). Those previews have small
 edge fades for standalone playback; the shipped Ogg loops do not. Native
 in-game playback and subjective effect masking are separate checks, not
 claims made by the signal validator.

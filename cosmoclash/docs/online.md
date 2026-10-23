@@ -121,7 +121,7 @@ says so).
 - "Leave the match?" does not pause an online battle (the lockstep cannot wait):
   the dialog says so, and the ship gets no keys while it is open.
 
-## Contract with the site (platform stream)
+## Contract with the site
 
 1. The game is at `/cosmoclash/` (Vite base). Invite link: `/cosmoclash/?cosmoRoom=<32 lowercase hex>`.
 2. Edition `cosmoclash`. Room list: `/netplay/lobby?edition=cosmoclash`; the server
@@ -211,7 +211,7 @@ a new page pass the check and then refuse each other's packets.
 `npm start` (`scripts/serve.mjs`, `scripts/cosmo-server.mjs`) serves `dist/` at
 `/cosmoclash/` with the site's isolation headers and sends `/netplay/` to the relay.
 It asks the relay for the cosmoclash room list at start. If the relay has none
-(the Node relay before the platform stream adds it), `scripts/cosmo-lobby.mjs`
+(a relay without Cosmo Clash room lists), `scripts/cosmo-lobby.mjs`
 adds it in front of the relay by the contract above: it lists named rooms, answers
 the host's `ping`, ends silent listed rooms, and sends the room traffic (without
 `name` and `engine`) to the relay, which pairs the players. With a relay that has

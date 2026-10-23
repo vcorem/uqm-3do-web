@@ -2,7 +2,7 @@
   "race": "thraddash",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-74b5e3e9-aa1d-43d0-9e4e-497152d872ec.png",
+  "source_generated_path": "generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-74b5e3e9-aa1d-43d0-9e4e-497152d872ec.png",
   "output_path": "hd/remastered/art/captains/thraddash.png",
   "references": [
     ".tools/captain-reference/sheets/thraddash-unique-composited.png",

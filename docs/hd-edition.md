@@ -63,15 +63,15 @@ BUILD_OUTPUT="$PWD/.tools/editions-dist" ./scripts/build-editions.sh
 npm start -- --dist .tools/editions-dist --port 10001
 ```
 
-Open `http://127.0.0.1:10001/`. Choose an edition, then click its Launch button
-after loading completes. The second click unlocks browser sound. The first
+Open `http://127.0.0.1:10001/`. Choose a card and click **Play**. The first
 HD content download is about 660 MB (with the Melee Remastered art and music,
 which the same build serves at `/melee/`); both builds are
 intended for desktop browsers. Unselected engines, content and workers are
 never loaded by the picker.
 
-The combined package has a small root picker, `original/index.html` and
-`hd/index.html`, each with its own relative engine files. The existing
+The combined package has a small root picker and one folder for each page:
+`original/`, `hd/`, `original-rust/`, `hd-rust/`, `melee/`, `melee-rust/` and
+`cosmoclash/`, each with its own relative engine files. The existing
 `build-web.sh` still produces a standalone Original 3DO package. The packaging
 step adds a return link without changing the Original engine or saved data.
 Use an output directory and port separate from an ongoing game session.
@@ -113,8 +113,8 @@ contains attribution for multiple creators and licenses, including entries
 whose license is unspecified in upstream metadata. The project does not assign
 one blanket license to that artwork. Original package license and attribution
 texts are preserved in the download archives and in the packaged
-`hd/content-licenses.txt`. Public redistribution requires a separate review of
-those upstream terms. No public release is performed by these scripts.
+`hd/content-licenses.txt`. The site serves this content as UQM MegaMod
+distributes it, with these notices; see [Licenses](licenses.md).
 
 ## Regression checks
 

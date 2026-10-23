@@ -3,7 +3,7 @@
   "mode": "edit",
   "output_path": "hd/remastered/art/captains/druuge-base-correction.png",
   "output_sha256": "bbcc19e8658b2d2f8c8adb1052d1581447ed02b2826f46782ee1aa2df3ffb91e",
-  "source": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-f1a1bb0c-d9b4-41d3-bdd7-cd267d1c8b85.png",
+  "source": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-f1a1bb0c-d9b4-41d3-bdd7-cd267d1c8b85.png",
   "prompt": "hd/remastered/art/captains/druuge-base-correction.prompt.txt",
   "references": [
     ".tools/captain-reference/singles/druuge-authored-base.png",

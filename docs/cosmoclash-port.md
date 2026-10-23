@@ -1,8 +1,7 @@
 # Cosmo Clash: Rust port and online fleet battles
 
-Branch: `codex/cosmoclash-rust-netplay`
-
-Implementation, local validation and Linux CI: 20 October 2026
+Implementation, local validation and Linux CI: 20 October 2026. Live at
+`https://urquanmasters.org/cosmoclash/` since 21 October 2026.
 
 ## Source and scope
 
@@ -95,7 +94,7 @@ the picker card and the game at `/cosmoclash/` in Chromium, plays a short battle
 against the computer, and plays Online Melee between two pages through the
 site's relay and room list (see [Verification](#verification)).
 
-## Server handover
+## Hosting
 
 Cosmo Clash is a game of the site: `https://urquanmasters.org/cosmoclash/`,
 with the last card on the picker at `/`. The site's Cloudflare Worker
@@ -282,14 +281,13 @@ Original native oracle suites passed locally in both debug and release after
 these fixes (1,576,637,346 comparisons across core, velocity/trigonometry,
 queue/geometry and bounding boxes).
 
-## Remaining release validation
+## Remaining validation
 
 Two local browser processes and simulated latency exercise the complete client
-and relay, but do not establish behavior over a real public internet connection.
-Before a public release, test the deployed HTTPS origin with two people on
-separate networks, verify the reverse proxy's WebSocket timeout, and exercise
-reconnection by creating a new room after a lost connection. Safari/Firefox,
-touch-only play, mobile performance, and large public concurrency have not been
-certified by the local Chrome run. The deploy workflow publishes Cosmo Clash at
-`https://urquanmasters.org/cosmoclash/` with the UQM engines; see
-[Server handover](#server-handover).
+and relay. On the live site, two pages on one computer completed matches through
+the Cloudflare relay and its room list (there is no reverse proxy). Still open:
+a match between two computers on different networks (`tests/browser/netplay-peer.mjs`
+supports Original and HD only), Safari and Firefox, touch-only play, mobile
+performance and large public concurrency. The deploy workflow publishes Cosmo
+Clash at `https://urquanmasters.org/cosmoclash/` with the UQM engines; see
+[Hosting](#hosting).

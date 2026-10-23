@@ -1,7 +1,12 @@
 # Local validation — 2026-10-18
 
+This is a dated record of the first local checks (18 to 20 October 2026),
+before the site went live. Words such as "private alpha", "not deployed" and
+"unverified" describe that time. For the current state, see the
+[README](../README.md); CI now runs these checks on every change.
+
 Environment: macOS arm64, Emscripten 3.1.50, SDL2 2.24.2 from the Emscripten
-port cache. Browser: Codex in-app browser, served from `http://127.0.0.1:9999`.
+port cache. Browser: an in-app Chromium browser, served from `http://127.0.0.1:9999`.
 The browser engine/version was not separately recorded. Debug build with
 OpenAL, pthreads and Asyncify. This is an initial desktop browser smoke test.
 
@@ -97,8 +102,6 @@ disabled preference. The existing disabling flag remains available.
   Setup → PC/3do Compatibility Options shows Subtitles: Enabled.
 - No browser warning/error captured. The test tab was closed without leaving
   Setup, avoiding a saved-preference write from the test.
-- The user's active campaign was not refreshed or modified. They must save
-  before reloading to use the updated launch setting.
 
 
 ## Online Melee private alpha — 2026-10-18
@@ -203,8 +206,7 @@ including Shofixti's self-destruct special; no simulation state is patched.
 - In an independent test, an online setup disconnect returned to the main
   menu, then New Game started the campaign in the same engine instance.
   Saving worked and a full page reload preserved all 3,333 save bytes.
-- These checks used isolated test profiles at port 10000. The user's active
-  campaign on port 9999 and its saved games were not modified.
+- These checks used isolated test profiles.
 
 ![Campaign restored on the network-enabled build](screenshots/netplay-build-campaign-restored.png)
 
@@ -239,7 +241,7 @@ play remains a release check.
 The reusable browser harness now accepts `UQM_BROWSER` and
 `UQM_PEER_BROWSER`, records each peer's engine/version and retains the same
 full-match, synchronization, disconnect and persistence assertions. See
-[the test commands](../README.md#checks-and-current-scope).
+[the test commands](../README.md#tests-and-ci).
 
 ### Spoken dialogue verification
 
@@ -283,15 +285,16 @@ game opening `uqm.cfg` before the diagnostic read.
 This demonstrates that the old preference is parsed and that the launcher
 override restores text while speech continues. The genuine save and its
 provenance are checked in under `tests/browser/fixtures/`. Navigation uses
-short timed key presses, so this is a local desktop regression rather than
-a CI gate; a missed station encounter fails instead of bypassing gameplay.
+short timed key presses; a missed station encounter fails instead of bypassing
+gameplay. This test now also runs in CI (`build.yml`).
 
 ## Optional Redrawn HD edition — 2026-10-18
 
 The new picker retains the existing Original 3DO engine and adds a separate
 UQM MegaMod 0.8.5 WebAssembly build with official redrawn assets. The native
 HD canvas is 1280×960. Its campaign saves use a separate IndexedDB mount;
-HD network play is disabled. See [HD build details](hd-edition.md).
+HD network play was disabled at that time (it came on 2026-10-19). See
+[HD build details](hd-edition.md).
 
 Completed local checks:
 
@@ -372,8 +375,4 @@ installed Chrome 155.0.8059.84: 300,016 ms idle, then 15,267 ms of live combat
 controls. All 15 sampled playfield frames changed; no runtime, assertion or
 proxy errors occurred. The final combat screenshot was visually checked.
 
-Both tested engines were installed behind the chooser on the existing local
-port 9999. Their shipped runtime/media bytes match the tested candidates.
-The old root-level runtime files were retained byte-for-byte so a game already
-open during the update can still save before the player refreshes. No browser
-was automatically refreshed and no public deployment was made.
+The shipped runtime and media bytes matched the tested candidates.

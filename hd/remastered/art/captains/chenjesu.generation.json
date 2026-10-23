@@ -2,7 +2,7 @@
   "race": "chenjesu",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-efef5879-fef1-4cfc-a21f-eb706a4839b9.png",
+  "source_generated_path": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-efef5879-fef1-4cfc-a21f-eb706a4839b9.png",
   "output_path": "hd/remastered/art/captains/chenjesu.png",
   "output_sha256": "e599f0ce9ef49b0d3dd40410876f96768f71837a0ba401dea20085c3da19fca2",
   "output_size": [

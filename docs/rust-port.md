@@ -2,9 +2,10 @@
 
 Both game engines now have Rust implementations: Original UQM and the separately
 pinned HD MegaMod engine. The network relay is also implemented in Rust.
-Default browser builds link these Rust engines; they do not link the old C game
-object files. The work is isolated on `codex/rust-port`, starting from
-`783d8d3ce`. The previous playable checkout and its saves are unchanged.
+Default local browser builds (`UQM_CORE=rust`) link these Rust engines; they do
+not link the old C game object files. The site publishes them as test versions
+next to the C engines (`/original-rust/`, `/hd-rust/`, `/melee-rust/`), with
+their own browser saves. The port started from `783d8d3ce`.
 
 This is a source port, not a memory-safe or idiomatic rewrite. C2Rust translated
 340 configured Original units and 350 HD units into `unsafe` Rust, preserving
@@ -13,12 +14,13 @@ independently written, differentially tested Rust modules. The PNG integration
 is also written in Rust, with a narrow C guard for libpng's `setjmp` errors.
 Preserved C sources provide provenance and independent reference builds.
 
-The HD Online Melee work from main commit
-`5d7810ba5302803abe537f1b669d696a3af073ad` is included in this branch. Enabling
-its WebSocket transport, protocol handlers and synchronization code expands the
-configured HD engine from 330 to 350 translated units. The HD launcher, shared
-browser client and Rust relay support the same edition-specific room contract.
-This port does not import main's deployment setup or deploy a public service.
+The HD Online Melee work from commit
+`5d7810ba5302803abe537f1b669d696a3af073ad` is included. Enabling its WebSocket
+transport, protocol handlers and synchronization code expands the configured HD
+engine from 330 to 350 translated units. The HD launcher, shared browser client
+and Rust relay support the same edition-specific room contract. The site itself
+uses the Cloudflare relay (`deploy/netplay.js`); the Rust relay is for local and
+self-hosted use.
 
 ## Implementation boundaries
 
@@ -93,16 +95,16 @@ runs the Node server, which also has the room lists (the Rust relay does not
 have them yet).
 
 ```sh
-# Example runtime arguments; no server deployment is performed by this branch.
+# Example runtime arguments for a self-hosted relay.
 ./uqm-relay --host 127.0.0.1 --port 10010 \
-  --origin https://playuqm.com --dist /srv/uqm/web
+  --origin https://game.example --dist /srv/uqm/web
 ```
 
 Preserve the HTTPS/WebSocket proxy and isolation headers described in
 [the server guide](netplay-server.md). The Rust relay retains the same private
 two-peer rooms, limits, exact origin checking and process-lifetime retired IDs.
 Forwarded IP headers are not trusted; proxy-aware admission and long-term room-ID
-retirement remain separate production work. No public deployment is implied.
+retirement remain separate production work.
 
 ## Verification
 
@@ -234,7 +236,8 @@ and static-mutable-reference warnings; build logs retain them for inspection.
 These warnings are not evidence of memory safety.
 
 Local automated checks cannot establish full campaign completion, every ship
-ability and dialogue branch, all 3DO fidelity cases, real internet play between
-two computers, or readiness for public release. Native standalone game builds
-are not supplied: the game target is the existing browser WebAssembly platform.
-The relay has native tests, but deployment to the Hetzner server is separate.
+ability and dialogue branch, or all 3DO fidelity cases. Matches between two
+computers on different networks passed on the site on 2026-10-19/20 (C and
+Rust). Native standalone game builds are not supplied: the game target is the
+browser WebAssembly platform. The Rust relay has native tests; the site uses the
+Cloudflare relay.

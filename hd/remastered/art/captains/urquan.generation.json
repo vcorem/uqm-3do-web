@@ -2,7 +2,7 @@
   "race": "urquan",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-f5db2bfc-4b5d-4715-a154-3c9b6841dfe3.png",
+  "source_generated_path": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-f5db2bfc-4b5d-4715-a154-3c9b6841dfe3.png",
   "output_path": "hd/remastered/art/captains/urquan.png",
   "output_sha256": "bdb1cc57ed106633f3d9b3c1b6d18305fae280780768d69af31bc4ed0bd2fd2f",
   "output_size": [

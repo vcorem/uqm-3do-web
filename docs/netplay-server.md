@@ -1,9 +1,8 @@
 # Melee relay and room lists
 
-Status: private alpha. Two browser pages have completed local online-combat
-checks. The public relay at https://urquanmasters.org is the Cloudflare port
-described below. Live matches between a Mac and a GitHub runner on a different
-network passed for both editions on 2026-10-19.
+Status: live. The public relay at https://urquanmasters.org is the Cloudflare
+port described below. Live matches between a Mac and a GitHub runner on a
+different network passed for both editions on 2026-10-19.
 See [the original validation record](validation.md) and
 [the Rust validation record](rust-validation.md) for the edition and build
 covered by each completed check.
@@ -249,7 +248,7 @@ tests explicitly configure a heartbeat faster than the normal 15 seconds.
 
 A waiting room expires after two minutes, a listed (named) waiting room after ten minutes. Paired rooms expire after 15 minutes without game data or four hours total. A ping/pong heartbeat runs every 15 seconds. Slow peers, rate violations, missing pongs and expired rooms are disconnected. No game data is queued before pairing, and a disconnected room's pending data is discarded.
 
-## Two computers and later hosting
+## Two computers and self-hosting
 
 The default bind address is loopback. Binding another interface is explicit:
 

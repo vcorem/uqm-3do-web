@@ -2,7 +2,7 @@
   "race": "spathi",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-3e489021-9cf8-4af0-9d0f-002b50d8e1e3.png",
+  "source_generated_path": "generated_images/01a162a8-6c67-7e20-a9d7-3a4d8dd03a81/exec-3e489021-9cf8-4af0-9d0f-002b50d8e1e3.png",
   "output_path": "hd/remastered/art/captains/spathi.png",
   "references": [
     ".tools/captain-reference/sheets/spathi-unique-composited.png",

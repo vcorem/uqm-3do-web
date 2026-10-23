@@ -2,7 +2,7 @@
   "race": "mycon",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-a1023cd7-cbcf-4396-94a0-b546001204ee.png",
+  "source_generated_path": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-a1023cd7-cbcf-4396-94a0-b546001204ee.png",
   "output_path": "hd/remastered/art/captains/mycon.png",
   "output_sha256": "117fe3a7d5d1704d6d1d58c4242b169735848226dda91a335f956bdc9c3d4df1",
   "output_size": [

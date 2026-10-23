@@ -69,7 +69,7 @@ missed between two polls. Without the hook the page offers a reload. The
 Original main menu goes back to the intro after 20 s without input (2 minutes
 with its music); while the menu covers the started game, the page sets
 `Module.holdMainMenu = true` (and `false` when it hides), which the engine's
-main menu reads (the ENGINE stream's hook build).
+main menu reads ([the engine netplay hook](engine-netplay-hook.md)).
 
 Lobby (B): `UQMNetplay.watchLobby({ edition, onRooms, onStatus })` gives the
 room list (`{ id, name, engine, created }`, newest first); `onStatus` states
@@ -122,14 +122,14 @@ Python standard library.
   1024x768, both editions.
 - `tests/browser/netplay.mjs`: real engines (C and Rust with
   `UQM_PEER_DIST`) meet in the test lobby and play a full match.
-- Until the room client has `watchLobby`,
-  `tests/browser/fixtures/lobby-client-shim.js` adds it in tests.
+- `tests/browser/fixtures/lobby-client-shim.js` gives tests a room client with
+  `watchLobby` when they use a page without the real client.
 
-## Notes for the other parts of the page
+## Integration notes
 
 - Loading progress: the start screen shows `Module.setStatus('… (done/total)')`
-  byte progress and `Module.monitorRunDependencies` counts. A loader that
-  fetches the game files itself (the CACHE stream's `engine-loader.js`) calls
+  byte progress and `Module.monitorRunDependencies` counts. The game data
+  loader (`web/engine-loader/engine-loader.js`), which fetches the game files itself, calls
   `online.controller.progress({ label, fraction })` instead, through the
   global `online` that the shell defines. Tests read the loading text from
   `online.state.loading.label`; `#status` is the menu's live region (it says

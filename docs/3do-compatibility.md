@@ -31,7 +31,7 @@ Use this supported command-line baseline for the browser version:
 ```
 
 This selects graphical menus, 3DO fonts and scan icons, smooth dialogue seeking,
-pulsing shields and smooth combat zoom. Dialogue subtitles are enabled at the user's request. The added `--subtitles`
+pulsing shields and smooth combat zoom. Dialogue subtitles are on by default. The added `--subtitles`
 startup option explicitly enables them even if an older saved preference has
 them disabled. This differs from the upstream
 [Mimic 3DO preset](../sc2/build/win32_install/uqm-3do.cfg). Music and speech should be enabled and the later Precursors remix packs
@@ -53,8 +53,8 @@ music settings instead.
   The [mapping](../sc2/content/addons/3dovideo/3dovideo.rmp) describes the expected
   paths. Current code includes ship-video playback support in
   [`fmv.c`](../sc2/src/uqm/fmv.c) and
-  [`supermelee/buildpick.c`](../sc2/src/uqm/supermelee/buildpick.c); playback validation is recorded in [the test record](validation.md). Any future video distribution must use assets with
-  appropriate permissions.
+  [`supermelee/buildpick.c`](../sc2/src/uqm/supermelee/buildpick.c); playback validation is recorded in [the test record](validation.md). The
+  videos have no known license; see [Licenses](licenses.md).
 - **UQM includes visual departures.** Its own
   [graphics comparison](../sc2/doc/devel/gfxversions) documents a larger Sa-Matra
   captain portrait and colored interplanetary suns, whereas 3DO suns were yellow.

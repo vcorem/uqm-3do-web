@@ -2,7 +2,7 @@
   "race": "zoqfotpik",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-c83a28b4-83f0-4e60-80b8-b3998e26769c.png",
+  "source_generated_path": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-c83a28b4-83f0-4e60-80b8-b3998e26769c.png",
   "output_path": "hd/remastered/art/captains/zoqfotpik.png",
   "output_sha256": "6f75db35e32fe6f37645dcd3dfee06f94a16d2f75f541101301ecba8bd5b11f1",
   "output_size": [
@@ -25,7 +25,7 @@
   "packing_path": "hd/remastered/art/captains/zoqfotpik.packing.json",
   "corrections": [
     {
-      "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-cbdb0d50-e18c-44e2-aba6-85e2b64a69cc.png",
+      "source_generated_path": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-cbdb0d50-e18c-44e2-aba6-85e2b64a69cc.png",
       "output_path": "hd/remastered/art/captains/zoqfotpik-correction.png",
       "prompt_path": "hd/remastered/art/captains/zoqfotpik-correction.prompt.txt",
       "output_sha256": "a56a1b5b2de26653428f2a3f58b5db6676f5259b4bb16a320a42a7291a349753",
@@ -39,7 +39,7 @@
       ]
     },
     {
-      "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-4d995bbc-d097-44b1-9ce0-65cec1b695ec.png",
+      "source_generated_path": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-4d995bbc-d097-44b1-9ce0-65cec1b695ec.png",
       "output_path": "hd/remastered/art/captains/zoqfotpik-thrust-correction.png",
       "prompt_path": "hd/remastered/art/captains/zoqfotpik-thrust-correction.prompt.txt",
       "output_sha256": "227953b695b8ad037c4cb35e4e3198f887bdd9e060e97903fb3f0c680ff152e0",

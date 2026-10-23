@@ -2,7 +2,7 @@
   "race": "arilou",
   "tool": "image_gen.imagegen",
   "mode": "reference edit / style-transfer",
-  "source_generated_path": "/Users/guyc/.codex/generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-ff4cdf07-0a4c-4ea4-b75a-9f60661fddc0.png",
+  "source_generated_path": "generated_images/01a162a8-995d-75d3-92ba-23bebd4b44fc/exec-ff4cdf07-0a4c-4ea4-b75a-9f60661fddc0.png",
   "output_path": "hd/remastered/art/captains/arilou.png",
   "output_sha256": "95b8c00d8d97b86ab256226c014f92ffb146daf9c44b672798a7149fdce8a76a",
   "output_size": [

@@ -1,22 +1,15 @@
 # Rust port validation — 2026-10-19
 
-Implementation commit: `3e8597d4bd25fc55f36cb1c6dba3ca37603f032b` on `codex/rust-port`,
-based on `783d8d3ce10edbb9afe3e2e7848ac8ee9e5a7416`.
-HD netplay incorporates main commit `5d7810ba5302803abe537f1b669d696a3af073ad`
-(observed in main at `3ba129550`). This is local macOS validation. The expanded
-Linux CI workflow has not been verified on GitHub as part of this work, and this Rust
-branch has not been publicly released or deployed. Main's separate hosting changes
-were not imported.
-The original `codex/web-netplay` checkout remains unchanged.
+This is the record of a local macOS validation on 2026-10-19, before the Rust
+engines were published. Implementation commit:
+`3e8597d4bd25fc55f36cb1c6dba3ca37603f032b`, based on
+`783d8d3ce10edbb9afe3e2e7848ac8ee9e5a7416`; HD netplay incorporates commit
+`5d7810ba5302803abe537f1b669d696a3af073ad`. The initial Rust port is commit
+`84e963030d678aa6fedc7b05cd335ed67753f5b8`.
 
-Delivery status reviewed on 2026-10-20: the initial Rust port is committed
-as `84e963030d678aa6fedc7b05cd335ed67753f5b8`, followed by the HD netplay implementation
-commit above. The HTML handover was refreshed to record this status. This is a
-documentation-only update: the validation date and tested builds remain unchanged;
-no new gameplay run is claimed. The implementation and handover have been pushed
-to `codex/rust-port` at <https://github.com/vcorem/uqm-3do-web/tree/codex/rust-port>.
-This work has not merged the branch into main or deployed the Rust version.
-Linux CI and internet play between two physical computers remain unverified.
+Since then, the Linux CI (`.github/workflows/build.yml`) runs these checks on
+every change, the site publishes the Rust engines as test versions, and matches
+between two computers on different networks passed on the site on 2026-10-19/20.
 
 ## Tested builds
 
@@ -100,16 +93,8 @@ Use the commands in [the port guide](rust-port.md),
 [PNG tests](../tests/rust/PNG.md), [Lua tests](../tests/rust/LUA.md) and
 [actual-translator regression](../tests/rust/MACROS.md), and
 [HD packet/transport oracle](../tests/rust/HD-NETPLAY.md).
-Build artifacts and raw reports remain ignored under `.tools/` and
-`test-results/`. The combined playable package is in `dist/`.
-Current browser reports are in `test-results/hd-netplay-rust-c`,
-`hd-netplay-rust-rust`, `hd-netplay-c-chrome155`, `hd-netplay-ships`,
-`hd-netplay-original-chrome`, `hd-netplay-campaign`, `hd-netplay-stability`
-and `hd-netplay-editions`. The checked aggregate is
-`test-results/hd-netplay-validation.json`. Boundary results are in
-`.tools/rust-hd-netplay-tests/results.json`; the new Wasm export report is
-`test-results/hd-netplay-exports.json`. Retained Original baseline reports are
-`test-results/rust-release-c`, `rust-final-ships` and `rust-final-subtitles`.
+Build artifacts and raw reports are written under `.tools/` and `test-results/`,
+which Git ignores: the raw reports of this record are not in the repository.
 
 The translated engine deliberately retains unsafe pointers and the original
 C data model. Compilation and these tests do not prove memory safety, every

@@ -56,7 +56,7 @@
       "sholev"
     ],
     "oracle": "unmodified upstream src/ai/*.ts",
-    "engine": "/Users/guyc/Documents/Impulse/uqm-cosmoclash/cosmoclash/rust/target/debug/cosmo-jsonl"
+    "engine": "cosmoclash/rust/target/debug/cosmo-jsonl"
   },
   "productionAIBridge": {
     "passed": true,

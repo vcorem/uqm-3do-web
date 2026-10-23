@@ -1,3 +1,7 @@
+> This is the README of [intgr/uqm-wasm](https://github.com/intgr/uqm-wasm), the
+> WebAssembly port that this repository started from. It is kept for history; see
+> the [main README](../README.md) for this project.
+
 Star Control 2: The Ur-Quan Masters port to WebAssembly
 -------------------------------------------------------
 

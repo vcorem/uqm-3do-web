@@ -43,4 +43,4 @@ runtime logs remain alongside that report.
 All four modes passed after the HD netplay migration: 12,210 comparison cases
 and 13 ABI checks per mode, for 48,840 matching cases overall. These are
 focused boundary comparisons; the full-game browser results are recorded in
-the developer handover and validation report.
+[the Rust validation record](../../docs/rust-validation.md).
