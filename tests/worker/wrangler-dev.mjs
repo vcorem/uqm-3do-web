@@ -27,6 +27,48 @@ function freePort() {
   });
 }
 
+/** One wrangler dev on new ports, ready to answer: { origin, log }. */
+async function launch(temp, site, deployed, vars, children) {
+  const port = await freePort();
+  const inspectorPort = await freePort();
+  const origin = `http://127.0.0.1:${port}`;
+  const config = {
+    name: 'uqm-web-test',
+    main: path.join(root, 'deploy/worker.js'),
+    compatibility_date: deployed.compatibility_date,
+    assets: { directory: site, binding: 'ASSETS', run_worker_first: true,
+      html_handling: 'none', not_found_handling: 'none' },
+    durable_objects: deployed.durable_objects,
+    migrations: deployed.migrations,
+    vars: { NETPLAY_ORIGINS: origin, ...vars },
+  };
+  const configPath = path.join(temp, 'wrangler.json');
+  await writeFile(configPath, JSON.stringify(config));
+  const child = spawn('npx', ['--yes', WRANGLER, 'dev', '--config', configPath, '--ip', '127.0.0.1',
+    '--port', String(port), '--inspector-port', String(inspectorPort), '--persist-to', path.join(temp, 'state'),
+    '--show-interactive-dev-session=false', '--log-level', process.env.WRANGLER_TEST_LOG_LEVEL ?? 'warn'],
+  // Own process group: npx does not always pass SIGTERM on to wrangler and workerd,
+  // and their open pipes would keep this test file running.
+  { cwd: temp, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+  let log = '';
+  child.stdout.on('data', chunk => { log += chunk; });
+  child.stderr.on('data', chunk => { log += chunk; });
+  const exited = new Promise(resolve => child.once('exit', resolve));
+  children.push({ child, exited });
+  const deadline = Date.now() + 90000;
+  let lastCheck = 'no answer';
+  for (;;) {
+    if (child.exitCode !== null) throw new Error(`wrangler dev exited:\n${log}`);
+    try {
+      const response = await fetch(origin + '/', { signal: AbortSignal.timeout(2000) });
+      if (response.ok) return { origin, get log() { return log; } };
+      lastCheck = 'HTTP ' + response.status;
+    } catch (error) { lastCheck = String(error.cause?.code ?? error.name); /* Not listening yet. */ }
+    if (Date.now() > deadline) throw new Error(`wrangler dev did not start in 90 s (last check: ${lastCheck}):\n${log}`);
+    await pause(100);
+  }
+}
+
 /** worker.js imports the data-part manifest that the deploy job writes. Tests need only an empty one. */
 export function useDataManifest() {
   const manifest = path.join(root, 'deploy/data-parts.json');
@@ -40,9 +82,6 @@ export function useDataManifest() {
 /** Starts one `wrangler dev` with the given relay vars and extra static files ({ 'path/name': content }). */
 export async function startWorker(t, vars = {}, files = {}) {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'uqm-worker-'));
-  const port = await freePort();
-  const inspectorPort = await freePort();
-  const origin = `http://127.0.0.1:${port}`;
   // Static files get their own folder: wrangler dev watches it, and its cache and
   // --persist-to state in the same folder make it reload without end on Linux.
   const site = path.join(temp, 'site');
@@ -56,54 +95,37 @@ export async function startWorker(t, vars = {}, files = {}) {
   // also proves that the deployed config declares every object the code uses.
   const deployed = JSON.parse((await readFile(path.join(root, 'deploy/wrangler.jsonc'), 'utf8'))
     .replace(/^\s*\/\/.*$/gm, ''));
-  const config = {
-    name: 'uqm-web-test',
-    main: path.join(root, 'deploy/worker.js'),
-    compatibility_date: deployed.compatibility_date,
-    assets: { directory: site, binding: 'ASSETS', run_worker_first: true,
-      html_handling: 'none', not_found_handling: 'none' },
-    durable_objects: deployed.durable_objects,
-    migrations: deployed.migrations,
-    vars: { NETPLAY_ORIGINS: origin, ...vars },
-  };
   const bindings = deployed.durable_objects.bindings.map(binding => binding.name + '=' + binding.class_name).sort();
   assert.deepEqual(bindings, ['NETPLAY_GATE=NetplayGate', 'NETPLAY_LOBBY=NetplayLobby', 'NETPLAY_ROOMS=NetplayRoom']);
   assert.deepEqual(deployed.migrations.flatMap(migration => migration.new_sqlite_classes).sort(),
     ['NetplayGate', 'NetplayLobby', 'NetplayRoom']);
-  const configPath = path.join(temp, 'wrangler.json');
-  await writeFile(configPath, JSON.stringify(config));
-  const child = spawn('npx', ['--yes', WRANGLER, 'dev', '--config', configPath, '--ip', '127.0.0.1',
-    '--port', String(port), '--inspector-port', String(inspectorPort), '--persist-to', path.join(temp, 'state'),
-    '--show-interactive-dev-session=false', '--log-level', process.env.WRANGLER_TEST_LOG_LEVEL ?? 'warn'],
-  // Own process group: npx does not always pass SIGTERM on to wrangler and workerd,
-  // and their open pipes would keep this test file running.
-  { cwd: temp, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
-  let log = '';
-  child.stdout.on('data', chunk => { log += chunk; });
-  child.stderr.on('data', chunk => { log += chunk; });
-  const exited = new Promise(resolve => child.once('exit', resolve));
+  const children = [];
   t.after(async () => {
-    const signal = name => { try { process.kill(-child.pid, name); } catch { /* Already gone. */ } };
-    signal('SIGTERM');
-    await Promise.race([exited, pause(5000)]);
-    signal('SIGKILL');
-    child.stdout.destroy();
-    child.stderr.destroy();
+    for (const { child, exited } of children) {
+      const signal = name => { try { process.kill(-child.pid, name); } catch { /* Already gone. */ } };
+      signal('SIGTERM');
+      await Promise.race([exited, pause(5000)]);
+      signal('SIGKILL');
+      child.stdout.destroy();
+      child.stderr.destroy();
+    }
     await rm(temp, { recursive: true, force: true });
   });
-  const deadline = Date.now() + 90000;
-  let lastCheck = 'no answer';
-  for (let attempt = 0; ; attempt++) {
-    if (child.exitCode !== null) throw new Error(`wrangler dev exited:\n${log}`);
+  // freePort() closes its port before wrangler binds it, so another process can take it
+  // in between: then wrangler dev stops with "Address already in use", and it starts again
+  // on new ports.
+  let started;
+  for (let start = 1; ; start++) {
     try {
-      const response = await fetch(origin + '/', { signal: AbortSignal.timeout(2000) });
-      if (response.ok) break;
-      lastCheck = 'HTTP ' + response.status;
-    } catch (error) { lastCheck = String(error.cause?.code ?? error.name); /* Not listening yet. */ }
-    if (Date.now() > deadline) throw new Error(`wrangler dev did not start in 90 s (last check: ${lastCheck}):\n${log}`);
-    await pause(100);
+      started = await launch(temp, site, deployed, vars, children);
+      break;
+    } catch (error) {
+      if (start >= 3 || !/Address already in use/.test(error.message)) throw error;
+    }
   }
+  const { origin } = started;
   const wsBase = origin.replace('http:', 'ws:');
+
 
   function socket(url, clientOptions = {}, protocol) {
     const ws = protocol ? new WebSocket(wsBase + url, protocol, { origin, ...clientOptions })
@@ -160,5 +182,5 @@ export async function startWorker(t, vars = {}, files = {}) {
     assert.deepEqual(await guest.next(), { type: 'ready', role: 'guest' });
     return { id, host, guest };
   }
-  return { origin, socket, client, pair, get log() { return log; } };
+  return { origin, socket, client, pair, get log() { return started.log; } };
 }
