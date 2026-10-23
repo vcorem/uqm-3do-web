@@ -13,6 +13,9 @@ The local server serves the built game and connects exactly two players in each 
 The relay serves three games: UQM Original, UQM HD and
 [Cosmo Clash](cosmoclash-port.md) (at `/cosmoclash/` on the site). Each has its
 own rooms; no room of one game can pair with, or disconnect, a room of another.
+[Melee Remastered](melee-remastered.md) (`/melee/`) runs the HD engine with
+the HD rules: its Network Melee uses the HD rooms and the `hd` room list, so
+HD and Melee Remastered players can play each other.
 
 The Node server and the Cloudflare relay also keep a **room list (lobby)** for
 each edition (`original`, `hd`, `cosmoclash`): a host can give a room a name,

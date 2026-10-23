@@ -1,10 +1,13 @@
 # Melee Remastered
 
-This branch is a dedicated HD UQM Melee edition with two choices: **Melee**
-for local battles and **Network Melee** for online battles. It uses the existing
-Rust engine, ships, weapons, special abilities, gravity, movement, collision
-images, AI, scoring, fleets and network protocol. It is not a second combat
-implementation.
+Melee Remastered is a dedicated HD UQM Melee edition with two choices: **Melee**
+for local battles and **Network Melee** for online battles. On the site it is
+the third card of the picker, at `/melee/` (C engine) and `/melee-rust/` (Rust
+engine). It uses the existing HD engines, ships, weapons, special abilities,
+gravity, movement, collision images, AI, scoring, fleets and network protocol.
+It is not a second combat implementation, and it is not a second build: the
+site publishes the HD builds again with the Melee-only page (see
+[On the site](#on-the-site-23-october-2026)).
 
 The dedicated entry page, captured after returning from a real local battle:
 
@@ -45,11 +48,12 @@ This capture shows the final captain artwork in a real network battle:
   artwork switch and launch-time soundtrack/volume preferences.
 
 The Melee-only launch profile bypasses the original logo, opening movie and
-main menu in both engines. Campaign, load-game and the edition chooser are not
-accessible from this page. Exit fleet setup or finish a disconnected network
+main menu in both engines. Campaign and load-game are not accessible from this
+page; its header link goes back to the picker (**Choose game**). Exit fleet setup or finish a disconnected network
 session to return to the two mode choices; another match uses the same running
-engine. Fleets and preferences persist in browser storage. Picture changes apply
-live; soundtrack and volume changes apply after a page reload.
+engine. Fleets and preferences persist in browser storage, in their own
+folders (`.uqm-melee`, `.uqm-melee-rust`), apart from the HD saves. Picture
+changes apply live; soundtrack and volume changes apply after a page reload.
 
 The build still contains the shared UQM engine and content archive. The profile
 changes navigation, not combat rules or the contents of that upstream archive.
@@ -57,7 +61,12 @@ Generic pages that do not opt into the profile retain their existing flow.
 
 ## Melee-only navigation
 
-`hd/wasm/shell.html` opts into `Module.meleeOnly` before the engine starts.
+`hd/wasm/shell.html` is the page of both Redrawn HD and Melee Remastered.
+`scripts/package-editions.py` marks the Melee pages with `UQM_VARIANT.meleeOnly`
+(and their save folders); with that mark the page opts into `Module.meleeOnly`
+before the engine starts, shows **Picture & sound** and uses the Melee texts.
+Without it the page is Redrawn HD with its campaign, and it sets
+`_UQM_SetMeleeRemastered(0)`: the HD edition's Super-Melee keeps its Classic HD art.
 The C profile is reproducible through `hd/patches/0019-melee-only-profile.patch`;
 `rust/uqm-engine-hd/src/uqm/restart.rs` and `starcon.rs` implement the same flow.
 It initializes the normal game kernel, then runs native `Melee()` directly.
@@ -105,7 +114,9 @@ HD_OFFLINE=1 UQM_CORE=rust HD_BUILD_OUTPUT=.tools/remastered-dist \
 ```
 
 Art compilation is only needed after editing the included source atlases. It
-requires Pillow and the pinned HD content cache. Normal builds stage the
+requires Pillow and the pinned HD content cache. `scripts/make-melee-page-art.py`
+makes the picker card (`web/editions/melee-card.jpg`) and the start-screen
+background (`hd/remastered/art/nebula-start.jpg`) from the same art. Normal builds stage the
 already compiled images and two Ogg files; source atlases and editable music
 scores are excluded from the native game preload.
 
@@ -137,6 +148,12 @@ UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/remastered-dist \
   UQM_TEST_OUTPUT=test-results/remastered-hd-stability npm run test:hd-stability
 ```
 
+`UQM_MELEE_ONLY=1` opens the build's page as the Melee page: the test gives it
+the variant that `package-editions.py` writes into `/melee/index.html`
+(`tests/browser/melee-page.mjs`). Without it, the same build is the HD page.
+`UQM_GUEST_MELEE=1` (without `UQM_MELEE_ONLY`) plays an HD host against a Melee
+guest in one HD room.
+
 These tests use normal saved fleets and actual keyboard input. One peer uses
 Remastered art and the other Classic HD. They require native replacement draw
 activity, verify live switching, and compare the engines' network checksums.
@@ -160,6 +177,56 @@ reference sheets and inventory from the pinned archive for future art edits.
 Music source, scores and objective audio validation are included alongside the
 Ogg files. Browser evidence is written under `test-results/` and is specific to
 the exact tested build, rather than being inferred from historical test runs.
+
+## On the site, 23 October 2026
+
+Melee Remastered is the third card of the picker, between Redrawn HD and Cosmo
+Clash. The HD builds serve both games:
+
+| Page | Folder | Mark (`UQM_VARIANT`) | Saves |
+| --- | --- | --- | --- |
+| Redrawn HD | `/hd/`, `/hd-rust/` | none (C), Rust label (Rust) | `.uqm-hd`, `.uqm-hd-rust` |
+| Melee Remastered | `/melee/`, `/melee-rust/` | `meleeOnly: true` | `.uqm-melee`, `.uqm-melee-rust` |
+
+- `scripts/package-editions.py` copies each HD build a second time into the
+  Melee folder and marks its page; an HD build must have the Melee page files
+  (`melee-presentation.js`, `.css`, `melee-nebula.jpg`, `melee-credits.txt`).
+- The data bytes are the same, so `deploy/split-data.py` keeps one set of parts
+  for the four HD and Melee folders, and the browser keeps one copy (engine
+  loader edition `hd`, ETag = the data's SHA-256): a player who has the HD data
+  does not download it again for Melee. The HD data is 663 MB (23 MB more
+  than before, for the Remastered art and music).
+- Network Melee uses the HD rooms and the `hd` room list: HD and Melee
+  Remastered players see the same rooms and can play each other.
+- Separate save folders: two tabs (HD and Melee) never write over each other's
+  IndexedDB files.
+- The picker art (`web/editions/melee-card.jpg`) and the start-screen
+  background are made from the art of this edition (`make-melee-page-art.py`).
+- CI runs the tests of both pages (`build.yml`), the developer's art and
+  registry tests, and one mixed room (HD host, Melee guest). The deploy gate
+  runs a Melee match and checks that the Melee pages start from the stored
+  HD data.
+
+Validation on one computer (Chromium, real C and Rust builds of this branch,
+Rust relay):
+
+- 243 JavaScript and server tests; the Worker site test; the native C/Rust
+  comparisons of the HD job (patch upgrade, netplay units, exports, Rust core,
+  velocity, queues/geometry, bounding boxes, PNG, Lua, solar order, Melee
+  profile and presentation registries, captain assets, compiled art).
+- Melee page, Rust host and C guest, Remastered against Classic HD art: full
+  fleet matches with 575 (normal) and 588 (30-120 ms delay) checksums per
+  player, setup departure, return to the two choices, local battle after the
+  network session. C host and Rust guest: the local and network re-entry run.
+  Eight ships (movement, weapon, special) without a checksum mismatch.
+- HD page, Rust host and C guest: 538 and 545 checksums, setup departure,
+  return to the main menu. Two sessions from the HD main menu (536, 537). The
+  HD campaign loads a save, leaves Sol and flies in Hyperspace.
+- One HD room, HD page (C host) against Melee page (Rust guest): 532
+  checksums per player; each page returns to its own menu.
+- Online UI (test engine), HD and Melee pages: keyboard flows at 1280 x 960
+  and 1024 x 768, mouse flow, invitation, reload, lobby error and failure
+  screens.
 
 ## Melee-only navigation validation, 22 October 2026
 

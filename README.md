@@ -1,41 +1,38 @@
 # The Ur-Quan Masters — 3DO Web Edition
 
-## Melee Remastered branch
+## Four games on one site
 
-`codex/melee-remastered` makes the HD page a dedicated battle edition with
-exactly two choices: **Melee** and **Network Melee**. Both enter native fleet
-setup directly, without the original logo, intro or campaign menu. Select
-**EXIT** in fleet setup to return to the two choices and play again.
-
-It includes painted artwork for all 25 ships and crews, their original reaction
-animations, alternate ship forms, fleet icons, explosions, a dark nebula arena,
-navy/cyan panels and two original combat scores. **Picture & sound** switches
-between Remastered and Classic HD artwork live; sound changes apply after a
-page reload. Combat rules, ship balance, collision images and netplay stay native.
-See [features, build instructions and validation](docs/melee-remastered.md).
-
-The shared repository and deployment documentation below also describes the
-Original edition and the existing combined site. Campaign access described
-there does not apply to this branch's dedicated HD page.
-
-## Three games on one site
-
-[urquanmasters.org](https://urquanmasters.org/) opens a picker with three cards:
+[urquanmasters.org](https://urquanmasters.org/) opens a picker with four cards:
 
 | Game | Path | Ways to play |
 | --- | --- | --- |
 | **The Ur-Quan Masters, Original 3DO** | `/original/` (C), `/original-rust/` (Rust) | Campaign, local Melee, Online Melee with other Original players |
 | **The Ur-Quan Masters, Redrawn HD** | `/hd/` (C), `/hd-rust/` (Rust) | Campaign, local Melee, Online Melee with other HD players |
+| **[Melee Remastered](docs/melee-remastered.md)** | `/melee/` (C), `/melee-rust/` (Rust) | Super-Melee only, with new ship, crew and arena art and two new scores: local battles, Network Melee in the HD rooms |
 | **[Cosmo Clash](cosmoclash/README.md)** by Ori Hanegby, Guy Corem and Orr Kowarsky | `/cosmoclash/` | Against the computer (Easy, Medium, Hard), two players on one keyboard, online duels |
 
 Each game has its own online rooms and room list (lobby), inside the game:
 create a named room or pick one from the list; no link to copy. A private
 room with an invite link is also possible. The rooms of one game never pair
-with another game's. Cosmo Clash is a separate 2D/3D space duel game with a
+with another game's. Melee Remastered is the exception by design: it runs the
+HD engine and data, with the HD ships, weapons and rules, so its Network Melee
+uses the HD room list, and an HD player and a Melee Remastered player can fight
+each other (each sees their own art).
+
+**Melee Remastered** is the HD build published a second time with a Melee-only
+page: two choices, **Melee** and **Network Melee**, without the logo, intro or
+campaign menu. It has painted art for all 25 ships and crews, a dark nebula
+arena, navy/cyan panels and two original combat scores; **Picture & sound**
+switches between Remastered and Classic HD art at any time. It keeps its fleets
+and preferences apart from the HD saves (`.uqm-melee`, `.uqm-melee-rust`).
+The HD and Melee pages share one engine and one data file: a player who has
+the HD data in the browser does not download it again for Melee, and the site
+stores the data once. The HD page keeps its own art in Super-Melee. See
+[features, build instructions and validation](docs/melee-remastered.md). Cosmo Clash is a separate 2D/3D space duel game with a
 Rust WebAssembly gameplay engine; its source, assets, build and validation are
 in `cosmoclash/`, and its hosting is in
 [the Cosmo Clash port notes](docs/cosmoclash-port.md#server-handover).
-`./scripts/build-editions.sh` builds and packages all three (`UQM_COSMO=0`
+`./scripts/build-editions.sh` builds and packages all four (`UQM_COSMO=0`
 leaves out Cosmo Clash); `npm start` then serves the site with the room lists.
 
 A local WebAssembly port of UQM 0.8.0, based on
@@ -77,18 +74,20 @@ Online Melee with another player using the same edition. HD has separate saves
 and rooms; HD and Original cannot play one another.
 See [HD build, storage and attribution](docs/hd-edition.md).
 
-Build the selection screen, both editions and Cosmo Clash with
-`./scripts/build-editions.sh`. The first HD download is about 640 MB; the
-original artwork and HD artwork use separate engines and save databases.
+Build the selection screen, both editions, Melee Remastered and Cosmo Clash with
+`./scripts/build-editions.sh`. The first HD download is about 660 MB (HD and
+Melee Remastered share it); the original artwork and HD artwork use separate
+engines and save databases.
 
 The browser keeps each edition's game data after the first visit
 ([`web/engine-loader`](web/engine-loader/engine-loader.js)). A later visit asks
 the server only for the data file's version (its ETag) and starts from the
-stored copy; the C and Rust engines of an edition share it. A new version
+stored copy; the C and Rust engines of an edition share it, and the HD and
+Melee Remastered pages share the HD copy. A new version
 replaces the old copy. `scripts/serve.py` and the Cloudflare Worker send the
 ETag. Private windows, browsers without Cache Storage and servers without an
 ETag download the data on every visit, as before. To free the space (about
-300 MB for Original, 640 MB for HD) and keep the saved games, remove only the
+300 MB for Original, 660 MB for HD and Melee) and keep the saved games, remove only the
 site's Cache Storage (in the browser's developer tools, Application or Storage,
 Cache Storage, `uqm-game-data-original` / `uqm-game-data-hd`), or run
 `UQMEngineLoader.removeStoredData()` in the console of a game page. Clearing

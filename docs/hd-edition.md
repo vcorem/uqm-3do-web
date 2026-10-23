@@ -65,7 +65,8 @@ npm start -- --dist .tools/editions-dist --port 10001
 
 Open `http://127.0.0.1:10001/`. Choose an edition, then click its Launch button
 after loading completes. The second click unlocks browser sound. The first
-HD content download is about 640 MB; both builds are
+HD content download is about 660 MB (with the Melee Remastered art and music,
+which the same build serves at `/melee/`); both builds are
 intended for desktop browsers. Unselected engines, content and workers are
 never loaded by the picker.
 

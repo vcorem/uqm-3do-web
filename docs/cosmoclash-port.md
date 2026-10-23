@@ -97,8 +97,8 @@ site's relay and room list (see [Verification](#verification)).
 
 ## Server handover
 
-Cosmo Clash is the third game of the site: `https://urquanmasters.org/cosmoclash/`,
-with a third card on the picker at `/`. The site's Cloudflare Worker
+Cosmo Clash is a game of the site: `https://urquanmasters.org/cosmoclash/`,
+with the last card on the picker at `/`. The site's Cloudflare Worker
 (`deploy/worker.js`) serves it, and the Worker's relay (`deploy/netplay.js`)
 gives it rooms and a room list. No VPS is necessary.
 
