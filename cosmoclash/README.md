@@ -118,10 +118,10 @@ network requirements, and remaining validation.
 Imported from [ohanegby/cosmoclash-web](https://github.com/ohanegby/cosmoclash-web),
 commit `966ad7b7ac90c44d3751dc014fbdc1ae03359e07`.
 Original game: **Ori Hanegby, Guy Corem, and Orr Kowarsky**.
-The upstream package declares **ISC** for the code. The models, textures,
-sounds and music come from the authors' original game; no separate license is
-granted for them. Existing UQM code and its relay retain their own licenses;
-this import does not change them. See [Licenses](../docs/licenses.md).
+Cosmo Clash, its code and its models, textures, sounds and music (from the
+authors' original game), is under the **ISC** license: see [LICENSE](LICENSE).
+Existing UQM code and its relay retain their own licenses; this import does not
+change them. See [Licenses](../docs/licenses.md).
 
 The original [README](reference/UPSTREAM-README.md), entry point, and a SHA-256
 manifest of every imported source and asset are preserved in `reference/`.

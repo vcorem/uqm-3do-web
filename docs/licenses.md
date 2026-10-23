@@ -20,7 +20,7 @@ again (`--check` compares) when a library or toolchain version changes.
 | Rust engines (C2Rust translations of the two engines) | `rust/uqm-engine-original`, `rust/uqm-engine-hd` | the licenses of the C files they come from |
 | Rust crates of this project | `rust/uqm-core`, `rust/uqm-png`, `rust/uqm-lua`, `rust/uqm-relay` | GPL-2.0-or-later |
 | This project's own code: the site picker, page shells, online lobby, data loader, Cloudflare Worker, Node relay, build scripts and tests | `web/`, `sc2/wasm/`, `hd/wasm/`, `hd/patches/`, `server/`, `deploy/`, `scripts/`, `tests/` | GPL-2.0-or-later |
-| [Cosmo Clash](../cosmoclash/README.md) by Ori Hanegby, Guy Corem and Orr Kowarsky | `cosmoclash/` | ISC, as its package declares (`cosmoclash/package.json`) |
+| [Cosmo Clash](../cosmoclash/README.md) by Ori Hanegby, Guy Corem and Orr Kowarsky | `cosmoclash/` | ISC ([`cosmoclash/LICENSE`](../cosmoclash/LICENSE)) |
 
 Because of the GPL-2.0-only files, each compiled engine (C or Rust, Original or
 HD) as a whole is distributed under **GPL-2.0-only**; the Rust engine crates say
@@ -35,7 +35,7 @@ so in their `Cargo.toml`.
 | UQM HD MegaMod content | not in this repository: downloaded at build time ([`hd/content-lock.json`](../hd/content-lock.json)) | CC BY-NC-SA 2.5 for the UQM base content; the HD art has the licenses that its `ATTRIBUTION.txt` lists for each file (some entries say "Custom" or "Unknown"). Every HD page ships these texts as `content-licenses.txt`. |
 | Melee Remastered ship, crew and arena art | `hd/remastered/art`, `hd/remastered/render` | AI-assisted redrawings of the MegaMod HD ship and crew art. As derivative works of CC BY-NC-SA 2.5 content they are distributed under CC BY-NC-SA 2.5, with credit to Toys for Bob and the UQM MegaMod artists ([credits](../hd/remastered/credits.md)). |
 | Melee Remastered music: *Fleet Mobilization* and *Hostile Vector* | `hd/remastered/music` | Original scores made for this project. CC BY-NC-SA 2.5. |
-| Cosmo Clash models, textures, sounds and music | `cosmoclash/public` | © Ori Hanegby, Guy Corem and Orr Kowarsky, from their original game. No license is granted for them; ask the authors before you use them outside this project. |
+| Cosmo Clash models, textures, sounds and music | `cosmoclash/public` | © Ori Hanegby, Guy Corem and Orr Kowarsky, from their original game. ISC, the same license as the code ([`cosmoclash/LICENSE`](../cosmoclash/LICENSE)). |
 | UQM documentation | `sc2/doc` | CC BY 2.0 ([`sc2/COPYING`](../sc2/COPYING)) |
 | This project's documentation | `README.md`, `docs/` | GPL-2.0-or-later, as the code |
 
