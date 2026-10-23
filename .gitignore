@@ -33,3 +33,11 @@ deploy/data-parts.json
 deploy/.wrangler/
 # Rust build outputs (toolchains remain under .tools/)
 target/
+
+# Local secrets: never commit environment files or Wrangler dev variables
+.env
+.env.*
+*.env
+.dev.vars
+# A test input without secrets (the live site's origin and a room ID)
+!tests/browser/remote-peer.env

@@ -213,6 +213,10 @@ jobs:
           curl -fsS https://urquanmasters.org/melee/index.html | grep -q 'window.UQM_VARIANT = {"engine": "c", "saveDir": "/home/web_user/.uqm-melee", "meleeOnly": true};'
           curl -fsS https://urquanmasters.org/melee-rust/index.html | grep -q '"saveDir": "/home/web_user/.uqm-melee-rust", "meleeOnly": true};'
           curl -fsS https://urquanmasters.org/ | grep -q 'id="edition-melee"'
+          # The third-party notices that the picker and every game page link.
+          for path in / /original/ /hd/ /melee/; do
+            curl -fsS "https://urquanmasters.org${path}THIRD-PARTY-NOTICES.txt" | head -1 | grep -q '^Third-party notices for urquanmasters.org'
+          done
           test "$(curl -fsS -o /dev/null -w '%{content_type}' https://urquanmasters.org/melee-card.jpg)" = image/jpeg
       - name: Check the live Cosmo Clash files and headers
         run: |
@@ -280,7 +284,10 @@ jobs:
           done
       - name: Check the live room lists
         run: |
+          # Three tries for each list, as the game's own room-list client does: one socket of
+          # many can wait more than 15 s for its upgrade.
           for edition in original hd cosmoclash; do
+            for try in 1 2 3; do
             EDITION="$edition" node --input-type=module -e "
               import { WebSocket } from 'ws';
               const ws = new WebSocket('wss://urquanmasters.org/netplay/lobby?edition=' + process.env.EDITION,
@@ -294,7 +301,10 @@ jobs:
                 ws.close();
                 process.exit(message.type === 'rooms' && Array.isArray(message.rooms) ? 0 : 1);
               });
-            "
+            " && break
+            test "$try" -lt 3
+            echo "$edition room list: no answer, trying again"; sleep 5
+            done
           done
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
