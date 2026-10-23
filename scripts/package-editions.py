@@ -5,8 +5,12 @@ Original and HD are required. The Rust builds of each edition are optional; when
 given, they are published next to the C builds as /original-rust/ and /hd-rust/,
 with their own browser save folders so C and Rust saves never mix.
 
-Cosmo Clash, a separate game, is optional too: --cosmoclash takes its Vite build
-(made with --base /cosmoclash/) and publishes it as /cosmoclash/ with a third
+Melee Remastered comes with every HD build: the same engine and data, published
+again as /melee/ (and /melee-rust/) with the Melee-only page and its own save
+folders. Its card is the third on the picker.
+
+Cosmo Clash, a separate game, is optional: --cosmoclash takes its Vite build
+(made with --base /cosmoclash/) and publishes it as /cosmoclash/ with the last
 card on the picker. Without it the picker has no Cosmo Clash card.
 """
 import argparse
@@ -16,7 +20,10 @@ import re
 import shutil
 
 ENGINE = ('index.html', 'uqm-debug.js', 'uqm-debug.wasm', 'uqm-debug.data', 'uqm-debug.worker.js', 'COPYING.txt', 'toolchain-fixes.json', 'game-help.js', 'engine-loader.js')
-EXTRA = {'original': ('netplay-client.js',), 'hd': ('content-licenses.txt', 'netplay-client.js')}
+# The HD page is also the Melee Remastered page (hd/wasm/shell.html): its controls, start-screen
+# background and art credits come with every HD build (scripts/stage-melee-remastered.py).
+MELEE_FILES = ('melee-presentation.js', 'melee-presentation.css', 'melee-nebula.jpg', 'melee-credits.txt')
+EXTRA = {'original': ('netplay-client.js',), 'hd': ('content-licenses.txt', 'netplay-client.js') + MELEE_FILES}
 # The in-frame start screen and online lobby (web/online) and its art.
 ENGINE += ('online-ui.js', 'online-art.json', 'online-art.png', 'online-stars.png', 'online-title.png')
 # Rust pages get these settings before any page script runs (see the shells' UQM_VARIANT).
@@ -24,6 +31,13 @@ RUST_VARIANT = {
     'original': {'engine': 'rust', 'label': 'Rust engine (port)', 'saveDir': '/home/web_user/.uqm-rust'},
     'hd': {'engine': 'rust', 'label': 'Rust engine (port)', 'saveDir': '/home/web_user/.uqm-hd-rust'},
 }
+# The Melee Remastered pages: the HD builds with the Melee-only profile. Their fleets and
+# preferences have their own folders, so a Melee tab never writes over the HD saves.
+MELEE_VARIANT = {
+    'c': {'engine': 'c', 'saveDir': '/home/web_user/.uqm-melee', 'meleeOnly': True},
+    'rust': {'engine': 'rust', 'label': 'Rust engine (port)', 'saveDir': '/home/web_user/.uqm-melee-rust', 'meleeOnly': True},
+}
+MELEE_CARD_IMAGE = 'melee-card.jpg'
 COSMO_FOLDER = 'cosmoclash'
 COSMO_BASE = '/' + COSMO_FOLDER + '/'
 COSMO_REQUIRED = ('index.html', 'cosmoclash.wasm')
@@ -67,7 +81,7 @@ def check_cosmoclash(source):
 
 
 def package(builds, output, cosmoclash=None):
-    """builds: list of (source directory, edition, published folder, Rust variant or None).
+    """builds: list of (source directory, edition, published folder, page variant or None).
     cosmoclash: the Cosmo Clash build directory, or None."""
     output = output.resolve()
     for source in [source for source, _, _, _ in builds] + ([cosmoclash] if cosmoclash else []):
@@ -83,11 +97,6 @@ def package(builds, output, cosmoclash=None):
             path = source / name
             if not path.is_file() or not path.stat().st_size:
                 raise ValueError('Missing build artifact: ' + str(path))
-    for source, edition, _, _ in builds:
-        if edition == 'hd' and 'melee-presentation.js' in (source / 'index.html').read_text():
-            for name in ('melee-presentation.js', 'melee-presentation.css'):
-                if not (source / name).is_file():
-                    raise ValueError('Missing Melee presentation file: ' + str(source / name))
     root = Path(__file__).resolve().parent.parent
     output.mkdir(parents=True, exist_ok=True)
     for source, edition, folder, variant in builds:
@@ -101,23 +110,16 @@ def package(builds, output, cosmoclash=None):
                 shutil.copy2(metadata, destination / name)
             else:
                 (destination / name).unlink(missing_ok=True)
-        if edition == 'hd':
-            for name in ('melee-presentation.js', 'melee-presentation.css', 'melee-nebula.png'):
-                presentation = source / name
-                if presentation.is_file():
-                    shutil.copy2(presentation, destination / name)
-                else:
-                    (destination / name).unlink(missing_ok=True)
         page = destination / 'index.html'
         html = page.read_text()
         if edition == 'original':
             html = html.replace('</header>', '<a id="choose-edition" href="../index.html">Choose edition</a></header>', 1)
         if variant:
             if html.count('<head>') != 1:
-                raise ValueError('Cannot mark the Rust page: expected one <head> in ' + str(page))
+                raise ValueError('Cannot mark the page: expected one <head> in ' + str(page))
             html = html.replace('<head>', '<head>\n<script>window.UQM_VARIANT = ' + json.dumps(variant) + ';</script>', 1)
         page.write_text(html)
-    for name in ('index.html', 'editions.css', 'editions.js'):
+    for name in ('index.html', 'editions.css', 'editions.js', MELEE_CARD_IMAGE):
         shutil.copy2(root / 'web' / 'editions' / name, output / name)
     picker = output / 'index.html'
     html = picker.read_text()
@@ -131,7 +133,7 @@ def package(builds, output, cosmoclash=None):
     else:
         (output / COSMO_CARD_IMAGE).unlink(missing_ok=True)
         picker.write_text(COSMO_BLOCK.sub('', html).replace('data-games="uqm,cosmoclash"', 'data-games="uqm"'))
-    if not any(variant for _, _, _, variant in builds):
+    if not any(variant and variant['engine'] == 'rust' for _, _, _, variant in builds):
         # Without Rust builds the picker must not offer the Rust engine.
         picker = output / 'index.html'
         html = picker.read_text()
@@ -167,4 +169,7 @@ if __name__ == '__main__':
         builds.append((args.original_rust.resolve(), 'original', 'original-rust', RUST_VARIANT['original']))
     if args.hd_rust:
         builds.append((args.hd_rust.resolve(), 'hd', 'hd-rust', RUST_VARIANT['hd']))
+    builds.append((args.hd.resolve(), 'hd', 'melee', MELEE_VARIANT['c']))
+    if args.hd_rust:
+        builds.append((args.hd_rust.resolve(), 'hd', 'melee-rust', MELEE_VARIANT['rust']))
     package(builds, args.output, args.cosmoclash.resolve() if args.cosmoclash else None)

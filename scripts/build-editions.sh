@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Build the four published engines and package them behind the edition picker:
 # Original C (/original/), Original Rust (/original-rust/), HD C (/hd/), HD Rust (/hd-rust/),
-# and the separate game Cosmo Clash (/cosmoclash/, a third card on the picker).
+# Melee Remastered (the HD builds again: /melee/, /melee-rust/, the third card) and the
+# separate game Cosmo Clash (/cosmoclash/, the last card on the picker).
 # UQM_EDITION_ENGINES=c builds only the two C engines (the previous two-version site).
 # UQM_COSMO=0 leaves out Cosmo Clash (Node.js 22.12+ and Rust 1.85.1 with the
 # wasm32-unknown-unknown target build it).

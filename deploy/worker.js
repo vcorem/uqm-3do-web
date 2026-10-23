@@ -1,7 +1,8 @@
 // Cloudflare Worker for urquanmasters.org: static game files with the
 // cross-origin isolation headers, the large data files joined from parts, and
 // the Online Melee relay and its room lists (deploy/netplay.js). The site has
-// three games: UQM Original and HD (four engines) and Cosmo Clash at /cosmoclash/.
+// four games: UQM Original, HD and Melee Remastered (C and Rust engines each; Melee
+// is the HD engine with its Melee-only page) and Cosmo Clash at /cosmoclash/.
 import dataFiles from './data-parts.json';
 import { handleNetplay } from './netplay.js';
 
@@ -15,7 +16,7 @@ const ISOLATION = {
   'X-Content-Type-Options': 'nosniff',
 };
 const INDEX = { '/': '/index.html' };
-for (const folder of ['original', 'hd', 'original-rust', 'hd-rust', 'cosmoclash']) INDEX['/' + folder + '/'] = '/' + folder + '/index.html';
+for (const folder of ['original', 'hd', 'original-rust', 'hd-rust', 'melee', 'melee-rust', 'cosmoclash']) INDEX['/' + folder + '/'] = '/' + folder + '/index.html';
 const PART = /\.data\.p\d{3}$/;
 // Content types by file extension. The asset store has its own table; this one
 // makes the types the same as those of the local servers (server/netplay.mjs).

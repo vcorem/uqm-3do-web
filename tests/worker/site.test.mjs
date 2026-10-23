@@ -12,6 +12,8 @@ const COSMO_PAGE = '<!doctype html><script type="module" src="/cosmoclash/assets
 const WASM = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
 const FILES = {
   'original/index.html': 'original page',
+  'melee/index.html': 'melee page',
+  'melee-rust/index.html': 'melee rust page',
   'cosmoclash/index.html': COSMO_PAGE,
   'cosmoclash/assets/index-AbCd_123.js': 'export {};',
   'cosmoclash/assets/index-Xy9-Zw78.css': 'body{}',
@@ -115,7 +117,8 @@ test('missing Cosmo Clash files are 404, other methods 405, and the UQM pages ke
   const post = await fetch(origin + '/cosmoclash/', { method: 'POST' });
   assert.equal(post.status, 405);
   assert.equal(post.headers.get('allow'), 'GET, HEAD');
-  for (const [url, body] of [['/', '<canvas>game</canvas>'], ['/original/', 'original page']]) {
+  for (const [url, body] of [['/', '<canvas>game</canvas>'], ['/original/', 'original page'],
+    ['/melee/', 'melee page'], ['/melee-rust/', 'melee rust page']]) {
     const response = await fetch(origin + url);
     assert.equal(response.status, 200, url);
     assert.equal(await response.text(), body, url);

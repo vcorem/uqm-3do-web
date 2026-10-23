@@ -1,4 +1,4 @@
-// Cosmo Clash on the packaged site, in a real browser: the third card of the
+// Cosmo Clash on the packaged site, in a real browser: the last card of the
 // picker, the game at /cosmoclash/ with all its files from that folder, a short
 // battle against the computer (the models, sounds and textures load), Online
 // Melee between two pages through the site's own relay and cosmoclash room
@@ -36,9 +36,11 @@ async function standInSite() {
   const files = ['index.html', 'uqm-debug.js', 'uqm-debug.wasm', 'uqm-debug.data', 'uqm-debug.worker.js', 'COPYING.txt',
     'toolchain-fixes.json', 'game-help.js', 'engine-loader.js', 'online-ui.js', 'online-art.json', 'online-art.png',
     'online-stars.png', 'online-title.png', 'netplay-client.js', 'content-licenses.txt'];
+  // Every HD build also carries the Melee Remastered page files (/melee/ is the HD build again).
+  const melee = ['melee-presentation.js', 'melee-presentation.css', 'melee-nebula.jpg', 'melee-credits.txt'];
   for (const edition of ['original', 'hd']) {
     await mkdir(path.join(temp, edition));
-    for (const name of files) {
+    for (const name of edition === 'hd' ? [...files, ...melee] : files) {
       await writeFile(path.join(temp, edition, name), name === 'index.html'
         ? `<!doctype html><head><title>UQM ${edition}</title></head><header>Stand-in ${edition} page</header>` : name);
     }
@@ -186,23 +188,29 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
   watch(page, 'host');
 
-  // The picker: three cards; nothing of the game loads before a choice, except the card art.
+  // The picker: four cards; nothing of the game loads before a choice, except the card art.
   await page.goto(origin + '/');
   await page.waitForFunction(() => typeof UQMEditions === 'object');
   const card = page.locator('label[for="edition-cosmoclash"]');
   await card.waitFor();
   assert.match(await card.textContent(), /Cosmo\s*Clash[\s\S]*by Ori Hanegby, Guy Corem and Orr Kowarsky/);
   assert.match(await card.textContent(), /Against the computer[\s\S]*Two players on one keyboard[\s\S]*Online/);
-  assert.ok(await page.locator('.card-art img').evaluate(image => image.complete && image.naturalWidth > 0), 'the card art loads');
-  assert.equal(await page.locator('input[name="edition"]').count(), 3);
+  for (const art of ['cosmoclash', 'melee']) {
+    assert.ok(await page.locator(`label[for="edition-${art}"] .card-art img`).evaluate(image => image.complete && image.naturalWidth > 0),
+      art + ': the card art loads');
+  }
+  assert.equal(await page.locator('input[name="edition"]').count(), 4);
   assert.deepEqual(report.requests.filter(url => new URL(url).pathname.startsWith('/cosmoclash/')), [],
     'the picker loads no Cosmo Clash file before a choice');
   assert.ok(report.requests.every(url => !/\.(wasm|data)$/.test(new URL(url).pathname)), 'the picker loads no engine');
   await page.screenshot({ path: path.join(out, 'picker.png'), fullPage: true });
 
-  // Choose the card with the keyboard, as a player can: Original -> HD -> Cosmo Clash.
+  // Choose the card with the keyboard, as a player can: Original -> HD -> Melee Remastered -> Cosmo Clash.
   await page.locator('#edition-original').focus();
   await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  assert.equal(await page.locator('#edition-melee').isChecked(), true);
+  assert.equal(await page.locator('#launch-label').textContent(), 'Play Melee Remastered');
   await page.keyboard.press('ArrowRight');
   assert.equal(await page.locator('#edition-cosmoclash').isChecked(), true);
   assert.equal(await page.locator('#launch-label').textContent(), 'Play Cosmo Clash');

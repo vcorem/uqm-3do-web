@@ -337,8 +337,15 @@ try {
     const returns = Math.max(1, Number(process.env.UQM_RETURN_VISITS) || 1);
     const visits = [['second', edition], ['rust', edition + '-rust']];
     for (let n = 2; n <= returns; n++) visits.push(['second-' + n, edition]);
-    for (const [name, folder] of visits) {
-      const again = results[name] = await visit(folder, folder + '-' + name);
+    // Melee Remastered pages package the HD builds again: they start from the stored HD copy.
+    // (Their start screen has no Play button; the HD visits above launch the engine.)
+    if (edition === 'hd') {
+      for (const folder of ['melee', 'melee-rust']) {
+        if (parts[`/${folder}/uqm-debug.data`]) visits.push([folder, folder, { launch: false }]);
+      }
+    }
+    for (const [name, folder, options] of visits) {
+      const again = results[name] = await visit(folder, folder + '-' + name, options);
       assert.equal(again.gameData.source, 'cache', folder + ': ' + JSON.stringify(again.gameData));
       assert.deepEqual(again.methods, ['HEAD'], folder + ': only the HEAD reaches the server');
       assert.equal(again.dataEntries.length, 1, JSON.stringify(again.dataEntries));

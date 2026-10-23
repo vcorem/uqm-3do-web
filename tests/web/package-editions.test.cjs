@@ -1,5 +1,6 @@
-// scripts/package-editions.py with small stand-in builds: the UQM editions and
-// the optional Cosmo Clash build at /cosmoclash/ with its card on the picker.
+// scripts/package-editions.py with small stand-in builds: the UQM editions, Melee
+// Remastered (the HD builds again at /melee/) and the optional Cosmo Clash build at
+// /cosmoclash/ with its card on the picker.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -12,7 +13,8 @@ const script = path.join(root, 'scripts/package-editions.py');
 const ENGINE = ['index.html', 'uqm-debug.js', 'uqm-debug.wasm', 'uqm-debug.data', 'uqm-debug.worker.js', 'COPYING.txt',
     'toolchain-fixes.json', 'game-help.js', 'engine-loader.js', 'online-ui.js', 'online-art.json', 'online-art.png',
     'online-stars.png', 'online-title.png'];
-const EXTRA = { original: ['netplay-client.js'], hd: ['content-licenses.txt', 'netplay-client.js'] };
+const EXTRA = { original: ['netplay-client.js'], hd: ['content-licenses.txt', 'netplay-client.js',
+    'melee-presentation.js', 'melee-presentation.css', 'melee-nebula.jpg', 'melee-credits.txt'] };
 const COSMO_PAGE = '<!doctype html><script type="module" crossorigin src="/cosmoclash/assets/index-AbCd1234.js"></script>' +
     '<link rel="stylesheet" crossorigin href="/cosmoclash/assets/index-Ef56Gh78.css"></head><body></body>';
 
@@ -25,13 +27,19 @@ function write(file, content) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, content);
 }
-function uqmBuilds(dir) {
-    for (const edition of ['original', 'hd']) {
-        for (const name of [...ENGINE, ...EXTRA[edition]]) {
-            write(path.join(dir, edition, name), name === 'index.html' ? '<head></head><header>UQM</header>' : name);
+function uqmBuilds(dir, rust = false) {
+    const builds = rust ? ['original', 'hd', 'original-rust', 'hd-rust'] : ['original', 'hd'];
+    for (const build of builds) {
+        for (const name of [...ENGINE, ...EXTRA[build.replace('-rust', '')]]) {
+            write(path.join(dir, build, name), name === 'index.html' ? '<head></head><header>UQM</header>' : build + ':' + name);
         }
     }
-    return ['--original', path.join(dir, 'original'), '--hd', path.join(dir, 'hd')];
+    return builds.flatMap(build => ['--' + build, path.join(dir, build)]);
+}
+/** The UQM_VARIANT that package-editions.py wrote into a page, or null. */
+function variant(page) {
+    const match = fs.readFileSync(page, 'utf8').match(/<script>window\.UQM_VARIANT = (.*?);<\/script>/);
+    return match ? JSON.parse(match[1]) : null;
 }
 /** A Cosmo Clash build as `vite build --base /cosmoclash/` writes it; files overrides or removes (null) files. */
 function cosmoBuild(dir, files = {}) {
@@ -67,9 +75,43 @@ test('without --cosmoclash the site has no Cosmo Clash folder, card, image or li
     assert.equal(fs.existsSync(path.join(site, 'cosmoclash-card.jpg')), false);
     const picker = fs.readFileSync(path.join(site, 'index.html'), 'utf8');
     assert.match(picker, /data-games="uqm"/);
-    assert.doesNotMatch(picker, /cosmoclash|Cosmo Clash|<img/i);
-    assert.match(picker, /id="edition-original"[\s\S]*id="edition-hd"/);
-    assert.match(picker, /HD<\/a>\)\. JavaScript is required/, 'the noscript text stays whole');
+    assert.doesNotMatch(picker, /cosmoclash|Cosmo Clash/i);
+    assert.deepEqual([...picker.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g)].map(match => match[1]), ['melee-card.jpg']);
+    assert.match(picker, /id="edition-original"[\s\S]*id="edition-hd"[\s\S]*id="edition-melee"/);
+    assert.match(picker, /Melee<\/a>\)\. JavaScript is required/, 'the noscript text stays whole');
+});
+
+test('Melee Remastered publishes the HD builds again with the Melee page and its own save folders', t => {
+    const dir = temp(t);
+    const site = path.join(dir, 'site');
+    const result = run([...uqmBuilds(dir, true), '--output', site]);
+    assert.equal(result.status, 0, result.output);
+    assert.match(result.output, /Packaged original, hd, original-rust, hd-rust, melee, melee-rust:/);
+    for (const [folder, build] of [['melee', 'hd'], ['melee-rust', 'hd-rust']]) {
+        for (const name of [...ENGINE, ...EXTRA.hd].filter(name => name !== 'index.html')) {
+            assert.equal(fs.readFileSync(path.join(site, folder, name), 'utf8'), build + ':' + name, folder + '/' + name);
+        }
+    }
+    assert.equal(variant(path.join(site, 'hd/index.html')), null, 'the HD page stays the campaign page');
+    assert.deepEqual(variant(path.join(site, 'hd-rust/index.html')),
+        { engine: 'rust', label: 'Rust engine (port)', saveDir: '/home/web_user/.uqm-hd-rust' });
+    assert.deepEqual(variant(path.join(site, 'melee/index.html')),
+        { engine: 'c', saveDir: '/home/web_user/.uqm-melee', meleeOnly: true });
+    assert.deepEqual(variant(path.join(site, 'melee-rust/index.html')),
+        { engine: 'rust', label: 'Rust engine (port)', saveDir: '/home/web_user/.uqm-melee-rust', meleeOnly: true });
+    assert.deepEqual(fs.readFileSync(path.join(site, 'melee-card.jpg')), fs.readFileSync(path.join(root, 'web/editions/melee-card.jpg')));
+    assert.match(fs.readFileSync(path.join(site, 'index.html'), 'utf8'), /data-engines="c,rust"/);
+    // Without the HD Rust build there is no Rust Melee page either.
+    const plain = path.join(dir, 'plain');
+    assert.equal(run([...uqmBuilds(dir), '--output', plain]).status, 0);
+    assert.equal(fs.existsSync(path.join(plain, 'melee-rust')), false);
+    assert.equal(fs.existsSync(path.join(plain, 'melee/index.html')), true);
+    // An HD build without the Melee page files is refused.
+    const builds = uqmBuilds(dir);
+    fs.rmSync(path.join(dir, 'hd', 'melee-presentation.js'));
+    const refused = run([...builds, '--output', path.join(dir, 'other')]);
+    assert.notEqual(refused.status, 0);
+    assert.match(refused.output, /Missing build artifact: .*melee-presentation\.js/);
 });
 
 test('--cosmoclash publishes the whole build at /cosmoclash/ and keeps the third card', t => {
@@ -78,7 +120,7 @@ test('--cosmoclash publishes the whole build at /cosmoclash/ and keeps the third
     const cosmo = cosmoBuild(path.join(dir, 'cosmo'));
     const result = run([...uqmBuilds(dir), '--cosmoclash', cosmo, '--output', site]);
     assert.equal(result.status, 0, result.output);
-    assert.match(result.output, /Packaged original, hd, cosmoclash/);
+    assert.match(result.output, /Packaged original, hd, melee, cosmoclash/);
     assert.deepEqual(files(path.join(site, 'cosmoclash')), ['assets', 'assets/index-AbCd1234.js', 'assets/index-Ef56Gh78.css',
         'cosmoclash.wasm', 'index.html', 'models', 'models/gondi.glb', 'sounds', 'sounds/Damage.ogg', 'textures', 'textures/logo.jpg']);
     assert.equal(fs.readFileSync(path.join(site, 'cosmoclash/index.html'), 'utf8'), COSMO_PAGE, 'the game page is copied unchanged');

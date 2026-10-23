@@ -1,5 +1,5 @@
 /* This page selects a document. It never imports or initializes a game engine.
-   The games: UQM Original and HD (C or Rust engine) and Cosmo Clash (/cosmoclash/). */
+   The games: UQM Original, HD and Melee Remastered (C or Rust engine) and Cosmo Clash (/cosmoclash/). */
 (function (root, factory) {
     'use strict';
     const api = factory();
@@ -12,7 +12,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
     const STORAGE_KEY = 'uqm.web.edition.v1';
-    const validEdition = value => value === 'original' || value === 'hd' || value === 'cosmoclash';
+    const validEdition = value => ['original', 'hd', 'melee', 'cosmoclash'].includes(value);
     const normalize = value => validEdition(value) ? value : 'original';
     const COSMO_PATH = '/cosmoclash/';
     // The C engines are the reference; the Rust port is published next to them for testing.
@@ -52,7 +52,8 @@
             url.pathname = COSMO_PATH;
             return url.href;
         }
-        const folder = (selected === 'hd' ? 'hd' : 'original') + (normalizeEngine(engine) === 'rust' ? '-rust' : '');
+        // Melee Remastered is the HD engine with its Melee-only page (/melee/, /melee-rust/).
+        const folder = selected + (normalizeEngine(engine) === 'rust' ? '-rust' : '');
         url.pathname = '/' + folder + '/index.html';
         return url.href;
     }
@@ -61,7 +62,7 @@
         const attribute = name => (form.getAttribute && form.getAttribute(name)) || '';
         // The packager marks a package without Cosmo Clash and removes its card.
         const cosmoAvailable = String(attribute('data-games') || 'uqm').split(',').includes('cosmoclash');
-        const editions = cosmoAvailable ? ['original', 'hd', 'cosmoclash'] : ['original', 'hd'];
+        const editions = ['original', 'hd', 'melee'].concat(cosmoAvailable ? ['cosmoclash'] : []);
         const offered = value => editions.includes(value) ? value : 'original';
         const radios = editions.map(value => document.getElementById('edition-' + value));
         const launch = document.getElementById('launch-edition');
@@ -87,7 +88,7 @@
         function render() {
             radios.forEach(radio => { radio.checked = radio.value === selected; });
             engineRadios.forEach(radio => { radio.checked = radio.value === engine; });
-            // The engine switch is for the UQM editions; Cosmo Clash has one engine.
+            // The engine switch is for the UQM games; Cosmo Clash has one engine.
             if (engineChoice) engineChoice.hidden = !rustAvailable || selected === 'cosmoclash';
             if (selected === 'cosmoclash') {
                 label.textContent = 'Play Cosmo Clash';
@@ -95,10 +96,13 @@
                 return;
             }
             const rust = engine === 'rust';
-            label.textContent = (selected === 'hd' ? 'Play Redrawn HD' : 'Play Original 3DO') + (rust ? ' · Rust' : '');
-            note.textContent = (selected === 'hd' ? 'Redrawn artwork at 1280 × 960. Online Melee with HD players and separate saves.'
-                : 'Original artwork. Campaign, local and online Melee.') +
-                (rust ? ' Rust engine: a test version with its own saves.' : '');
+            const copy = {
+                original: ['Play Original 3DO', 'Original artwork. Campaign, local and online Melee.'],
+                hd: ['Play Redrawn HD', 'Redrawn artwork at 1280 × 960. Online Melee with HD players and separate saves.'],
+                melee: ['Play Melee Remastered', 'Ship battles with new art. Local or Network Melee: the rooms are shared with Redrawn HD.'],
+            }[selected];
+            label.textContent = copy[0] + (rust ? ' · Rust' : '');
+            note.textContent = copy[1] + (rust ? ' Rust engine: a test version with its own saves.' : '');
         }
         // An Original invitation keeps the other games closed.
         const locked = radio => invite && radio.value !== 'original';

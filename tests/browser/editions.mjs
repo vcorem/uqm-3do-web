@@ -197,14 +197,48 @@ try {
   }));
   assert.deepEqual(saved.bytes, Array.from(fixture));
   assert.equal(saved.hdMounted, false);
+  // Melee Remastered: the third card opens the HD engine and data again, with the
+  // Melee-only page, its own saves and its own art; HD's saves stay out of sight.
+  await page.goto(origin);
+  await page.waitForFunction(() => typeof UQMEditions === 'object');
+  if (await page.locator('#engine-c').count()) await page.locator('#engine-c').check();
+  await page.locator('#edition-melee').check();
+  assert.equal(await page.locator('#launch-label').textContent(), 'Play Melee Remastered');
+  await page.locator('#launch-edition').click();
+  await waitForGame('runtime', 240000);
+  assert.equal(new URL(page.url()).pathname, '/melee/index.html');
+  report.melee = await page.evaluate(() => ({
+    meleeOnly: Module.meleeOnly, savePath: Module.uqmSavePath, args: Module.arguments, title: document.title,
+    label: document.querySelector('.edition').innerText, link: document.getElementById('choose-edition').textContent,
+    hdSaveVisible: FS.analyzePath('/home/web_user/.uqm-hd/edition-check.txt').exists,
+    presentation: getComputedStyle(document.getElementById('presentation-toggle')).display !== 'none',
+    remastered: Module._UQM_GetMeleeRemastered(),
+  }));
+  assert.equal(report.melee.meleeOnly, true);
+  assert.equal(report.melee.savePath, '/home/web_user/.uqm-melee');
+  assert.ok(report.melee.args.includes('--configdir=/home/web_user/.uqm-melee'), JSON.stringify(report.melee.args));
+  assert.equal(report.melee.title, 'The Ur-Quan Masters — Melee Remastered');
+  assert.equal(report.melee.link, 'Choose game');
+  assert.match(report.melee.label, /^Melee Remastered · 1280 × 960$/);
+  assert.equal(report.melee.hdSaveVisible, false, 'The Melee page must not see the HD saves');
+  assert.equal(report.melee.presentation, true, 'Picture & sound is on the Melee page');
+  assert.equal(report.melee.remastered, 1, 'The Melee page draws the Remastered art');
+  await page.screenshot({ path: path.join(out, 'melee-start.png') });
+  await page.getByRole('button', { name: 'Melee', exact: true }).click();
+  await waitForGame('melee', 120000);
+  await sleep(2500);
+  report.melee.fleetCanvas = await waitForRenderedCanvas('melee-fleet.png');
+  assert.equal(await page.title(), 'The Ur-Quan Masters — Melee Remastered', 'the tab keeps the page name after the engine starts');
   // A package with the Rust builds offers an engine switch. The Rust pages must boot,
   // say which engine runs, and keep their saves apart from the C saves.
   const offersRust = (await readFile(path.join(dist, 'index.html'), 'utf8')).includes('data-engines="c,rust"');
   if (offersRust) {
     report.rust = {};
-    for (const [edition, folder, saveDir, button] of [
-      ['original', 'original-rust', '/home/web_user/.uqm-rust', 'Play'],
-      ['hd', 'hd-rust', '/home/web_user/.uqm-hd-rust', 'Play']]) {
+    // [card, Rust folder, its saves, start button, the screen it opens, a C save it must not see]
+    for (const [edition, folder, saveDir, button, screen, cSave] of [
+      ['original', 'original-rust', '/home/web_user/.uqm-rust', 'Play', 'mainMenu', '/home/web_user/.uqm/save/uqmsave.00'],
+      ['hd', 'hd-rust', '/home/web_user/.uqm-hd-rust', 'Play', 'mainMenu', '/home/web_user/.uqm-hd/edition-check.txt'],
+      ['melee', 'melee-rust', '/home/web_user/.uqm-melee-rust', 'Melee', 'melee', '/home/web_user/.uqm-hd/edition-check.txt']]) {
       await page.goto(origin);
       await page.waitForFunction(() => typeof UQMEditions === 'object');
       await page.locator('#engine-rust').check();
@@ -213,11 +247,11 @@ try {
       await page.locator('#launch-edition').click();
       await waitForGame('runtime', 240000);
       assert.equal(new URL(page.url()).pathname, '/' + folder + '/index.html');
-      const state = await page.evaluate(([saveDir, edition]) => ({
+      const state = await page.evaluate(([saveDir, cSave]) => ({
         savePath: Module.uqmSavePath, args: Module.arguments, label: document.querySelector('.edition').textContent,
         rustMounted: FS.analyzePath(saveDir).exists,
-        cSaveVisible: FS.analyzePath(edition === 'hd' ? '/home/web_user/.uqm-hd/edition-check.txt' : '/home/web_user/.uqm/save/uqmsave.00').exists,
-      }), [saveDir, edition]);
+        cSaveVisible: FS.analyzePath(cSave).exists,
+      }), [saveDir, cSave]);
       report.rust[folder] = state;
       assert.equal(state.savePath, saveDir);
       assert.ok(state.args.includes('--configdir=' + saveDir), JSON.stringify(state.args));
@@ -234,8 +268,8 @@ try {
       await waitForGame('runtime', 240000);
       assert.equal(await page.evaluate(saveDir => FS.readFile(saveDir + '/engine-check.txt', { encoding: 'utf8' }), saveDir), folder);
       await page.getByRole('button', { name: button, exact: true }).click();
-      await waitForGame('mainMenu', 120000);
-      if (edition === 'hd') assert.equal(await page.evaluate(() => canvas.width), 1280);
+      await waitForGame(screen, 120000);
+      if (edition !== 'original') assert.equal(await page.evaluate(() => canvas.width), 1280);
       await page.locator('#canvas').screenshot({ path: path.join(out, folder + '-menu.png') });
     }
     // The C saves are unchanged after both Rust engines ran.
@@ -250,8 +284,9 @@ try {
   }
   assert.deepEqual(report.errors, []);
   report.passed = true;
-  console.log(`${browserType}: both real engines boot; HD is 1280x960; audio and Melee work; saves isolated and persisted.` +
-    (offersRust ? ' Rust Original and HD boot from the engine switch with their own saves.' : ''));
+  console.log(`${browserType}: both real engines boot; HD is 1280x960; audio and Melee work; saves isolated and persisted;` +
+    ' Melee Remastered opens its fleet setup with its own saves.' +
+    (offersRust ? ' Rust Original, HD and Melee boot from the engine switch with their own saves.' : ''));
 } catch (error) {
   report.failure = error.stack;
   if (page && !page.isClosed()) {

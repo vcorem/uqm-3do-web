@@ -1,6 +1,6 @@
 /* Game data loader shared by every engine page (Original and HD, C and Rust).
 
-   The Emscripten data file (Original 299 MB, HD 640 MB) is too large for the
+   The Emscripten data file (Original 299 MB, HD 663 MB) is too large for the
    browsers' HTTP caches, so every visit used to download it again. The page
    keeps the engine script in an inert <template>. This loader asks the server
    for the data file's ETag with a HEAD request, keeps one copy per edition and

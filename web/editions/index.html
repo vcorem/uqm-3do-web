@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080c13">
-  <meta name="description" content="Return to The Ur-Quan Masters. Choose the original 3DO presentation or redrawn HD artwork, and play in your browser.">
+  <meta name="description" content="Return to The Ur-Quan Masters. Choose the original 3DO presentation, redrawn HD artwork or the remastered Super-Melee, and play in your browser.">
   <title>The Ur-Quan Masters — Choose your game</title>
   <link rel="stylesheet" href="editions.css">
   <script src="editions.js" defer></script>
@@ -44,11 +44,27 @@
               <span class="features"><span>Redrawn high-resolution artwork</span><span>Campaign &amp; local Melee</span><span>Online Melee with another HD player · separate saves</span></span>
             </span>
           </label>
+          <label class="edition-card edition-melee" for="edition-melee">
+            <input id="edition-melee" type="radio" name="edition" value="melee" aria-describedby="melee-details">
+            <span class="card-content">
+              <span class="card-topline"><span class="edition-number" aria-hidden="true">03</span><span class="edition-tag">SUPER-MELEE · FLEET BATTLES</span></span>
+              <span class="card-body">
+                <span class="card-art" aria-hidden="true"><img src="melee-card.jpg" alt="" width="1200" height="720" decoding="async"></span>
+                <span class="card-copy">
+                  <span class="card-title">Melee <span>Remastered</span></span>
+                  <span class="card-credit">The ships, weapons and rules of Redrawn HD</span>
+                  <span class="card-description" id="melee-details">Super-Melee with newly painted art for all 25 ships and their crews, a dark nebula arena and two new combat scores.</span>
+                  <span class="card-rule" aria-hidden="true"></span>
+                  <span class="features"><span>Against the computer or a friend on one keyboard</span><span>Network Melee · pick a room in the game</span><span>Remastered or Classic HD art · switch at any time</span></span>
+                </span>
+              </span>
+            </span>
+          </label>
           <!-- cosmoclash: scripts/package-editions.py removes this card from a package without Cosmo Clash. -->
           <label class="edition-card edition-cosmo" for="edition-cosmoclash">
             <input id="edition-cosmoclash" type="radio" name="edition" value="cosmoclash" aria-describedby="cosmoclash-details">
             <span class="card-content">
-              <span class="card-topline"><span class="edition-number" aria-hidden="true">03</span><span class="edition-tag">A SEPARATE GAME · 3D SPACE DUELS</span></span>
+              <span class="card-topline"><span class="edition-number" aria-hidden="true">04</span><span class="edition-tag">A SEPARATE GAME · 3D SPACE DUELS</span></span>
               <span class="card-body">
                 <span class="card-copy">
                   <span class="card-title">Cosmo <span>Clash</span></span>
@@ -65,7 +81,7 @@
         </div>
       </fieldset>
       <fieldset id="engine-choice" class="engine-choice">
-        <legend>Engine for Original and HD</legend>
+        <legend>Engine for Original, HD and Melee</legend>
         <div class="engines">
           <label class="engine-option" for="engine-c"><input id="engine-c" type="radio" name="engine" value="c" checked aria-describedby="engine-c-details"><span><strong>C</strong> <span id="engine-c-details">The reference engine.</span></span></label>
           <label class="engine-option" for="engine-rust"><input id="engine-rust" type="radio" name="engine" value="rust" aria-describedby="engine-rust-details"><span><strong>Rust</strong> <span id="engine-rust-details">The new port, for testing. Its own saves. Online Melee works with C players of the same edition.</span></span></label>
@@ -80,7 +96,7 @@
         <button id="launch-edition" type="submit"><span id="launch-label">Play Original 3DO</span><span class="launch-arrow" aria-hidden="true">↗</span></button>
       </div>
     </form>
-    <noscript><p class="noscript">Choose an edition: <a href="original/index.html">Original 3DO</a> or <a href="hd/index.html">Redrawn HD</a> (Rust engine: <a href="original-rust/index.html">Original</a>, <a href="hd-rust/index.html">HD</a>).<!-- cosmoclash --> Or play <a href="cosmoclash/">Cosmo Clash</a>.<!-- /cosmoclash --> JavaScript is required to run the games.</p></noscript>
+    <noscript><p class="noscript">Choose an edition: <a href="original/index.html">Original 3DO</a>, <a href="hd/index.html">Redrawn HD</a> or <a href="melee/index.html">Melee Remastered</a> (Rust engine: <a href="original-rust/index.html">Original</a>, <a href="hd-rust/index.html">HD</a>, <a href="melee-rust/index.html">Melee</a>).<!-- cosmoclash --> Or play <a href="cosmoclash/">Cosmo Clash</a>.<!-- /cosmoclash --> JavaScript is required to run the games.</p></noscript>
     <footer>
       <p>Desktop keyboard recommended. Each edition and engine keeps its own browser saves.</p>
       <p>Star Control II by Toys for Bob. Built on the work of the UQM and HD communities.</p>

@@ -48,18 +48,32 @@ def stage_content(destination):
     print('Staged Melee render side images and optional native soundtrack:', destination)
 
 
+def credits_text():
+    """The page's art and music notice: the presentation credits and the score's own record."""
+    music = json.loads((SOURCE / 'music' / 'credits.json').read_text())
+    tracks = ', '.join('%s (%s, %d BPM)' % (track['title'], track['file'], track['tempo_bpm'])
+                       for track in music['tracks'])
+    return ''.join([
+        (SOURCE / 'credits.md').read_text().rstrip('\n'), '\n\n## Music\n\n',
+        music['attribution_label'], ': ', tracks, '.\n', music['creation'], '\n', music['tools'], '\n',
+    ])
+
+
 def publish_page(destination):
     destination.mkdir(parents=True, exist_ok=True)
     for name in PAGE_FILES:
         shutil.copy2(ROOT / 'hd' / 'wasm' / name, destination / name)
-    # Reuse the authored arena art in the launcher without another engine load.
-    nebula = SOURCE / 'art' / 'nebula.png'
+    (destination / 'melee-credits.txt').write_text(credits_text())
+    # Reuse the authored arena art in the launcher without another engine load: the
+    # nebula at the frame size (scripts/make-melee-page-art.py makes it from nebula.png).
+    nebula = SOURCE / 'art' / 'nebula-start.jpg'
     if nebula.is_file():
-        shutil.copy2(nebula, destination / 'melee-nebula.png')
+        (destination / 'melee-nebula.png').unlink(missing_ok=True)
+        shutil.copy2(nebula, destination / 'melee-nebula.jpg')
         manifest = destination / 'online-art.json'
         if manifest.is_file():
             art = json.loads(manifest.read_text())
-            art['images']['remastered'] = 'melee-nebula.png'
+            art['images']['remastered'] = 'melee-nebula.jpg'
             manifest.write_text(json.dumps(art, separators=(',', ':')) + '\n')
     print('Published Melee presentation controls:', destination)
 

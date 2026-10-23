@@ -57,9 +57,10 @@ test('chooser loads only its own interface assets, never an edition bundle', () 
     const images = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g)].map(match => match[1]);
     assert.deepEqual(scripts, ['editions.js']);
     assert.deepEqual(styles, ['editions.css']);
-    // One picture: the Cosmo Clash card art, a small copy of its title screen next to this page.
-    assert.deepEqual(images, ['cosmoclash-card.jpg']);
-    assert.ok(fs.statSync(path.join(root, images[0])).size < 120000, 'the card art stays small');
+    // Two pictures next to this page: the Melee Remastered card art (scripts/make-melee-card.py)
+    // and the Cosmo Clash card art, a small copy of its title screen.
+    assert.deepEqual(images, ['melee-card.jpg', 'cosmoclash-card.jpg']);
+    for (const image of images) assert.ok(fs.statSync(path.join(root, image)).size < 120000, image + ': the card art stays small');
     assert.doesNotMatch(html, /<(?:iframe|object|embed|video|audio)\b|\b(?:preload|prefetch)\b/i);
     assert.doesNotMatch(fs.readFileSync(path.join(root, 'editions.css'), 'utf8'), /\burl\s*\(/i);
     assert.ok(fs.existsSync(path.join(root, scripts[0])));
@@ -274,9 +275,39 @@ test('an Original invitation keeps the Cosmo Clash card closed', () => {
     assert.equal(h.elements.get('edition-cosmoclash').disabled, true);
 });
 
-test('a package without Cosmo Clash has two cards and opens Original for a saved Cosmo Clash choice', () => {
+test('the Melee Remastered card opens the HD engine with the Melee page, keeps the engine switch and is remembered', () => {
+    assert.equal(editions.destination('https://game.example/', 'melee'), 'https://game.example/melee/index.html');
+    assert.equal(editions.destination('https://game.example/', 'melee', 'rust'), 'https://game.example/melee-rust/index.html');
+    const h = harness();
+    h.choose('melee');
+    assert.equal(h.elements.get('edition-melee').checked, true);
+    assert.equal(h.elements.get('edition-hd').checked, false);
+    assert.equal(h.elements.get('launch-label').textContent, 'Play Melee Remastered');
+    assert.match(h.elements.get('selection-note').textContent, /Network Melee.*shared with Redrawn HD/);
+    assert.equal(h.elements.get('engine-choice').hidden, false, 'Melee has the C and Rust engines of HD');
+    assert.equal(h.entries.get(editions.STORAGE_KEY), 'melee');
+    h.chooseEngine('rust');
+    assert.equal(h.elements.get('launch-label').textContent, 'Play Melee Remastered · Rust');
+    h.submit();
+    assert.deepEqual(h.navigations, ['https://game.example/melee-rust/index.html']);
+    const revisit = harness({ saved: 'melee', savedEngine: 'c' });
+    assert.equal(revisit.elements.get('edition-melee').checked, true);
+    revisit.submit();
+    assert.deepEqual(revisit.navigations, ['https://game.example/melee/index.html']);
+    // An Original invitation keeps this card closed too.
+    const invited = harness({ saved: 'melee', href: 'https://game.example/#room=' + token });
+    assert.equal(invited.elements.get('edition-melee').disabled, true);
+    invited.submit();
+    assert.deepEqual(invited.navigations, ['https://game.example/original/index.html#room=' + token]);
+    // The card order: Original, HD, Melee Remastered, Cosmo Clash.
+    assert.deepEqual([...html.matchAll(/id="edition-([a-z]+)" type="radio"/g)].map(match => match[1]),
+        ['original', 'hd', 'melee', 'cosmoclash']);
+});
+
+test('a package without Cosmo Clash has three cards and opens Original for a saved Cosmo Clash choice', () => {
     assert.notEqual(withoutCosmo, html);
-    assert.doesNotMatch(withoutCosmo, /cosmoclash|Cosmo Clash|<img/i);
+    assert.doesNotMatch(withoutCosmo, /cosmoclash|Cosmo Clash/i);
+    assert.deepEqual([...withoutCosmo.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g)].map(match => match[1]), ['melee-card.jpg']);
     const h = harness({ page: withoutCosmo, saved: 'cosmoclash' });
     assert.equal(h.elements.has('edition-cosmoclash'), false);
     assert.equal(h.elements.get('edition-original').checked, true);
