@@ -142,18 +142,26 @@ jobs:
         run: bash tests/rust/test-hd-netplay.sh --all
       - name: Install Chromium for game integration tests
         run: npx playwright install --with-deps chromium
+      # The HD builds serve two pages: Redrawn HD (campaign) and, with UQM_MELEE_ONLY=1 (the
+      # Melee page's variant), Melee Remastered. UQM_REMASTERED=1 gives the two peers different art.
       - name: Test HD Rust multiplayer matches and disconnects
-        run: UQM_RELAY=rust UQM_EDITION=hd UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/hd-rust-rust npm run test:browser
-      - name: Test the HD start screen and online lobby in the game frame
-        run: UQM_EDITIONS=hd npm run test:online-ui
+        run: UQM_RELAY=rust UQM_EDITION=hd UQM_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/hd-rust-rust npm run test:browser
+      - name: Test the HD and Melee Remastered start screens and online lobby in the game frame
+        run: UQM_EDITIONS=hd,melee npm run test:online-ui
       - name: Compare HD C and Rust clients through the Rust relay
         run: |
           UQM_CORE=c HD_OFFLINE=1 HD_BUILD_OUTPUT="$PWD/.tools/hd-c-reference" ./scripts/build-hd-web.sh
-          UQM_RELAY=rust UQM_EDITION=hd UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-c-reference UQM_TEST_OUTPUT=test-results/hd-rust-c npm run test:browser
-      - name: Compare HD ship movement, weapons and specials with the C client
-        run: UQM_RELAY=rust UQM_EDITION=hd UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-c-reference UQM_SHIP_SMOKE=0,3,11,18,19,21,22,23 UQM_TEST_OUTPUT=test-results/hd-rust-ships npm run test:browser
-      - name: Verify HD local and network reentry with C host and Rust guest
-        run: UQM_RELAY=rust UQM_EDITION=hd UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_SCENARIOS=normal UQM_DIST=.tools/hd-c-reference UQM_PEER_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/hd-modes-c-rust npm run test:browser
+          UQM_RELAY=rust UQM_EDITION=hd UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-c-reference UQM_TEST_OUTPUT=test-results/hd-rust-c npm run test:browser
+      - name: Compare Melee Remastered C and Rust clients, Remastered art against Classic HD
+        run: UQM_RELAY=rust UQM_EDITION=hd UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-c-reference UQM_TEST_OUTPUT=test-results/melee-rust-c npm run test:browser
+      - name: Compare Melee Remastered ship movement, weapons, specials and art with the C client
+        run: UQM_RELAY=rust UQM_EDITION=hd UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-c-reference UQM_SHIP_SMOKE=0,3,11,18,19,21,22,23 UQM_TEST_OUTPUT=test-results/melee-rust-ships npm run test:browser
+      - name: Start two HD online sessions from the main menu, C host and Rust guest
+        run: UQM_RELAY=rust UQM_EDITION=hd UQM_DIST=.tools/hd-c-reference UQM_PEER_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/hd-hook-c-rust npm run test:netplay-hook
+      - name: Play one HD room between the HD page and the Melee Remastered page, C host and Rust guest
+        run: UQM_RELAY=rust UQM_EDITION=hd UQM_GUEST_MELEE=1 UQM_SCENARIOS=normal UQM_DIST=.tools/hd-c-reference UQM_PEER_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/hd-melee-c-rust npm run test:browser
+      - name: Verify Melee Remastered local and network reentry with C host and Rust guest
+        run: UQM_RELAY=rust UQM_EDITION=hd UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_SCENARIOS=normal UQM_DIST=.tools/hd-c-reference UQM_PEER_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/melee-modes-c-rust npm run test:browser
       - name: Compare HD Rust core, movement and geometry with pinned MegaMod C
         run: |
           python3 scripts/rust-engine/check-exports.py hd .tools/rust-engine-hd/wasm32-unknown-emscripten/release/libuqm_engine_hd.a
@@ -169,10 +177,25 @@ jobs:
           python3 scripts/rust-engine/test_lua_propagate.py .tools/rust-lua-transform-target/release/uqm-lua-propagate
       - name: Compare solar draw ordering, including the sun and maximum planet count
         run: python3 tests/rust/test-solar-sort.py
+      - name: Test real HD campaign loading and travel to Hyperspace
+        run: |
+          node tests/browser/scene-pixels.test.mjs
+          UQM_DIST=.tools/hd-dist npm run test:hd-campaign
       - name: Test the native Melee-only profile and preserve Lua propagation audit
         run: |
           bash tests/c/test-melee-only-profile.sh
           python3 scripts/rust-engine/lua-fix.py rust/uqm-engine-hd --audit
-          node tests/browser/scene-pixels.test.mjs
+      - name: Test the Melee Remastered art registries, captain art and compiled frames
+        run: |
+          # The art checks read the PNGs and the pinned HD archive with Pillow.
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends python3-pil
+          bash tests/rust/test-melee-presentation.sh
+          bash tests/c/test-melee-presentation.sh
+          python3 tests/remastered/captain-renderer-contract.py
+          python3 tests/remastered/captain-assets.py
+          python3 scripts/verify-melee-art.py
       - name: Test HD idle stability and actual local combat
-        run: UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/hd-dist npm run test:hd-stability
+        run: UQM_DIST=.tools/hd-dist npm run test:hd-stability
+      - name: Test Melee Remastered idle stability and actual local combat
+        run: UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/hd-dist UQM_TEST_OUTPUT=test-results/melee-stability npm run test:hd-stability

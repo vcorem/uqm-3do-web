@@ -144,7 +144,7 @@ jobs:
             python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['core']=='rust' and d['game_engine']=='rust', d" .tools/$edition-rust-dist/engine-language.json
           done
           sha256sum .tools/*-dist/uqm-debug.wasm
-      - name: Package the four engines and Cosmo Clash behind the picker
+      - name: Package the four engines, Melee Remastered and Cosmo Clash behind the picker
         run: |
           python3 scripts/package-editions.py --original .tools/original-dist --hd .tools/hd-dist \
             --original-rust .tools/original-rust-dist --hd-rust .tools/hd-rust-dist \
@@ -162,7 +162,9 @@ jobs:
       - name: Test Original C against Original Rust in real two-browser matches
         run: UQM_DIST=.tools/original-dist UQM_PEER_DIST=.tools/original-rust-dist UQM_TEST_OUTPUT=test-results/original-c-rust npm run test:browser
       - name: Test HD C against HD Rust in real two-browser matches
-        run: UQM_EDITION=hd UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-rust-dist UQM_TEST_OUTPUT=test-results/hd-c-rust npm run test:browser
+        run: UQM_EDITION=hd UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-rust-dist UQM_TEST_OUTPUT=test-results/hd-c-rust npm run test:browser
+      - name: Test Melee Remastered C against Rust in a real two-browser match
+        run: UQM_EDITION=hd UQM_MELEE_ONLY=1 UQM_REMASTERED=1 UQM_SCENARIOS=normal UQM_DIST=.tools/hd-dist UQM_PEER_DIST=.tools/hd-rust-dist UQM_TEST_OUTPUT=test-results/melee-c-rust npm run test:browser
       - name: Split data files into Cloudflare asset parts
         run: python3 deploy/split-data.py --site .tools/release-web --output .tools/site --manifest deploy/data-parts.json
       - name: Test that return visits start from the game data kept in the browser
@@ -185,7 +187,7 @@ jobs:
           curl -fsSI https://urquanmasters.org/original/index.html | tee headers.txt
           grep -qi '^cross-origin-embedder-policy: require-corp' headers.txt
           grep -qi '^cross-origin-opener-policy: same-origin' headers.txt
-          for folder in original hd original-rust hd-rust; do
+          for folder in original hd original-rust hd-rust melee melee-rust; do
             curl -fsSI "https://urquanmasters.org/$folder/uqm-debug.wasm" | grep -qi '^content-type: application/wasm'
             want="$(sha256sum .tools/release-web/$folder/uqm-debug.wasm | cut -d' ' -f1)"
             # Right after a deploy the edge can still serve the previous file for a short time
@@ -202,11 +204,16 @@ jobs:
             echo "$folder data: $actual"
             test "$actual" = "$expected"
           done
-          # Every shell reads UQM_VARIANT; only the Rust pages get the assignment (package-editions.py).
+          # Every shell reads UQM_VARIANT; only the Rust and Melee pages get the assignment (package-editions.py).
           curl -fsS https://urquanmasters.org/original-rust/index.html | grep -q 'window.UQM_VARIANT = '
           curl -fsS https://urquanmasters.org/hd-rust/index.html | grep -q 'window.UQM_VARIANT = '
           ! curl -fsS https://urquanmasters.org/original/index.html | grep -q 'window.UQM_VARIANT = '
           ! curl -fsS https://urquanmasters.org/hd/index.html | grep -q 'window.UQM_VARIANT = '
+          # Melee Remastered: the HD engine with the Melee-only page and its own save folders.
+          curl -fsS https://urquanmasters.org/melee/index.html | grep -q 'window.UQM_VARIANT = {"engine": "c", "saveDir": "/home/web_user/.uqm-melee", "meleeOnly": true};'
+          curl -fsS https://urquanmasters.org/melee-rust/index.html | grep -q '"saveDir": "/home/web_user/.uqm-melee-rust", "meleeOnly": true};'
+          curl -fsS https://urquanmasters.org/ | grep -q 'id="edition-melee"'
+          test "$(curl -fsS -o /dev/null -w '%{content_type}' https://urquanmasters.org/melee-card.jpg)" = image/jpeg
       - name: Check the live Cosmo Clash files and headers
         run: |
           site=.tools/release-web
