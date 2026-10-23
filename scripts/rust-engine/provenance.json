@@ -19,7 +19,7 @@
     "scripts/rust-engine/c2rust-wasm.patch": "8e1cf577f5f10c976ba3dbb622aeac5dca5079342792208d8d70afe97431f8e9",
     "scripts/rust-engine/hd-starmap-prelude.h": "8b9e16fca0acd5b16a5461ae01abad5a41103b64569a7eae0352af6d3027a543",
     "scripts/rust-engine/original-inputs.json": "77b028606fb96a6ba78a8f3178787f7e23edb23870ad290739c790f0c861b805",
-    "scripts/rust-engine/hd-inputs.json": "23046443c4a30423a6daf3c0550de4e8e1855b4021e25378ff686eccb8f0560c",
+    "scripts/rust-engine/hd-inputs.json": "9fa57f32ed4e4a63fe49e10c15350df89d204aade643a9ec5cbd18f6013ac6a5",
     "scripts/rust-engine/setup-translator.sh": "d717e195f99b0b57a810452ab2bd88f35d29af1c6045333c4f2583564c04be3c",
     "scripts/rust-engine/compile-db.py": "d2a4d7a5ae10a0214554c82eb19b38b6ffe291c0935f948467c29f7b34d8004e",
     "scripts/rust-engine/regenerate.py": "081b562b3c0095dcb2ae0b2b2508873dc18df0e55a4758b533de0a13f30466e6",

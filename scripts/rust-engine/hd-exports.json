@@ -371,7 +371,7 @@
     },
     {
       "source": "src/libs/graphics/gfxload.c",
-      "source_sha256": "61bd7e0c7f8d0dcd90e91d6f38d6773cfcf3f3812ed04ef6ea4a44f77eb37b93",
+      "source_sha256": "70d0c81decf296d091e4e0fe97a830c484fdad3eee9810396f3510f2fa95d179",
       "symbols": {
         "_GetCelData": "T",
         "_GetFontData": "T",
@@ -502,7 +502,7 @@
     },
     {
       "source": "src/libs/graphics/tfb_draw.c",
-      "source_sha256": "300e9c2c4c923b944b77c8fd1d851e6a5c1c6fa64d76b4ac55c503f73ff6c3e5",
+      "source_sha256": "08a6df2f73ba3f17a25b61853abcab716e9c3cc9716cb669cb22e24c3bb50235",
       "symbols": {
         "TFB_DrawImage_CopyRect": "T",
         "TFB_DrawImage_CreateForScreen": "T",
@@ -535,7 +535,7 @@
     },
     {
       "source": "src/libs/graphics/tfb_prim.c",
-      "source_sha256": "7d35d6de359914b0cd435acb98c982c9eb0683f0528e764d15ba60e453afe18b",
+      "source_sha256": "c4462d4ddaf37c45df7e1f009e3fe9b9f2830c878e79f44b305c860a5ff57c36",
       "symbols": {
         "TFB_Prim_FillRect": "T",
         "TFB_Prim_FontChar": "T",
@@ -3239,7 +3239,7 @@
     },
     {
       "source": "src/uqm/process.c",
-      "source_sha256": "4d9cef3948f2f471fe81ec5cfb2a1a53e0ec1d22972210c95932d757164be84b",
+      "source_sha256": "562670d884229cf9d216769ae9845395229cd3faac0553969032f08b23faca1e",
       "symbols": {
         "AllocElement": "T",
         "DisplayArray": "D",
@@ -3258,12 +3258,13 @@
     },
     {
       "source": "src/uqm/restart.c",
-      "source_sha256": "04d63e62519923fc53edc62240bc7adb71c5d3bbfd8e9e971f2cd9b220478bce",
+      "source_sha256": "deadbaec8dcf6deb2c486eabc27ee86c0801ea2a6ddeaa20de8f12341dbb5381",
       "symbols": {
         "DrawToolTips": "T",
         "InitMenuMusic": "T",
         "StartGame": "T",
         "TextCache": "D",
+        "UQM_MeleeOnlyProfile": "T",
         "UninitMenuMusic": "T",
         "menuMusic": "D"
       }
@@ -3387,7 +3388,7 @@
     },
     {
       "source": "src/uqm/shipstat.c",
-      "source_sha256": "1a38dfa2247f46290fadaa1fc2864bf227ba4d7f1d33fb19fb879f23376c8e8c",
+      "source_sha256": "55e1ed92c47278cf6954fb4b53760826b0ea8ad3c4e7979a743a320f8b5a98e6",
       "symbols": {
         "ClearShipStatus": "T",
         "DeltaStatistics": "T",
@@ -3486,7 +3487,7 @@
     },
     {
       "source": "src/uqm/starcon.c",
-      "source_sha256": "8591ecf9808886f0e0b3705d7bcfa5d211a8911fbb7f05b9584a9ab89f4dde45",
+      "source_sha256": "bfab3f184781d426ecb62c2744a53a66d2ed6a0c74252503613a32717fbca625",
       "symbols": {
         "MainExited": "D",
         "ProcessUtilityKeys": "T",
@@ -3547,7 +3548,7 @@
     },
     {
       "source": "src/uqm/status.c",
-      "source_sha256": "0cf9b4d02630b6641fb71bbfeb9b57cb77e6a66b135b569d21bdc7c6c98e3e87",
+      "source_sha256": "8832baec94d2cba297ebafa036010c94bdfa4977403cc261e2eb64fc8ac459ae",
       "symbols": {
         "DeltaCrew": "T",
         "DeltaEnergy": "T",
@@ -3656,7 +3657,7 @@
     },
     {
       "source": "src/uqm/util.c",
-      "source_sha256": "0613436717eb17379b8e5a26fcb3f4f487da1ae77d9be09b5e4663da8cb2ca62",
+      "source_sha256": "eac85cab7359841fa0a691a3f7e00235d061731338cb6b33bf35909a03186f5b",
       "symbols": {
         "DrawBorderPadding": "T",
         "DrawFlagStatDisplay": "T",
@@ -4711,7 +4712,7 @@
     },
     {
       "source": "src/uqm/supermelee/melee.c",
-      "source_sha256": "a2911d0e6fd44218016fde89f80b26a2840d076eddc38092043e98b2f8ba91c7",
+      "source_sha256": "45d960a8568e115000e680632081e59fbad9544e8f951c6a9e3bf67a5c65f972",
       "symbols": {
         "AtlasArray": "D",
         "ButtonFont": "D",
