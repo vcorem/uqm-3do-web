@@ -29,6 +29,8 @@ const report = { browserType, dist, idleMs, remastered, meleeOnly, startedAt: ne
   stage: 'starting', passed: false, errors: [], console: [], battleFrames: [], buildHashes: {} };
 const server = createNetplayServer({ distDir: dist });
 let browser, page, monitor, monitoring = false;
+// The Melee run reloads its page near the end: the health checks wait for the new page.
+let reloading = false;
 let rejectFatal;
 const fatal = new Promise((_, reject) => { rejectFatal = reject; });
 fatal.catch(() => {});
@@ -188,7 +190,9 @@ try {
   monitoring = true;
   monitor = (async () => {
     while (monitoring) {
-      await checkHealth();
+      // A check that overlaps the test's own page.reload() loses its page: that is no failure.
+      try { if (!reloading) await checkHealth(); }
+      catch (error) { if (!reloading) throw error; }
       await sleep(300);
     }
   })().catch(error => { if (monitoring) fail(error); });
@@ -303,8 +307,10 @@ try {
     await assertMeleeChoices(page, true);
     report.screensBeforeReload = await assertMeleeScreens(page);
     report.stage = 'reload';
+    reloading = true;
     await page.reload();
     await page.waitForFunction(() => runtimeReady, null, { timeout: 240000 });
+    reloading = false;
     await recordMeleeScreens(page);
     await assertMeleeChoices(page);
     await launchLocalMelee(page);
