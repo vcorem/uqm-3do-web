@@ -52,9 +52,10 @@ export default {
       return isolated(new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }));
     }
     if (PART.test(url.pathname)) return isolated(new Response('Not found', { status: 404 }));
-    // The game page's relative URLs (cosmoclash.wasm) need the folder form; an invitation query stays.
-    if (url.pathname === COSMO.slice(0, -1)) {
-      url.pathname = COSMO;
+    // A game folder without its slash (/melee, /cosmoclash): the page's relative URLs
+    // (cosmoclash.wasm, uqm-debug.js) need the folder form; an invitation query stays.
+    if (INDEX[url.pathname + '/'] && url.pathname !== '/') {
+      url.pathname += '/';
       return isolated(Response.redirect(url.toString(), 301));
     }
     const entry = dataFiles[url.pathname];

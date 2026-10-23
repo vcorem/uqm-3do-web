@@ -44,9 +44,10 @@ function isolated(response, label) {
   for (const [name, value] of Object.entries(ISOLATION)) assert.equal(response.headers.get(name), value, `${label}: ${name}`);
 }
 
-test('/cosmoclash redirects to /cosmoclash/ and keeps an invitation', async () => {
+test('/cosmoclash, /melee and the other game folders redirect to the folder and keep an invitation', async () => {
   const origin = await site();
-  for (const [from, to] of [['/cosmoclash', '/cosmoclash/'], [`/cosmoclash?cosmoRoom=${ROOM}`, `/cosmoclash/?cosmoRoom=${ROOM}`]]) {
+  for (const [from, to] of [['/cosmoclash', '/cosmoclash/'], [`/cosmoclash?cosmoRoom=${ROOM}`, `/cosmoclash/?cosmoRoom=${ROOM}`],
+    ['/melee', '/melee/'], ['/melee-rust', '/melee-rust/'], ['/original', '/original/']]) {
     const response = await fetch(origin + from, { redirect: 'manual' });
     assert.equal(response.status, 301, from);
     assert.equal(response.headers.get('location'), origin + to, from);

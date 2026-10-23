@@ -219,7 +219,7 @@ try {
   assert.ok(report.melee.args.includes('--configdir=/home/web_user/.uqm-melee'), JSON.stringify(report.melee.args));
   assert.equal(report.melee.title, 'The Ur-Quan Masters — Melee Remastered');
   assert.equal(report.melee.link, 'Choose game');
-  assert.match(report.melee.label, /^Melee Remastered · 1280 × 960$/);
+  assert.match(report.melee.label, /^Melee Remastered · 1280 × 960$/i, 'the visible label (the Melee style is upper case)');
   assert.equal(report.melee.hdSaveVisible, false, 'The Melee page must not see the HD saves');
   assert.equal(report.melee.presentation, true, 'Picture & sound is on the Melee page');
   assert.equal(report.melee.remastered, 1, 'The Melee page draws the Remastered art');
