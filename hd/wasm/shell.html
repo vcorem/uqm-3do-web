@@ -4,7 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#080b12">
-<title>The Ur-Quan Masters — Melee Remastered</title>
+<title>The Ur-Quan Masters — Redrawn HD</title>
+<script>
+// package-editions.py publishes this page twice with the same engine and data: Redrawn HD
+// (/hd/, campaign and Super-Melee) and, with UQM_VARIANT.meleeOnly, Melee Remastered (/melee/).
+var UQM_MELEE = !!(window.UQM_VARIANT && UQM_VARIANT.meleeOnly);
+if (UQM_MELEE) {
+  document.documentElement.classList.add('melee');
+  document.title = 'The Ur-Quan Masters — Melee Remastered';
+}
+</script>
 <link rel="stylesheet" href="melee-presentation.css">
 <style>
 :root { color-scheme:dark; font-family:system-ui,sans-serif; background:#080b12; color:#e1e6ee; }
@@ -18,6 +27,7 @@ canvas { display:block; width:100%; height:auto; aspect-ratio:4/3; image-renderi
 :focus-visible { outline:2px solid #dfbd75; outline-offset:4px; }
 p { line-height:1.6; }
 [hidden] { display:none!important; }
+html:not(.melee) .melee-only, html.melee .hd-only { display:none!important; }
 button { color:#080b12; background:#dfbd75; border:0; border-radius:4px; padding:12px 24px; font:inherit; font-weight:650; cursor:pointer; }
 button:disabled { opacity:.55; cursor:wait; }
 .bar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:20px; margin:16px 0; min-height:38px; font-size:13px; }
@@ -33,12 +43,12 @@ details { margin-top:18px; font-size:12px; color:#778396; } pre { white-space:pr
 </head>
 <body>
 <main>
-<header><h1>The Ur-Quan Masters</h1><span class="edition">Melee Remastered · 1280 × 960</span></header>
+<header><h1>The Ur-Quan Masters</h1><span class="edition"><span class="hd-only">Redrawn HD</span><span class="melee-only">Melee Remastered</span> · 1280 × 960</span><a id="choose-edition" href="../index.html"><span class="hd-only">Choose edition</span><span class="melee-only">Choose game</span></a></header>
 <div class="stage">
 <div class="screen" id="screen">
 <canvas id="canvas" width="1280" height="960" tabindex="0" aria-label="The Ur-Quan Masters HD game. Press ? to show the keys." oncontextmenu="event.preventDefault()"></canvas>
-<button type="button" id="presentation-toggle" class="presentation-toggle" aria-expanded="false" aria-controls="presentation-panel">Picture &amp; sound</button>
-<section id="presentation-panel" class="presentation-panel" aria-labelledby="presentation-heading" hidden>
+<button type="button" id="presentation-toggle" class="presentation-toggle melee-only" aria-expanded="false" aria-controls="presentation-panel">Picture &amp; sound</button>
+<section id="presentation-panel" class="presentation-panel melee-only" aria-labelledby="presentation-heading" hidden>
 <div class="presentation-heading"><h2 id="presentation-heading">Your Melee experience</h2><button id="presentation-close" class="presentation-close" type="button" aria-label="Close picture and sound">×</button></div>
 <label class="presentation-field"><span>Ship &amp; crew artwork</span><select id="melee-style"><option value="remastered">Remastered</option><option value="classic">Classic HD</option></select></label>
 <label class="presentation-field"><span>Soundtrack</span><select id="melee-soundtrack"><option value="remastered">Remastered · space combat</option><option value="classic">Classic 3DO</option></select></label>
@@ -48,11 +58,14 @@ details { margin-top:18px; font-size:12px; color:#778396; } pre { white-space:pr
 </div>
 <aside class="keys-panel" id="keys-panel" aria-label="Keys"></aside>
 </div>
-<div class="bar"><span id="storage" role="status">Preparing fleets and preferences…</span><button id="fullscreen">Full screen</button></div>
+<div class="bar"><span id="storage" role="status"><span class="hd-only">Preparing HD saves…</span><span class="melee-only">Preparing fleets and preferences…</span></span><button id="fullscreen">Full screen</button></div>
 <footer>
 HD artwork and engine from <a href="https://github.com/JHGuitarFreak/UQM-MegaMod">UQM MegaMod 0.8.5</a>, based on The Ur-Quan Masters and Star Control II.<br>
-Choose <strong>Melee</strong> for local battles or <strong>Network Melee</strong> to play against another HD player.<br>
-Fleets and preferences stay in this browser; clearing site data removes them. <a href="COPYING.txt">Code license</a> · <a href="content-licenses.txt">Artwork and media credits</a>
+<span class="hd-only">Campaign, local Melee and Online Melee against another HD player: choose Online Melee on the start screen, or press <kbd>O</kbd> in the game's main menu.<br>
+HD saves are separate from Original 3DO and are not interchangeable. Save in-game before switching editions.<br>
+Saves stay in this browser; clearing site data removes them.</span><span class="melee-only">Choose <strong>Melee</strong> for local battles or <strong>Network Melee</strong> to play against another HD or Melee Remastered player.<br>
+New ship, crew and arena art and two new combat scores; the ships, weapons and rules are those of the HD edition. <a href="melee-credits.txt">Remastered art and music credits</a><br>
+Fleets and preferences stay in this browser, separate from the HD saves; clearing site data removes them.</span> <a href="COPYING.txt">Code license</a> · <a href="content-licenses.txt">Artwork and media credits</a>
 </footer>
 <details><summary>Diagnostics</summary><pre id="net-stats">Online session: inactive</pre><pre id="log"></pre></details>
 </main>
@@ -65,6 +78,13 @@ var canvas = document.getElementById('canvas');
 var runtimeReady = false, started = false, logLines = [];
 var online = null, presentation = null;
 var pendingNetplayRole = -1, pendingLocalMelee = false;
+var chooseLabel = UQM_MELEE ? 'Choose game' : 'Choose edition';
+if (UQM_MELEE) canvas.setAttribute('aria-label', 'Melee Remastered. Press ? to show the keys.');
+// The engine names its window "The Ur-Quan Masters v0.8.5 HD MegaMod Debug"; the tab keeps the page's name.
+var pageTitle = document.title, titleElement = document.querySelector('title');
+if (window.MutationObserver && titleElement) new MutationObserver(function () {
+  if (document.title !== pageTitle) document.title = pageTitle;
+}).observe(titleElement, { childList: true, characterData: true, subtree: true });
 function log(message) {
   logLines.push(String(message)); if (logLines.length > 160) logLines.shift();
   document.getElementById('log').textContent = logLines.join('\n');
@@ -91,9 +111,13 @@ function renderNetStats() {
   ].join('\n');
 }
 var Module = {
-  canvas:canvas, noInitialRun:true, meleeOnly:true,
+  // meleeOnly: the engine skips the logo, the intro and the main menu and waits at the
+  // Melee / Network Melee choice (the native profile reads it once, at start).
+  canvas:canvas, noInitialRun:true, meleeOnly:UQM_MELEE,
   preRun:[function() { ENV.SDL_EMSCRIPTEN_KEYBOARD_ELEMENT='#canvas'; }],
-  arguments:['--configdir=/home/web_user/.uqm-hd', '--contentdir=/content', '--windowed', '--nogl', '--scale=none', '--sound=openal', '--windowtype=1', '--menu=3do', '--font=3do', '--cscan=1', '--scroll=3do', '--shield=3do', '--meleezoom=3do'],
+  arguments:['--configdir=/home/web_user/.uqm-hd', '--contentdir=/content', '--windowed', '--nogl', '--scale=none', '--sound=openal', '--windowtype=1', '--menu=3do', '--font=3do', '--cscan=1', '--scroll=3do', '--shield=3do', '--meleezoom=3do', '--intro=3do'].filter(function (arg) {
+    return !UQM_MELEE || arg !== '--intro=3do';
+  }),
   print:log, printErr:log,
   setStatus:function(text) {
     if(!text || started || !online) return;
@@ -110,22 +134,30 @@ var Module = {
   onStorageStatus:function(event) {
     var storage=document.getElementById('storage'); storage.textContent=event.message;
     storage.className=['warning','memory'].includes(event.state)?'warning':'';
+    var editionLink=document.getElementById('choose-edition');
+    if(editionLink) {
+      editionLink.setAttribute('aria-disabled',Module.storageState==='saving'?'true':'false');
+      editionLink.textContent=Module.storageState==='saving'?'Saving…':chooseLabel;
+    }
   },
   onRuntimeInitialized:function() {
     if(!window.crossOriginIsolated) return fail('Use the included preview server to run the game.');
     if(Module.hdConfigError) return fail('Could not prepare HD settings: '+Module.hdConfigError);
     runtimeReady=true;
+    // The engine draws the Remastered Melee art unless told otherwise: HD keeps its own art.
+    if(!UQM_MELEE && typeof Module._UQM_SetMeleeRemastered==='function') Module._UQM_SetMeleeRemastered(0);
     if(presentation) presentation.runtimeReady();
     if(online) online.controller.ready();
     else launchGame(null);
   },
-  // The idle Melee engine consumes each mode choice once.
+  // Melee Remastered: the idle Melee engine consumes each mode choice once.
   takePendingLocalMelee:function() {
     var pending=pendingLocalMelee;
     pendingLocalMelee=false;
     return pending;
   },
-  // Network role: 0 host, 1 guest, -1 none.
+  // Online Melee from the main menu (HD) or the mode choice (Melee Remastered): the engine
+  // asks for a role every frame (0 host, 1 guest, -1 none).
   takePendingNetplayRole:function() {
     var role=pendingNetplayRole;
     pendingNetplayRole=-1;
@@ -140,17 +172,17 @@ var Module = {
     if(online) online.controller.exited('Reload this page to play again.');
   }
 };
-// package-editions.py sets UQM_VARIANT on the Rust pages: own save folder and engine label.
+// package-editions.py sets UQM_VARIANT on the Rust and Melee pages: own save folder and engine label.
 if (window.UQM_VARIANT) {
   Module.uqmSavePath = UQM_VARIANT.saveDir;
   Module.arguments = Module.arguments.map(function (arg) { return arg.indexOf('--configdir=') === 0 ? '--configdir=' + UQM_VARIANT.saveDir : arg; });
-  document.querySelector('.edition').textContent += ' · ' + UQM_VARIANT.label;
+  if (UQM_VARIANT.label) document.querySelector('.edition').appendChild(document.createTextNode(' · ' + UQM_VARIANT.label));
 }
-// role: null for local Melee, or 'host' / 'guest' with that room's connection.
+// role: null for the campaign and local Melee, or 'host' / 'guest' with that room's connection.
 function launchGame(role, room) {
   if (started || !runtimeReady) return false;
   var args = presentation ? presentation.prepareLaunch(Module.arguments) : Module.arguments.slice();
-  pendingLocalMelee = !role;
+  pendingLocalMelee = UQM_MELEE && !role;
   if (role) {
     Module.webNet = room;
     args.push('--web-netplay=' + role);
@@ -160,25 +192,26 @@ function launchGame(role, room) {
   try { Module.callMain(args); } catch (error) { fail(String(error)); }
   return true;
 }
-if (window.UQMMeleePresentation) presentation = UQMMeleePresentation.init({
+if (UQM_MELEE && window.UQMMeleePresentation) presentation = UQMMeleePresentation.init({
   document: document, module: Module, getStorage: function () { return localStorage; },
   isStarted: function () { return started; }, canvas: canvas
 });
 // Without the menu script the game still starts (as soon as it has loaded).
 if (window.UQMOnline) online = UQMOnline.init({
   document: document, window: window, screen: document.getElementById('screen'), canvas: canvas,
-  presentation: function () { return presentation ? presentation.settings.style : 'classic'; },
-  meleeOnly: true, edition: 'hd', engine: window.UQM_VARIANT && UQM_VARIANT.engine === 'rust' ? 'rust' : 'c',
+  presentation: presentation ? function () { return presentation.settings.style; } : null,
+  meleeOnly: UQM_MELEE, edition: 'hd', engine: window.UQM_VARIANT && UQM_VARIANT.engine === 'rust' ? 'rust' : 'c',
   netplay: window.UQMNetplay, storage: function () { return localStorage; }, onLog: log,
-  startSteps: window.UQMHelp && UQMHelp.MELEE_START_TEXT,
+  startSteps: window.UQMHelp && (UQM_MELEE ? UQMHelp.MELEE_START_TEXT : UQMHelp.START_TEXT),
   game: {
     started: function () { return started; },
     ready: function () { return runtimeReady; },
     screen: function () { return Module.gameScreen; },
     hook: function () { return Module.supportsNetplayHook === true; },
     start: launchGame,
+    // Melee Remastered: another local battle in the running engine, from the mode choice.
     local: function () {
-      if (!started || !runtimeReady || Module.gameScreen !== 'meleeMenu') return false;
+      if (!UQM_MELEE || !started || !runtimeReady || Module.gameScreen !== 'meleeMenu') return false;
       pendingNetplayRole = -1;
       Module.webNet = null;
       pendingLocalMelee = true;
@@ -204,6 +237,10 @@ if (window.UQMOnline) online = UQMOnline.init({
   }
 });
 setInterval(renderNetStats, 1000);
+var editionLink=document.getElementById('choose-edition');
+if(editionLink) editionLink.addEventListener('click',function(event) {
+  if(Module.storageState==='saving') event.preventDefault();
+});
 canvas.addEventListener('click',function() { canvas.focus(); });
 document.getElementById('fullscreen').addEventListener('click',function() {
   if(document.fullscreenElement) document.exitFullscreen();
@@ -235,7 +272,7 @@ document.addEventListener('keyup', function (event) {
   var exitFullscreen = document.fullscreenElement ? document.exitFullscreen() : Promise.resolve();
   exitFullscreen.then(function () {
     setTimeout(function () {
-      var target = document.getElementById('fullscreen');
+      var target = document.getElementById('choose-edition') || document.getElementById('fullscreen');
       target.focus();
     }, 0);
   }).catch(log);
@@ -247,7 +284,7 @@ window.addEventListener('error',function(event) {
   if(!message) return;
   log(message); if(!started) fail('Loading failed. Reload to try again. '+message);
 },true);
-if(window.UQMHelp) UQMHelp.init({ meleeOnly: true, document: document, eventTarget: document, isStarted: function () { return started; } });
+if(window.UQMHelp) UQMHelp.init({ meleeOnly: UQM_MELEE, document: document, eventTarget: document, isStarted: function () { return started; } });
 if(!window.crossOriginIsolated||typeof SharedArrayBuffer==='undefined') fail('Use the included preview server to run the game.');
 </script>
 <!-- emcc writes the engine script here. It waits in this inert template until
@@ -273,6 +310,7 @@ if(!window.crossOriginIsolated||typeof SharedArrayBuffer==='undefined') fail('Us
     if(status) status.textContent=event.label;
     else if(typeof Module.setStatus==='function') Module.setStatus(event.label);
   }
+  // HD and Melee Remastered package the same data: one stored copy serves both.
   if (window.UQMEngineLoader) {
     UQMEngineLoader.start({ module: Module, edition: 'hd', template: template, onProgress: showProgress });
     return;

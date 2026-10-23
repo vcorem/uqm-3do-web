@@ -9,6 +9,7 @@ import path from 'node:path';
 import { chromium, firefox, webkit } from 'playwright';
 import { createNetplayServer } from '../../server/netplay.mjs';
 import { recordMeleeScreens, assertMeleeScreens, assertMeleeChoices, launchLocalMelee, leaveLocalFleet, leaveLocalBattle } from './melee-navigation.mjs';
+import { useMeleePage } from './melee-page.mjs';
 
 const dist = path.resolve(process.env.UQM_DIST || '.tools/hd-dist');
 const out = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/hd-stability');
@@ -170,7 +171,9 @@ try {
     ...(browserType === 'chromium' && process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : {}),
     ...(browserType === 'chromium' ? { args: ['--autoplay-policy=no-user-gesture-required'] } : {}) });
   report.browser = browser.version();
-  page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1200 } });
+  if (meleeOnly) await useMeleePage(context);
+  page = await context.newPage();
   page.setDefaultTimeout(30000);
   page.on('pageerror', fail);
   page.on('crash', () => fail(new Error('Browser page crashed')));
@@ -191,7 +194,8 @@ try {
   })().catch(error => { if (monitoring) fail(error); });
   await guarded(page.waitForFunction(() => typeof runtimeReady !== 'undefined' && runtimeReady,
     null, { timeout: 240000 }));
-  if (await page.locator('#melee-style').count()) {
+  // Only the Melee Remastered page shows Picture & sound; the HD page keeps its own art.
+  if (await page.locator('#presentation-toggle').isVisible()) {
     // Use the real preference UI, just as a player would. Fresh tabs otherwise
     // default to Remastered, even when this run is checking Classic HD.
     await guarded(page.getByRole('button', { name: 'Picture & sound', exact: true }).click());

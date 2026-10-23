@@ -794,7 +794,7 @@
                 ctx.font = '600 ' + Math.round(15 * k) + 'px system-ui, sans-serif';
                 ctx.fillStyle = '#d7eef2';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-                ctx.fillText('ONLINE MELEE', W * k / 2, (y + 1) * k);
+                ctx.fillText(options.meleeOnly ? 'NETWORK MELEE' : 'ONLINE MELEE', W * k / 2, (y + 1) * k);
                 ctx.restore();
                 return;
             }
@@ -1353,13 +1353,14 @@
             image.src = src;
         });
     }
-    function loadArt(base) {
+    // remastered: the Melee Remastered background, only for pages that draw it.
+    function loadArt(base, remastered) {
         const url = name => new URL(name, base).href;
         return root.fetch(url('online-art.json')).then(response => {
             if (!response.ok) throw new Error('Could not load the online art');
             return response.json();
         }).then(art => Promise.all(['atlas', 'stars', 'title', 'remastered'].map(name =>
-            art.images[name] ? loadImage(url(art.images[name])).catch(() => null) : null))
+            art.images[name] && (name !== 'remastered' || remastered) ? loadImage(url(art.images[name])).catch(() => null) : null))
             .then(([atlas, stars, title, remastered]) => {
                 if (!atlas) throw new Error('Could not load the online art');
                 return { art, images: { atlas, stars, title, remastered } };
@@ -1639,7 +1640,7 @@
                 target.getContext('2d').drawImage(sheet, hi * w, 0, w, h, 0, 0, w, h);
             });
         }
-        loadArt(options.artBase || win.location.href).then(data => {
+        loadArt(options.artBase || win.location.href, !!(options.meleeOnly || options.presentation)).then(data => {
             sounds.load(data.art.sounds);
             renderer = createRenderer(canvas, data.art, data.images, {
                 edition, now: () => Date.now(), started: options.game.started, presentation: options.presentation, meleeOnly: !!options.meleeOnly,

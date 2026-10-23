@@ -1,9 +1,10 @@
-/* A small, keyboard-accessible control panel; the battle canvas stays intact. */
+/* A small, keyboard-accessible control panel; the battle canvas stays intact.
+   The HD page loads this file too: its page-wide rules apply to Melee Remastered only. */
 :root { --melee-accent:#8de1df; }
-body { background:radial-gradient(ellipse at 50% -10%,#19384755,transparent 62%),#080b12; }
-header h1 { letter-spacing:-.035em; }
-.edition { color:#9bc9d1; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
-.screen { border-color:#476169; box-shadow:0 20px 90px #000a,0 0 0 4px #0c151b; }
+html.melee body { background:radial-gradient(ellipse at 50% -10%,#19384755,transparent 62%),#080b12; }
+html.melee header h1 { letter-spacing:-.035em; }
+html.melee .edition { color:#9bc9d1; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+html.melee .screen { border-color:#476169; box-shadow:0 20px 90px #000a,0 0 0 4px #0c151b; }
 .presentation-toggle { position:absolute; top:10px; right:10px; z-index:50; border:1px solid #59728199; background:#0a151ce8; color:#e8f3f6; padding:8px 11px; font-size:11px; font-weight:550; letter-spacing:.025em; border-radius:4px; opacity:.72; box-shadow:0 2px 14px #0006; }
 .presentation-toggle:hover,.presentation-toggle:focus-visible { opacity:1; border-color:var(--melee-accent); }
 .presentation-toggle[aria-expanded="true"] { opacity:1; color:var(--melee-accent); }

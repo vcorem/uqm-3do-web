@@ -9,6 +9,7 @@ import { createGameBackend } from '../helpers/game-backend.mjs';
 import { createLobbyStub } from '../helpers/online-lobby.mjs';
 import { shimPath } from './online-harness.mjs';
 import { verifyCaptainReactions } from './captain-reactions.mjs';
+import { MELEE_VARIANT, useMeleePage } from './melee-page.mjs';
 import { recordMeleeScreens, assertMeleeScreens, assertMeleeChoices, launchLocalMelee, leaveLocalFleet, exerciseLocalBattle, leaveLocalBattle } from './melee-navigation.mjs';
 
 const browserEngines = { chromium, firefox, webkit };
@@ -40,12 +41,21 @@ const edition = process.env.UQM_EDITION || 'original';
 const remastered = process.env.UQM_REMASTERED === '1';
 const meleeOnly = process.env.UQM_MELEE_ONLY === '1';
 assert.ok(!meleeOnly || edition === 'hd', 'The dedicated Melee profile is HD-only');
+// UQM_GUEST_MELEE=1: the host plays on the HD page and the guest on the Melee Remastered page,
+// in one HD room (the two pages share the HD room list).
+const guestMelee = process.env.UQM_GUEST_MELEE === '1';
+assert.ok(!guestMelee || (edition === 'hd' && !meleeOnly), 'UQM_GUEST_MELEE=1 is for an HD host and a Melee guest');
+// The page of each player: [host, guest]. A Melee page waits at the Melee / Network Melee choice.
+const melee = [meleeOnly, meleeOnly || guestMelee];
 const captains = process.env.UQM_CAPTAINS === '1';
-assert.ok(!remastered || edition === 'hd', 'Remastered presentation is an HD feature');
+assert.ok(!remastered || meleeOnly, 'Remastered presentation is a Melee Remastered page feature (UQM_MELEE_ONLY=1)');
 assert.ok(!captains || (remastered && process.env.UQM_SHIP_SMOKE),
   'UQM_CAPTAINS=1 requires UQM_REMASTERED=1 and UQM_SHIP_SMOKE');
 assert.ok(['original', 'hd'].includes(edition), 'UQM_EDITION must be original or hd');
-const meleeConfig = `/home/web_user/${edition === 'hd' ? '.uqm-hd' : '.uqm'}/melee.cfg`;
+// Melee Remastered keeps its fleets in its own folder, apart from the HD saves.
+const meleeConfigs = melee.map(page => page ? MELEE_VARIANT.saveDir + '/melee.cfg'
+  : `/home/web_user/${edition === 'hd' ? '.uqm-hd' : '.uqm'}/melee.cfg`);
+const meleeConfig = meleeConfigs[0];
 await mkdir(output, { recursive: true });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function boundedDiagnostic(operation, label) {
@@ -189,7 +199,7 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
   const roomSockets = [[], []];
   const failures = [];
   const entry = {
-    name, edition, meleeOnly, latencyPatternMs, passed: false, relay: process.env.UQM_RELAY || 'node',
+    name, edition, meleeOnly, guestMelee, latencyPatternMs, passed: false, relay: process.env.UQM_RELAY || 'node',
     distDir, peerDist,
     browsers: selectedEngines.map((engine, index) => ({
       role: index === 0 ? 'host' : 'guest', engine, version: null,
@@ -208,6 +218,7 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
         ...(captains && i === 0 && process.env.UQM_CAPTAIN_VIDEO === '1'
           ? { recordVideo: { dir: path.join(output, 'captain-videos'), size: { width: 1100, height: 1100 } } } : {}) });
       await context.addInitScript({ path: shimPath });
+      if (melee[i]) await useMeleePage(context);
       if (remastered && i === 1) {
         await context.addInitScript(() => localStorage.setItem('uqm.hd.melee.presentation.v1',
           JSON.stringify({style:'classic',soundtrack:'classic',musicVolume:72})));
@@ -256,19 +267,18 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       const expected = i === 1 && peerDist ? peerBuildHashes : buildHashes;
       for (const hash of entry.fetchedWasmHashes[i]) assert.equal(hash, expected['uqm-debug.wasm']);
     }
-    if (meleeOnly) {
-      await Promise.all(pages.map(recordMeleeScreens));
-      await Promise.all(pages.map(page => assertMeleeChoices(page)));
-    }
-    const fleet = { file: meleeConfig, guestShip: smokeShip ?? 5,
+    const meleePages = pages.filter((_, i) => melee[i]);
+    await Promise.all(meleePages.map(recordMeleeScreens));
+    await Promise.all(meleePages.map(page => assertMeleeChoices(page)));
+    const fleet = { guestShip: smokeShip ?? 5,
       ...(smokeShip === null ? {} : { hostShip: 20, shipCount: 14 }) };
-    const expectedFleet = await pages[0].evaluate(seedFleet, fleet);
-    await pages[1].evaluate(seedFleet, fleet);
+    const expectedFleet = await pages[0].evaluate(seedFleet, { ...fleet, file: meleeConfigs[0] });
+    await pages[1].evaluate(seedFleet, { ...fleet, file: meleeConfigs[1] });
     // Persist the baseline before launching so reload can detect accidental
     // replacement of local fleet/control settings by the online session.
     await Promise.all(pages.map(page => page.evaluate(() => new Promise((resolve, reject) =>
       FS.syncfs(false, error => error ? reject(error) : resolve())))));
-    if (meleeOnly && name === 'normal') {
+    if (melee[0] && name === 'normal') {
       // Reuse a real local engine for the later network session; the guest still
       // covers the initial --web-netplay launch path on its independent engine.
       await launchLocalMelee(pages[0]);
@@ -281,7 +291,7 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
     // the guest picks it from the live list, and the match starts by itself.
     const press = async (page, ...keys) => { for (const name of keys) { await page.keyboard.press(name); await sleep(80); } };
     const screen = (page, name, timeout = 30000) => page.waitForFunction(name => online.state.screen === name, name, { polling: 100, timeout });
-    if (meleeOnly) await pages[0].getByRole('button', { name: 'Network Melee', exact: true }).click();
+    if (melee[0]) await pages[0].getByRole('button', { name: 'Network Melee', exact: true }).click();
     else await press(pages[0], 'ArrowDown', 'Enter');
     await screen(pages[0], 'lobby');
     await pages[0].waitForFunction(() => online.state.focus === 'create', null, { polling: 100 });
@@ -311,6 +321,11 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       assert.equal(url.searchParams.get('role'), i === 0 ? 'host' : 'guest');
     }
     console.log(`${name}: both players in fleet setup`);
+    if (guestMelee) {
+      // One room, two pages: the HD page keeps its own art, the Melee page draws the new art.
+      assert.equal(await pages[0].evaluate(() => Module._UQM_GetMeleeRemastered()), 0, 'the HD page draws Classic HD art');
+      assert.equal(await pages[1].evaluate(() => Module._UQM_GetMeleeRemastered()), 1, 'the Melee page draws Remastered art');
+    }
     if (remastered) {
       // Both clients run the real simulation. Their art settings deliberately
       // differ, and the native network checksums must continue to agree.
@@ -454,7 +469,7 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
     }
     // Closing a real browser, rather than merely updating a mocked connection,
     // exercises relay departure and the engine's wait/cleanup paths together.
-    if (meleeOnly) entry.guestScreenHistory = await assertMeleeScreens(pages[1]);
+    if (melee[1]) entry.guestScreenHistory = await assertMeleeScreens(pages[1]);
     await browsers[1].close();
     await pages[0].waitForFunction(() => Module.webNet.state === 'closed', null, { polling: 100 });
     await sleep(1500);
@@ -463,7 +478,7 @@ async function scenario(name, latencyPatternMs, disconnectAt, smokeShip = null) 
       await key([pages[0]], 'Enter');
       try {
         await pages[0].waitForFunction(expected => Module.gameScreen === expected,
-          meleeOnly ? 'meleeMenu' : 'mainMenu', { polling: 100, timeout: 10000 });
+          melee[0] ? 'meleeMenu' : 'mainMenu', { polling: 100, timeout: 10000 });
         break;
       } catch (error) { if (attempt === 2) throw error; }
     }

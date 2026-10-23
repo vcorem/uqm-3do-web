@@ -3,7 +3,8 @@
 // (fixtures/fake-engine.js), through a test lobby (tests/helpers/online-lobby.mjs)
 // in front of the real Node relay. Keyboard-only and mouse flows run at a
 // full-screen 1280x960 and 1024x768; every screen is saved for review.
-//   node tests/browser/online-ui.mjs   (UQM_EDITIONS=original,hd  UQM_TEST_OUTPUT=dir)
+//   node tests/browser/online-ui.mjs   (UQM_EDITIONS=original,hd,melee  UQM_TEST_OUTPUT=dir)
+// melee: the Melee Remastered page (the HD page with its variant), in the HD lobby.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -16,7 +17,8 @@ const output = path.resolve(process.env.UQM_TEST_OUTPUT || 'test-results/online-
 const pages = path.join(output, 'pages');
 await mkdir(output, { recursive: true });
 // HD needs the HD content (.tools/hd-source); without UQM_EDITIONS it is skipped when missing.
-const requested = (process.env.UQM_EDITIONS || 'original,hd').split(',');
+const requested = (process.env.UQM_EDITIONS || 'original,hd,melee').split(',');
+const lobbyEdition = edition => edition === 'melee' ? 'hd' : edition;
 const editions = await buildHarness(pages, requested);
 if (process.env.UQM_EDITIONS) assert.deepEqual(editions, requested, 'Every requested edition must build');
 else assert.ok(editions.includes('original'), 'The Original harness must build');
@@ -155,12 +157,12 @@ async function keyboardFlow(edition, viewport) {
   await shot(host, 'lobby-empty');
   const now = Date.now();
   const fake = [["Zelnick's room", 'c', 5000], ['Ur-Quan Kzer-Za', 'rust', 125000], ['Spathi fan club 2026!!', 'c', 400000], ['חדר של גיא', 'c', 30000]];
-  fake.forEach(([name, engine, age], i) => stub.addFakeRoom(edition, { id: token(200 + i), name, engine, created: now - age }));
+  fake.forEach(([name, engine, age], i) => stub.addFakeRoom(lobbyEdition(edition), { id: token(200 + i), name, engine, created: now - age }));
   s = await until(host, s => s.rooms === 4, 'four rooms listed');
   assert.equal(s.focus, 'room:' + token(200), 'The newest room gets the focus before the player moves');
   await press(host, 'ArrowDown', 'ArrowDown');
   await shot(host, 'lobby-rooms');
-  for (let i = 0; i < 14; i++) stub.addFakeRoom(edition, { id: token(210 + i), name: 'Room ' + (i + 1), engine: i % 3 ? 'c' : 'rust', created: now - i * 61000 });
+  for (let i = 0; i < 14; i++) stub.addFakeRoom(lobbyEdition(edition), { id: token(210 + i), name: 'Room ' + (i + 1), engine: i % 3 ? 'c' : 'rust', created: now - i * 61000 });
   await until(host, s => s.rooms === 18, 'eighteen rooms listed');
   await press(host, 'End', 'ArrowUp', 'ArrowUp', 'ArrowUp');
   await shot(host, 'lobby-many');
@@ -189,8 +191,8 @@ async function keyboardFlow(edition, viewport) {
   s = await ui(host);
   assert.equal(s.screen, 'waiting', 'a held Enter keeps the room open');
   assert.equal(s.focus, 'copy');
-  await until(host, () => stub.listings[edition].size === 1, 'room listed');
-  const listed = [...stub.listings[edition].values()][0];
+  await until(host, () => stub.listings[lobbyEdition(edition)].size === 1, 'room listed');
+  const listed = [...stub.listings[lobbyEdition(edition)].values()][0];
   assert.equal(listed.name, "Zelnick's room");
   assert.equal(listed.engine, 'c');
   await shot(host, 'waiting');
@@ -207,7 +209,7 @@ async function keyboardFlow(edition, viewport) {
   s = await ui(guest);
   assert.ok(['found', 'hidden'].includes(s.screen) && !s.notice, 'Enter did not cancel: ' + JSON.stringify(s));
   await Promise.all([shot(host, 'found-host'), shot(guest, 'found-guest')]);
-  assert.equal(stub.listings[edition].size, 0, 'A paired room leaves the list');
+  assert.equal(stub.listings[lobbyEdition(edition)].size, 0, 'A paired room leaves the list');
   // The countdown starts the match: the first session uses --web-netplay.
   s = await until(host, s => s.gameScreen === 'melee', 'host match starts', 20000);
   assert.ok(s.args.includes('--web-netplay=host'), JSON.stringify(s.args));
@@ -312,8 +314,8 @@ async function otherScreens(edition, viewport) {
   await press(host, 'ArrowRight', 'Enter', 'Enter');
   await screenIs(host, 'waiting');
   // The room opens when the host's game has loaded.
-  await until(host, () => stub.listings[edition].size === 1, 'invite room listed');
-  const id = [...stub.listings[edition].keys()][0];
+  await until(host, () => stub.listings[lobbyEdition(edition)].size === 1, 'invite room listed');
+  const id = [...stub.listings[lobbyEdition(edition)].keys()][0];
   await host.page.locator('.uqm-online-hit[data-id="copy"]').click();
   await until(host, s => /copied|Copy this link/.test(s.notice || ''), 'invite copied');
   await shot(host, 'waiting-copied');
@@ -336,9 +338,9 @@ async function otherScreens(edition, viewport) {
   const early = await slowHost.page.evaluate(() => ({ status: online.state.room.status, ready: runtimeReady }));
   assert.ok(!early.ready, 'the test chose the room during the download');
   assert.equal(early.status, 'loading');
-  assert.equal(stub.listings[edition].size, 0, 'the room is not listed before the game is ready');
+  assert.equal(stub.listings[lobbyEdition(edition)].size, 0, 'the room is not listed before the game is ready');
   const slowGuest = await player(edition, viewport, '&fakeLoadMs=12000');
-  await until(slowHost, () => stub.listings[edition].size === 1, 'room listed once the game is ready', 30000);
+  await until(slowHost, () => stub.listings[lobbyEdition(edition)].size === 1, 'room listed once the game is ready', 30000);
   await press(slowGuest, 'ArrowDown', 'Enter');
   await until(slowGuest, s => s.rooms === 1, 'slow guest sees the room', 20000);
   await press(slowGuest, 'Enter');
@@ -356,7 +358,7 @@ async function otherScreens(edition, viewport) {
   await shot(frozen, 'waiting-loading');
   await press(frozen, 'Escape');
   await until(frozen, s => s.screen === 'lobby', 'frozen back in the lobby');
-  stub.addFakeRoom(edition, { id: token(240), name: 'Waiting room', engine: 'rust', created: Date.now() - 70000 });
+  stub.addFakeRoom(lobbyEdition(edition), { id: token(240), name: 'Waiting room', engine: 'rust', created: Date.now() - 70000 });
   await until(frozen, s => s.rooms === 1 && s.focus === 'room:' + token(240), 'frozen sees a room');
   await press(frozen, 'Enter');
   await until(frozen, s => s.screen === 'joining', 'frozen joining');
