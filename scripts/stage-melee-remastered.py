@@ -56,6 +56,12 @@ def credits_text():
     return ''.join([
         (SOURCE / 'credits.md').read_text().rstrip('\n'), '\n\n## Music\n\n',
         music['attribution_label'], ': ', tracks, '.\n', music['creation'], '\n', music['tools'], '\n',
+        '\n## License\n\n',
+        'The Melee Remastered art (derived from the UQM MegaMod HD art) and music are\n'
+        'distributed under the Creative Commons Attribution-NonCommercial-ShareAlike 2.5\n'
+        'license (https://creativecommons.org/licenses/by-nc-sa/2.5/), with credit to\n'
+        'Toys for Bob and the UQM MegaMod artists. See docs/licenses.md in\n'
+        'https://github.com/vcorem/uqm-3do-web for every part of the game.\n',
     ])
 
 

@@ -28,13 +28,13 @@
     "directory": "cosmoclash"
   },
   "keywords": [],
-  "author": "",
+  "author": "Ori Hanegby, Guy Corem and Orr Kowarsky",
   "license": "ISC",
   "type": "module",
   "bugs": {
     "url": "https://github.com/vcorem/uqm-3do-web/issues"
   },
-  "homepage": "https://github.com/vcorem/uqm-3do-web/tree/codex/cosmoclash-rust-netplay/cosmoclash#readme",
+  "homepage": "https://github.com/vcorem/uqm-3do-web/tree/main/cosmoclash#readme",
   "dependencies": {
     "three": "^0.183.1"
   },

@@ -2,7 +2,7 @@
   "name": "uqm-3do-web",
   "version": "0.1.0",
   "private": true,
-  "description": "Local WebAssembly game and private two-player Melee relay",
+  "description": "The Ur-Quan Masters in the browser: WebAssembly engines, the site picker, online play and its relays",
   "engines": {
     "node": ">=22"
   },
@@ -32,5 +32,11 @@
   },
   "devDependencies": {
     "playwright": "1.62.1"
+  },
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://urquanmasters.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vcorem/uqm-3do-web.git"
   }
 }
