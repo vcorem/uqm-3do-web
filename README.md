@@ -28,8 +28,10 @@ and preferences apart from the HD saves (`.uqm-melee`, `.uqm-melee-rust`).
 The HD and Melee pages share one engine and one data file: a player who has
 the HD data in the browser does not download it again for Melee, and the site
 stores the data once. The HD page keeps its own art in Super-Melee. See
-[features, build instructions and validation](docs/melee-remastered.md). Cosmo Clash is a separate 2D/3D space duel game with a
-Rust WebAssembly gameplay engine; its source, assets, build and validation are
+[features, build instructions and validation](docs/melee-remastered.md).
+
+Cosmo Clash is a separate 2D/3D space duel game with a Rust WebAssembly
+gameplay engine; its source, assets, build and validation are
 in `cosmoclash/`, and its hosting is in
 [the Cosmo Clash port notes](docs/cosmoclash-port.md#server-handover).
 `./scripts/build-editions.sh` builds and packages all four (`UQM_COSMO=0`
